@@ -10,6 +10,12 @@
 	"categories": [
 		"Other"
 	],
+	"keywords": [
+		"mod",
+		"paradox",
+		"hoi",
+		"Heart of Iron"
+	],
 	"activationEvents": [
 		"onCommand:hoi4modutilities.preview",
 		"onCommand:hoi4modutilities.test",
@@ -47,12 +53,12 @@
 			"editor/title": [
 				{
 					"command": "hoi4modutilities.preview",
-					"when": "editorLangId == plaintext",
+					"when": "editorLangId == plaintext && !shouldHideHoi4Preview",
 					"group": "navigation"
 				},
 				{
 					"command": "hoi4modutilities.preview",
-					"when": "editorLangId == hoi4",
+					"when": "editorLangId == hoi4 && !shouldHideHoi4Preview",
 					"group": "navigation"
 				}
 			],

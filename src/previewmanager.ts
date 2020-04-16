@@ -43,6 +43,17 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         preview.deboncedUpdateMethod(document, preview.panel);
     }
 
+    public onChangeActiveTextEditor(textEditor: vscode.TextEditor | undefined): void {
+        let shouldShowPreviewButton = false;
+        if (textEditor) {
+            if (this.findPreviewProvider(textEditor.document)) {
+                shouldShowPreviewButton = true;
+            }
+        }
+
+        vscode.commands.executeCommand('setContext', 'shouldHideHoi4Preview', !shouldShowPreviewButton);
+    }
+
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any): Promise<void> {
         const uriStr = state?.uri as string | undefined;
         if (!uriStr) {
