@@ -1,9 +1,10 @@
-import { Node, SymbolNode, Token } from "./hoiparser";
+import { Node, Token } from "./hoiparser";
 import { isArray } from "util";
 import { forEachNodeValue, getSymbolPropertyOrUndefined, getNumberPropertyOrUndefined, getPropertyNodes, getSymbolProperty } from "./hoinodeutils";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
+    allowBranchOptions: string[];
 }
 
 export interface Focus {
@@ -13,6 +14,8 @@ export interface Focus {
     icon: string | undefined;
     prerequisite: string[][];
     exclusive: string[];
+    hasAllowBranch: boolean;
+    inAllowBranch: string[];
     token: Token | null;
 }
 
@@ -28,15 +31,25 @@ export function getFocusTree(node: Node): FocusTree[] {
             return;
         }
 
+        const focuses = getFocuses(ftnode);
         focusTrees.push({
-            focuses: getFocuses(ftnode)
+            focuses,
+            allowBranchOptions: getAllowBranchOptions(focuses)
         });
     });
+
+    const focuses = getFocuses(node, 'shared_focus');
+    if (Object.keys(focuses).length > 0) {
+        focusTrees.push({
+            focuses,
+            allowBranchOptions: getAllowBranchOptions(focuses)
+        });
+    }
 
     return focusTrees;
 }
 
-function getFocuses(node: Node): Record<string, Focus> {
+function getFocuses(node: Node, nodeName: string = 'focus'): Record<string, Focus> {
     if (!isArray(node.value)) {
         return {};
     }
@@ -45,7 +58,7 @@ function getFocuses(node: Node): Record<string, Focus> {
     let pendingFocuses: Node[] = [];
 
     forEachNodeValue(node, fnode => {
-        if (fnode.name !== 'focus') {
+        if (fnode.name !== nodeName) {
             return;
         }
 
@@ -81,6 +94,26 @@ function getFocuses(node: Node): Record<string, Focus> {
         pendingFocuses = newPendingFocus;
     }
 
+    let hasChangedInAllowBranch = true;
+    while (hasChangedInAllowBranch) {
+        hasChangedInAllowBranch = false;
+        for (const key in focuses) {
+            const focus = focuses[key];
+            const allPrerequisites = focus.prerequisite.reduce((p, v) => p.concat(v), []).filter(p => p in focuses);
+            if (allPrerequisites.length === 0) {
+                continue;
+            }
+
+            const allowBranchList = focuses[allPrerequisites[0]].inAllowBranch;
+            for (const ab of allowBranchList) {
+                if (!focus.inAllowBranch.includes(ab) && allPrerequisites.every(p => focuses[p].inAllowBranch.includes(ab))) {
+                    focus.inAllowBranch.push(ab);
+                    hasChangedInAllowBranch = true;
+                }
+            }
+        }
+    }
+
     return focuses;
 }
 
@@ -103,9 +136,24 @@ function getFocus(fnode: Node, relativeToFocus: Focus | null): Focus | null {
     const prerequisite = getPropertyNodes(fnode, 'prerequisite')
         .map(prerequisiteNode => getSymbolProperty(prerequisiteNode, 'focus').concat(getSymbolProperty(prerequisiteNode, 'OR')));
     const icon = getSymbolPropertyOrUndefined(fnode, 'icon');
+    const hasAllowBranch = getPropertyNodes(fnode, 'allow_branch').length > 0;
 
     return {
-        id, icon, x, y, prerequisite, exclusive, token: fnode.nameToken
+        id,
+        icon,
+        x,
+        y,
+        prerequisite,
+        exclusive,
+        hasAllowBranch,
+        inAllowBranch: hasAllowBranch ? [id] : [],
+        token: fnode.nameToken
     };
 }
 
+function getAllowBranchOptions(focuses: Record<string, Focus>): string[] {
+    return Object.values(focuses)
+        .map(f => f.inAllowBranch)
+        .reduce((p, c) => p.concat(c), [])
+        .filter((v, i, a) => a.indexOf(v) === i);
+}

@@ -7,9 +7,10 @@ const headerLengthInt = 31;
 const DDS_RGBA = 0x41;
 const DDS_RGB = 0x40;
 
-export interface DDSFile {
+export interface DDS {
     header: DDSHeader;
     mainSurface: DDSImage;
+    buffer: ArrayBuffer;
 }
 
 export interface DDSImage {
@@ -42,7 +43,7 @@ export interface DDSPixelFormat {
     dwABitMask: number;
 }
 
-export function parseDds(arrayBuffer: ArrayBuffer): DDSFile {
+export function parseDds(arrayBuffer: ArrayBuffer): DDS {
     const headerArray = new Int32Array(arrayBuffer, 0, headerLengthInt);
 
     if (headerArray[0] !== DDS_MAGIC) {
@@ -67,6 +68,7 @@ export function parseDds(arrayBuffer: ArrayBuffer): DDSFile {
     return {
         header,
         mainSurface,
+        buffer: arrayBuffer,
     };
 }
 

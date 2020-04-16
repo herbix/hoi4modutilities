@@ -1,8 +1,8 @@
 {
-	"name": "hoi4focustreepreview",
-	"displayName": "HOI4 Focus Tree Preview",
-	"description": "Preview focus tree of HOI4 when develop mods",
-	"version": "0.0.3",
+	"name": "hoi4modutilities",
+	"displayName": "HOI4 Mod Utilities",
+	"description": "Utilities for HOI4 mods developers",
+	"version": "0.0.5",
 	"publisher": "Chaofan",
 	"engines": {
 		"vscode": "^1.44.0"
@@ -11,22 +11,19 @@
 		"Other"
 	],
 	"activationEvents": [
-		"onCommand:hoi4focustreepreview.previewFocusTree",
-		"onCommand:hoi4focustreepreview.test",
+		"onCommand:hoi4modutilities.preview",
+		"onCommand:hoi4modutilities.test",
 		"onWebviewPanel:hoi4ftpreview"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"configuration": [
 			{
-				"title": "HOI4 Focus Tree Preview",
+				"title": "HOI4 Mod Utilities",
 				"properties": {
-					"hoi4focustreepreview.installPath": {
-						"type": [
-							"string",
-							"null"
-						],
-						"default": null,
+					"hoi4modutilities.installPath": {
+						"type": "string",
+						"default": "",
 						"description": "Hearts of Iron IV install path"
 					}
 				}
@@ -34,25 +31,35 @@
 		],
 		"commands": [
 			{
-				"command": "hoi4focustreepreview.previewFocusTree",
-				"title": "Preview"
+				"command": "hoi4modutilities.preview",
+				"title": "Preview HOI4 file",
+				"icon": {
+					"dark": "static/preview-right-dark.svg",
+					"light": "static/preview-right-light.svg"
+				}
 			},
 			{
-				"command": "hoi4focustreepreview.test",
+				"command": "hoi4modutilities.test",
 				"title": "HOI4 My Test"
 			}
 		],
 		"menus": {
 			"editor/title": [
 				{
-					"command": "hoi4focustreepreview.previewFocusTree",
+					"command": "hoi4modutilities.preview",
 					"when": "editorLangId == plaintext",
 					"group": "navigation"
 				},
 				{
-					"command": "hoi4focustreepreview.previewFocusTree",
+					"command": "hoi4modutilities.preview",
 					"when": "editorLangId == hoi4",
 					"group": "navigation"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "hoi4modutilities.preview",
+					"when": "false"
 				}
 			]
 		}

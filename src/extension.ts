@@ -1,18 +1,23 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
-import * as fs from 'fs';
 import { previewManager } from './previewmanager';
-import { parseDds } from './ddsparser';
-import { PNG } from 'pngjs';
+import { contextContainer } from './context';
 
 export function activate(context: vscode.ExtensionContext) {
-	context.subscriptions.push(vscode.commands.registerCommand('hoi4focustreepreview.previewFocusTree', previewManager.showPreview, previewManager));
+	contextContainer.current = context;
+	context.subscriptions.push({
+		dispose() {
+			contextContainer.current = null;
+		}
+	});
+
+	context.subscriptions.push(vscode.commands.registerCommand('hoi4modutilities.preview', previewManager.showPreview, previewManager));
 	context.subscriptions.push(vscode.workspace.onDidCloseTextDocument(previewManager.onCloseTextDocument, previewManager));
 	context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(previewManager.onChangeTextDocument, previewManager));
 
-	context.subscriptions.push(vscode.commands.registerCommand('hoi4focustreepreview.test', () => {
+	context.subscriptions.push(vscode.commands.registerCommand('hoi4modutilities.test', () => {
 	}));
-	// vscode.window.registerWebviewPanelSerializer('hoi4ftpreview', new Hoi4FTSerializer());
+	
+	context.subscriptions.push(vscode.window.registerWebviewPanelSerializer('hoi4ftpreview', previewManager));
 }
 
 export function deactivate() {}
