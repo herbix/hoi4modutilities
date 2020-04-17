@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { previewManager } from './previewmanager';
 import { contextContainer } from './context';
+import { localize } from './util/i18n';
 
 export function activate(context: vscode.ExtensionContext) {
 	contextContainer.current = context;
@@ -18,10 +19,10 @@ export function activate(context: vscode.ExtensionContext) {
 	previewManager.onChangeActiveTextEditor(vscode.window.activeTextEditor);
 
 	context.subscriptions.push(vscode.commands.registerCommand('hoi4modutilities.test', () => {
+		console.log(localize('hoi4modutilities.testout', 'asd {0} {1}', 1, 'haha'));
 	}));
 	
 	context.subscriptions.push(vscode.window.registerWebviewPanelSerializer('hoi4ftpreview', previewManager));
-
 }
 
 export function deactivate() {}

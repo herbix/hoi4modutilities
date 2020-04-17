@@ -3,6 +3,7 @@ import * as path from 'path';
 import { debounce } from 'lodash';
 import { PreviewProviderDef } from './previewProviderDef';
 import { focusTreePreviewDef } from './focustreepreview/manager';
+import { localize } from './util/i18n';
 
 interface PreviewMeta {
     uri: vscode.Uri;
@@ -74,7 +75,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
     private async showPreviewImpl(uri: vscode.Uri, panel?: vscode.WebviewPanel): Promise<void> {
         const document = vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString());
         if (document === undefined) {
-            vscode.window.showErrorMessage(`Can't find opened document ${uri.fsPath}`);
+            vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}", uri.fsPath));
             panel?.dispose();
             return;
         }
@@ -88,15 +89,16 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 
         const previewProvider = this.findPreviewProvider(document);
         if (!previewProvider) {
-            vscode.window.showInformationMessage(`Can't preview this file.\nValid types: ${Object.keys(this._previewProvidersMap).join(', ')}.`);
+            vscode.window.showInformationMessage(
+                localize('preview.cantpreviewfile', "Can't preview this file.\nValid types: {0}.", Object.keys(this._previewProvidersMap).join(', ')));
             panel?.dispose();
             return;
         }
 
 		const filename = path.basename(uri.path);
 		panel = panel ?? vscode.window.createWebviewPanel(
-			'hoi4ftpreview',
-			'HOI4: ' + filename,
+            'hoi4ftpreview',
+            localize('preview.viewtitle', "HOI4: {0}", filename),
 			vscode.ViewColumn.Two,
 			{
                 enableScripts: true

@@ -1,5 +1,6 @@
 (function() {
     const vscode = acquireVsCodeApi();
+    const hiddenBranches = {};
 
     window.navigateText = function(start, end) {
         vscode.postMessage({
@@ -9,18 +10,25 @@
         });
     };
 
-    window.showBranch = function(visibility, optionClass, focusId) {
+    window.showBranch = function(visibility, optionClass) {
         const elements = document.getElementsByClassName(optionClass);
-        const focus = this.document.getElementById(focusId);
-        if (!visibility && focus) {
-            focus.scrollIntoView({ block: "center", inline: "center" });
+
+        if (visibility) {
+            delete hiddenBranches[optionClass];
+        } else {
+            hiddenBranches[optionClass] = true;
         }
 
+        const hiddenBranchesList = Object.keys(hiddenBranches);
         for (let i = 0; i < elements.length; i++) {
-            elements[i].style.display = visibility ? "block" : "none";
+            const element = elements[i];
+            element.style.display = element.className.split(' ').some(b => hiddenBranchesList.includes(b)) ? "none" : "block";
         }
+    };
 
-        if (visibility && focus) {
+    window.gotoFocus = function(focusId) {
+        const focus = this.document.getElementById(focusId);
+        if (focus) {
             focus.scrollIntoView({ block: "center", inline: "center" });
         }
     };

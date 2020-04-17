@@ -104,13 +104,15 @@ function getFocuses(node: Node, nodeName: string = 'focus'): Record<string, Focu
                 continue;
             }
 
-            const allowBranchList = focuses[allPrerequisites[0]].inAllowBranch;
-            for (const ab of allowBranchList) {
-                if (!focus.inAllowBranch.includes(ab) && allPrerequisites.every(p => focuses[p].inAllowBranch.includes(ab))) {
-                    focus.inAllowBranch.push(ab);
-                    hasChangedInAllowBranch = true;
-                }
-            }
+            allPrerequisites
+                .map(p => focuses[p].inAllowBranch)
+                .reduce((p, c) => p.concat(c), [])
+                .forEach(ab => {
+                    if (!focus.inAllowBranch.includes(ab)) {
+                        focus.inAllowBranch.push(ab);
+                        hasChangedInAllowBranch = true;
+                    }
+                });
         }
     }
 

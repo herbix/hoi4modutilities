@@ -18,10 +18,15 @@ export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri,
         baseContent = "Error: <br/>  <pre>" + e.toString() + "</pre>";
     }
 
-    return `<script>
+    return `<!doctype html>
+    <html>
+    <body>
+    <script>
         window.previewedFileUri = "${uri.toString()}";
     </script>
-    ${baseContent}`;
+    ${baseContent}
+    </body>
+    </html>`;
 }
 
 const leftPaddingBase = 30;
@@ -47,9 +52,9 @@ function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): string 
     const bottom = focuses.map(f => (f.y + 1) * yGrid).reduce((p, c) => p < c ? c : p, 0);
 
     return (
-        `<div id="previewbox" style="
-            width:${right + leftPadding + rightPadding};
-            height:${bottom + topPadding + bottomPadding};
+        `<div style="
+            width:${right + leftPadding + rightPadding}px;
+            height:${bottom + topPadding + bottomPadding}px;
         ">
             ${focustree.allowBranchOptions.map((option, index) => allowBranchOptionToHtml(option, index)).join('')}
             ${focuses.map(focus => focusToHtml(focus, focustree)).join('')}
@@ -65,8 +70,9 @@ function allowBranchOptionToHtml(option: string, index: number): string {
         top: ${10 + index * optionHeight}px;
         z-index: 100;
     ">
-        <input type="checkbox" checked="true" id="checkbox_${option}" onchange="showBranch(this.checked, 'inbranch_${option}', 'focus_${option}')"/>
+        <input type="checkbox" checked="true" id="checkbox_${option}" onchange="showBranch(this.checked, 'inbranch_${option}')"/>
         <label for="checkbox_${option}">${option}</label>
+        <a style="display:inline" onClick="gotoFocus('focus_${option}')" href="javascript:;">Goto</a>
     </div>`;
 }
 
@@ -110,19 +116,24 @@ function focusToHtml(focus: Focus, focustree: FocusTree): string {
         </div>`);
     
     for (const prerequisites of focus.prerequisite) {
+        let style: string;
         if (prerequisites.length > 1) {
-            prerequisites.forEach(p => {
-                divs.push(htmlLineBetweenFocus(focus, focustree.focuses[p], "1px dashed #88aaff", classNames));
-            });
+            style = "1px dashed #88aaff";
         } else {
-            prerequisites.forEach(p => {
-                divs.push(htmlLineBetweenFocus(focus, focustree.focuses[p], "1px solid #88aaff", classNames));
-            });
+            style = "1px solid #88aaff";
         }
+
+        prerequisites.forEach(p => {
+            const fp = focustree.focuses[p];
+            const classNames2 = fp.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
+            divs.push(htmlLineBetweenFocus(focus, fp, style, classNames + ' ' + classNames2));
+        });
     }
 
     focus.exclusive.forEach(e => {
-        divs.push(htmlLineBetweenFocus(focus, focustree.focuses[e], "1px solid red", classNames));
+        const fe = focustree.focuses[e];
+        const classNames2 = fe.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
+        divs.push(htmlLineBetweenFocus(focus, fe, "1px solid red", classNames + ' ' + classNames2));
     });
 
     return divs.join('');

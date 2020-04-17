@@ -4,7 +4,6 @@ import * as fs from 'fs';
 import { parseDds, DDS } from './ddsparser';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../hoiformat/hoiparser';
-import { forEachNodeValue, getPropertyNodes, getStringPropertyOrUndefined } from '../hoiformat/hoinodeutils';
 import { getSpriteTypes } from '../hoiformat/spritetype';
 
 interface Icon {
