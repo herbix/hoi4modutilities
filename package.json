@@ -61,6 +61,11 @@
 					"command": "hoi4modutilities.preview",
 					"when": "editorLangId == hoi4 && !shouldHideHoi4Preview",
 					"group": "navigation"
+				},
+				{
+					"command": "hoi4modutilities.preview",
+					"when": "editorLangId == paradox && !shouldHideHoi4Preview",
+					"group": "navigation"
 				}
 			],
 			"commandPalette": [

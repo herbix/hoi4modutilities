@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getHtmlFromFocusFile } from './contentbuilder';
-import { PreviewProviderDef } from '../previewProviderDef';
-import { matchPathEnd } from '../util/pathmatcher';
+import { PreviewProviderDef } from '../../previewProviderDef';
+import { matchPathEnd } from '../../util/pathmatcher';
 
 async function showFocusTreePreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
     panel.webview.onDidReceiveMessage((msg) => {
@@ -20,7 +20,7 @@ async function updateFocusTreePreview(document: vscode.TextDocument, panel: vsco
     panel.webview.html = await getHtmlFromFocusFile(document.getText(), document.uri, panel.webview);
 }
 
-function showShowFocusTree(document: vscode.TextDocument) {
+function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
     if (matchPathEnd(uri.path, ['common', 'national_focus', '*'])) {
         return true;
@@ -34,5 +34,5 @@ export const focusTreePreviewDef: PreviewProviderDef = {
     type: 'focustree',
     show: showFocusTreePreview,
     update: updateFocusTreePreview,
-    condition: showShowFocusTree,
+    condition: canPreviewFocusTree,
 };

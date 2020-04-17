@@ -2,8 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { debounce } from 'lodash';
 import { PreviewProviderDef } from './previewProviderDef';
-import { focusTreePreviewDef } from './focustreepreview/manager';
+import { focusTreePreviewDef } from './previewdef/focustree';
 import { localize } from './util/i18n';
+import { gfxPreviewDef } from './previewdef/gfx';
 
 interface PreviewMeta {
     uri: vscode.Uri;
@@ -15,7 +16,7 @@ interface PreviewMeta {
 class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewMeta> = {};
 
-    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef ];
+    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = {};
 
     constructor() {

@@ -12,7 +12,7 @@ export function forEachNodeValue(node: Node, callback: (n: Node) => void): void 
 export function getPropertyNodes(node: Node, name: string): Node[] {
     const result: Node[] = [];
     forEachNodeValue(node, n => {
-        if (n.name === name) {
+        if (n.name?.toLowerCase() === name.toLowerCase()) {
             result.push(n);
         }
     });

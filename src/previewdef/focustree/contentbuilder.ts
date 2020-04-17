@@ -1,16 +1,16 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getFocusTree, FocusTree, Focus } from '../hoiformat/focustree';
-import { parseHoi4File } from '../hoiformat/hoiparser';
-import { getFocusIcon } from '../util/imagecache';
-import { contextContainer } from '../context';
+import { getFocusTree, FocusTree, Focus } from '../../hoiformat/focustree';
+import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { getFocusIcon } from '../../util/imagecache';
+import { contextContainer } from '../../context';
 
 export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
         const focustrees = getFocusTree(parseHoi4File(fileContent));
         if (focustrees.length > 0) {
-            baseContent = focusTreeToHtml(focustrees[0], webview);
+            baseContent = await focusTreeToHtml(focustrees[0], webview);
         } else {
             baseContent = 'No focus tree.';
         }
@@ -41,7 +41,7 @@ const xSize = 50;
 const ySize = 50;
 const optionHeight = 20;
 
-function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): string {
+async function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): Promise<string> {
     const focuses = Object.values(focustree.focuses);
 
     const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 1000);
@@ -57,7 +57,7 @@ function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): string 
             height:${bottom + topPadding + bottomPadding}px;
         ">
             ${focustree.allowBranchOptions.map((option, index) => allowBranchOptionToHtml(option, index)).join('')}
-            ${focuses.map(focus => focusToHtml(focus, focustree)).join('')}
+            ${(await Promise.all(focuses.map(focus => focusToHtml(focus, focustree)))).join('')}
         </div>
         <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/focustree.js')))}" />`
     );
@@ -76,14 +76,14 @@ function allowBranchOptionToHtml(option: string, index: number): string {
     </div>`;
 }
 
-function focusToHtml(focus: Focus, focustree: FocusTree): string {
+async function focusToHtml(focus: Focus, focustree: FocusTree): Promise<string> {
     const divs = [];
 
     const width = focus.icon ? xSize * 2 : xSize;
     const height = focus.icon ? ySize * 2 : ySize;
     const x = focus.x * xGrid + leftPadding + (xGrid - width) / 2;
     const y = focus.y * yGrid + topPadding + (yGrid - height) / 2;
-    const icon = focus.icon ? getFocusIcon(focus.icon) : null;
+    const icon = focus.icon ? await getFocusIcon(focus.icon) : null;
     const classNames = focus.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
 
     divs.push(`<div
