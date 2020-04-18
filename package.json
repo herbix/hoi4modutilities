@@ -19,7 +19,8 @@
 	"activationEvents": [
 		"onCommand:hoi4modutilities.preview",
 		"onCommand:hoi4modutilities.test",
-		"onWebviewPanel:hoi4ftpreview"
+		"onWebviewPanel:hoi4ftpreview",
+		"onCustomEditor:hoi4modutilities.dds"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -54,6 +55,17 @@
 			{
 				"command": "hoi4modutilities.test",
 				"title": "HOI4 My Test"
+			}
+		],
+		"customEditors": [
+			{
+				"viewType": "hoi4modutilities.dds",
+				"displayName": "%hoi4modutilities.dds.editorName%",
+				"selector": [
+					{
+						"filenamePattern": "*.dds"
+					}
+				]
 			}
 		],
 		"menus": {

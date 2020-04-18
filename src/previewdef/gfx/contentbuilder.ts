@@ -75,7 +75,18 @@ async function getHtmlFromSpriteType(spriteType: SpriteType): Promise<string> {
             cursor: pointer;
         "
         onclick="hoi4mu.navigateText(${spriteType.token?.start}, ${spriteType.token?.end})">
-        ${image !== null ? `<img src="${image.uri}" />` : '<div style="height:100px;width:100px;background:grey;" ></div>'}
+        ${image !== null ? `<img src="${image.uri}" />` :
+            `<div style="
+                height: 100px;
+                width: 100px;
+                background: grey;
+                margin: auto;
+                display: table;
+            ">
+                <div style="display:table-cell;vertical-align:middle;color:black;">
+                    MISSING
+                </div>
+            </div>`}
         <p style="
             min-width: 120px;
             max-width: ${Math.max(image?.width || 100, 120)}px;
