@@ -1,53 +1,40 @@
-(function() {
-    const vscode = acquireVsCodeApi();
-    const hiddenBranches = {};
-
-    window.navigateText = function(start, end) {
-        vscode.postMessage({
-            command: 'navigate',
-            start: start,
-            end: end
-        });
-    };
-
-    window.showBranch = function(visibility, optionClass) {
+window.hoi4mu.ft = (function() {
+    function showBranch(visibility, optionClass) {
         const elements = document.getElementsByClassName(optionClass);
 
+        const hiddenBranches = hoi4mu.getState().hiddenBranches || {};
         if (visibility) {
             delete hiddenBranches[optionClass];
         } else {
             hiddenBranches[optionClass] = true;
         }
+        hoi4mu.setState({ hiddenBranches: hiddenBranches });
 
-        const hiddenBranchesList = Object.keys(hiddenBranches);
         for (let i = 0; i < elements.length; i++) {
             const element = elements[i];
-            element.style.display = element.className.split(' ').some(b => hiddenBranchesList.includes(b)) ? "none" : "block";
+            element.style.display = element.className.split(' ').some(b => hiddenBranches[b]) ? "none" : "block";
         }
     };
 
-    window.gotoFocus = function(focusId) {
-        const focus = this.document.getElementById(focusId);
+    function gotoFocus(focusId) {
+        const focus = document.getElementById(focusId);
         if (focus) {
             focus.scrollIntoView({ block: "center", inline: "center" });
         }
     };
 
-    window.onload = function() {
-        const state = vscode.getState() || {};
-        const xOffset = state.xOffset || 0;
-        const yOffset = state.yOffset || 0;
-        window.scroll(xOffset, yOffset);
+    window.addEventListener('load', function() {
+        const hiddenBranches = hoi4mu.getState().hiddenBranches || {};
+        
+        for (const key in hiddenBranches) {
+            const element = document.getElementById(key);
+            element.checked = false;
+            showBranch(false, key);
+        }
+    });
 
-        window.onscroll = function() {
-            const state = vscode.getState() || {};
-            state.xOffset = window.pageXOffset;
-            state.yOffset = window.pageYOffset;
-            vscode.setState(state);
-        };
+    return {
+        showBranch: showBranch,
+        gotoFocus: gotoFocus,
     };
-    
-    const state = vscode.getState() || {};
-    state.uri = window.previewedFileUri;
-    vscode.setState(state);
 })();

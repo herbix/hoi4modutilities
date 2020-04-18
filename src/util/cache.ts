@@ -65,11 +65,11 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
             ...options,
             factory: (key) => {
                 return options.factory(key).then(
-                    icon => {
-                        if (icon === null) {
+                    value => {
+                        if (value === null) {
                             this.remove(key);
                         }
-                        return icon;
+                        return value;
                     },
                     error => {
                         this.remove(key);

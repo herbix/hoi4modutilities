@@ -1,8 +1,11 @@
 export interface Node {
     name: string | null;
-    operator: string | undefined;
-    value: Node[] | SymbolNode | string | number | undefined;
+    operator: string | null;
+    value: Node[] | SymbolNode | string | number | null;
     nameToken: Token | null;
+    operatorToken: Token | null;
+    valueStartToken: Token | null;
+    valueEndToken: Token | null;
 }
 
 export interface SymbolNode {
@@ -18,7 +21,7 @@ interface Tokenizer {
 export interface Token {
     value: string;
     start: number;
-    length: number;
+    end: number;
 }
 
 function tokenizer(input: string): Tokenizer {
@@ -45,7 +48,7 @@ function tokenizer(input: string): Tokenizer {
             token = {
                 value: result,
                 start: pos - groups[1].length,
-                length: groups[1].length
+                end: pos,
             };
         } while (token.value.startsWith('#'));
     }
@@ -78,8 +81,11 @@ export function parseHoi4File(input: string): Node {
     return {
         name: null,
         nameToken: null,
-        operator: '=',
-        value: parseBlockContent(tokens)
+        operator: null,
+        operatorToken: null,
+        value: parseBlockContent(tokens),
+        valueStartToken: null,
+        valueEndToken: null,
     };
 }
 
@@ -94,8 +100,11 @@ function parseNode(tokens: Tokenizer): Node {
         return {
             name: name.value,
             nameToken: name,
-            operator: undefined,
-            value: undefined
+            operator: null,
+            operatorToken: null,
+            value: null,
+            valueStartToken: null,
+            valueEndToken: null,
         };
     }
 
@@ -104,33 +113,52 @@ function parseNode(tokens: Tokenizer): Node {
         tokens.throw("Expect operator");
     }
 
+    const [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+
     return {
         name: name.value,
         nameToken: name,
         operator: operator.value,
-        value: parseNodeValue(tokens)
+        operatorToken: operator,
+        value,
+        valueStartToken,
+        valueEndToken,
     };
 }
 
-function parseNodeValue(tokens: Tokenizer): Node[] | SymbolNode | string | number {
+function parseNodeValue(tokens: Tokenizer): [ Node[] | SymbolNode | string | number, Token, Token ] {
     const nextToken = tokens.next();
     if (nextToken === null) {
         tokens.throw("Expect a node value");
     } else if (nextToken.value.startsWith('"')) {
-        return nextToken.value.substr(1, nextToken.length - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        return [
+            nextToken.value.substr(1, nextToken.end - nextToken.start - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
+            nextToken,
+            nextToken,
+        ];
     } else if (nextToken.value.match(/^[0-9\-]+$/)) {
-        return parseInt(nextToken.value);
+        return [
+            parseInt(nextToken.value),
+            nextToken,
+            nextToken,
+        ];
     } else if (nextToken.value === '{') {
         const result = parseBlockContent(tokens);
         const right = tokens.next();
         if (right === null || right.value !== '}') {
             tokens.throw("Expect a '}'");
         }
-        return result;
+        return [
+            result,
+            nextToken,
+            right,
+        ];
     } else {
-        return {
-            name: nextToken.value
-        };
+        return [
+            { name: nextToken.value },
+            nextToken,
+            nextToken,
+        ];
     }
 }
 

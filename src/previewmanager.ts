@@ -5,6 +5,7 @@ import { PreviewProviderDef } from './previewProviderDef';
 import { focusTreePreviewDef } from './previewdef/focustree';
 import { localize } from './util/i18n';
 import { gfxPreviewDef } from './previewdef/gfx';
+import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from './constants';
 
 interface PreviewMeta {
     uri: vscode.Uri;
@@ -53,7 +54,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             }
         }
 
-        vscode.commands.executeCommand('setContext', 'shouldHideHoi4Preview', !shouldShowPreviewButton);
+        vscode.commands.executeCommand('setContext', ShouldHideHoi4PreviewContextName, !shouldShowPreviewButton);
     }
 
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any): Promise<void> {
@@ -98,7 +99,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 
 		const filename = path.basename(uri.path);
 		panel = panel ?? vscode.window.createWebviewPanel(
-            'hoi4ftpreview',
+            PreviewWebviewType,
             localize('preview.viewtitle', "HOI4: {0}", filename),
 			vscode.ViewColumn.Two,
 			{
@@ -123,6 +124,15 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
                 }
 
                 delete this._previews[key];
+            }
+        });
+
+        panel.webview.onDidReceiveMessage((msg) => {
+            if (msg.command === 'navigate' && msg.start !== undefined) {
+                vscode.window.showTextDocument(document.uri, {
+                    selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
+                    viewColumn: vscode.ViewColumn.One
+                });
             }
         });
 

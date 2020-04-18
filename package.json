@@ -32,6 +32,12 @@
 						"type": "string",
 						"default": "",
 						"description": "%hoi4modutilities.installPath.desc%"
+					},
+					"hoi4ModUtilities.loadDlcContents": {
+						"title": "%hoi4modutilities.loadDlcContents.title%",
+						"type": "boolean",
+						"default": false,
+						"description": "%hoi4modutilities.loadDlcContents.desc%"
 					}
 				}
 			}
@@ -87,6 +93,7 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {
+		"@types/adm-zip": "^0.4.33",
 		"@types/glob": "^7.1.1",
 		"@types/lodash": "^4.14.149",
 		"@types/mocha": "^7.0.2",
@@ -106,6 +113,7 @@
 		"webpack-cli": "^3.3.11"
 	},
 	"dependencies": {
+		"adm-zip": "^0.4.14",
 		"lodash": "^4.17.15",
 		"pngjs": "^4.0.0"
 	}

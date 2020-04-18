@@ -1,9 +1,10 @@
 import { forEachNodeValue, getPropertyNodes, getStringPropertyOrUndefined } from "./hoinodeutils";
-import { Node } from "./hoiparser";
+import { Node, Token } from "./hoiparser";
 
 export interface SpriteType {
     name: string;
     texturefile: string;
+    token: Token | null;
 }
 
 export function getSpriteTypes(node: Node): SpriteType[] {
@@ -22,6 +23,7 @@ export function getSpriteTypes(node: Node): SpriteType[] {
                 result.push({
                     name,
                     texturefile,
+                    token: sprite.nameToken,
                 });
             }
         }

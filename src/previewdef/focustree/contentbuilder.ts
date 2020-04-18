@@ -4,6 +4,7 @@ import { getFocusTree, FocusTree, Focus } from '../../hoiformat/focustree';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getFocusIcon } from '../../util/imagecache';
 import { contextContainer } from '../../context';
+import { localize } from '../../util/i18n';
 
 export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
@@ -12,10 +13,10 @@ export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri,
         if (focustrees.length > 0) {
             baseContent = await focusTreeToHtml(focustrees[0], webview);
         } else {
-            baseContent = 'No focus tree.';
+            baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }
     } catch (e) {
-        baseContent = "Error: <br/>  <pre>" + e.toString() + "</pre>";
+        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
     }
 
     return `<!doctype html>
@@ -59,7 +60,10 @@ async function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): P
             ${focustree.allowBranchOptions.map((option, index) => allowBranchOptionToHtml(option, index)).join('')}
             ${(await Promise.all(focuses.map(focus => focusToHtml(focus, focustree)))).join('')}
         </div>
-        <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/focustree.js')))}" />`
+        <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
+        </script>
+        <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/focustree.js')))}">
+        </script>`
     );
 }
 
@@ -70,9 +74,9 @@ function allowBranchOptionToHtml(option: string, index: number): string {
         top: ${10 + index * optionHeight}px;
         z-index: 100;
     ">
-        <input type="checkbox" checked="true" id="checkbox_${option}" onchange="showBranch(this.checked, 'inbranch_${option}')"/>
-        <label for="checkbox_${option}">${option}</label>
-        <a style="display:inline" onClick="gotoFocus('focus_${option}')" href="javascript:;">Goto</a>
+        <input type="checkbox" checked="true" id="inbranch_${option}" onchange="hoi4mu.ft.showBranch(this.checked, 'inbranch_${option}')"/>
+        <label for="inbranch_${option}">${option}</label>
+        <a style="display:inline" onClick="hoi4mu.ft.gotoFocus('focus_${option}')" href="javascript:;">Goto</a>
     </div>`;
 }
 
@@ -105,7 +109,7 @@ async function focusToHtml(focus: Focus, focustree: FocusTree): Promise<string> 
             vertical-align: bottom;
             cursor: pointer;
         "
-        onClick="navigateText(${focus.token?.start}, ${focus.token ? focus.token.start + focus.token.length : undefined})">
+        onClick="hoi4mu.navigateText(${focus.token?.start}, ${focus.token?.end})">
             <span
             style="
                 margin: 0 -400px;

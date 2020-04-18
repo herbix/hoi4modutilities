@@ -32,7 +32,7 @@ export function getNumberProperty(node: Node, name: string): number[] {
 }
 
 export function getSymbolProperty(node: Node, name: string): string[] {
-    return getProperty(node, name).filter((p): p is SymbolNode => typeof p === 'object' && 'name' in p).map(sn => sn.name);
+    return getProperty(node, name).filter((p): p is SymbolNode => typeof p === 'object' && p !== null && 'name' in p).map(sn => sn.name);
 }
 
 export function getStringPropertyOrUndefined(node: Node, name: string): string | undefined {
@@ -44,5 +44,5 @@ export function getNumberPropertyOrUndefined(node: Node, name: string): number |
 }
 
 export function getSymbolPropertyOrUndefined(node: Node, name: string): string | undefined {
-    return getProperty(node, name).find((p): p is SymbolNode => typeof p === 'object' && 'name' in p)?.name;
+    return getProperty(node, name).find((p): p is SymbolNode => typeof p === 'object' && p !== null && 'name' in p)?.name;
 }

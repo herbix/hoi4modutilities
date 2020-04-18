@@ -3,15 +3,7 @@ import { getHtmlFromGfxFile } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
 
 async function showGfxPreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    /*panel.webview.onDidReceiveMessage((msg) => {
-        if (msg.command === 'navigate' && msg.start !== undefined) {
-            vscode.window.showTextDocument(document, {
-                selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
-                viewColumn: vscode.ViewColumn.One
-            });
-        }
-    });*/
-
+    panel.webview.html = 'Loading...';
     panel.webview.html = await getHtmlFromGfxFile(document.getText(), document.uri, panel.webview);
 }
 
