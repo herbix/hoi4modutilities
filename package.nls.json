@@ -4,6 +4,6 @@
     "hoi4modutilities.installPath.title": "Install Path",
     "hoi4modutilities.installPath.desc": "Hearts of Iron IV install path",
     "hoi4modutilities.loadDlcContents.title": "Load DLC Contents",
-    "hoi4modutilities.loadDlcContents.desc": "Whether to load DLC images when preview files. Enabling this will use more memory.",
+    "hoi4modutilities.loadDlcContents.desc": "Whether to load DLC images when previewing files. Enabling this will use more memory.",
     "hoi4modutilities.preview.title": "Preview HOI4 file"
 }

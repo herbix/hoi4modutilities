@@ -6,11 +6,20 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Preview focus tree
-    - Add preview page for focus tree file (in `common/national_focus`).
-    - Display focus icon at their position and show lines for dependencies.
-    - Click focus at preview page will navigate to the focus tag in document.
-    - Hover focus will show focus ID and absolute position.
-    - Focus with `allow_branch` will have a option to hide it.
-    - Preview view will be updated when focus file updated.
-    - Can preview `shared_focus`.
+* Empty
+
+## [0.1.0] - 2020/04/18 - Latest
+
+### Added
+* Focus tree preview
+  * Render focus tree as graph.
+  * Navigate to `focus` tag in document by clicking a focus in graph.
+  * Show/hide focus branches (available for focuses has `allow_branch` tag).
+  * Auto update preview when document updates.
+  * Preview focus tree file that contains `shared_focus` tree.
+* GFX file preview
+  * Preview all `spritetype` tags in `.gfx` files.
+  * Filter sprites by name.
+  * Navigate to `spritetype` tag in document by clicking a sprite in list.
+* DDS preview
+  * Supports RGB and RGBA format.

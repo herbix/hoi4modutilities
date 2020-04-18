@@ -1,9 +1,15 @@
 {
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
-	"description": "Utilities for HOI4 mods developers",
-	"version": "0.0.5",
+	"description": "Utilities for Heart of Iron IV mods developers",
+	"version": "0.1.0",
+	"author": "Chaofan Yang",
 	"publisher": "Chaofan",
+	"icon": "icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/herbix/hoi4modutilities"
+	},
 	"engines": {
 		"vscode": "^1.44.0"
 	},
@@ -51,10 +57,6 @@
 					"dark": "static/preview-right-dark.svg",
 					"light": "static/preview-right-light.svg"
 				}
-			},
-			{
-				"command": "hoi4modutilities.test",
-				"title": "HOI4 My Test"
 			}
 		],
 		"customEditors": [
