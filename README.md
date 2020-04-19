@@ -42,6 +42,11 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 ## Release Notes
 
+### 0.1.1
+
+#### Fixed
+* Fix bug that the tokenizer will read `={` as one token.
+
 ### 0.1.0
 
 Initial version of the extension.

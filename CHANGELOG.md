@@ -8,7 +8,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 * Empty
 
-## [0.1.0] - 2020/04/18 - Latest
+## [0.1.1] - 2020/04/19 - Latest
+
+### Fixed
+* Fix bug that the tokenizer will read `={` as one token.
+
+## [0.1.0] - 2020/04/18
 
 ### Added
 * Focus tree preview
