@@ -1,7 +1,9 @@
+export type NodeValue = string | number | Node[] | SymbolNode | null;
+
 export interface Node {
     name: string | null;
     operator: string | null;
-    value: Node[] | SymbolNode | string | number | null;
+    value: NodeValue;
     nameToken: Token | null;
     operatorToken: Token | null;
     valueStartToken: Token | null;
@@ -25,7 +27,7 @@ export interface Token {
 }
 
 function tokenizer(input: string): Tokenizer {
-    const regex = /^\s*((#.*[\r\n])|([\w\d:\._@\-]+)|([={}<>]+)|("(?:\\"|\\\\|[^"])*")|$)/;
+    const regex = /^\s*((#.*[\r\n])|([\w\d:\._@\-]+)|([={}<>]|>=|<=|!=)|("(?:\\"|\\\\|[^"])*")|$)/;
     let pos = 0;
     let token: Token | null = null;
     let groups: RegExpExecArray | null = null;
@@ -126,7 +128,7 @@ function parseNode(tokens: Tokenizer): Node {
     };
 }
 
-function parseNodeValue(tokens: Tokenizer): [ Node[] | SymbolNode | string | number, Token, Token ] {
+function parseNodeValue(tokens: Tokenizer): [ NodeValue, Token, Token ] {
     const nextToken = tokens.next();
     if (nextToken === null) {
         tokens.throw("Expect a node value");
