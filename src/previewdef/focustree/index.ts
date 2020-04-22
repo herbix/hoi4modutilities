@@ -1,14 +1,14 @@
 import * as vscode from 'vscode';
-import { getHtmlFromFocusFile } from './contentbuilder';
+import { renderFocusTreeFile } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
-import { matchPathEnd } from '../../util/pathmatcher';
+import { matchPathEnd } from '../../util/common';
 
 async function showFocusTreePreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = await getHtmlFromFocusFile(document.getText(), document.uri, panel.webview);
+    panel.webview.html = await renderFocusTreeFile(document.getText(), document.uri, panel.webview);
 }
 
 async function updateFocusTreePreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = await getHtmlFromFocusFile(document.getText(), document.uri, panel.webview);
+    panel.webview.html = await renderFocusTreeFile(document.getText(), document.uri, panel.webview);
 }
 
 function canPreviewFocusTree(document: vscode.TextDocument) {

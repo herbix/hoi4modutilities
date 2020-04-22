@@ -5,13 +5,16 @@ import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getFocusIcon } from '../../util/imagecache';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
+import { arrayToMap } from '../../util/common';
+import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbol } from '../../hoiformat/schema';
+import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/html/gridbox';
 
-export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
         const focustrees = getFocusTree(parseHoi4File(fileContent));
         if (focustrees.length > 0) {
-            baseContent = await focusTreeToHtml(focustrees[0], webview);
+            baseContent = await renderFocusTree(focustrees[0]);
         } else {
             baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }
@@ -26,98 +29,54 @@ export async function getHtmlFromFocusFile(fileContent: string, uri: vscode.Uri,
         window.previewedFileUri = "${uri.toString()}";
     </script>
     ${baseContent}
+    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
+    </script>
+    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/focustree.js')))}">
+    </script>
     </body>
     </html>`;
 }
 
+
 const leftPaddingBase = 30;
 const topPaddingBase = 30;
-let leftPadding = 30;
-let topPadding = 30;
 const rightPadding = 30;
 const bottomPadding = 30;
-const xGrid = 90;
-const yGrid = 120;
-const xSize = 50;
-const ySize = 50;
+const xGridSize = 90;
+const yGridSize = 120;
+const xItemSize = 100;
+const yItemSize = 100;
 const optionHeight = 20;
 
-async function focusTreeToHtml(focustree: FocusTree, webview: vscode.Webview): Promise<string> {
+async function renderFocusTree(focustree: FocusTree): Promise<string> {
     const focuses = Object.values(focustree.focuses);
-
     const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 1000);
-    leftPadding = leftPaddingBase - minX * xGrid;
-    topPadding = focustree.allowBranchOptions.length * optionHeight + topPaddingBase;
-    
-    const right = focuses.map(f => (f.x + 1) * xGrid).reduce((p, c) => p < c ? c : p, 0);
-    const bottom = focuses.map(f => (f.y + 1) * yGrid).reduce((p, c) => p < c ? c : p, 0);
+    const leftPadding = leftPaddingBase - minX * xGridSize;
+    const topPadding = focustree.allowBranchOptions.length * optionHeight + topPaddingBase;
+
+    const gridBox: HOIPartial<GridBoxType> = {
+        position: { x: toNumberLike(leftPadding), y: toNumberLike(topPadding) },
+        format: toStringAsSymbol('up'),
+        size: { width: toNumberLike(xGridSize), height: undefined },
+        slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
+    } as HOIPartial<GridBoxType>;
 
     return (
-        `<div style="
-            width:${right + leftPadding + rightPadding}px;
-            height:${bottom + topPadding + bottomPadding}px;
-        ">
-            ${focustree.allowBranchOptions.map((option, index) => allowBranchOptionToHtml(option, index)).join('')}
-            ${(await Promise.all(focuses.map(focus => focusToHtml(focus, focustree)))).join('')}
-        </div>
-        <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
-        </script>
-        <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/focustree.js')))}">
-        </script>`
+        focustree.allowBranchOptions.map((option, index) => renderAllowBranchOptions(option, index)).join('') +
+        await renderGridBox(gridBox, {
+            size: { width: 0, height: 0 },
+            orientation: 'upper_left'
+        }, {
+            items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
+            onRenderItem: item => renderFocus(focustree.focuses[item.id]),
+            cornerPosition: 0.5,
+        })
     );
 }
 
-function allowBranchOptionToHtml(option: string, index: number): string {
-    return `<div style="
-        position: fixed;
-        left: ${leftPaddingBase}px;
-        top: ${10 + index * optionHeight}px;
-        z-index: 100;
-    ">
-        <input type="checkbox" checked="true" id="inbranch_${option}" onchange="hoi4mu.ft.showBranch(this.checked, 'inbranch_${option}')"/>
-        <label for="inbranch_${option}">${option}</label>
-        <a style="display:inline" onClick="hoi4mu.ft.gotoFocus('focus_${option}')" href="javascript:;">Goto</a>
-    </div>`;
-}
-
-async function focusToHtml(focus: Focus, focustree: FocusTree): Promise<string> {
-    const divs = [];
-
-    const width = focus.icon ? xSize * 2 : xSize;
-    const height = focus.icon ? ySize * 2 : ySize;
-    const x = focus.x * xGrid + leftPadding + (xGrid - width) / 2;
-    const y = focus.y * yGrid + topPadding + (yGrid - height) / 2;
-    const icon = focus.icon ? await getFocusIcon(focus.icon) : null;
+function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
     const classNames = focus.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
-
-    divs.push(`<div
-        id="focus_${focus.id}"
-        class="${classNames}"
-        title="${focus.id}\n(${focus.x}, ${focus.y})"
-        style="
-            ${focus.icon ? `background-image: url(${icon?.uri});` : 'background: grey;'}
-            background-position: center;
-            background-repeat: no-repeat;
-            background-size: ${icon ? icon.width: 0}px;
-            position:absolute;
-            left: ${x}px;
-            top: ${y}px;
-            width: ${width}px;
-            height: ${height}px;
-            z-index: 50;
-            text-align: center;
-            vertical-align: bottom;
-            cursor: pointer;
-        "
-        onClick="hoi4mu.navigateText(${focus.token?.start}, ${focus.token?.end})">
-            <span
-            style="
-                margin: 0 -400px;
-                height: ${height}px;
-                text-align: center;
-                ">${focus.id}
-            </span>
-        </div>`);
+    const connections: GridBoxConnection[] = [];
     
     for (const prerequisites of focus.prerequisite) {
         let style: string;
@@ -130,74 +89,72 @@ async function focusToHtml(focus: Focus, focustree: FocusTree): Promise<string> 
         prerequisites.forEach(p => {
             const fp = focustree.focuses[p];
             const classNames2 = fp.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
-            divs.push(htmlLineBetweenFocus(focus, fp, style, classNames + ' ' + classNames2));
+            connections.push({
+                target: p,
+                targetType: 'parent',
+                style: style,
+                classNames: classNames + ' ' + classNames2,
+            });
         });
     }
 
     focus.exclusive.forEach(e => {
         const fe = focustree.focuses[e];
         const classNames2 = fe.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
-        divs.push(htmlLineBetweenFocus(focus, fe, "1px solid red", classNames + ' ' + classNames2));
+        connections.push({
+            target: e,
+            targetType: 'related',
+            style: "1px solid red",
+            classNames: classNames + ' ' + classNames2,
+        });
     });
 
-    return divs.join('');
+    return {
+        id: focus.id,
+        htmlId: 'focus_' + focus.id,
+        classNames,
+        gridX: focus.x,
+        gridY: focus.y,
+        connections,
+    };
 }
 
-function htmlLineBetweenFocus(a: Focus, b: Focus, style: string, classNames: string = ''): string {
-    if (a.y === b.y) {
-        return `<div
-            class="${classNames}"
-            style="
-                position:absolute;
-                left: ${(0.5 + Math.min(a.x, b.x)) * xGrid + leftPadding}px;
-                top: ${(0.5 + a.y) * yGrid + topPadding}px;
-                width: ${Math.abs(a.x - b.x) * xGrid}px;
-                height: ${1}px;
-                z-index: 10;
-                border-top: ${style};
-            "></div>`;
-    }
-    if (a.x === b.x) {
-        return `<div
-            class="${classNames}"
-            style="
-                position:absolute;
-                left: ${(0.5 + a.x) * xGrid + leftPadding}px;
-                top: ${(0.5 + Math.min(a.y, b.y)) * yGrid + topPadding}px;
-                width: ${1}px;
-                height: ${Math.abs(a.y - b.y) * yGrid}px;
-                z-index: 10;
-                border-left: ${style};
-            "></div>`;
-    }
 
-    if (a.x > b.x) {
-        const c = a;
-        a = b;
-        b = c;
-    }
+function renderAllowBranchOptions(option: string, index: number): string {
+    return `<div style="
+        position: fixed;
+        left: ${leftPaddingBase}px;
+        top: ${10 + index * optionHeight}px;
+        z-index: 100;
+    ">
+        <input type="checkbox" checked="true" id="inbranch_${option}" onchange="hoi4mu.ft.showBranch(this.checked, 'inbranch_${option}')"/>
+        <label for="inbranch_${option}">${option}</label>
+        <a style="display:inline" onClick="hoi4mu.ft.gotoFocus('focus_${option}')" href="javascript:;">Goto</a>
+    </div>`;
+}
+
+async function renderFocus(focus: Focus): Promise<string> {
+    const icon = focus.icon ? await getFocusIcon(focus.icon) : null;
 
     return `<div
-        class="${classNames}"
+    title="${focus.id}\n(${focus.x}, ${focus.y})"
+    style="
+        ${icon ? `background-image: url(${icon?.uri});` : 'background: grey;'}
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: ${icon ? icon.width: 0}px;
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        cursor: pointer;
+    "
+    onClick="hoi4mu.navigateText(${focus.token?.start}, ${focus.token?.end})">
+        <span
         style="
-            position:absolute;
-            left: ${(0.5 + a.x) * xGrid + leftPadding}px;
-            top: ${(0.5 + Math.min(a.y, b.y)) * yGrid + topPadding}px;
-            width: ${Math.abs(a.x - b.x) * xGrid}px;
-            height: ${0.5 * yGrid}px;
-            z-index: 10;
-            border-bottom: ${style};
-            ${a.y < b.y ? 'border-left' : 'border-right'}: ${style};
-        "></div>
-        <div
-        class="${classNames}"
-        style="
-            position:absolute;
-            left: ${(0.5 + a.x) * xGrid + leftPadding}px;
-            top: ${(1 + Math.min(a.y, b.y)) * yGrid + topPadding}px;
-            width: ${Math.abs(a.x - b.x) * xGrid}px;
-            height: ${(Math.abs(a.y - b.y) - 0.5) * yGrid}px;
-            z-index: 10;
-            ${a.y > b.y ? 'border-left' : 'border-right'}: ${style};
-        "></div>`;
+            margin: 10px -400px;
+            text-align: center;
+            display: inline-block;
+            ">${focus.id}
+        </span>
+    </div>`;
 }

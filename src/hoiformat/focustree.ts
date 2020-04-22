@@ -1,6 +1,5 @@
-import { Node, Token } from "./hoiparser";
-import { isArray } from "util";
-import { forEachNodeValue, getSymbolPropertyOrUndefined, getNumberPropertyOrUndefined, getPropertyNodes, getSymbolProperty } from "./hoinodeutils";
+import { Node, Token, SymbolNode } from "./hoiparser";
+import { convertNodeFromFileToJson, Focus as SFocus, HOIPartial, CustomSymbol } from "./schema";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
@@ -16,30 +15,23 @@ export interface Focus {
     exclusive: string[];
     hasAllowBranch: boolean;
     inAllowBranch: string[];
-    token: Token | null;
+    token: Token | undefined;
 }
 
 export function getFocusTree(node: Node): FocusTree[] {
-    if (!isArray(node.value)) {
-        return [];
-    }
-
     const focusTrees: FocusTree[] = [];
+    const file = convertNodeFromFileToJson(node);
 
-    forEachNodeValue(node, ftnode => {
-        if (ftnode.name !== 'focus_tree') {
-            return;
-        }
-
-        const focuses = getFocuses(ftnode);
+    for (const focusTree of file.focus_tree) {
+        const focuses = getFocuses(focusTree.focus);
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses)
         });
-    });
+    }
 
-    const focuses = getFocuses(node, 'shared_focus');
-    if (Object.keys(focuses).length > 0) {
+    if (file.shared_focus.length > 0) {
+        const focuses = getFocuses(file.shared_focus);
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses)
@@ -49,43 +41,35 @@ export function getFocusTree(node: Node): FocusTree[] {
     return focusTrees;
 }
 
-function getFocuses(node: Node, nodeName: string = 'focus'): Record<string, Focus> {
-    if (!isArray(node.value)) {
-        return {};
-    }
-    
+function getFocuses(hoiFocuses: HOIPartial<SFocus>[]): Record<string, Focus> {
     const focuses: Record<string, Focus> = {};
-    let pendingFocuses: Node[] = [];
+    let pendingFocuses: HOIPartial<SFocus>[] = [];
 
-    forEachNodeValue(node, fnode => {
-        if (fnode.name !== nodeName) {
-            return;
-        }
-
-        const relativeTo = getSymbolPropertyOrUndefined(fnode, 'relative_position_id');
+    for (const hoiFocus of hoiFocuses) {
+        const relativeTo = hoiFocus.relative_position_id?._name;
         if (relativeTo !== undefined && !(relativeTo in focuses)) {
-            pendingFocuses.push(fnode);
-            return;
+            pendingFocuses.push(hoiFocus);
+            continue;
         }
 
-        const focus = getFocus(fnode, relativeTo ? focuses[relativeTo]: null);
+        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null);
         if (focus !== null) {
             focuses[focus.id] = focus;
         }
-    });
+    }
 
     let pendingFocusesChanged = true;
-    while (pendingFocuses && pendingFocusesChanged) {
+    while (pendingFocusesChanged) {
         const newPendingFocus = [];
         pendingFocusesChanged = false;
-        for (const fnode of pendingFocuses) {
-            const relativeTo = getSymbolPropertyOrUndefined(fnode, 'relative_position_id');
+        for (const hoiFocus of pendingFocuses) {
+            const relativeTo = hoiFocus.relative_position_id?._name;
             if (relativeTo !== undefined && !(relativeTo in focuses)) {
-                newPendingFocus.push(fnode);
+                newPendingFocus.push(hoiFocus);
                 continue;
             }
 
-            const focus = getFocus(fnode, relativeTo ? focuses[relativeTo]: null);
+            const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null);
             if (focus !== null) {
                 focuses[focus.id] = focus;
                 pendingFocusesChanged = true;
@@ -119,10 +103,10 @@ function getFocuses(node: Node, nodeName: string = 'focus'): Record<string, Focu
     return focuses;
 }
 
-function getFocus(fnode: Node, relativeToFocus: Focus | null): Focus | null {
-    const id = getSymbolPropertyOrUndefined(fnode, 'id');
-    let x = getNumberPropertyOrUndefined(fnode, 'x');
-    let y = getNumberPropertyOrUndefined(fnode, 'y');
+function getFocus(hoiFocus: HOIPartial<SFocus>, relativeToFocus: Focus | null): Focus | null {
+    const id = hoiFocus.id?._name;
+    let x = hoiFocus.x;
+    let y = hoiFocus.y;
 
     if (id === undefined || x === undefined || y === undefined) {
         return null;
@@ -131,14 +115,14 @@ function getFocus(fnode: Node, relativeToFocus: Focus | null): Focus | null {
     x += (relativeToFocus ? relativeToFocus.x : 0);
     y += (relativeToFocus ? relativeToFocus.y : 0);
 
-    const exclusive = getPropertyNodes(fnode, 'mutually_exclusive')
-        .reduce((p, exclusiveNode) => 
-            p.concat(getSymbolProperty(exclusiveNode, 'focus')).concat(getSymbolProperty(exclusiveNode, 'OR'))
-        , [] as string[]);
-    const prerequisite = getPropertyNodes(fnode, 'prerequisite')
-        .map(prerequisiteNode => getSymbolProperty(prerequisiteNode, 'focus').concat(getSymbolProperty(prerequisiteNode, 'OR')));
-    const icon = getSymbolPropertyOrUndefined(fnode, 'icon');
-    const hasAllowBranch = getPropertyNodes(fnode, 'allow_branch').length > 0;
+    const exclusive = hoiFocus.mutually_exclusive
+        .reduce((p, c) => p.concat(c.focus).concat(c.XOR), [] as (CustomSymbol | undefined)[])
+        .filter((s): s is CustomSymbol => s !== undefined)
+        .map(s => s._name);
+    const prerequisite = hoiFocus.prerequisite
+        .map(p => p.focus.concat(p.XOR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
+    const icon = hoiFocus.icon?._name;
+    const hasAllowBranch = hoiFocus.allow_branch.length > 0;
 
     return {
         id,
@@ -149,7 +133,7 @@ function getFocus(fnode: Node, relativeToFocus: Focus | null): Focus | null {
         exclusive,
         hasAllowBranch,
         inAllowBranch: hasAllowBranch ? [id] : [],
-        token: fnode.nameToken
+        token: hoiFocus._token,
     };
 }
 

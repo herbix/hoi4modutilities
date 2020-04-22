@@ -27,7 +27,7 @@ export interface Token {
 }
 
 function tokenizer(input: string): Tokenizer {
-    const regex = /^\s*((#.*[\r\n])|([\w\d:\._@\-]+)|([={}<>]|>=|<=|!=)|("(?:\\"|\\\\|[^"])*")|$)/;
+    const regex = /^\s*((#.*[\r\n])|([\w\d:\._@%\[\]\-]+)|([={}<>]|>=|<=|!=)|("(?:\\"|\\\\|[^"])*")|$)/;
     let pos = 0;
     let token: Token | null = null;
     let groups: RegExpExecArray | null = null;
@@ -138,9 +138,9 @@ function parseNodeValue(tokens: Tokenizer): [ NodeValue, Token, Token ] {
             nextToken,
             nextToken,
         ];
-    } else if (nextToken.value.match(/^[0-9\-]+$/)) {
+    } else if (nextToken.value.match(/^-?(?:\d+(?:\.\d*)?|\.\d+)$/)) {
         return [
-            parseInt(nextToken.value),
+            parseFloat(nextToken.value),
             nextToken,
             nextToken,
         ];

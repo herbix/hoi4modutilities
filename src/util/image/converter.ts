@@ -1,7 +1,7 @@
 import { DDS } from "./ddsparser";
 import { PNG } from "pngjs";
 
-function end0count(v: number): number {
+function tail0count(v: number): number {
     if (v === 0) {
         return 0;
     }
@@ -35,7 +35,7 @@ export function ddsToPng(dds: DDS): PNG {
     const canReadDirectly = img.pixelSizeInByte !== 3;
 
     const masks = [dds.header.ddspf.dwRBitMask, dds.header.ddspf.dwGBitMask, dds.header.ddspf.dwBBitMask, dds.header.ddspf.dwABitMask];
-    const moves = masks.map(end0count);
+    const moves = masks.map(tail0count);
     const scales = masks.map(v => 255 / ((1 << all1Count(v)) - 1));
     
     for (let y = 0; y < png.height; y++) {

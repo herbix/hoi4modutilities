@@ -1,16 +1,17 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
-import { getSpriteTypes, SpriteType } from '../../hoiformat/spritetype';
+import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { imageCache } from '../../util/imagecache';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
+import { SpriteType } from '../../hoiformat/schema';
 
-export async function getHtmlFromGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
         const spriteTypes = getSpriteTypes(parseHoi4File(fileContent));
-        baseContent = await getHtmlForGfxList(spriteTypes);
+        baseContent = await renderSpriteTypes(spriteTypes);
     } catch (e) {
         baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
     }
@@ -30,8 +31,8 @@ export async function getHtmlFromGfxFile(fileContent: string, uri: vscode.Uri, w
     </html>`;
 }
 
-async function getHtmlForGfxList(spriteTypes: SpriteType[]): Promise<string> {
-    const imageList = (await Promise.all(spriteTypes.map(st => getHtmlFromSpriteType(st)))).join('');
+async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
+    const imageList = (await Promise.all(spriteTypes.map(st => renderSpriteType(st)))).join('');
     const filter = `<div
     style="
         position: fixed;
@@ -62,7 +63,7 @@ async function getHtmlForGfxList(spriteTypes: SpriteType[]): Promise<string> {
     </div>`;
 }
 
-async function getHtmlFromSpriteType(spriteType: SpriteType): Promise<string> {
+async function renderSpriteType(spriteType: SpriteType): Promise<string> {
     const image = await imageCache.get(spriteType.texturefile);
     return `<div
         id="${spriteType.name}"
@@ -74,8 +75,8 @@ async function getHtmlFromSpriteType(spriteType: SpriteType): Promise<string> {
             margin: 10px;
             cursor: pointer;
         "
-        onclick="hoi4mu.navigateText(${spriteType.token?.start}, ${spriteType.token?.end})">
-        ${image !== null ? `<img src="${image.uri}" />` :
+        onclick="hoi4mu.navigateText(${spriteType._token?.start}, ${spriteType._token?.end})">
+        ${image ? `<img src="${image.uri}" />` :
             `<div style="
                 height: 100px;
                 width: 100px;

@@ -1,33 +1,24 @@
-import { forEachNodeValue, getPropertyNodes, getStringPropertyOrUndefined } from "./hoinodeutils";
-import { Node, Token } from "./hoiparser";
-
-export interface SpriteType {
-    name: string;
-    texturefile: string;
-    token: Token | null;
-}
+import { Node } from "./hoiparser";
+import { convertNodeFromFileToJson, SpriteType } from "./schema";
 
 export function getSpriteTypes(node: Node): SpriteType[] {
+    const file = convertNodeFromFileToJson(node);
     const result: SpriteType[] = [];
 
-    forEachNodeValue(node, stsNode => {
-        if (stsNode.name !== 'spriteTypes') {
-            return;
-        }
-
-        const sprites = getPropertyNodes(stsNode, 'SpriteType');
-        for (const sprite of sprites) {
-            const name = getStringPropertyOrUndefined(sprite, 'name');
-            const texturefile = getStringPropertyOrUndefined(sprite, 'texturefile');
+    for (const spritetypes of file.spritetypes) {
+        for (const sprite of spritetypes.spritetype) {
+            const name = sprite.name;
+            const texturefile = sprite.texturefile;
             if (name && texturefile) {
                 result.push({
                     name,
                     texturefile,
-                    token: sprite.nameToken,
+                    noofframes: sprite.noofframes ?? 1,
+                    _token: sprite._token,
                 });
             }
         }
-    });
+    }
 
     return result;
 }

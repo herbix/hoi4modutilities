@@ -6,6 +6,7 @@ import { focusTreePreviewDef } from './previewdef/focustree';
 import { localize } from './util/i18n';
 import { gfxPreviewDef } from './previewdef/gfx';
 import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from './constants';
+import { technologyPreviewDef } from './previewdef/technology';
 
 interface PreviewMeta {
     uri: vscode.Uri;
@@ -17,7 +18,7 @@ interface PreviewMeta {
 class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewMeta> = {};
 
-    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef ];
+    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = {};
 
     constructor() {
@@ -26,7 +27,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         });
     }
 
-    public showPreview(uri: vscode.Uri): Promise<void> {
+    public showPreview(uri?: vscode.Uri): Promise<void> {
         return this.showPreviewImpl(uri);
     }
 
@@ -74,13 +75,26 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         }
     }
 
-    private async showPreviewImpl(uri: vscode.Uri, panel?: vscode.WebviewPanel): Promise<void> {
-        const document = vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString());
+    private async showPreviewImpl(uri?: vscode.Uri, panel?: vscode.WebviewPanel): Promise<void> {
+        let document: vscode.TextDocument | undefined;
+        if (uri === undefined) {
+            document = vscode.window.activeTextEditor?.document;
+        } else {
+            const theUri = uri;
+            document = vscode.workspace.textDocuments.find(document => document.uri.toString() === theUri.toString());
+        }
+
         if (document === undefined) {
-            vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}", uri.fsPath));
+            if (uri === undefined) {
+                vscode.window.showErrorMessage(localize('preview.noactivedoc', "No active document."));
+            } else {
+                vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}.", uri?.fsPath));
+            }
             panel?.dispose();
             return;
         }
+
+        uri = document.uri;
 
         const key = uri.toString();
         if (key in this._previews) {
@@ -116,11 +130,12 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             }, 1000, { trailing: true })
         };
 
+        const theDocument = document;
         panel.onDidDispose(() => {
             const preview = this._previews[key];
             if (preview) {
                 if (preview.previewProvider.dispose) {
-                    preview.previewProvider.dispose(document, preview.panel);
+                    preview.previewProvider.dispose(theDocument, preview.panel);
                 }
 
                 delete this._previews[key];
@@ -129,8 +144,8 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 
         panel.webview.onDidReceiveMessage((msg) => {
             if (msg.command === 'navigate' && msg.start !== undefined) {
-                vscode.window.showTextDocument(document.uri, {
-                    selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
+                vscode.window.showTextDocument(theDocument.uri, {
+                    selection: new vscode.Range(theDocument.positionAt(msg.start), theDocument.positionAt(msg.end)),
                     viewColumn: vscode.ViewColumn.One
                 });
             }

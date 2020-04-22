@@ -15,5 +15,5 @@ export function localize(key: string, message: string, ...args: any[]): string {
     }
 
     const regex = new RegExp('\\{(' + args.map((_, i) => i.toString()).join('|') + ')\\}', 'g');
-    return message.replace(regex, (_, group1) => args[parseInt(group1)].toString());
+    return message.replace(regex, (_, group1) => args[parseInt(group1)]?.toString());
 }
