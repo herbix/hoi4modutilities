@@ -7,6 +7,7 @@ import { PromiseCache } from '../cache';
 import { ddsToPng } from './converter';
 import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/schema';
 import { Sprite, Image, CorneredTileSprite } from './sprite';
+import { localize } from '../i18n';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -99,9 +100,9 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
 async function loadGfxMap(path: string): Promise<Record<string, (SpriteType | CorneredTileSpriteType)>> {
     const gfxMap: Record<string, SpriteType> = {};
     try {
-        const [buffer] = await readFileFromModOrHOI4(path);
+        const [buffer, realPath] = await readFileFromModOrHOI4(path);
         const gfx = buffer.toString('utf-8');
-        const node = parseHoi4File(gfx);
+        const node = parseHoi4File(gfx, localize('infile', 'In file {0}:\n', realPath));
         const spriteTypes = getSpriteTypes(node);
 
         spriteTypes.forEach(st => gfxMap[st.name] = st);

@@ -10,7 +10,7 @@ import { SpriteType } from '../../hoiformat/schema';
 export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
-        const spriteTypes = getSpriteTypes(parseHoi4File(fileContent));
+        const spriteTypes = getSpriteTypes(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
         baseContent = await renderSpriteTypes(spriteTypes);
     } catch (e) {
         baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
@@ -45,7 +45,7 @@ async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
         background: var(--vscode-editor-background);
         border-bottom: 1px solid var(--vscode-panel-border);
     ">
-        <label for="filter">${localize('gfx.filter', 'Filter: ')}</label>
+        <label for="filter" style="margin-right:5px">${localize('gfx.filter', 'Filter: ')}</label>
         <input
             id="filter"
             type="text"

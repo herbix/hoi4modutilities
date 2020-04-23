@@ -1,5 +1,5 @@
 import { Node, Token, NodeValue, SymbolNode } from "./hoiparser";
-import { NumberPosition } from "../util/common";
+import { NumberPosition, NumberSize } from "../util/common";
 
 //#region Common
 export interface TokenObject {
@@ -100,6 +100,7 @@ export interface Background {
     name: string;
     spritetype: string;
     quadtexturesprite: string;
+    position: Position;
 }
 //#endregion
 
@@ -200,6 +201,7 @@ export interface GridBoxType {
     orientation: Orientation;
     position: Position;
     size: Size;
+    background: Background;
     slotsize: Size;
     format: Format;
     _index: number;
@@ -258,6 +260,7 @@ const backgroundSchema: SchemaDef<Background> = {
     name: "string",
     spritetype: "string",
     quadtexturesprite: "string",
+    position: positionSchema,
 };
 
 const focusOrXORListSchema: SchemaDef<FocusOrXORList> = {
@@ -361,6 +364,7 @@ const gridBoxTypeSchema: SchemaDef<GridBoxType> = {
     position: positionSchema,
     size: sizeSchema,
     slotsize: sizeSchema,
+    background: backgroundSchema,
     format: "stringassymbol",
 };
 
@@ -481,17 +485,7 @@ function convertNumberLike(node: Node): HOIPartial<NumberLike> {
             _token: undefined,
         };
     } else if (isSymbolNode(node.value)) {
-        const symbol = node.value.name;
-        const regex = /^(-?(?:\d+(?:\.\d*)?|\.\d+))(%%?)$/;
-        const result = regex.exec(symbol);
-        if (!result) {
-            return undefined;
-        }
-        return {
-            _value: parseFloat(result[1]),
-            _unit: result[2] as NumberUnit,
-            _token: undefined,
-        };
+        return parseNumberLike(node.value.name);
     } else {
         return undefined;
     }
@@ -671,6 +665,19 @@ export function toNumberLike(value: number): NumberLike {
     return {
         _value: value,
         _unit: undefined,
+        _token: undefined,
+    };
+}
+
+export function parseNumberLike(value: string): NumberLike | undefined {
+    const regex = /^(-?(?:\d+(?:\.\d*)?|\.\d+))(%%?)$/;
+    const result = regex.exec(value);
+    if (!result) {
+        return undefined;
+    }
+    return {
+        _value: parseFloat(result[1]),
+        _unit: result[2] as NumberUnit,
         _token: undefined,
     };
 }

@@ -26,5 +26,5 @@ export const technologyPreviewDef: PreviewProviderDef = {
     type: 'technology',
     show: showTechnologyPreview,
     update: updateTechnologyPreview,
-    condition: canPreviewTechnology,
+    canPreview: canPreviewTechnology,
 };

@@ -26,7 +26,7 @@ export interface Token {
     end: number;
 }
 
-function tokenizer(input: string): Tokenizer {
+function tokenizer(input: string, errorMessagePrefix: string = ''): Tokenizer {
     const regex = /^\s*((#.*[\r\n])|([\w\d:\._@%\[\]\-]+)|([={}<>]|>=|<=|!=)|("(?:\\"|\\\\|[^"])*")|$)/;
     let pos = 0;
     let token: Token | null = null;
@@ -36,7 +36,7 @@ function tokenizer(input: string): Tokenizer {
         do {
             groups = regex.exec(input);
             if (groups === null) {
-                throw new Error("invalid token at " + input.substring(0, Math.min(30, input.length)));
+                throw new Error(errorMessagePrefix + "Invalid token at " + input.substring(0, Math.min(30, input.length)));
             }
 
             input = input.substr(groups[0].length);
@@ -72,13 +72,13 @@ function tokenizer(input: string): Tokenizer {
             return result;
         },
         throw: (message: string) => {
-            throw new Error(message + ": " + input.substring(0, Math.min(30, input.length)));
+            throw new Error(errorMessagePrefix + message + ": " + input.substring(0, Math.min(30, input.length)));
         }
     };
 }
 
-export function parseHoi4File(input: string): Node {
-    const tokens = tokenizer(input);
+export function parseHoi4File(input: string, errorMessagePrefix: string = ''): Node {
+    const tokens = tokenizer(input, errorMessagePrefix);
 
     return {
         name: null,

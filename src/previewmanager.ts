@@ -156,7 +156,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 
     private findPreviewProvider(document: vscode.TextDocument): PreviewProviderDef | null {
         for (const provider of this._previewProviders) {
-            if (provider.condition(document)) {
+            if (provider.canPreview(document)) {
                 return provider;
             }
         }

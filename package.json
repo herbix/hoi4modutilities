@@ -98,6 +98,10 @@
 				{
 					"command": "hoi4modutilities.preview",
 					"when": "!shouldHideHoi4Preview"
+				},
+				{
+					"command": "hoi4modutilities.test",
+					"when": "Hoi4MUInDev"
 				}
 			]
 		}

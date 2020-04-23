@@ -25,5 +25,5 @@ export const focusTreePreviewDef: PreviewProviderDef = {
     type: 'focustree',
     show: showFocusTreePreview,
     update: updateFocusTreePreview,
-    condition: canPreviewFocusTree,
+    canPreview: canPreviewFocusTree,
 };

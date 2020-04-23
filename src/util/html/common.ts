@@ -1,4 +1,4 @@
-import { NumberLike, Position, Margin, ComplexSize, HOIPartial, Size, Orientation } from "../../hoiformat/schema";
+import { NumberLike, Position, Margin, ComplexSize, HOIPartial, Size, Orientation, Background, toNumberLike, parseNumberLike, toStringAsSymbol } from "../../hoiformat/schema";
 import { Sprite } from "../image/imagecache";
 import { NumberSize, NumberPosition } from "../common";
 import { CorneredTileSprite } from "../image/sprite";
@@ -11,6 +11,7 @@ export interface ParentInfo {
 export interface RenderCommonOptions {
     id?: string;
     classNames?: string;
+    getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
 }
 
 export function normalizeNumberLike(value: NumberLike | undefined, parentValue: number, subtractValue: number = 0): number | undefined {
@@ -157,4 +158,24 @@ export function removeHtmlOptions<T>(options: T): { [K in Exclude<keyof T, 'id' 
     delete result['id'];
     delete result['classNames'];
     return result;
+}
+
+export async function renderBackground(background: HOIPartial<Background> | undefined, parentInfo: ParentInfo, getSprite: RenderCommonOptions['getSprite']): Promise<string> {
+    if (background === undefined) {
+        return '';
+    }
+
+    const backgroundSpriteName = background?.spritetype ?? background?.quadtexturesprite;
+    const backgroundSprite = backgroundSpriteName && getSprite ? await getSprite(backgroundSpriteName, 'bg', background?.name) : undefined;
+
+    if (backgroundSprite === undefined) {
+        return '';
+    }
+
+    const [x, y, width, height] = calculateBBox({
+        position: background.position,
+        size: { width: parseNumberLike('100%%'), height: parseNumberLike('100%%') }
+    }, parentInfo);
+    
+    return renderSprite({ x, y }, { width, height }, backgroundSprite);
 }

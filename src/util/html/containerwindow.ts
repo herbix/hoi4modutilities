@@ -1,8 +1,9 @@
 import { ContainerWindowType, HOIPartial, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/schema";
-import { calculateBBox, normalizeMargin, ParentInfo, renderSprite, RenderCommonOptions, removeHtmlOptions } from "./common";
+import { calculateBBox, normalizeMargin, ParentInfo, renderSprite, RenderCommonOptions, removeHtmlOptions, normalizeNumberLike, renderBackground } from "./common";
 import { Sprite } from "../image/imagecache";
 import { renderIcon } from "./icon";
 import { renderInstantTextBox } from "./instanttextbox";
+import { renderGridBox } from "./gridbox";
 
 interface RenderChildTypeMap {
     containerwindow: HOIPartial<ContainerWindowType>;
@@ -12,7 +13,6 @@ interface RenderChildTypeMap {
 }
 
 export interface RenderContainerWindowOptions extends RenderCommonOptions {
-    getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
     onRenderChild?<T extends keyof RenderChildTypeMap>(type: T, child: RenderChildTypeMap[T], parentInfo: ParentInfo): Promise<string | undefined>;
 }
 
@@ -28,9 +28,7 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
         orientation,
     };
 
-    const backgroundSprite = containerWindow.background?.spritetype ?? containerWindow.background?.quadtexturesprite;
-    const background = backgroundSprite && options.getSprite ? await options.getSprite(backgroundSprite, 'bg', containerWindow.background?.name) : undefined;
-
+    const background = await renderBackground(containerWindow.background, myInfo, options.getSprite);
     const children = await renderContainerWindowChildren(containerWindow, myInfo, options);
 
     return `<div
@@ -45,7 +43,7 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
         padding: ${margin.map(m => m + 'px').join(' ')};
         box-sizing: border-box;
     ">
-        ${background ? renderSprite({x:0, y:0}, size, background) : ''}
+        ${background}
         ${children}
     </div>`;
 }
@@ -54,7 +52,7 @@ export async function renderContainerWindowChildren(containerWindow: HOIPartial<
     const containerWindowChildren = containerWindow.containerwindowtype
         .map(c => onRenderChildOrDefault(options.onRenderChild, 'containerwindow', c, myInfo, c1 => renderContainerWindow(c1, myInfo, removeHtmlOptions(options))));
     const gridboxChildren = containerWindow.gridboxtype
-        .map(c => onRenderChildOrDefault(options.onRenderChild, 'gridbox', c, myInfo, _ => Promise.resolve('')));
+        .map(c => onRenderChildOrDefault(options.onRenderChild, 'gridbox', c, myInfo, c1 => renderGridBox(c1, myInfo, removeHtmlOptions({ ...options, items: {} }))));
     const iconChildren = containerWindow.icontype
         .map(c => onRenderChildOrDefault(options.onRenderChild, 'icon', c, myInfo, c1 => renderIcon(c1, myInfo, removeHtmlOptions(options))));
     const instantTextBoxChildren = containerWindow.instanttextboxtype

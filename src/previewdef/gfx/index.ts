@@ -20,5 +20,5 @@ export const gfxPreviewDef: PreviewProviderDef = {
     type: 'gfx',
     show: showGfxPreview,
     update: updateGfxPreview,
-    condition: canPreviewGfx,
+    canPreview: canPreviewGfx,
 };

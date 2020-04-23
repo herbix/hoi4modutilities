@@ -79,12 +79,14 @@ export class CorneredTileSprite extends Sprite {
             return cached;
         }
 
+        // TODO Commented out code below: don't know whether "size" of corneredtilespritetype works
         const frame = this.frames[frameId];
-        const sizeX = this.size.x;
-        const sizeY = this.size.y;
-        const backPng = new PNG({ width: sizeX, height: sizeY });
+        const sizeX = frame.width; // Math.max(this.size.x, frame.width);
+        const sizeY = frame.height; // Math.max(this.size.y, frame.height);
         const framePng = pngRead(frame.pngBuffer);
-        framePng.bitblt(backPng, 0, 0, framePng.width, framePng.height, 0, 0);
+        const backPng = framePng; // new PNG({ width: sizeX, height: sizeY });
+        // scaleCopy(framePng, backPng);
+        // framePng.bitblt(backPng, 0, 0, Math.min(sizeX, framePng.width), Math.min(sizeY, framePng.height), 0, 0);
 
         let borderX = this.borderSize.x;
         let borderY = this.borderSize.y;
@@ -116,7 +118,9 @@ function toDataUrl(buffer: Buffer): string {
 
 function extractImageFromPng(png: PNG, x: number, y: number, w: number, h: number, path: string): Image {
     const resultPng = new PNG({ width: w, height: h });
-    png.bitblt(resultPng, x, y, w, h, 0, 0);
+    if (w > 0 && h > 0) {
+        png.bitblt(resultPng, x, y, w, h, 0, 0);
+    }
     return new Image(PNG.sync.write(resultPng), w, h, path);
 }
 
@@ -124,4 +128,24 @@ function pngRead(buffer: Buffer): PNG {
     const result = PNG.sync.read(buffer);
     Object.setPrototypeOf(result, PNG.prototype);
     return result;
+}
+
+function scaleCopy(src: PNG, dst: PNG): void {
+    const ws = src.width;
+    const hs = src.height;
+    const wd = dst.width;
+    const hd = dst.height;
+    const srcdata = src.data;
+    const dstdata = dst.data;
+
+    for (let y = 0; y < hd; y++) {
+        for (let x = 0; x < wd; x++) {
+            const dindex = (x + y * wd) << 2;
+            const sindex = (Math.floor(x * ws / wd) + Math.floor(y * hs / hd) * ws) << 2;
+            dstdata[dindex] = srcdata[sindex];
+            dstdata[dindex + 1] = srcdata[sindex + 1];
+            dstdata[dindex + 2] = srcdata[sindex + 2];
+            dstdata[dindex + 3] = srcdata[sindex + 3];
+        }
+    }
 }

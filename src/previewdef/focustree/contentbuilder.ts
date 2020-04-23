@@ -12,7 +12,7 @@ import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/html/g
 export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
-        const focustrees = getFocusTree(parseHoi4File(fileContent));
+        const focustrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
         if (focustrees.length > 0) {
             baseContent = await renderFocusTree(focustrees[0]);
         } else {
@@ -44,8 +44,6 @@ const rightPadding = 30;
 const bottomPadding = 30;
 const xGridSize = 90;
 const yGridSize = 120;
-const xItemSize = 100;
-const yItemSize = 100;
 const optionHeight = 20;
 
 async function renderFocusTree(focustree: FocusTree): Promise<string> {

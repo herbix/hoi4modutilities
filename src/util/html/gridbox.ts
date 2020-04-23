@@ -1,6 +1,7 @@
 import { GridBoxType, HOIPartial, Format } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions } from "./common";
+import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions, renderBackground } from "./common";
 import { NumberSize, NumberPosition } from "../common";
+import { Sprite } from "../image/sprite";
 
 export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 
@@ -22,6 +23,7 @@ export interface GridBoxItem {
 
 export interface RenderGridBoxOptions extends RenderCommonOptions {
     items: Record<string, GridBoxItem>;
+    getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
     onRenderItem?(item: GridBoxItem, parentInfo: ParentInfo): Promise<string>;
     cornerPosition?: number;
 }
@@ -72,6 +74,8 @@ export async function renderGridBox(gridBox: HOIPartial<GridBoxType>, parentInfo
     const childrenParentInfo: ParentInfo = { size: slotSize, orientation };
     const cornerPosition = options.cornerPosition ?? 1;
 
+    const background = await renderBackground(gridBox.background, { size, orientation }, options.getSprite);
+
     const renderedItems = await Promise.all(Object.values(options.items).map(async (item) => {
         const children = options.onRenderItem ? await options.onRenderItem(item, childrenParentInfo) : '';
         const position = getLeftUpPosition(item.gridX, item.gridY, format, slotSize, size);
@@ -112,6 +116,7 @@ export async function renderGridBox(gridBox: HOIPartial<GridBoxType>, parentInfo
         width: ${width}px;
         height: ${height}px;
     ">
+        ${background}
         ${renderedConnections.join('')}
         ${renderedItems.join('')}
     </div>`;

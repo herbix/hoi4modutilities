@@ -13,16 +13,20 @@ import { ParentInfo } from '../../util/html/common';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/html/gridbox';
 import { renderInstantTextBox } from '../../util/html/instanttextbox';
 
-const technologyGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
+export const guiFilePath = 'interface/countrytechtreeview.gui';
+const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
+const technologiesGFX = 'interface/technologies.gfx';
+const techTreeViewName = 'countrytechtreeview';
 
 export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
-        const technologyTrees = getTechnologyTrees(parseHoi4File(fileContent));
-        if (technologyTrees.length < 1) {
-            baseContent = localize('focustree.nofocustree', 'No technology tree.');
+        const technologyTrees = getTechnologyTrees(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
+        const folders = technologyTrees.map(tt => tt.folder).filter((v, i, a) => i === a.indexOf(v));
+        if (folders.length < 1) {
+            baseContent = localize('techtree.notechtree', 'No technology tree.');
         } else {
-            baseContent = await renderTechnologyFolder(technologyTrees, technologyTrees[0].folder);
+            baseContent = await renderTechnologyFolders(technologyTrees, folders);
         }
 
     } catch (e) {
@@ -34,58 +38,111 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
     <body>
     <script>
         window.previewedFileUri = "${uri.toString()}";
-        document.body.style.background = '#101010';
     </script>
-    <div style="pointer-events: none;">
-        ${baseContent}
-    </div>
+    ${baseContent}
     <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
+    </script>
+    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/techtree.js')))}">
     </script>
     </body>
     </html>`;
 }
 
-async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder: string): Promise<string> {
-    const guiFilePath = 'interface/countrytechtreeview.gui';
-    const [guiFile] = await readFileFromModOrHOI4(guiFilePath);
-    const guiTypes = convertNodeFromFileToJson(parseHoi4File(guiFile.toString())).guitypes;
+async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[]): Promise<string> {
+    const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
+    const guiTypes = convertNodeFromFileToJson(parseHoi4File(guiFile.toString(), localize('infile', 'In file {0}:\n', realPath))).guitypes;
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
-    const techTreeView = containerWindowTypes.find(c => c.name === 'countrytechtreeview');
+    const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
     if (!techTreeView) {
-        throw new Error(`Can't find countrytechtreeview in ${guiFilePath}.`);
+        throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFilePath));
     }
 
+    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes)))).join('');
+    
+    return `
+    <script>
+        document.body.style.background = '#101010';
+    </script>
+    ${renderFolderSelector(folders)}
+    <div
+    style="
+        position: absolute;
+        left: 0;
+        top: 0;
+        pointer-events: none;
+        margin-top: 40px;
+    ">
+        ${techFolders}
+    </div>`;
+}
+
+function renderFolderSelector(folders: string[]): string {
+    return `<div
+    style="
+        position: fixed;
+        padding-top: 10px;
+        padding-left: 20px;
+        width: 100%;
+        height: 30px;
+        top: 0;
+        left: 0;
+        background: var(--vscode-editor-background);
+        border-bottom: 1px solid var(--vscode-panel-border);
+        z-index: 10;
+    ">
+        <label for="folderSelector" style="margin-right:5px">${localize('techtree.techfolder', 'Technology folder: ')}</label>
+        <select
+            id="folderSelector"
+            type="text"
+            style="min-width:200px"
+            onchange="hoi4mu.tt.folderChange(this.value)"
+        >
+            ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
+        </select>
+    </div>`;
+}
+
+async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder: string, techTreeView: HOIPartial<ContainerWindowType>, allContainerWindowTypes: HOIPartial<ContainerWindowType>[]): Promise<string> {
     const folderTreeView = techTreeView.containerwindowtype.find(c => c.name === folder);
+    let children: string;
     if (!folderTreeView) {
-        throw new Error(`Can't find technology folder ${folder} in ${guiFilePath}.`);
+        children = `<div>${localize('techtree.cantfindtechfolderin', "Can't find technology folder {0} in {1}.", folder, guiFilePath)}</div>`;
+
+    } else {
+        const folderItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_item`);
+        const folderSmallItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_small_item`) || folderItem;
+
+        children = await renderContainerWindowChildren(
+            folderTreeView,
+            {
+                size: { width: 1920, height: 1080 },
+                orientation: 'upper_left',
+            },
+            {
+                onRenderChild: async (type, child, parentInfo) => {
+                    if (type === 'gridbox') {
+                        const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
+                        if (tree) {
+                            const gridboxType = child as HOIPartial<GridBoxType>;
+                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, parentInfo);
+                        }
+                    }
+
+                    return undefined;
+                },
+                getSprite: sprite => {
+                    return getSpriteByGfxName(sprite, technologyUIGfxFiles);
+                }
+            }
+        );
     }
 
-    const folderItem = containerWindowTypes.find(c => c.name === `techtree_${folder}_item`);
-    const folderSmallItem = containerWindowTypes.find(c => c.name === `techtree_${folder}_small_item`) || folderItem;
-
-    return await renderContainerWindowChildren(
-        folderTreeView,
-        {
-            size: { width: 1920, height: 1080 },
-            orientation: 'upper_left',
-        },
-        {
-            onRenderChild: async (type, child, parentInfo) => {
-                if (type === 'gridbox') {
-                    const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
-                    if (tree) {
-                        const gridboxType = child as HOIPartial<GridBoxType>;
-                        return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, parentInfo);
-                    }
-                }
-
-                return undefined;
-            },
-            getSprite: sprite => {
-                return getSpriteByGfxName(sprite, technologyGfxFiles);
-            }
-        }
-    );
+    return `<div
+        id="techfolder_${folder}"
+        class="techfolder"
+    >
+        ${children}
+    </div>`;
 }
 
 async function renderTechnologyTreeGridBox(
@@ -98,7 +155,7 @@ async function renderTechnologyTreeGridBox(
 ): Promise<string> {
     const treeMap = arrayToMap(tree.technologies, 'id');
     return await renderGridBox(gridboxType, parentInfo, {
-        items: arrayToMap(tree.technologies.map<GridBoxItem>(t => ({
+        items: arrayToMap(tree.technologies.filter(t => folder in t.folders).map<GridBoxItem>(t => ({
             id: t.id,
             gridX: t.folders[folder]?.x ?? 0,
             gridY: t.folders[folder]?.y ?? 0,
@@ -125,13 +182,16 @@ async function renderTechnologyTreeGridBox(
             const technology = treeMap[item.id];
             const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
             return await renderTechnology(technologyItem, technology, technology.folders[folder], parent);
+        },
+        getSprite: sprite => {
+            return getSpriteByGfxName(sprite, technologyUIGfxFiles);
         }
     });
 }
 
 async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefined, technology: Technology, folder: TechnologyFolder, parentInfo: ParentInfo): Promise<string> {
     if (!item) {
-        return '';
+        return `<div>${localize('techtree.cantfindtechitemin', "Can't find containerwindowtype \"{0}\" in {1}", `techtree_${folder.name}_item`, guiFilePath)}</div>`;
     }
 
     const subSlotRegex = /^sub_technology_slot_(\d)$/;
@@ -170,7 +230,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
             left: 0;
             top: 0;
             width: 0;
-            height: p;
+            height: 0;
             cursor: pointer;
             pointer-events: auto;
         "
@@ -237,7 +297,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
 async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefined> {
     let background: Sprite | undefined = undefined;
     for (const imageName of tryList) {
-        background = await getSpriteByGfxName(imageName, technologyGfxFiles);
+        background = await getSpriteByGfxName(imageName, technologyUIGfxFiles);
         if (background !== undefined) {
             break;
         }
@@ -246,7 +306,6 @@ async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefin
     return background;
 }
 
-const technologiesGFX = 'interface/technologies.gfx';
 function getTechnologyIcon(name: string): Promise<Sprite | undefined> {
     return getSpriteByGfxName(name, technologiesGFX);
 }
