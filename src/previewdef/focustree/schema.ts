@@ -1,5 +1,5 @@
-import { Node, Token, SymbolNode } from "./hoiparser";
-import { convertNodeFromFileToJson, Focus as SFocus, HOIPartial, CustomSymbol } from "./schema";
+import { Node, Token, SymbolNode } from "../../hoiformat/hoiparser";
+import { convertNodeFromFileToJson, Focus as SFocus, HOIPartial, CustomSymbol } from "../../hoiformat/schema";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;

@@ -1,6 +1,7 @@
 import { Node, Token, NodeValue, SymbolNode } from "./hoiparser";
+import { NumberPosition } from "../util/common";
 
-/// Common
+//#region Common
 export interface TokenObject {
     _token: Token | undefined;
 }
@@ -53,7 +54,11 @@ type SchemaDef<T> =
     T extends (infer B)[] ? { _innerType: SchemaDef<B>; _type: 'array'; } :
     { [K in Exclude<keyof T, '_token' | '_index'>]: SchemaDef<T[K]>; };
 
-/// Defs
+//#endregion
+
+//#region Defs
+
+//#region Common
 export interface File {
     technologies: Technologies;
     focus_tree: FocusTree[];
@@ -96,7 +101,9 @@ export interface Background {
     spritetype: string;
     quadtexturesprite: string;
 }
+//#endregion
 
+//#region Focus
 export interface FocusTree {
     id: CustomSymbol;
     shared_focus: CustomSymbol;
@@ -119,7 +126,9 @@ export interface FocusOrXORList {
     focus: CustomSymbol[];
     XOR: CustomSymbol[];
 }
+//#endregion
 
+//#region Tech
 export type Technologies = CustomMap<Technology>;
 
 export interface Technology {
@@ -140,9 +149,12 @@ export interface Folder {
     name: CustomSymbol;
     position: Position;
 }
+//#endregion
 
+//#region Sprite
 export interface SpriteTypes {
     spritetype: SpriteType[];
+    corneredtilespritetype: CorneredTileSpriteType[];
 }
 
 export interface SpriteType {
@@ -152,6 +164,18 @@ export interface SpriteType {
     _token: Token | undefined;
 }
 
+export interface CorneredTileSpriteType {
+    name: string;
+    texturefile: string;
+    noofframes: number;
+    size: NumberPosition;
+    bordersize: NumberPosition;
+    tilingCenter: boolean;
+    _token: Token | undefined;
+}
+//#endregion
+
+//#region GUI
 export interface GuiTypes {
     containerwindowtype: ContainerWindowType[];
 }
@@ -195,6 +219,7 @@ export interface InstantTextBoxType {
     name: string;
     orientation: Orientation;
     position: Position;
+    bordersize: Position;
     maxwidth: NumberLike;
     maxheight: NumberLike;
     font: string;
@@ -202,8 +227,11 @@ export interface InstantTextBoxType {
     format: Format;
     _index: number;
 }
+//#endregion
 
-/// SchemaDefs
+//#endregion
+
+//#region SchemaDefs
 const positionSchema: SchemaDef<Position> = {
     x: "numberlike",
     y: "numberlike",
@@ -297,6 +325,21 @@ const technologiesSchema: SchemaDef<Technologies> = {
     _type: "map",
 };
 
+const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteType> = {
+    name: "string",
+    texturefile: "string",
+    noofframes: "number",
+    size: {
+        x: "number",
+        y: "number",
+    },
+    bordersize: {
+        x: "number",
+        y: "number",
+    },
+    tilingCenter: "boolean",
+};
+
 const spriteTypesSchema: SchemaDef<SpriteTypes> = {
     spritetype: {
         _innerType: {
@@ -306,6 +349,10 @@ const spriteTypesSchema: SchemaDef<SpriteTypes> = {
         },
         _type: "array",
     },
+    corneredtilespritetype: {
+        _innerType: corneredTileSpriteTypeSchema,
+        _type: "array",
+    }
 };
 
 const gridBoxTypeSchema: SchemaDef<GridBoxType> = {
@@ -330,6 +377,7 @@ const instantTextBoxTypeSchema: SchemaDef<InstantTextBoxType> = {
     name: "string",
     orientation: "stringassymbol",
     position: positionSchema,
+    bordersize: positionSchema,
     maxwidth: "numberlike",
     maxheight: "numberlike",
     format: "stringassymbol",
@@ -391,8 +439,9 @@ const fileSchema: SchemaDef<File> = {
         _type: "array",
     },
 };
+//#endregion
 
-/// Functions
+//#region Functions
 function forEachNodeValue(node: Node, callback: (n: Node, index: number) => void): void {
     if (!Array.isArray(node.value)) {
         return;
@@ -633,3 +682,4 @@ export function toStringAsSymbol<T extends string>(value: T): StringAsSymbol<T> 
         _token: undefined,
     };
 }
+//#endregion

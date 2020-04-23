@@ -1,14 +1,7 @@
 import { NumberLike, Position, Margin, ComplexSize, HOIPartial, Size, Orientation } from "../../hoiformat/schema";
-
-export interface NumberSize {
-    width: number;
-    height: number;
-}
-
-export interface NumberPosition {
-    x: number;
-    y: number;
-}
+import { Sprite } from "../image/imagecache";
+import { NumberSize, NumberPosition } from "../common";
+import { CorneredTileSprite } from "../image/sprite";
 
 export interface ParentInfo {
     size: NumberSize;
@@ -86,7 +79,65 @@ export function normalizeMargin(margin: Partial<Margin> | undefined, size: Numbe
     ];
 }
 
-export function renderImage(position: NumberPosition, size: NumberSize, image: string, options?: RenderCommonOptions): string {
+export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, options?: RenderCommonOptions): string {
+    if (sprite instanceof CorneredTileSprite) {
+        return renderCorneredTileSprite(position, size, sprite, options);
+    }
+
+    return `<div
+    ${options?.id ? `id="${options.id}"` : ''}
+    ${options?.classNames ? `class="${options.classNames}"` : ''}
+    style="
+        position: absolute;
+        left: ${position.x}px;
+        top: ${position.y}px;
+        width: ${sprite.width}px;
+        height: ${sprite.height}px;
+        background-image: url(${sprite.frames[0].uri});
+        background-size: ${sprite.width}px ${sprite.height}px;
+    "></div>`;
+}
+
+export function renderCorneredTileSprite(position: NumberPosition, size: NumberSize, sprite: CorneredTileSprite, options?: RenderCommonOptions): string {
+    const sizeX = size.width;
+    const sizeY = size.height;
+    let borderX = sprite.borderSize.x;
+    let borderY = sprite.borderSize.y;
+    const xPos = borderX * 2 > sizeX ? [0, sizeX / 2, sizeX / 2, sizeX] : [0, borderX, sizeX - borderX, sizeX];
+    const yPos = borderY * 2 > sizeY ? [0, sizeY / 2, sizeY / 2, sizeY] : [0, borderY, sizeY - borderY, sizeY];
+    const divs: string[] = [];
+    const tiles = sprite.getTiles(0);
+
+    for (let y = 0; y < 3; y++) {
+        const height = yPos[y + 1] - yPos[y];
+        if (height <= 0) {
+            continue;
+        }
+        const top = yPos[y];
+        for (let x = 0; x < 3; x++) {
+            const width = xPos[x + 1] - xPos[x];
+            if (width <= 0 || height <= 0) {
+                continue;
+            }
+            const left = xPos[x];
+            const tileIndex = y * 3 + x;
+            const tile = tiles[tileIndex];
+            divs.push(`<div
+            style="
+                position: absolute;
+                left: ${left}px;
+                top: ${top}px;
+                width: ${width}px;
+                height: ${height}px;
+                background: url(${tile.uri});
+                background-size: ${tile.width}px ${tile.height}px;
+                background-repeat: repeat;
+                background-position: ${x === 2 ? 'right' : 'left'} ${y === 2 ? 'bottom' : 'top'};
+            "></div>
+            `);
+        }
+    }
+
     return `<div
     ${options?.id ? `id="${options.id}"` : ''}
     ${options?.classNames ? `class="${options.classNames}"` : ''}
@@ -96,9 +147,9 @@ export function renderImage(position: NumberPosition, size: NumberSize, image: s
         top: ${position.y}px;
         width: ${size.width}px;
         height: ${size.height}px;
-        background-image: url(${image});
-        background-size: ${size.width}px ${size.height}px;
-    "></div>`;
+    ">
+        ${divs.join('')}
+    </div>`;
 }
 
 export function removeHtmlOptions<T>(options: T): { [K in Exclude<keyof T, 'id' | 'classNames'>]: T[K] } {

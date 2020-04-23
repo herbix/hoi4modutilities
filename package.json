@@ -135,6 +135,6 @@
 	"dependencies": {
 		"adm-zip": "^0.4.14",
 		"lodash": "^4.17.15",
-		"pngjs": "^3.4.0"
+		"pngjs": "^5.0.0"
 	}
 }

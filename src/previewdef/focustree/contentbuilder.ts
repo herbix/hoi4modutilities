@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { getFocusTree, FocusTree, Focus } from '../../hoiformat/focustree';
+import { getFocusTree, FocusTree, Focus } from './schema';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
-import { getFocusIcon } from '../../util/imagecache';
+import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
@@ -157,4 +157,16 @@ async function renderFocus(focus: Focus): Promise<string> {
             ">${focus.id}
         </span>
     </div>`;
+}
+
+const focusesGFX = 'interface/goals.gfx';
+const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
+
+export async function getFocusIcon(name: string): Promise<Image | undefined> {
+    const sprite = await getSpriteByGfxName(name, focusesGFX);
+    if (sprite !== undefined) {
+        return sprite.image;
+    }
+
+    return await getImageByPath(defaultFocusIcon);
 }

@@ -1,6 +1,6 @@
 import { HOIPartial, IconType } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, renderImage } from "./common";
-import { Sprite } from "../imagecache";
+import { ParentInfo, calculateBBox, renderSprite } from "./common";
+import { Sprite } from "../image/imagecache";
 
 export interface RenderIconOptions {
     getSprite?(sprite: string, callerType: 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
@@ -20,5 +20,5 @@ export async function renderIcon(icon: HOIPartial<IconType>, parentInfo: ParentI
         y -= image.height / 2;
     }
 
-    return renderImage({x, y}, image, image.frames[0]);
+    return renderSprite({x, y}, image, image);
 }

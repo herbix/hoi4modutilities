@@ -1,6 +1,6 @@
 import { ContainerWindowType, HOIPartial, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/schema";
-import { calculateBBox, normalizeMargin, ParentInfo, renderImage, RenderCommonOptions, removeHtmlOptions } from "./common";
-import { Sprite } from "../imagecache";
+import { calculateBBox, normalizeMargin, ParentInfo, renderSprite, RenderCommonOptions, removeHtmlOptions } from "./common";
+import { Sprite } from "../image/imagecache";
 import { renderIcon } from "./icon";
 import { renderInstantTextBox } from "./instanttextbox";
 
@@ -45,7 +45,7 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
         padding: ${margin.map(m => m + 'px').join(' ')};
         box-sizing: border-box;
     ">
-        ${background ? renderImage({x:0, y:0}, background, background.frames[0]) : ''}
+        ${background ? renderSprite({x:0, y:0}, size, background) : ''}
         ${children}
     </div>`;
 }

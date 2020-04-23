@@ -1,5 +1,5 @@
-import { Node, Token } from "./hoiparser";
-import { convertNodeFromFileToJson, HOIPartial, Technologies } from "./schema";
+import { Node, Token } from "../../hoiformat/hoiparser";
+import { convertNodeFromFileToJson, HOIPartial, Technologies } from "../../hoiformat/schema";
 
 export interface TechnologyFolder {
     name: string;

@@ -13,3 +13,4 @@ node_modules/**
 i18n/**
 icon.xcf
 demo/**
+loader/**

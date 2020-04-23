@@ -1,5 +1,15 @@
 import * as path from 'path';
 
+export interface NumberSize {
+    width: number;
+    height: number;
+}
+
+export interface NumberPosition {
+    x: number;
+    y: number;
+}
+
 export function matchPathEnd(pathname: string, segments: string[]): boolean {
     for (let i = segments.length - 1; i >= 0; i--) {
         const name = path.basename(pathname);

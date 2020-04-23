@@ -3,8 +3,8 @@ import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
-import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from '../../hoiformat/technology';
-import { getTechnologyIcon, getSpriteByGfxName, Sprite } from '../../util/imagecache';
+import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from './schema';
+import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
 import { arrayToMap } from '../../util/common';
 import { readFileFromModOrHOI4 } from '../../util/fileloader';
 import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType } from '../../hoiformat/schema';
@@ -34,6 +34,7 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
     <body>
     <script>
         window.previewedFileUri = "${uri.toString()}";
+        document.body.style.background = '#101010';
     </script>
     <div style="pointer-events: none;">
         ${baseContent}
@@ -243,4 +244,9 @@ async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefin
     }
 
     return background;
+}
+
+const technologiesGFX = 'interface/technologies.gfx';
+function getTechnologyIcon(name: string): Promise<Sprite | undefined> {
+    return getSpriteByGfxName(name, technologiesGFX);
 }

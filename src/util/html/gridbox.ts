@@ -1,5 +1,6 @@
 import { GridBoxType, HOIPartial, Format } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, normalizeNumberLike, NumberSize, NumberPosition, RenderCommonOptions } from "./common";
+import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions } from "./common";
+import { NumberSize, NumberPosition } from "../common";
 
 export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 

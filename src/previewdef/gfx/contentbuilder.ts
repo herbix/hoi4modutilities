@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
-import { imageCache } from '../../util/imagecache';
+import { getImageByPath } from '../../util/image/imagecache';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
 import { SpriteType } from '../../hoiformat/schema';
@@ -64,7 +64,7 @@ async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
 }
 
 async function renderSpriteType(spriteType: SpriteType): Promise<string> {
-    const image = await imageCache.get(spriteType.texturefile);
+    const image = await getImageByPath(spriteType.texturefile);
     return `<div
         id="${spriteType.name}"
         class="spriteTypePreview"
