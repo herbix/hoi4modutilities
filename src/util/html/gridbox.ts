@@ -7,8 +7,8 @@ export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 
 export interface GridBoxConnection {
     target: string;
-    style: string;
     targetType: GridBoxConnectionType;
+    style?: string;
     classNames?: string;
 }
 
@@ -17,14 +17,31 @@ export interface GridBoxItem {
     gridX: number;
     gridY: number;
     connections: GridBoxConnection[];
+    isJoint?: boolean;
     htmlId?: string;
     classNames?: string;
+}
+
+export interface GridBoxConnectionItemDirection {
+    in: Record<string, true>;
+    out: Record<string, true>;
+}
+
+export interface GridBoxConnectionItem {
+    x: number;
+    y: number;
+    up?: GridBoxConnectionItemDirection;
+    down?: GridBoxConnectionItemDirection;
+    left?: GridBoxConnectionItemDirection;
+    right?: GridBoxConnectionItemDirection;
 }
 
 export interface RenderGridBoxOptions extends RenderCommonOptions {
     items: Record<string, GridBoxItem>;
     getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
     onRenderItem?(item: GridBoxItem, parentInfo: ParentInfo): Promise<string>;
+    onRenderLineBox?(item: GridBoxConnectionItem, parentInfo: ParentInfo): Promise<string>;
+    lineRenderMode?: 'line' | 'control';
     cornerPosition?: number;
 }
 
@@ -93,18 +110,9 @@ export async function renderGridBox(gridBox: HOIPartial<GridBoxType>, parentInfo
             </div>`;
     }));
 
-    const renderedConnections = Object.values(options.items).map(item => {
-        return (item.connections.map(conn => {
-            const target = options.items[conn.target];
-            if (!target) {
-                return '';
-            }
-
-            const itemPosition = getCenterPosition(item.gridX, item.gridY, format, slotSize, size);
-            const targetPosition = getCenterPosition(target.gridX, target.gridY, format, slotSize, size);
-            return renderGridBoxConnection(itemPosition, targetPosition, conn.style, conn.targetType, format, slotSize, conn.classNames, cornerPosition);
-        })).join('');
-    });
+    const renderedConnections = options.lineRenderMode !== 'control' ?
+        renderLineConnections(options.items, format, slotSize, size, cornerPosition) :
+        await renderControlConnections(options.items, format, slotSize, size, options.onRenderLineBox, childrenParentInfo);
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
@@ -117,9 +125,24 @@ export async function renderGridBox(gridBox: HOIPartial<GridBoxType>, parentInfo
         height: ${height}px;
     ">
         ${background}
-        ${renderedConnections.join('')}
+        ${renderedConnections}
         ${renderedItems.join('')}
     </div>`;
+}
+
+export function renderLineConnections(items: Record<string, GridBoxItem>, format: Format['_name'], slotSize: NumberSize, size: NumberSize, cornerPosition: number): string {
+    return Object.values(items).map(item => 
+        item.connections.map(conn => {
+            const target = items[conn.target];
+            if (!target) {
+                return '';
+            }
+
+            const itemPosition = getCenterPosition(item.gridX, item.gridY, format, slotSize, size);
+            const targetPosition = getCenterPosition(target.gridX, target.gridY, format, slotSize, size);
+            return renderGridBoxConnection(itemPosition, targetPosition, conn.style ?? '', conn.targetType, format, slotSize, conn.classNames, cornerPosition);
+        }).join('')
+    ).join('');
 }
 
 export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, style: string, type: GridBoxConnectionType, format: Format['_name'], gridSize: NumberSize, classNames: string | undefined, cornerPosition: number = 1.5): string {
@@ -240,6 +263,149 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                 "></div>`;
         }
     }
-
 }
 
+type ControlMatrix = Record<number, Record<number, GridBoxConnectionItem>>;
+async function renderControlConnections(
+    items: Record<string, GridBoxItem>,
+    format: Format['_name'],
+    slotSize: NumberSize,
+    size: NumberSize,
+    onRenderLineBox: RenderGridBoxOptions['onRenderLineBox'],
+    childrenParentInfo: ParentInfo
+): Promise<string> {
+    const controlMatrix: ControlMatrix = {};
+    const xSlotSize = slotSize.width;
+    const ySlotSize = slotSize.height;
+
+    for (const item of Object.values(items)) {
+        for (const conn of item.connections) {
+            const target = items[conn.target];
+            if (target !== undefined) {
+                if (conn.targetType !== 'parent') {
+                    drawLineOnControlMatrix(item, target, controlMatrix, format);
+                } else {
+                    drawLineOnControlMatrix(target, item, controlMatrix, format);
+                }
+            }
+        }
+    }
+
+    return (await Promise.all(
+        Object.values(controlMatrix).map(m => 
+            Object.values(m).map(async (item) => {
+                const children = onRenderLineBox ? await onRenderLineBox(item, childrenParentInfo) : '';
+                const position = getLeftUpPosition(item.x, item.y, format, slotSize, size);
+                return `<div
+                    style="
+                        position: absolute;
+                        left: ${position.x}px;
+                        top: ${position.y}px;
+                        width: ${xSlotSize}px;
+                        height: ${ySlotSize}px;
+                    ">
+                        ${children}
+                    </div>`;
+            })
+        ).reduce((p, c) => p.concat(c), [])
+    )).join('');
+}
+
+function drawLineOnControlMatrix(s: GridBoxItem, t: GridBoxItem, controlMatrix: ControlMatrix, format: Format['_name']): void {
+    if (s.gridY === t.gridY) {
+        hLineOnControlMatrix(s.gridY, s.gridX, t.gridX, s.id, t.id, controlMatrix, format);
+        return;
+    }
+
+    if (s.gridX === t.gridX) {
+        vLineOnControlMatrix(s.gridX, s.gridY, t.gridY, s.id, t.id, controlMatrix, format);
+        return;
+    }
+
+    const sign = Math.sign(t.gridY - s.gridY);
+    if (s.isJoint) {
+        hLineOnControlMatrix(s.gridY, s.gridX, t.gridX, s.id, t.id, controlMatrix, format);
+        vLineOnControlMatrix(t.gridX, s.gridY, t.gridY, s.id, t.id, controlMatrix, format);
+    } else {
+        vLineOnControlMatrix(s.gridX, s.gridY, s.gridY + sign, s.id, t.id, controlMatrix, format);
+        hLineOnControlMatrix(s.gridY + sign, s.gridX, t.gridX, s.id, t.id, controlMatrix, format);
+        if (t.gridY !== s.gridY + sign) {
+            vLineOnControlMatrix(t.gridX, s.gridY + sign, t.gridY, s.id, t.id, controlMatrix, format);
+        }
+    }
+}
+
+function hLineOnControlMatrix(y: number, start: number, end: number, sId: string, eId: string, controlMatrix: ControlMatrix, format: Format['_name'], containStart: boolean = true, containEnd: boolean = true): void {
+    if (start === end) {
+        return;
+    }
+    start = Math.round(start);
+    end = Math.round(end);
+    const step = Math.sign(end - start);
+    const inDirection = step > 0 ? 'left' : 'right';
+    const outDirection = step < 0 ? 'left' : 'right';
+    if (containStart) {
+        drawSemiLineOnControlMatrix(controlMatrix, start, y, format, outDirection, undefined, eId);
+    }
+    for (let i = start + step; i !== end; i += step) {
+        drawSemiLineOnControlMatrix(controlMatrix, i, y, format, inDirection, sId, undefined);
+        drawSemiLineOnControlMatrix(controlMatrix, i, y, format, outDirection, undefined, eId);
+    }
+    if (containEnd) {
+        drawSemiLineOnControlMatrix(controlMatrix, end, y, format, inDirection, sId, undefined);
+    }
+}
+
+function vLineOnControlMatrix(x: number, start: number, end: number, sId: string, eId: string, controlMatrix: ControlMatrix, format: Format['_name'], containStart: boolean = true, containEnd: boolean = true): void {
+    if (start === end) {
+        return;
+    }
+    start = Math.round(start);
+    end = Math.round(end);
+    const step = Math.sign(end - start);
+    const inDirection = step > 0 ? 'up' : 'down';
+    const outDirection = step < 0 ? 'up' : 'down';
+    if (containStart) {
+        drawSemiLineOnControlMatrix(controlMatrix, x, start, format, outDirection, undefined, eId);
+    }
+    for (let i = start + step; i !== end; i += step) {
+        drawSemiLineOnControlMatrix(controlMatrix, x, i, format, inDirection, sId, undefined);
+        drawSemiLineOnControlMatrix(controlMatrix, x, i, format, outDirection, undefined, eId);
+    }
+    if (containEnd) {
+        drawSemiLineOnControlMatrix(controlMatrix, x, end, format, inDirection, sId, undefined);
+    }
+}
+
+function drawSemiLineOnControlMatrix(controlMatrix: ControlMatrix, x: number, y: number, format: Format['_name'], direction: Exclude<Format['_name'], 'center'>, inId: string | undefined, outId: string | undefined): void {
+    if (format === 'down') {
+        direction = direction === 'up' ? 'down' : direction === 'down' ? 'up' : direction;
+    } else if (format === 'left') {
+        direction = direction === 'up' ? 'left' : direction === 'down' ? 'right' : direction === 'left' ? 'up' : 'down';
+    } else if (format === 'right') {
+        direction = direction === 'up' ? 'right' : direction === 'down' ? 'left' : direction === 'left' ? 'up' : 'down';
+    }
+
+    let xSet = controlMatrix[x];
+    if (xSet === undefined) {
+        controlMatrix[x] = xSet = {};
+    }
+
+    let item = xSet[y];
+    if (item === undefined) {
+        xSet[y] = item = { x, y };
+    }
+
+    let directionFolder = item[direction];
+    if (directionFolder === undefined) {
+        item[direction] = directionFolder = { in: {}, out: {} };
+    }
+
+    if (inId) {
+        directionFolder.in[inId] = true;
+    }
+
+    if (outId) {
+        directionFolder.out[outId] = true;
+    }
+}

@@ -20,5 +20,5 @@ export async function renderIcon(icon: HOIPartial<IconType>, parentInfo: ParentI
         y -= image.height / 2;
     }
 
-    return renderSprite({x, y}, image, image);
+    return renderSprite({x, y}, image, image, icon.frame ?? 0);
 }

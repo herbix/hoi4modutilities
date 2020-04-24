@@ -22,6 +22,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Focus tree preview
   * Can be dragged to scroll.
 
+### Fixed
+* Fix 1 pixel offset of reading `.dds` file.
+
 ## [0.1.1] - 2020/04/19 - Latest
 
 ### Fixed

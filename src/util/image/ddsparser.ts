@@ -2,7 +2,7 @@
 const DDS_MAGIC = 0x20534444;
 
 // The header length in 32 bit ints
-const headerLengthInt = 31;
+const headerLengthInt = 32;
 
 const DDS_RGBA = 0x41;
 const DDS_RGB = 0x40;

@@ -7,11 +7,12 @@ import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
 import { arrayToMap } from '../../util/common';
 import { readFileFromModOrHOI4 } from '../../util/fileloader';
-import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType } from '../../hoiformat/schema';
+import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType, IconType, Format } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/html/containerwindow';
 import { ParentInfo } from '../../util/html/common';
-import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/html/gridbox';
+import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/html/gridbox';
 import { renderInstantTextBox } from '../../util/html/instanttextbox';
+import { renderIcon } from '../../util/html/icon';
 
 export const guiFilePath = 'interface/countrytechtreeview.gui';
 const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
@@ -116,6 +117,8 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
     } else {
         const folderItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_item`);
         const folderSmallItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_small_item`) || folderItem;
+        const lineItem = allContainerWindowTypes.find(c => c.name === 'techtree_line_item');
+        const xorItem = allContainerWindowTypes.find(c => c.name === 'techtree_xor_item');
 
         children = await renderContainerWindowChildren(
             folderTreeView,
@@ -129,15 +132,13 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
                         const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
                         if (tree) {
                             const gridboxType = child as HOIPartial<GridBoxType>;
-                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, parentInfo);
+                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo);
                         }
                     }
 
                     return undefined;
                 },
-                getSprite: sprite => {
-                    return getSpriteByGfxName(sprite, technologyUIGfxFiles);
-                }
+                getSprite: defaultGetSprite
             }
         );
     }
@@ -156,41 +157,132 @@ async function renderTechnologyTreeGridBox(
     folder: string,
     folderItem: HOIPartial<ContainerWindowType> | undefined,
     folderSmallItem: HOIPartial<ContainerWindowType> | undefined,
+    lineItem: HOIPartial<ContainerWindowType> | undefined,
+    xorItem: HOIPartial<ContainerWindowType> | undefined,
     parentInfo: ParentInfo
 ): Promise<string> {
+    const xorJointKey = "#xorJoint#";
     const treeMap = arrayToMap(tree.technologies, 'id');
-    return await renderGridBox(gridboxType, parentInfo, {
-        items: arrayToMap(tree.technologies.filter(t => folder in t.folders).map<GridBoxItem>(t => ({
-            id: t.id,
-            gridX: t.folders[folder]?.x ?? 0,
-            gridY: t.folders[folder]?.y ?? 0,
-            connections: t.leadsToTechs.map<GridBoxConnection>(c => {
-                if (treeMap[c]?.leadsToTechs.includes(t.id)) {
-                    return {
-                        target: c,
-                        style: "1px dashed #88aaff",
-                        targetType: "related",
-                    };
-                }
-                return {
-                    target: c,
-                    style: "1px solid #88aaff",
-                    targetType: "child",
-                };
-            }).concat(t.xor.map<GridBoxConnection>(c => ({
-                target: c,
-                style: "1px solid red",
-                targetType: "related",
-            })))
-        })), 'id'),
-        onRenderItem: async (item, parent) => {
-            const technology = treeMap[item.id];
-            const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
-            return await renderTechnology(technologyItem, technology, technology.folders[folder], parent);
-        },
-        getSprite: sprite => {
-            return getSpriteByGfxName(sprite, technologyUIGfxFiles);
+    const technologiesInFolder = tree.technologies.filter(t => folder in t.folders);
+    const technologyXorJoints = technologiesInFolder
+        .map<[Technology, Technology[][] | undefined]>(tech => [tech, findXorGroups(treeMap, tech, folder)])
+        .filter((t): t is [Technology, Technology[][]] => t[1] !== undefined && t[1].length > 0)
+        .map<[Technology, Technology[], Technology[][]]>(([t, tgs]) => [t, tgs[0], tgs.slice(1)]);
+    const technologyXorJointsMap: Record<string, [Technology[], Technology[][]]> = {};
+
+    technologyXorJoints.forEach(([t, tl, tgs]) => technologyXorJointsMap[t.id] = [tl, tgs]);
+
+    const technologyItemsArray = technologiesInFolder.map<GridBoxItem>(t => {
+        const jointsItem = technologyXorJointsMap[t.id];
+        const connections: GridBoxConnection[] = [];
+        let leadsToTechs: Technology[];
+        if (jointsItem) {
+            const [base, joints] = jointsItem;
+            leadsToTechs = base;
+            connections.push(...joints.map<GridBoxConnection>((_, i) => ({ target: xorJointKey + t.id + i, style: "1px solid #88aaff", targetType: "child" })));
+        } else {
+            leadsToTechs = t.leadsToTechs.map(t => treeMap[t]).filter(t => t !== undefined);
         }
+
+        connections.push(...leadsToTechs.map<GridBoxConnection>(c => {
+            if (c.leadsToTechs.includes(t.id)) {
+                return { target: c.id, style: "1px dashed #88aaff", targetType: "related" };
+            }
+            return { target: c.id, style: "1px solid #88aaff", targetType: "child" };
+        }));
+
+        return {
+            id: t.id,
+            gridX: t.folders[folder].x,
+            gridY: t.folders[folder].y,
+            connections,
+        };
+    });
+
+    const technologyXorJointsItemsArray = technologyXorJoints.map(([t, _, tgs]) =>
+        tgs.map<GridBoxItem>((tl, i) => ({
+            id: xorJointKey + t.id + i,
+            gridX: Math.round(tl.reduce((p, c) => p + c.folders[folder].x, 0) / tl.length),
+            gridY: Math.min(...tl.map(t1 => t1.folders[folder].y)) - 1,
+            isJoint: true,
+            connections: tl.map<GridBoxConnection>(c => {
+                return { target: c.id, style: "1px solid red", targetType: "child" };
+            }),
+        }))
+    ).reduce((p, c) => p.concat(c), []);
+
+    return await renderGridBox(gridboxType, parentInfo, {
+        items: arrayToMap([...technologyItemsArray, ...technologyXorJointsItemsArray], 'id'),
+        lineRenderMode: lineItem ? 'control' : 'line',
+        onRenderItem: async (item, parent) => {
+            if (item.id.startsWith(xorJointKey)) {
+                if (xorItem === undefined) {
+                    return '';
+                }
+                return await renderXorItem(xorItem, gridboxType.format?._name ?? 'up', parent);
+            } else {
+                const technology = treeMap[item.id];
+                const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
+                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent);
+            }
+        },
+        onRenderLineBox: async (item, parent) => {
+            if (!lineItem) {
+                return '';
+            }
+            return await renderLineItem(lineItem, item, parent, treeMap);
+        },
+        getSprite: defaultGetSprite
+    });
+}
+
+function findXorGroups(treeMap: Record<string, Technology>, technology: Technology, folder: string): Technology[][] | undefined {
+    const techChildren = technology.leadsToTechs
+        .map(techName => treeMap[techName])
+        .filter(tech => tech && folder in technology.folders);
+    const xorGroupMap: Record<string, Technology[]> = {};
+
+    for (const xorChild of techChildren) {
+        const xorTechs = xorChild.xor
+            .map(techName => treeMap[techName])
+            .filter(tech => tech && folder in technology.folders && tech.xor.includes(xorChild.id));
+        if (xorTechs.length === 0) {
+            continue;
+        }
+
+        const groups = xorTechs.map(tech => xorGroupMap[tech.id]).filter((v, i, a) => v !== undefined && i === a.indexOf(v));
+        const bigGroup = groups.reduce((p, c) => p.concat(c), []).concat([ xorChild ]);
+        bigGroup.forEach(tech => xorGroupMap[tech.id] = bigGroup);
+    }
+
+    const xorGroups = Object.values(xorGroupMap).filter((v, i, a) => i === a.indexOf(v));
+    if (xorGroups.length === 0) {
+        return undefined;
+    }
+
+    const nonXors = techChildren.filter(tech => !xorGroups.some(group => group.includes(tech)));
+    return [nonXors, ...xorGroups];
+}
+
+async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: Format['_name'], parentInfo: ParentInfo): Promise<string> {
+    const upDownDirection = format === 'left' || format === 'right';
+    return await renderContainerWindow(xorItem, parentInfo, {
+        onRenderChild: async (type, child, parent) => {
+            if (type === 'icon') {
+                const childName = child.name?.toLowerCase();
+                if (childName === 'first') {
+                    return await renderIcon({ ...child, spritetype: upDownDirection ? 'GFX_techtree_xor_up' : 'GFX_techtree_xor_left' } as HOIPartial<IconType>,
+                        parent, { getSprite: defaultGetSprite });
+                }
+                if (childName === 'second') {
+                    return await renderIcon({ ...child, spritetype: upDownDirection ? 'GFX_techtree_xor_down' : 'GFX_techtree_xor_right' } as HOIPartial<IconType>,
+                        parent, { getSprite: defaultGetSprite });
+                }
+            }
+
+            return undefined;
+        },
+        getSprite: defaultGetSprite
     });
 }
 
@@ -300,6 +392,72 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
         </div>`;
 }
 
+const centerNameTable = [
+    undefined, undefined, undefined, 'bottom_left',
+    undefined, undefined, 'top_left', 'right',
+    undefined, 'bottom_right', undefined, 'up',
+    'top_right', 'left', 'down', 'all',
+];
+
+async function renderLineItem(
+    lineItem: HOIPartial<ContainerWindowType>,
+    item: GridBoxConnectionItem,
+    parentInfo: ParentInfo,
+    technologies: Record<string, Technology>
+): Promise<string> {
+    const centerNameCode = (item.up ? 1 : 0) | (item.right ? 2 : 0) | (item.down ? 4 : 0) | (item.left ? 8 : 0);
+    const centerName: string | undefined = centerNameTable[centerNameCode];
+
+    const directionalItems = [ item.up, item.down, item.right, item.left ];
+    const inSet = directionalItems.reduce<string[]>((p, c) => c === undefined ? p : p.concat(Object.keys(c.in)), []).filter((v, i, a) => i === a.indexOf(v));
+    const outSet = directionalItems.reduce<string[]>((p, c) => c === undefined ? p : p.concat(Object.keys(c.out)), []).filter((v, i, a) => i === a.indexOf(v));
+    let sameInOut = false;
+
+    if (inSet.length === outSet.length) {
+        sameInOut = true;
+        for (const inItem of inSet) {
+            if (!outSet.includes(inItem)) {
+                sameInOut = false;
+                break;
+            }
+        }
+    }
+
+    const containerWindow = await renderContainerWindow(lineItem, parentInfo, {
+        noSize: true,
+        onRenderChild: async (type, child, parent) => {
+            if (type === 'icon') {
+                const childName = child.name?.toLowerCase();
+                if (childName === 'left' || childName === 'right' || childName === 'up' || childName === 'down') {
+                    if (item[childName]) {
+                        return await renderIcon({
+                            ...child,
+                            spritetype: `GFX_techtree_line_${childName}_${sameInOut ? 'dot_' : ''}states`,
+                            frame: 2
+                        } as HOIPartial<IconType>, parent, { getSprite: defaultGetSprite });
+                    } else {
+                        return '';
+                    }
+                } else if (childName === 'center') {
+                    if (centerName && !sameInOut) {
+                        return await renderIcon({
+                            ...child,
+                            spritetype: `GFX_techline_center_${centerName}_states`, frame: 2
+                        } as HOIPartial<IconType>, parent, { getSprite: defaultGetSprite });
+                    } else {
+                        return '';
+                    }
+                }
+            }
+
+            return undefined;
+        },
+        getSprite: defaultGetSprite,
+    });
+
+    return containerWindow;
+}
+
 async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefined> {
     let background: Sprite | undefined = undefined;
     for (const imageName of tryList) {
@@ -319,4 +477,8 @@ async function getTechnologyIcon(name: string, type: 'medium' | 'small'): Promis
     }
 
     return await getSpriteByGfxName('GFX_technology_' + type, technologyUIGfxFiles);
+}
+
+function defaultGetSprite(sprite: string): Promise<Sprite | undefined> {
+    return getSpriteByGfxName(sprite, technologyUIGfxFiles);
 }

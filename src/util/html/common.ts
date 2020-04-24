@@ -103,7 +103,7 @@ export function normalizeMargin(margin: Partial<Margin> | undefined, size: Numbe
     ];
 }
 
-export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, options?: RenderCommonOptions): string {
+export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, options?: RenderCommonOptions): string {
     if (sprite instanceof CorneredTileSprite) {
         return renderCorneredTileSprite(position, size, sprite, options);
     }
@@ -117,7 +117,7 @@ export function renderSprite(position: NumberPosition, size: NumberSize, sprite:
         top: ${position.y}px;
         width: ${sprite.width}px;
         height: ${sprite.height}px;
-        background-image: url(${sprite.frames[0].uri});
+        background-image: url(${sprite.frames[frame]?.uri});
         background-size: ${sprite.width}px ${sprite.height}px;
     "></div>`;
 }
@@ -200,5 +200,5 @@ export async function renderBackground(background: HOIPartial<Background> | unde
         size: { width: parseNumberLike('100%%'), height: parseNumberLike('100%%') }
     }, parentInfo);
     
-    return renderSprite({ x, y }, { width, height }, backgroundSprite);
+    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0);
 }

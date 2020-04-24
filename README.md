@@ -71,3 +71,6 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
   * Show image size on tooltip.
 * Focus tree preview
   * Can be dragged to scroll.
+
+### Fixed
+* Fix 1 pixel offset of reading `.dds` file.

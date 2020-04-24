@@ -214,6 +214,7 @@ export interface IconType {
     centerposition: boolean;
     spritetype: string;
     quadtexturesprite: string;
+    frame: number;
     _index: number;
 }
 
@@ -375,6 +376,7 @@ const iconTypeSchema: SchemaDef<IconType> = {
     centerposition: 'boolean',
     spritetype: "string",
     quadtexturesprite: "string",
+    frame: "number",
 };
 
 const instantTextBoxTypeSchema: SchemaDef<InstantTextBoxType> = {
