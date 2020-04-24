@@ -133,6 +133,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                 width: ${Math.abs(a.x - b.x)}px;
                 height: ${1}px;
                 border-top: ${style};
+                pointer-events: none;
             "></div>`;
     }
     if (a.x === b.x) {
@@ -145,6 +146,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                 width: ${1}px;
                 height: ${Math.abs(a.y - b.y)}px;
                 border-left: ${style};
+                pointer-events: none;
             "></div>`;
     }
 
@@ -170,6 +172,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${Math.abs(by)}px;
                     ${bx < 0 ? 'border-left' : 'border-right'}: ${style};
                     ${by < 0 ? 'border-bottom' : 'border-top'}: ${style};
+                    pointer-events: none;
                 "></div>`;
         } else {
             return `<div
@@ -182,6 +185,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${Math.abs(by)}px;
                     ${bx < 0 ? 'border-left' : 'border-right'}: ${style};
                     ${by < 0 ? 'border-bottom' : 'border-top'}: ${style};
+                    pointer-events: none;
                 "></div><div
                 ${classNames ? `class="${classNames}"` : ''}
                 style="
@@ -191,6 +195,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     width: ${Math.abs(bx) - cornerWidth}px;
                     height: ${Math.abs(by)}px;
                     ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
+                    pointer-events: none;
                 "></div>`;
         }
     } else {
@@ -208,6 +213,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${Math.abs(by)}px;
                     ${bx > 0 ? 'border-left' : 'border-right'}: ${style};
                     ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
+                    pointer-events: none;
                 "></div>`;
         } else {
             return `<div
@@ -220,6 +226,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${cornerHeight}px;
                     ${bx > 0 ? 'border-left' : 'border-right'}: ${style};
                     ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
+                    pointer-events: none;
                 "></div><div
                 ${classNames ? `class="${classNames}"` : ''}
                 style="
@@ -229,6 +236,7 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     width: ${Math.abs(bx)}px;
                     height: ${Math.abs(by) - cornerHeight}px;
                     ${bx > 0 ? 'border-right' : 'border-left'}: ${style};
+                    pointer-events: none;
                 "></div>`;
         }
     }

@@ -28,6 +28,7 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
     <script>
         window.previewedFileUri = "${uri.toString()}";
     </script>
+    <div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
     ${baseContent}
     <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
     </script>
@@ -38,10 +39,8 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
 }
 
 
-const leftPaddingBase = 30;
+const leftPaddingBase = 50;
 const topPaddingBase = 30;
-const rightPadding = 30;
-const bottomPadding = 30;
 const xGridSize = 90;
 const yGridSize = 120;
 const optionHeight = 20;

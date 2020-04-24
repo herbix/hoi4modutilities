@@ -1,6 +1,5 @@
 import { ContainerWindowType, HOIPartial, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/schema";
-import { calculateBBox, normalizeMargin, ParentInfo, renderSprite, RenderCommonOptions, removeHtmlOptions, normalizeNumberLike, renderBackground } from "./common";
-import { Sprite } from "../image/imagecache";
+import { calculateBBox, normalizeMargin, ParentInfo, RenderCommonOptions, removeHtmlOptions, renderBackground } from "./common";
 import { renderIcon } from "./icon";
 import { renderInstantTextBox } from "./instanttextbox";
 import { renderGridBox } from "./gridbox";
@@ -13,6 +12,7 @@ interface RenderChildTypeMap {
 }
 
 export interface RenderContainerWindowOptions extends RenderCommonOptions {
+    noSize?: boolean;
     onRenderChild?<T extends keyof RenderChildTypeMap>(type: T, child: RenderChildTypeMap[T], parentInfo: ParentInfo): Promise<string | undefined>;
 }
 
@@ -38,8 +38,8 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
         position: absolute;
         left: ${x}px;
         top: ${y}px;
-        width: ${width}px;
-        height: ${height}px;
+        width: ${options.noSize ? 0 : width}px;
+        height: ${options.noSize ? 0 : height}px;
         padding: ${margin.map(m => m + 'px').join(' ')};
         box-sizing: border-box;
     ">

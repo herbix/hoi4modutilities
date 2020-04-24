@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { renderTechnologyFile } from './contentbuilder';
+import { renderTechnologyFile, guiFilePath } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
 import { matchPathEnd } from '../../util/common';
 
@@ -14,7 +14,7 @@ async function updateTechnologyPreview(document: vscode.TextDocument, panel: vsc
 
 function canPreviewTechnology(document: vscode.TextDocument) {
     const uri = document.uri;
-    if (matchPathEnd(uri.path, ['common', 'technologies', '*'])) {
+    if (matchPathEnd(uri.fsPath, ['common', 'technologies', '*'])) {
         return true;
     }
 
@@ -27,4 +27,5 @@ export const technologyPreviewDef: PreviewProviderDef = {
     show: showTechnologyPreview,
     update: updateTechnologyPreview,
     canPreview: canPreviewTechnology,
+    updateWhenChange: [ guiFilePath.split('/') ],
 };

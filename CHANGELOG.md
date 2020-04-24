@@ -6,7 +6,21 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-* Empty
+### Added
+* Technology tree preview
+  * Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
+  * Navigate to related technology tag by clicking technology or subtechnology.
+  * Auto update preview when technology file changed.
+  * Switch technology folder if a technology tree contains technology from different folder.
+  * Can be dragged to scroll.
+* GFX file preview
+  * Support `corneredTileSpriteType` tags.
+
+### Changed
+* GFX file preview
+  * Show image size on tooltip.
+* Focus tree preview
+  * Can be dragged to scroll.
 
 ## [0.1.1] - 2020/04/19 - Latest
 

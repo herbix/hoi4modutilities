@@ -14,6 +14,9 @@ export interface RenderCommonOptions {
     getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
 }
 
+export function normalizeNumberLike(value: NumberLike, parentValue: number, subtractValue?: number): number;
+export function normalizeNumberLike(value: undefined, parentValue: number, subtractValue?: number): undefined;
+export function normalizeNumberLike(value: NumberLike | undefined, parentValue: number, subtractValue?: number): number | undefined;
 export function normalizeNumberLike(value: NumberLike | undefined, parentValue: number, subtractValue: number = 0): number | undefined {
     if (!value) {
         return undefined;
@@ -41,32 +44,52 @@ const offsetMap: Record<Orientation['_name'], { x: number, y: number }> = {
     'right': { x: 1, y: 0.5 },
 };
 
-export function calculateBBox({orientation, origo, position, size}: {
-    orientation?: Orientation,
-    origo?: Orientation,
-    position?: Partial<Position>,
-    size?: HOIPartial<ComplexSize> | Partial<Size & {min: undefined}>,
-},
+export function calculateStartLength(pos: NumberLike | undefined, size: NumberLike | undefined, parentSize: number, orientationFactor: number, origoFactor: number): [number, number] {
+    if (size?._unit !== '%%') {
+        // length mode
+        const baseStart = (normalizeNumberLike(pos, parentSize) ?? 0) + parentSize * orientationFactor;
+        const length = Math.max(0, normalizeNumberLike(size, parentSize) ?? 0);
+        const realStart = baseStart - length * origoFactor;
+        return [realStart, length];
+
+    } else {
+        // end mode
+        const baseStart = (normalizeNumberLike(pos, parentSize) ?? 0) + parentSize * orientationFactor;
+        const end = normalizeNumberLike(size, parentSize);
+
+        // not valid
+        if (origoFactor === 1) {
+            return [baseStart, 0];
+        }
+
+        // resolved from: realStart = baseStart - Math.max(0, end - realStart) * origoFactor
+        const realStart = (baseStart - end * origoFactor) / (1 - origoFactor);
+        const length = Math.max(0, end - realStart);
+        return [realStart, length];
+    }
+}
+
+export function calculateBBox(
+    {orientation, origo, position, size}: {
+        orientation?: Orientation,
+        origo?: Orientation,
+        position?: Partial<Position>,
+        size?: HOIPartial<ComplexSize> | Partial<Size & {min: undefined}>,
+    },
     parentInfo: ParentInfo
 ): [number, number, number, number, Orientation['_name']] {
     const myOrientation = orientation?._name ?? parentInfo.orientation;
     const parentSize = parentInfo.size;
-    const offset = offsetMap[myOrientation];
-    let x = (normalizeNumberLike(position?.x, parentSize.width) ?? 0) + parentSize.width * offset.x;
-    let y = (normalizeNumberLike(position?.y, parentSize.height) ?? 0) + parentSize.height * offset.y;
-    let width = normalizeNumberLike(size?.width, parentSize.width, x) ?? 0;
-    let height = normalizeNumberLike(size?.height, parentSize.height, y) ?? 0;
+    const orientationFactor = offsetMap[myOrientation];
+    const origoFactor = offsetMap[origo?._name ?? 'upper_left'];
+
+    let [x, width] = calculateStartLength(position?.x, size?.width, parentSize.width, orientationFactor.x, origoFactor.x);
+    let [y, height] = calculateStartLength(position?.y, size?.height, parentSize.height, orientationFactor.y, origoFactor.y);
+
     const minWidth = normalizeNumberLike(size?.min?.width, parentSize.width, x) ?? width;
     const minHeight = normalizeNumberLike(size?.min?.height, parentSize.height, y) ?? height;
     width = Math.max(minWidth, width);
     height = Math.max(minHeight, height);
-
-    // TODO better calculation for origo with 90%%
-    if (origo) {
-        const origoOffset = offsetMap[origo._name];
-        x -= width * origoOffset.x;
-        y -= height * origoOffset.y;
-    }
 
     return [x, y, width, height, myOrientation];
 }

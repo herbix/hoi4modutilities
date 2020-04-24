@@ -11,14 +11,26 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 * Show/hide focus branches (available for focuses has `allow_branch` tag).
 * Auto update preview when document updates.
 * Preview focus tree file that contains `shared_focus` tree.
+* Can be dragged to scroll.
 
 ![Focus tree preview demo](demo/1.gif)
 
+### Technology tree preview
+
+* Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
+* Navigate to related technology tag by clicking technology or subtechnology.
+* Auto update preview when technology file changed.
+* Switch technology folder if a technology tree contains technology from different folder.
+* Can be dragged to scroll.
+
+![Technology tree preview demo](demo/4.gif)
+
 ### GFX file preview
 
-* Preview all `spritetype` tags in `.gfx` files.
+* Preview all `spritetype` and `corneredTileSpriteType` tags in `.gfx` files.
 * Filter sprites by name.
-* Navigate to `spritetype` tag in document by clicking a sprite in list.
+* Navigate to related tag in document by clicking a sprite in list.
+* Show image size and path on tooltip.
 
 ![GFX file preview demo](demo/2.gif)
 
@@ -42,24 +54,20 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 ## Release Notes
 
-### 0.1.1
+### 0.2.0
 
-#### Fixed
-* Fix bug that the tokenizer will read `={` as one token.
-
-### 0.1.0
-
-Initial version of the extension.
-
-* Focus tree preview
-  * Render focus tree as graph.
-  * Navigate to `focus` tag in document by clicking a focus in graph.
-  * Show/hide focus branches (available for focuses has `allow_branch` tag).
-  * Auto update preview when document updates.
-  * Preview focus tree file that contains `shared_focus` tree.
+### Added
+* Technology tree preview
+  * Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
+  * Navigate to related technology tag by clicking technology or subtechnology.
+  * Auto update preview when technology file changed.
+  * Switch technology folder if a technology tree contains technology from different folder.
+  * Can be dragged to scroll.
 * GFX file preview
-  * Preview all `spritetype` tags in `.gfx` files.
-  * Filter sprites by name.
-  * Navigate to `spritetype` tag in document by clicking a sprite in list.
-* DDS preview
-  * Supports RGB and RGBA format.
+  * Support `corneredTileSpriteType` tags.
+
+### Changed
+* GFX file preview
+  * Show image size on tooltip.
+* Focus tree preview
+  * Can be dragged to scroll.

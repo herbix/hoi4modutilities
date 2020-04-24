@@ -13,7 +13,7 @@ async function updateFocusTreePreview(document: vscode.TextDocument, panel: vsco
 
 function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
-    if (matchPathEnd(uri.path, ['common', 'national_focus', '*'])) {
+    if (matchPathEnd(uri.fsPath, ['common', 'national_focus', '*'])) {
         return true;
     }
 

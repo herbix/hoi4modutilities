@@ -50,7 +50,11 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[]): Promise<string> {
     const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
-    const guiTypes = convertNodeFromFileToJson(parseHoi4File(guiFile.toString(), localize('infile', 'In file {0}:\n', realPath))).guitypes;
+    const resolvedRealPath =  path.resolve(realPath);
+    const openedDocument = vscode.workspace.textDocuments.find(d => path.resolve(d.uri.fsPath) === resolvedRealPath);
+    const fileContent = openedDocument ? openedDocument.getText() : guiFile.toString();
+
+    const guiTypes = convertNodeFromFileToJson(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath))).guitypes;
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
     const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
     if (!techTreeView) {
@@ -64,6 +68,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
         document.body.style.background = '#101010';
     </script>
     ${renderFolderSelector(folders)}
+    <div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
     <div
     style="
         position: absolute;
@@ -196,6 +201,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
 
     const subSlotRegex = /^sub_technology_slot_(\d)$/;
     const containerWindow = await renderContainerWindow(item, parentInfo, {
+        noSize: true,
         getSprite: (sprite, callerType, callerName) => getTechnologySprite(sprite, technology, folder.name, callerType, callerName),
         onRenderChild: async (type, child, parentInfo) => {
             if (type === 'icon' && child.name === 'bonus_icon') {
@@ -251,7 +257,7 @@ async function getTechnologySprite(sprite: string, technology: Technology, folde
             `GFX_technology_available_item_bg`,
         ];
     } else if (sprite === 'GFX_technology_medium' && callerType === 'icon') {
-        return await getTechnologyIcon(`GFX_${technology.id}_medium`);
+        return await getTechnologyIcon(`GFX_${technology.id}_medium`, 'medium');
     }
 
     return await getSpriteFromTryList(imageTryList);
@@ -271,7 +277,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
                     `GFX_subtechnology_available_item_bg`,
                 ];
             } else if (callerType === 'icon' && callerName?.toLowerCase() === 'picture') {
-                return getTechnologyIcon(sprite);
+                return getTechnologyIcon(sprite, 'small');
             }
 
             return getSpriteFromTryList(imageTryList);
@@ -306,6 +312,11 @@ async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefin
     return background;
 }
 
-function getTechnologyIcon(name: string): Promise<Sprite | undefined> {
-    return getSpriteByGfxName(name, technologiesGFX);
+async function getTechnologyIcon(name: string, type: 'medium' | 'small'): Promise<Sprite | undefined> {
+    const result = await getSpriteByGfxName(name, technologiesGFX);
+    if (result !== undefined) {
+        return result;
+    }
+
+    return await getSpriteByGfxName('GFX_technology_' + type, technologyUIGfxFiles);
 }

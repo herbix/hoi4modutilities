@@ -68,7 +68,9 @@ async function renderSpriteType(spriteType: SpriteType): Promise<string> {
     return `<div
         id="${spriteType.name}"
         class="spriteTypePreview"
-        title="${spriteType.name}\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}"
+        title="${spriteType.name}${image ? ` (${
+            image.width / spriteType.noofframes}x${image.height}x${spriteType.noofframes})` : ''
+            }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}"
         style="
             display: inline-block;
             text-align: center;

@@ -35,6 +35,42 @@ window.hoi4mu = (function() {
         });
     });
 
+    // Disable selection
+    document.body.style.userSelect = 'none';
+
+    (function() {
+        // Dragger should be like this: <div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
+        const dragger = document.getElementById("dragger");
+        if (!dragger) {
+            return;
+        }
+
+        let mdx = -1;
+        let mdy = -1;
+        let pressed = false;
+        dragger.addEventListener('mousedown', function(e) {
+            mdx = e.pageX;
+            mdy = e.pageY;
+            pressed = true;
+        });
+
+        document.body.addEventListener('mousemove', function(e) {
+            if (pressed) {
+                window.scroll(window.pageXOffset - e.pageX + mdx, window.pageYOffset - e.pageY + mdy);
+            }
+        });
+
+        document.body.addEventListener('mouseup', function() {
+            pressed = false;
+        });
+
+        document.body.addEventListener('mouseenter', function(e) {
+            if (pressed && (e.buttons & 1) !== 1) {
+                pressed = false;
+            }
+        });
+    })();
+
     return {
         vscode: vscode,
         setState: setState,
