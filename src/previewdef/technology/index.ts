@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { renderTechnologyFile, guiFilePath } from './contentbuilder';
+import { renderTechnologyFile, guiFilePath, relatedGfxFiles } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
 import { matchPathEnd } from '../../util/common';
 
@@ -27,5 +27,5 @@ export const technologyPreviewDef: PreviewProviderDef = {
     show: showTechnologyPreview,
     update: updateTechnologyPreview,
     canPreview: canPreviewTechnology,
-    updateWhenChange: [ guiFilePath.split('/') ],
+    updateWhenChange: [ guiFilePath.split('/'), ...relatedGfxFiles.map(f => f.split('/')) ],
 };

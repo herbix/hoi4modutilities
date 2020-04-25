@@ -27,15 +27,8 @@ export function activate(context: vscode.ExtensionContext) {
 
     if (process.env.NODE_ENV !== 'production') {
         vscode.commands.registerCommand('hoi4modutilities.test', () => {
-            if (vscode.window.activeTextEditor) {
-                const doc = vscode.window.activeTextEditor.document.getText();
-                try {
-                    const fs = require('fs');  
-                    fs.writeFileSync('D:/temp/out.txt', JSON.stringify(convertNodeFromFileToJson(parseHoi4File(doc))));
-                } catch (e) {
-                    error(e);
-                }
-            }
+            const debugModule = require('./util/debug.shouldignore');
+            debugModule.testCommand();
         });
 
         vscode.commands.executeCommand('setContext', 'Hoi4MUInDev', true);

@@ -35,6 +35,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         const key = document.uri.toString();
         this._previews[key]?.panel.dispose();
         debug(`dispose panel ${key} because text document closed`);
+        this.updatePreviewItemsInSubscription(document.uri);
     }
     
 	public onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
@@ -239,12 +240,10 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         const newMethod = debounce(() => {
             delete this._cachedDebounceUpdateBySubscriptions[path];
             const document = this.getDocumentByUri(uri);
-            if (document) {
-                for (const otherPreview of this.getPreviewItemsNeedsUpdate(path)) {
-                    const otherDocument = this.getDocumentByUri(otherPreview.uri);
-                    if (otherDocument && !otherPreview.disposed) {
-                        otherPreview.previewProvider.update(otherDocument, otherPreview.panel, document);
-                    }
+            for (const otherPreview of this.getPreviewItemsNeedsUpdate(path)) {
+                const otherDocument = this.getDocumentByUri(otherPreview.uri);
+                if (otherDocument && !otherPreview.disposed) {
+                    otherPreview.previewProvider.update(otherDocument, otherPreview.panel, document);
                 }
             }
         }, 1000, { trailing: true });

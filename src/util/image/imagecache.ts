@@ -2,7 +2,7 @@ import { parseDds } from './ddsparser';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
-import { readFileFromModOrHOI4 } from '../fileloader';
+import { readFileFromModOrHOI4, hoiFileExpiryToken } from '../fileloader';
 import { PromiseCache } from '../cache';
 import { ddsToPng } from './converter';
 import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/schema';
@@ -12,16 +12,19 @@ import { error } from '../debug';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
+    expireWhenChange: hoiFileExpiryToken,
     factory: getImage,
     life: 10 * 60 * 1000
 });
 
 const spriteCache = new PromiseCache({
+    expireWhenChange: spriteCacheExpiryToken,
     factory: getSpriteByKey,
     life: 10 * 60 * 1000
 });
 
 const gfxMapCache = new PromiseCache({
+    expireWhenChange: hoiFileExpiryToken,
     factory: loadGfxMap,
     life: 10 * 60 * 1000
 });
@@ -34,20 +37,25 @@ export async function getSpriteByGfxName(name: string, gfxFilePath: string | str
     let result: Sprite | undefined = undefined;
     if (Array.isArray(gfxFilePath)) {
         for (const path of gfxFilePath) {
-            result = await spriteCache.get(path + '!' + name);
+            result = await spriteCache.get(path + '?' + name);
             if (result !== undefined) {
                 break;
             }
         }
     } else {
-        result = await spriteCache.get(gfxFilePath + '!' + name);
+        result = await spriteCache.get(gfxFilePath + '?' + name);
     }
 
     return result;
 }
 
+function spriteCacheExpiryToken(key: string): string | undefined {
+    const [gfxFilePath] = key.split('?');
+    return hoiFileExpiryToken(gfxFilePath);
+}
+
 function getSpriteByKey(key: string): Promise<Sprite | undefined> {
-    const [gfxFilePath, name] = key.split('!');
+    const [gfxFilePath, name] = key.split('?');
     return getSpriteByGfxNameImpl(name, gfxFilePath);
 }
 

@@ -17,6 +17,7 @@ import { html } from '../../util/html';
 export const guiFilePath = 'interface/countrytechtreeview.gui';
 const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
 const technologiesGFX = 'interface/technologies.gfx';
+export const relatedGfxFiles = [...technologyUIGfxFiles, technologiesGFX];
 const techTreeViewName = 'countrytechtreeview';
 
 export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
@@ -43,9 +44,7 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[]): Promise<string> {
     const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
-    const resolvedRealPath =  path.resolve(realPath);
-    const openedDocument = vscode.workspace.textDocuments.find(d => path.resolve(d.uri.fsPath) === resolvedRealPath);
-    const fileContent = openedDocument ? openedDocument.getText() : guiFile.toString();
+    const fileContent = guiFile.toString();
 
     const guiTypes = convertNodeFromFileToJson(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath))).guitypes;
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
@@ -244,7 +243,7 @@ function findXorGroups(treeMap: Record<string, Technology>, technology: Technolo
     for (const xorChild of techChildren) {
         const xorTechs = xorChild.xor
             .map(techName => treeMap[techName])
-            .filter(tech => tech && folder in technology.folders && tech.xor.includes(xorChild.id));
+            .filter(tech => tech && folder in technology.folders && tech !== xorChild && tech.xor.includes(xorChild.id));
         if (xorTechs.length === 0) {
             continue;
         }

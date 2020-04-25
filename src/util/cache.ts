@@ -1,10 +1,13 @@
 export interface CacheOptions<V> {
-    factory: (key: string) => V;
+    factory(key: string): V;
+    expireWhenChange?(key: string): any;
     life: number;
+    nonExpireLife?: number;
 }
 
 interface CacheEntry<V> {
     value: V;
+    expiryToken: any;
     lastAccess: number;
 }
 
@@ -16,17 +19,25 @@ export class Cache<V> {
         if (options.life > 0) {
             this._intervalToken = setInterval(() => this.tryClean(), options.life / 5);
         }
+        if (!options.expireWhenChange) {
+            options.expireWhenChange = () => undefined;
+        }
+        if (options.nonExpireLife === undefined) {
+            options.nonExpireLife = 200;
+        }
     }
 
     public get(key: string = ''): V {
         const cacheEntry = this._cache[key];
-        if (cacheEntry) {
-            cacheEntry.lastAccess = Date.now();
+        const now = Date.now();
+        if (cacheEntry && (now - cacheEntry.lastAccess < this.options.nonExpireLife! || this.options.expireWhenChange!(key) === cacheEntry.expiryToken)) {
+            cacheEntry.lastAccess = now;
             return cacheEntry.value;
         }
 
         const newEntry = {
-            lastAccess: Date.now(),
+            lastAccess: now,
+            expiryToken: this.options.expireWhenChange!(key),
             value: this.options.factory(key)
         };
 
@@ -66,7 +77,7 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
             factory: (key) => {
                 return options.factory(key).then(
                     value => {
-                        if (value === null) {
+                        if (value === null || value === undefined) {
                             this.remove(key);
                         }
                         return value;

@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 
 export interface NumberSize {
     width: number;
@@ -19,7 +20,7 @@ export function matchPathEnd(pathname: string, segments: string[]): boolean {
             continue;
         }
 
-        if (segments[i].toLowerCase() !== name) {
+        if (segments[i].toLowerCase() !== name.toLowerCase()) {
             return false;
         }
     }
@@ -38,4 +39,9 @@ export function arrayToMap<T, K extends keyof T>(items: T[], key: K): T[K] exten
     }
 
     return result as any;
+}
+
+export function getLastModified(path: string): number {
+    const stat = fs.lstatSync(path);
+    return stat.mtimeMs;
 }

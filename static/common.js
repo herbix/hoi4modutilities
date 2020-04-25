@@ -19,6 +19,13 @@ window.hoi4mu = (function() {
         return vscode.getState() || {};
     }
 
+    function scrollToState() {
+        const state = vscode.getState() || {};
+        const xOffset = state.xOffset || 0;
+        const yOffset = state.yOffset || 0;
+        window.scroll(xOffset, yOffset);
+    }
+
     setState({ uri: window.previewedFileUri });
 
     window.addEventListener('load', function() {
@@ -27,10 +34,7 @@ window.hoi4mu = (function() {
 
         // Save scroll position
         (function() {
-            const state = vscode.getState() || {};
-            const xOffset = state.xOffset || 0;
-            const yOffset = state.yOffset || 0;
-            window.scroll(xOffset, yOffset);
+            scrollToState();
 
             window.addEventListener('scroll', function() {
                 const state = vscode.getState() || {};
@@ -94,5 +98,6 @@ window.hoi4mu = (function() {
         setState: setState,
         getState: getState,
         navigateText: navigateText,
+        scrollToState: scrollToState,
     };
 })();

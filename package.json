@@ -24,7 +24,6 @@
 	],
 	"activationEvents": [
 		"onCommand:hoi4modutilities.preview",
-		"onCommand:hoi4modutilities.test",
 		"onWebviewPanel:hoi4ftpreview",
 		"onCustomEditor:hoi4modutilities.dds"
 	],

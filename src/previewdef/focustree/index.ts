@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { renderFocusTreeFile } from './contentbuilder';
+import { renderFocusTreeFile, focusesGFX } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
 import { matchPathEnd } from '../../util/common';
 
@@ -26,4 +26,5 @@ export const focusTreePreviewDef: PreviewProviderDef = {
     show: showFocusTreePreview,
     update: updateFocusTreePreview,
     canPreview: canPreviewFocusTree,
+    updateWhenChange: [ focusesGFX.split('/') ]
 };

@@ -8,6 +8,9 @@ import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbol } from '../../h
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html } from '../../util/html';
 
+export const focusesGFX = 'interface/goals.gfx';
+const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
+
 export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     try {
@@ -148,9 +151,6 @@ async function renderFocus(focus: Focus): Promise<string> {
         </span>
     </div>`;
 }
-
-const focusesGFX = 'interface/goals.gfx';
-const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
 export async function getFocusIcon(name: string): Promise<Image | undefined> {
     const sprite = await getSpriteByGfxName(name, focusesGFX);

@@ -3,3 +3,4 @@ out/
 /dist/
 *.vsix
 /package.nls.*.json
+/src/util/debug.shouldignore.ts

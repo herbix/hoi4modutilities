@@ -14,6 +14,7 @@ window.hoi4mu.tt = (function() {
         const folder = hoi4mu.getState().folder || element.value;
         element.value = folder;
         folderChange(folder);
+        hoi4mu.scrollToState();
 
         element.addEventListener('change', function() {
             folderChange(this.value);

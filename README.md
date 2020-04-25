@@ -2,6 +2,8 @@
 
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
 
+**Please set extension setting `hoi4ModUtilities.installPath` to correct HOI4 install path (and reload VSCode if possible) before using any preview features below. Or they won't be properly rendered.**
+
 ## Features
 
 ### Focus tree preview
