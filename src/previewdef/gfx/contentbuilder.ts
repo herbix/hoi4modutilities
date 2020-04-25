@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { getImageByPath } from '../../util/image/imagecache';
-import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
 import { SpriteType } from '../../hoiformat/schema';
+import { html } from '../../util/html';
 
 export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
@@ -16,19 +15,11 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
         baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
     }
 
-    return `<!doctype html>
-    <html>
-    <body>
-    <script>
-        window.previewedFileUri = "${uri.toString()}";
-    </script>
-    ${baseContent}
-    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
-    </script>
-    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/gfx.js')))}">
-    </script>
-    </body>
-    </html>`;
+    return html(webview, baseContent, [
+        { content: `window.previewedFileUri = "${uri.toString()}";` },
+        'common.js',
+        'gfx.js',
+    ]);
 }
 
 async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
@@ -49,11 +40,6 @@ async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
         <input
             id="filter"
             type="text"
-            onchange="hoi4mu.gfx.filterChange(this.value)"
-            onkeypress="hoi4mu.gfx.filterChange(this.value)"
-            onkeyup="hoi4mu.gfx.filterChange(this.value)"
-            onpaste="hoi4mu.gfx.filterChange(this.value)"
-            oncut="hoi4mu.gfx.filterChange(this.value)"
         />
     </div>`;
 
@@ -67,7 +53,9 @@ async function renderSpriteType(spriteType: SpriteType): Promise<string> {
     const image = await getImageByPath(spriteType.texturefile);
     return `<div
         id="${spriteType.name}"
-        class="spriteTypePreview"
+        class="spriteTypePreview navigator"
+        start="${spriteType._token?.start}"
+        end="${spriteType._token?.end}"
         title="${spriteType.name}${image ? ` (${
             image.width / spriteType.noofframes}x${image.height}x${spriteType.noofframes})` : ''
             }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}"
@@ -76,8 +64,7 @@ async function renderSpriteType(spriteType: SpriteType): Promise<string> {
             text-align: center;
             margin: 10px;
             cursor: pointer;
-        "
-        onclick="hoi4mu.navigateText(${spriteType._token?.start}, ${spriteType._token?.end})">
+        ">
         ${image ? `<img src="${image.uri}" />` :
             `<div style="
                 height: 100px;

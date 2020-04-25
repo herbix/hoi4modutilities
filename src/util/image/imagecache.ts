@@ -8,6 +8,7 @@ import { ddsToPng } from './converter';
 import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/schema';
 import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
+import { error } from '../debug';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -92,7 +93,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         return new Image(pngBuffer, png.width, png.height, realPath);
 
     } catch (e) {
-        console.error(e);
+        error(e);
         return undefined;
     }
 }
@@ -108,7 +109,7 @@ async function loadGfxMap(path: string): Promise<Record<string, (SpriteType | Co
         spriteTypes.forEach(st => gfxMap[st.name] = st);
 
     } catch (e) {
-        console.error(e);
+        error(e);
     }
 
     return gfxMap;

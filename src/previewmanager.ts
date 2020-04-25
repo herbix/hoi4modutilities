@@ -8,12 +8,14 @@ import { gfxPreviewDef } from './previewdef/gfx';
 import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from './constants';
 import { technologyPreviewDef } from './previewdef/technology';
 import { arrayToMap, matchPathEnd } from './util/common';
+import { debug, error } from './util/debug';
 
 interface PreviewMeta {
     uri: vscode.Uri;
     panel: vscode.WebviewPanel;
     previewProvider: PreviewProviderDef;
     debouncedUpdateMethod(document: vscode.TextDocument, panel: vscode.WebviewPanel): void;
+    disposed: boolean;
 }
 
 class PreviewManager implements vscode.WebviewPanelSerializer {
@@ -32,6 +34,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 	public onCloseTextDocument(document: vscode.TextDocument): void {
         const key = document.uri.toString();
         this._previews[key]?.panel.dispose();
+        debug(`dispose panel ${key} because text document closed`);
     }
     
 	public onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
@@ -60,6 +63,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         const uriStr = state?.uri as string | undefined;
         if (!uriStr) {
             panel.dispose();
+            debug(`dispose panel ??? because uri not exist`);
             return;
         }
 
@@ -68,8 +72,9 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             await vscode.workspace.openTextDocument(uri);
             await this.showPreviewImpl(uri, panel);
         } catch (e) {
-            console.error(e);
+            error(e);
             panel.dispose();
+            debug(`dispose panel ${uriStr} because reopen error`);
         }
     }
 
@@ -88,6 +93,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
                 vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}.", requestUri?.fsPath));
             }
             panel?.dispose();
+            debug(`dispose panel ${requestUri} because document not opened`);
             return;
         }
 
@@ -96,6 +102,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         if (key in this._previews) {
             this._previews[key].panel.reveal();
             panel?.dispose();
+            debug(`dispose panel ${uri} because preview already open`);
             return;
         }
 
@@ -104,6 +111,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             vscode.window.showInformationMessage(
                 localize('preview.cantpreviewfile', "Can't preview this file.\nValid types: {0}.", Object.keys(this._previewProvidersMap).join(', ')));
             panel?.dispose();
+            debug(`dispose panel ${uri} because no preview provider`);
             return;
         }
 
@@ -121,8 +129,12 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             panel,
             uri,
             previewProvider,
+            disposed: false,
             debouncedUpdateMethod: debounce((d, p) => {
-                previewProvider.update(d, p, d);
+                const preview = this._previews[key];
+                if (preview && !preview.disposed) {
+                    previewProvider.update(d, p, d);
+                }
             }, 1000, { trailing: true })
         };
         this._previews[key] = previewItem;
@@ -136,6 +148,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
                     preview.previewProvider.dispose(document, preview.panel);
                 }
 
+                preview.disposed = true;
                 this.removePreviewFromSubscription(preview);
                 delete this._previews[key];
             }
@@ -229,7 +242,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             if (document) {
                 for (const otherPreview of this.getPreviewItemsNeedsUpdate(path)) {
                     const otherDocument = this.getDocumentByUri(otherPreview.uri);
-                    if (otherDocument) {
+                    if (otherDocument && !otherPreview.disposed) {
                         otherPreview.previewProvider.update(otherDocument, otherPreview.panel, document);
                     }
                 }

@@ -5,6 +5,7 @@ import { PreviewCommand, PreviewWebviewType, ViewTypeDDS } from './constants';
 import { DDSViewProvider } from './ddsviewprovider';
 import { convertNodeFromFileToJson } from './hoiformat/schema';
 import { parseHoi4File } from './hoiformat/hoiparser';
+import { error } from './util/debug';
 
 export function activate(context: vscode.ExtensionContext) {
     contextContainer.current = context;
@@ -32,7 +33,7 @@ export function activate(context: vscode.ExtensionContext) {
                     const fs = require('fs');  
                     fs.writeFileSync('D:/temp/out.txt', JSON.stringify(convertNodeFromFileToJson(parseHoi4File(doc))));
                 } catch (e) {
-                    console.error(e);
+                    error(e);
                 }
             }
         });

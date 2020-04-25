@@ -89,12 +89,12 @@ function getTechnologies(technologies: HOIPartial<Technologies>['_map']): Record
     const result: Record<string, Technology> = {};
 
     for (const { _key, _value } of Object.values(technologies)) {
-        const id = _key;
+        const id = _key.toLowerCase();
         const technology = _value;
         const token = technology._token;
         const startYear = technology.start_year ?? 0;
-        const leadsToTechs = technology.path.map(p => p.leads_to_tech?._name).filter((p): p is string => p !== undefined);
-        const xor = technology.xor._values;
+        const leadsToTechs = technology.path.map(p => p.leads_to_tech?._name?.toLowerCase()).filter((p): p is string => p !== undefined);
+        const xor = technology.xor._values.map(v => v.toLowerCase());
         const enableEquipments = technology.enable_equipments._values.length > 0;
         const folders: Record<string, TechnologyFolder> = {};
         
@@ -120,7 +120,7 @@ function getTechnologies(technologies: HOIPartial<Technologies>['_map']): Record
         const techObject = result[id];
 
         for (const subTechnologyName of technology.sub_technologies._values) {
-            const subTechnology = result[subTechnologyName];
+            const subTechnology = result[subTechnologyName.toLowerCase()];
             if (subTechnology) {
                 techObject.subTechnologies.push(subTechnology);
             }

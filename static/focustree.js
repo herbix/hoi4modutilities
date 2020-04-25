@@ -25,11 +25,27 @@ window.hoi4mu.ft = (function() {
 
     window.addEventListener('load', function() {
         const hiddenBranches = hoi4mu.getState().hiddenBranches || {};
-        
         for (const key in hiddenBranches) {
             const element = document.getElementById(key);
             element.checked = false;
             showBranch(false, key);
+        }
+
+        const inbranchCheckboxes = document.getElementsByClassName("inbranch-checkbox");
+        for (let i = 0; i < inbranchCheckboxes.length; i++) {
+            const inbranchCheckbox = inbranchCheckboxes[i];
+            inbranchCheckbox.addEventListener('change', function() {
+                showBranch(this.checked, this.id);
+            });
+        }
+
+        const goToFocusButtons = document.getElementsByClassName("gotofocus-button");
+        for (let i = 0; i < goToFocusButtons.length; i++) {
+            const goToFocusButton = goToFocusButtons[i];
+            goToFocusButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                gotoFocus(this.attributes.focus.value);
+            });
         }
     });
 

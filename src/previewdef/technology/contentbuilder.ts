@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
-import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
 import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
 import { arrayToMap } from '../../util/common';
 import { readFileFromModOrHOI4 } from '../../util/fileloader';
 import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType, IconType, Format } from '../../hoiformat/schema';
-import { renderContainerWindow, renderContainerWindowChildren } from '../../util/html/containerwindow';
-import { ParentInfo } from '../../util/html/common';
-import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/html/gridbox';
-import { renderInstantTextBox } from '../../util/html/instanttextbox';
-import { renderIcon } from '../../util/html/icon';
+import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
+import { ParentInfo } from '../../util/hoi4gui/common';
+import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
+import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
+import { renderIcon } from '../../util/hoi4gui/icon';
+import { html } from '../../util/html';
 
 export const guiFilePath = 'interface/countrytechtreeview.gui';
 const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
@@ -34,19 +34,11 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
         baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
     }
 
-    return `<!doctype html>
-    <html>
-    <body>
-    <script>
-        window.previewedFileUri = "${uri.toString()}";
-    </script>
-    ${baseContent}
-    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/common.js')))}">
-    </script>
-    <script src="${webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/techtree.js')))}">
-    </script>
-    </body>
-    </html>`;
+    return html(webview, baseContent, [
+        { content: `window.previewedFileUri = "${uri.toString()}";` },
+        'common.js',
+        'techtree.js',
+    ]);
 }
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[]): Promise<string> {
@@ -65,11 +57,18 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes)))).join('');
     
     return `
-    <script>
-        document.body.style.background = '#101010';
-    </script>
     ${renderFolderSelector(folders)}
-    <div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
+    <div
+    id="dragger"
+    style="
+        width: 100vw;
+        height: 100vh;
+        position: fixed;
+        left:0;
+        top:0;
+        background:#101010;
+    ">
+    </div>
     <div
     style="
         position: absolute;
@@ -101,7 +100,6 @@ function renderFolderSelector(folders: string[]): string {
             id="folderSelector"
             type="text"
             style="min-width:200px"
-            onchange="hoi4mu.tt.folderChange(this.value)"
         >
             ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
         </select>
@@ -146,6 +144,7 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
     return `<div
         id="techfolder_${folder}"
         class="techfolder"
+        style="display:none;"
     >
         ${children}
     </div>`;
@@ -322,6 +321,9 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
     });
 
     return `<div
+        class="navigator"
+        start="${technology.token?.start}"
+        end="${technology.token?.end}"
         title="${technology.id}\n(${folder.x}, ${folder.y})"
         style="
             position: absolute;
@@ -331,8 +333,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
             height: 0;
             cursor: pointer;
             pointer-events: auto;
-        "
-        onClick="hoi4mu.navigateText(${technology.token?.start}, ${technology.token?.end})">
+        ">
             ${containerWindow}
         </div>`;
 }
@@ -377,6 +378,9 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
     });
 
     return `<div
+        class="navigator"
+        start="${subTechnology.token?.start}"
+        end="${subTechnology.token?.end}"
         title="${subTechnology.id}\n(${folder.x}, ${folder.y})"
         style="
             position: absolute;
@@ -386,8 +390,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
             height: p;
             cursor: pointer;
             pointer-events: auto;
-        "
-        onClick="event.stopPropagation(); hoi4mu.navigateText(${subTechnology.token?.start}, ${subTechnology.token?.end})">
+        ">
             ${containerWindowResult}
         </div>`;
 }

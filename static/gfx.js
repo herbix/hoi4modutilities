@@ -15,6 +15,16 @@ window.hoi4mu.gfx = (function() {
         const element = document.getElementById('filter');
         element.value = filter;
         filterChange(filter);
+
+        const changeFunc = function() {
+            hoi4mu.gfx.filterChange(this.value);
+        };
+
+        element.addEventListener('change', changeFunc);
+        element.addEventListener('keypress', changeFunc);
+        element.addEventListener('keyup', changeFunc);
+        element.addEventListener('paste', changeFunc);
+        element.addEventListener('cut', changeFunc);
     });
 
     return {

@@ -1,3 +1,5 @@
+import { error } from "./debug";
+
 const config = JSON.parse(process.env.VSCODE_NLS_CONFIG || '{}');
 const locale = config.locale;
 
@@ -6,7 +8,7 @@ let table: Record<string, string> = {};
 try {
     table = require('../../i18n/' + locale + '.ts');
 } catch(e) {
-    console.error(e);
+    error(e);
 }
 
 export function localize(key: string, message: string, ...args: any[]): string {
