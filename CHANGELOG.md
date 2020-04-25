@@ -4,11 +4,28 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.2.0] - 2020/04/25 - Latest
 
-* Empty
+### Added
+* Technology tree preview
+  * Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
+  * Navigate to related technology tag by clicking technology or subtechnology.
+  * Auto update preview when technology file changed.
+  * Switch technology folder if a technology tree contains technology from different folder.
+  * Can be dragged to scroll.
+* GFX file preview
+  * Support `corneredTileSpriteType` tags.
 
-## [0.1.1] - 2020/04/19 - Latest
+### Changed
+* GFX file preview
+  * Show image size on tooltip.
+* Focus tree preview
+  * Can be dragged to scroll.
+
+### Fixed
+* Fix 1 pixel offset of read `.dds` file.
+
+## [0.1.1] - 2020/04/19
 
 ### Fixed
 * Fix bug that the tokenizer will read `={` as one token.
