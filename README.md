@@ -73,4 +73,4 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
   * Can be dragged to scroll.
 
 ### Fixed
-* Fix 1 pixel offset of reading `.dds` file.
+* Fix 1 pixel offset of read `.dds` file.

@@ -34,7 +34,7 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
             img-src data:;
         ">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        ${preparedScripts.map(v => v[0])}
+        ${preparedScripts.map(v => v[0]).join('')}
     </head>
     <body>${body}</body>
 </html>

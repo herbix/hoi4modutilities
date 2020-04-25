@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
+* Empty
+
+## [0.2.0] - Latest
+
 ### Added
 * Technology tree preview
   * Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
@@ -23,9 +27,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   * Can be dragged to scroll.
 
 ### Fixed
-* Fix 1 pixel offset of reading `.dds` file.
+* Fix 1 pixel offset of read `.dds` file.
 
-## [0.1.1] - 2020/04/19 - Latest
+## [0.1.1] - 2020/04/19
 
 ### Fixed
 * Fix bug that the tokenizer will read `={` as one token.

@@ -29,7 +29,7 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
 }
 
 
-const leftPaddingBase = 50;
+const leftPaddingBase = 30;
 const topPaddingBase = 30;
 const xGridSize = 90;
 const yGridSize = 120;
