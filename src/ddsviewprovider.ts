@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
-import { parseDds } from './util/image/ddsparser';
 import { ddsToPng } from './util/image/converter';
 import { PNG } from 'pngjs';
 import { localize } from './util/i18n';
+import { DDS } from './util/image/dds';
+import { html } from './util/html';
 
 export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
 	public async openCustomDocument(uri: vscode.Uri) {
@@ -22,10 +23,16 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
                 return;
             }
 
-            const dds = parseDds(buffer.buffer);
+            const dds = DDS.parse(buffer.buffer);
             const png = ddsToPng(dds);
             const pngBuffer = PNG.sync.write(png);
-            webviewPanel.webview.html = `<img src="data:image/png;base64,${pngBuffer.toString('base64')}"/>`;
+            webviewPanel.webview.html = html(
+                webviewPanel.webview,
+                `<div style="width:${png.width}px;height:${png.height}px;">
+                    <img src="data:image/png;base64,${pngBuffer.toString('base64')}"/>
+                </div>`,
+                []
+            );
         } catch (e) {
             webviewPanel.webview.html = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
         }

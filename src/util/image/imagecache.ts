@@ -1,4 +1,3 @@
-import { parseDds } from './ddsparser';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
@@ -9,6 +8,7 @@ import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/schema';
 import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';
+import { DDS } from './dds';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -86,7 +86,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         let pngBuffer: Buffer;
 
         if (relativePath.endsWith('.dds')) {
-            const dds = parseDds(buffer.buffer);
+            const dds = DDS.parse(buffer.buffer);
             png = ddsToPng(dds);
             pngBuffer = PNG.sync.write(png);
 
@@ -101,6 +101,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         return new Image(pngBuffer, png.width, png.height, realPath);
 
     } catch (e) {
+        error("Failed to get image " + relativePath);
         error(e);
         return undefined;
     }
