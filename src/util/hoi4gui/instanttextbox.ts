@@ -1,8 +1,8 @@
 import { InstantTextBoxType, HOIPartial } from "../../hoiformat/schema";
 import { ParentInfo, calculateBBox, RenderCommonOptions, normalizeNumberLike } from "./common";
+import { htmlEscape } from "../html";
 
 export interface RenderInstantTextBoxOptions extends RenderCommonOptions {
-
 }
 
 export async function renderInstantTextBox(textbox: HOIPartial<InstantTextBoxType>, parentInfo: ParentInfo, options: RenderInstantTextBoxOptions): Promise<string> {
@@ -20,20 +20,24 @@ export async function renderInstantTextBox(textbox: HOIPartial<InstantTextBoxTyp
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
-    ${options.classNames ? `class="${options.classNames}"` : ''}
-    style="
-        position: absolute;
-        left: ${x}px;
-        top: ${y}px;
-        width: ${width}px;
-        height: ${height}px;
-        font-size: ${fontSize}px;
-        text-align: ${format};
-        padding: ${borderY}px ${borderX}px;
-        box-sizing: border-box;
-        color: white;
-        text-shadow: 0 0 3px black, 0px 0px 5px black;
+    class="
+        ${options?.classNames ? options.classNames : ''}
+        ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+        ${options.styleTable.style('borderBox', () => `box-sizing: border-box;`)}
+        ${options.styleTable.oneTimeStyle('instanttextbox', () => `
+            left: ${x}px;
+            top: ${y}px;
+            width: ${width}px;
+            height: ${height}px;
+            font-size: ${fontSize}px;
+            text-align: ${format};
+            padding: ${borderY}px ${borderX}px;
+        `)}
+        ${options.styleTable.style('instanttextbox-common', () => `
+            color: white;
+            text-shadow: 0 0 3px black, 0px 0px 5px black;
+        `)}
     ">
-        ${textbox.text}
+        ${htmlEscape(textbox.text)}
     </div>`;
 }

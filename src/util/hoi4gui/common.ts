@@ -2,6 +2,7 @@ import { NumberLike, Position, Margin, ComplexSize, HOIPartial, Size, Orientatio
 import { Sprite } from "../image/imagecache";
 import { NumberSize, NumberPosition } from "../common";
 import { CorneredTileSprite } from "../image/sprite";
+import { StyleTable } from "../html";
 
 export interface ParentInfo {
     size: NumberSize;
@@ -12,6 +13,7 @@ export interface RenderCommonOptions {
     id?: string;
     classNames?: string;
     getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
+    styleTable: StyleTable;
 }
 
 export function normalizeNumberLike(value: NumberLike, parentValue: number, subtractValue?: number): number;
@@ -103,26 +105,30 @@ export function normalizeMargin(margin: Partial<Margin> | undefined, size: Numbe
     ];
 }
 
-export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, options?: RenderCommonOptions): string {
+export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, options: RenderCommonOptions): string {
     if (sprite instanceof CorneredTileSprite) {
-        return renderCorneredTileSprite(position, size, sprite, options);
+        return renderCorneredTileSprite(position, size, sprite, frame, options);
     }
 
     return `<div
     ${options?.id ? `id="${options.id}"` : ''}
-    ${options?.classNames ? `class="${options.classNames}"` : ''}
-    style="
-        position: absolute;
-        left: ${position.x}px;
-        top: ${position.y}px;
-        width: ${sprite.width}px;
-        height: ${sprite.height}px;
-        background-image: url(${sprite.frames[frame]?.uri});
-        background-size: ${sprite.width}px ${sprite.height}px;
+    class="
+        ${options?.classNames ? options.classNames : ''}
+        ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+        ${options.styleTable.oneTimeStyle('sprite', () => `
+            left: ${position.x}px;
+            top: ${position.y}px;
+            width: ${sprite.width}px;
+            height: ${sprite.height}px;
+        `)}
+        ${options.styleTable.style(`sprite-img-${sprite.id}-${frame}`, () => `
+            background-image: url(${sprite.frames[frame]?.uri});
+            background-size: ${sprite.width}px ${sprite.height}px;
+        `)}
     "></div>`;
 }
 
-export function renderCorneredTileSprite(position: NumberPosition, size: NumberSize, sprite: CorneredTileSprite, options?: RenderCommonOptions): string {
+export function renderCorneredTileSprite(position: NumberPosition, size: NumberSize, sprite: CorneredTileSprite, frame: number, options: RenderCommonOptions): string {
     const sizeX = size.width;
     const sizeY = size.height;
     let borderX = sprite.borderSize.x;
@@ -130,7 +136,7 @@ export function renderCorneredTileSprite(position: NumberPosition, size: NumberS
     const xPos = borderX * 2 > sizeX ? [0, sizeX / 2, sizeX / 2, sizeX] : [0, borderX, sizeX - borderX, sizeX];
     const yPos = borderY * 2 > sizeY ? [0, sizeY / 2, sizeY / 2, sizeY] : [0, borderY, sizeY - borderY, sizeY];
     const divs: string[] = [];
-    const tiles = sprite.getTiles(0);
+    const tiles = sprite.getTiles(frame);
 
     for (let y = 0; y < 3; y++) {
         const height = yPos[y + 1] - yPos[y];
@@ -147,16 +153,20 @@ export function renderCorneredTileSprite(position: NumberPosition, size: NumberS
             const tileIndex = y * 3 + x;
             const tile = tiles[tileIndex];
             divs.push(`<div
-            style="
-                position: absolute;
-                left: ${left}px;
-                top: ${top}px;
-                width: ${width}px;
-                height: ${height}px;
-                background: url(${tile.uri});
-                background-size: ${tile.width}px ${tile.height}px;
-                background-repeat: repeat;
-                background-position: ${x === 2 ? 'right' : 'left'} ${y === 2 ? 'bottom' : 'top'};
+            class="
+                ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+                ${options.styleTable.oneTimeStyle('corneredtilesprite-tile', () => `
+                    left: ${left}px;
+                    top: ${top}px;
+                    width: ${width}px;
+                    height: ${height}px;
+                `)}
+                ${options.styleTable.style(`corneredtilesprite-img-${sprite.id}-${frame}-${x}-${y}`, () => `
+                    background: url(${tile.uri});
+                    background-size: ${tile.width}px ${tile.height}px;
+                    background-repeat: repeat;
+                    background-position: ${x === 2 ? 'right' : 'left'} ${y === 2 ? 'bottom' : 'top'};
+                `)}
             "></div>
             `);
         }
@@ -164,13 +174,15 @@ export function renderCorneredTileSprite(position: NumberPosition, size: NumberS
 
     return `<div
     ${options?.id ? `id="${options.id}"` : ''}
-    ${options?.classNames ? `class="${options.classNames}"` : ''}
-    style="
-        position: absolute;
-        left: ${position.x}px;
-        top: ${position.y}px;
-        width: ${size.width}px;
-        height: ${size.height}px;
+    class="
+        ${options?.classNames ? options.classNames : ''}
+        ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+        ${options.styleTable.oneTimeStyle('corneredtilesprite', () => `
+            left: ${position.x}px;
+            top: ${position.y}px;
+            width: ${size.width}px;
+            height: ${size.height}px;
+        `)}
     ">
         ${divs.join('')}
     </div>`;
@@ -183,13 +195,13 @@ export function removeHtmlOptions<T>(options: T): { [K in Exclude<keyof T, 'id' 
     return result;
 }
 
-export async function renderBackground(background: HOIPartial<Background> | undefined, parentInfo: ParentInfo, getSprite: RenderCommonOptions['getSprite']): Promise<string> {
+export async function renderBackground(background: HOIPartial<Background> | undefined, parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
     if (background === undefined) {
         return '';
     }
 
     const backgroundSpriteName = background?.spritetype ?? background?.quadtexturesprite;
-    const backgroundSprite = backgroundSpriteName && getSprite ? await getSprite(backgroundSpriteName, 'bg', background?.name) : undefined;
+    const backgroundSprite = backgroundSpriteName && commonOptions.getSprite ? await commonOptions.getSprite(backgroundSpriteName, 'bg', background?.name) : undefined;
 
     if (backgroundSprite === undefined) {
         return '';
@@ -200,5 +212,5 @@ export async function renderBackground(background: HOIPartial<Background> | unde
         size: { width: parseNumberLike('100%%'), height: parseNumberLike('100%%') }
     }, parentInfo);
     
-    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0);
+    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0, commonOptions);
 }

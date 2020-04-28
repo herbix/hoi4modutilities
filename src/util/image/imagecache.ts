@@ -73,10 +73,10 @@ async function getSpriteByGfxNameImpl(name: string, gfxFilePath: string): Promis
     }
 
     if ('bordersize' in sprite) {
-        return new CorneredTileSprite(image, sprite.noofframes, sprite.size, sprite.bordersize);
+        return new CorneredTileSprite(name, image, sprite.noofframes, sprite.size, sprite.bordersize);
     }
 
-    return new Sprite(image, sprite.noofframes);
+    return new Sprite(name, image, sprite.noofframes);
 }
 
 async function getImage(relativePath: string): Promise<Image | undefined> {

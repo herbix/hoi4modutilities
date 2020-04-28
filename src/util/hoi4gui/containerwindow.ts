@@ -28,20 +28,22 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
         orientation,
     };
 
-    const background = await renderBackground(containerWindow.background, myInfo, options.getSprite);
+    const background = await renderBackground(containerWindow.background, myInfo, options);
     const children = await renderContainerWindowChildren(containerWindow, myInfo, options);
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
-    ${options.classNames ? `class="${options.classNames}"` : ''}
-    style="
-        position: absolute;
-        left: ${x}px;
-        top: ${y}px;
-        width: ${options.noSize ? 0 : width}px;
-        height: ${options.noSize ? 0 : height}px;
-        padding: ${margin.map(m => m + 'px').join(' ')};
-        box-sizing: border-box;
+    class="
+        ${options?.classNames ? options.classNames : ''}
+        ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+        ${options.styleTable.style('borderBox', () => `box-sizing: border-box;`)}
+        ${options.styleTable.oneTimeStyle('containerwindow', () => `
+            left: ${x}px;
+            top: ${y}px;
+            width: ${options.noSize ? 0 : width}px;
+            height: ${options.noSize ? 0 : height}px;
+            padding: ${margin.map(m => m + 'px').join(' ')};
+        `)}
     ">
         ${background}
         ${children}
@@ -56,7 +58,7 @@ export async function renderContainerWindowChildren(containerWindow: HOIPartial<
     const iconChildren = containerWindow.icontype
         .map(c => onRenderChildOrDefault(options.onRenderChild, 'icon', c, myInfo, c1 => renderIcon(c1, myInfo, removeHtmlOptions(options))));
     const instantTextBoxChildren = containerWindow.instanttextboxtype
-        .map(c => onRenderChildOrDefault(options.onRenderChild, 'instanttextbox', c, myInfo, c1 => renderInstantTextBox(c1, myInfo, {})));
+        .map(c => onRenderChildOrDefault(options.onRenderChild, 'instanttextbox', c, myInfo, c1 => renderInstantTextBox(c1, myInfo, removeHtmlOptions(options))));
 
     const result = (await Promise.all([...containerWindowChildren, ...gridboxChildren, ...iconChildren, ...instantTextBoxChildren]));
     result.sort((a, b) => a[0] - b[0]);

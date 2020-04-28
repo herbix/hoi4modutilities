@@ -22,6 +22,7 @@ export class Image {
 export class Sprite {
     private cachedFrames: Image[] | undefined = undefined;
     constructor(
+        readonly id: string,
         readonly image: Image,
         readonly noOfFrames: number) {
     }
@@ -62,11 +63,12 @@ export class CorneredTileSprite extends Sprite {
     private cachedTiles: Record<number, Image[]> = {};
 
     constructor(
+        id: string,
         image: Image,
         noOfFrames: number,
         readonly size: NumberPosition,
         readonly borderSize: NumberPosition) {
-        super(image, noOfFrames);
+        super(id, image, noOfFrames);
     }
 
     public getTiles(frameId: number = 0): Image[] {

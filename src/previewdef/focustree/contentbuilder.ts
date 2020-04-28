@@ -6,29 +6,30 @@ import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
 import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbol } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
-import { html } from '../../util/html';
+import { html, StyleTable, htmlEscape } from '../../util/html';
 
 export const focusesGFX = 'interface/goals.gfx';
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
 export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+    const styleTable = new StyleTable();
     let baseContent = '';
     try {
         const focustrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
         if (focustrees.length > 0) {
-            baseContent = await renderFocusTree(focustrees[0]);
+            baseContent = await renderFocusTree(focustrees[0], styleTable);
         } else {
             baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }
     } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
+        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
     }
 
     return html(webview, baseContent, [
         { content: `window.previewedFileUri = "${uri.toString()}";` },
         'common.js',
         'focustree.js',
-    ]);
+    ], styleTable);
 }
 
 
@@ -38,7 +39,7 @@ const xGridSize = 90;
 const yGridSize = 120;
 const optionHeight = 20;
 
-async function renderFocusTree(focustree: FocusTree): Promise<string> {
+async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable): Promise<string> {
     const focuses = Object.values(focustree.focuses);
     const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 1000);
     const leftPadding = leftPaddingBase - minX * xGridSize;
@@ -52,14 +53,21 @@ async function renderFocusTree(focustree: FocusTree): Promise<string> {
     } as HOIPartial<GridBoxType>;
 
     return (
-        '<div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>' +
-        focustree.allowBranchOptions.map((option, index) => renderAllowBranchOptions(option, index)).join('') +
+        `<div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            left:0;
+            top:0;
+        `)}"></div>` +
+        focustree.allowBranchOptions.map((option, index) => renderAllowBranchOptions(option, index, styleTable)).join('') +
         await renderGridBox(gridBox, {
             size: { width: 0, height: 0 },
             orientation: 'upper_left'
         }, {
+            styleTable,
             items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
-            onRenderItem: item => renderFocus(focustree.focuses[item.id]),
+            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable),
             cornerPosition: 0.5,
         })
     );
@@ -111,43 +119,47 @@ function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
 }
 
 
-function renderAllowBranchOptions(option: string, index: number): string {
-    return `<div style="
+function renderAllowBranchOptions(option: string, index: number, styleTable: StyleTable): string {
+    return `<div class="${styleTable.oneTimeStyle('allowBranchOptions', () => `
         position: fixed;
         left: ${leftPaddingBase}px;
         top: ${10 + index * optionHeight}px;
         z-index: 100;
-    ">
+    `)}">
         <input type="checkbox" checked="true" id="inbranch_${option}" class="inbranch-checkbox"/>
         <label for="inbranch_${option}">${option}</label>
-        <a style="display:inline" class="gotofocus-button" focus="focus_${option}" href="javascript:;">Goto</a>
+        <a class="gotofocus-button ${styleTable.style('displayInline', () => `display:inline;`)}" focus="focus_${option}" href="javascript:;">Goto</a>
     </div>`;
 }
 
-async function renderFocus(focus: Focus): Promise<string> {
+async function renderFocus(focus: Focus, styleTable: StyleTable): Promise<string> {
     const icon = focus.icon ? await getFocusIcon(focus.icon) : null;
 
     return `<div
-    class="navigator"
+    class="
+        navigator
+        ${styleTable.oneTimeStyle('focus', () => `
+            ${icon ? `background-image: url(${icon?.uri});` : 'background: grey;'}
+            background-size: ${icon ? icon.width: 0}px;
+        `)}
+        ${styleTable.style('focus-common', () => `
+            background-position: center;
+            background-repeat: no-repeat;
+            width: 100%;
+            height: 100%;
+            text-align: center;
+            cursor: pointer;
+        `)}
+    "
     start="${focus.token?.start}"
     end="${focus.token?.end}"
-    title="${focus.id}\n(${focus.x}, ${focus.y})"
-    style="
-        ${icon ? `background-image: url(${icon?.uri});` : 'background: grey;'}
-        background-position: center;
-        background-repeat: no-repeat;
-        background-size: ${icon ? icon.width: 0}px;
-        width: 100%;
-        height: 100%;
-        text-align: center;
-        cursor: pointer;
-    ">
+    title="${focus.id}\n(${focus.x}, ${focus.y})">
         <span
-        style="
+        class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;
             text-align: center;
             display: inline-block;
-            ">${focus.id}
+        `)}">${focus.id}
         </span>
     </div>`;
 }

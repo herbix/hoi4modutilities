@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { renderGfxFile } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
+import { localize } from '../../util/i18n';
 
 async function showGfxPreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = 'Loading...';
+    panel.webview.html = localize('loading', 'Loading...');
     panel.webview.html = await renderGfxFile(document.getText(), document.uri, panel.webview);
 }
 

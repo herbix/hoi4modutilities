@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { localize } from '../../util/i18n';
 import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from './schema';
@@ -8,11 +7,11 @@ import { arrayToMap } from '../../util/common';
 import { readFileFromModOrHOI4 } from '../../util/fileloader';
 import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType, IconType, Format } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
-import { ParentInfo } from '../../util/hoi4gui/common';
+import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
 import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
-import { html } from '../../util/html';
+import { html, StyleTable, htmlEscape } from '../../util/html';
 
 export const guiFilePath = 'interface/countrytechtreeview.gui';
 const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
@@ -22,27 +21,32 @@ const techTreeViewName = 'countrytechtreeview';
 
 export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
+    const styleTable = new StyleTable();
     try {
         const technologyTrees = getTechnologyTrees(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
         const folders = technologyTrees.map(tt => tt.folder).filter((v, i, a) => i === a.indexOf(v));
         if (folders.length < 1) {
             baseContent = localize('techtree.notechtree', 'No technology tree.');
         } else {
-            baseContent = await renderTechnologyFolders(technologyTrees, folders);
+            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable);
         }
 
     } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
+        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
     }
 
-    return html(webview, baseContent, [
-        { content: `window.previewedFileUri = "${uri.toString()}";` },
-        'common.js',
-        'techtree.js',
-    ]);
+    return html(
+        webview,
+        baseContent,
+        [
+            { content: `window.previewedFileUri = "${uri.toString()}";` },
+            'common.js',
+            'techtree.js',
+        ],
+        styleTable);
 }
 
-async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[]): Promise<string> {
+async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable): Promise<string> {
     const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
     const fileContent = guiFile.toString();
 
@@ -53,36 +57,36 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
         throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFilePath));
     }
 
-    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes)))).join('');
-    
+    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes, styleTable)))).join('');
+
     return `
-    ${renderFolderSelector(folders)}
+    ${renderFolderSelector(folders, styleTable)}
     <div
     id="dragger"
-    style="
+    class="${styleTable.oneTimeStyle('dragger', () => `
         width: 100vw;
         height: 100vh;
         position: fixed;
         left:0;
         top:0;
         background:#101010;
-    ">
+    `)}">
     </div>
     <div
-    style="
+    class="${styleTable.oneTimeStyle('mainContent', () => `
         position: absolute;
         left: 0;
         top: 0;
         pointer-events: none;
         margin-top: 40px;
-    ">
+    `)}">
         ${techFolders}
     </div>`;
 }
 
-function renderFolderSelector(folders: string[]): string {
+function renderFolderSelector(folders: string[], styleTable: StyleTable): string {
     return `<div
-    style="
+    class="${styleTable.oneTimeStyle('folderSelectorBar', () => `
         position: fixed;
         padding-top: 10px;
         padding-left: 20px;
@@ -93,19 +97,21 @@ function renderFolderSelector(folders: string[]): string {
         background: var(--vscode-editor-background);
         border-bottom: 1px solid var(--vscode-panel-border);
         z-index: 10;
-    ">
-        <label for="folderSelector" style="margin-right:5px">${localize('techtree.techfolder', 'Technology folder: ')}</label>
+    `)}">
+        <label for="folderSelector" class="${styleTable.oneTimeStyle('folderSelectorLabel', () => `margin-right:5px`)}">
+            ${localize('techtree.techfolder', 'Technology folder: ')}
+        </label>
         <select
             id="folderSelector"
             type="text"
-            style="min-width:200px"
+            class="${styleTable.oneTimeStyle('folderSelector', () => `min-width:200px`)}"
         >
             ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
         </select>
     </div>`;
 }
 
-async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder: string, techTreeView: HOIPartial<ContainerWindowType>, allContainerWindowTypes: HOIPartial<ContainerWindowType>[]): Promise<string> {
+async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder: string, techTreeView: HOIPartial<ContainerWindowType>, allContainerWindowTypes: HOIPartial<ContainerWindowType>[],  styleTable: StyleTable): Promise<string> {
     const folderTreeView = techTreeView.containerwindowtype.find(c => c.name === folder);
     let children: string;
     if (!folderTreeView) {
@@ -117,6 +123,11 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
         const lineItem = allContainerWindowTypes.find(c => c.name === 'techtree_line_item');
         const xorItem = allContainerWindowTypes.find(c => c.name === 'techtree_xor_item');
 
+        const commonOptions: RenderCommonOptions = {
+            getSprite: defaultGetSprite,
+            styleTable,
+        };
+
         children = await renderContainerWindowChildren(
             folderTreeView,
             {
@@ -124,18 +135,18 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
                 orientation: 'upper_left',
             },
             {
+                ...commonOptions,
                 onRenderChild: async (type, child, parentInfo) => {
                     if (type === 'gridbox') {
                         const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
                         if (tree) {
                             const gridboxType = child as HOIPartial<GridBoxType>;
-                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo);
+                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo, commonOptions);
                         }
                     }
 
                     return undefined;
                 },
-                getSprite: defaultGetSprite
             }
         );
     }
@@ -143,7 +154,7 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
     return `<div
         id="techfolder_${folder}"
         class="techfolder"
-        style="display:none;"
+        class="${styleTable.style('displayNone', () => `display:none;`)}"
     >
         ${children}
     </div>`;
@@ -157,7 +168,8 @@ async function renderTechnologyTreeGridBox(
     folderSmallItem: HOIPartial<ContainerWindowType> | undefined,
     lineItem: HOIPartial<ContainerWindowType> | undefined,
     xorItem: HOIPartial<ContainerWindowType> | undefined,
-    parentInfo: ParentInfo
+    parentInfo: ParentInfo,
+    commonOptions: RenderCommonOptions,
 ): Promise<string> {
     const xorJointKey = "#xorJoint#";
     const treeMap = arrayToMap(tree.technologies, 'id');
@@ -210,6 +222,7 @@ async function renderTechnologyTreeGridBox(
     ).reduce((p, c) => p.concat(c), []);
 
     return await renderGridBox(gridboxType, parentInfo, {
+        ...commonOptions,
         items: arrayToMap([...technologyItemsArray, ...technologyXorJointsItemsArray], 'id'),
         lineRenderMode: lineItem ? 'control' : 'line',
         onRenderItem: async (item, parent) => {
@@ -217,20 +230,19 @@ async function renderTechnologyTreeGridBox(
                 if (xorItem === undefined) {
                     return '';
                 }
-                return await renderXorItem(xorItem, gridboxType.format?._name ?? 'up', parent);
+                return await renderXorItem(xorItem, gridboxType.format?._name ?? 'up', parent, commonOptions);
             } else {
                 const technology = treeMap[item.id];
                 const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
-                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent);
+                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent, commonOptions);
             }
         },
         onRenderLineBox: async (item, parent) => {
             if (!lineItem) {
                 return '';
             }
-            return await renderLineItem(lineItem, item, parent, treeMap);
+            return await renderLineItem(lineItem, item, parent, commonOptions);
         },
-        getSprite: defaultGetSprite
     });
 }
 
@@ -262,35 +274,36 @@ function findXorGroups(treeMap: Record<string, Technology>, technology: Technolo
     return [nonXors, ...xorGroups];
 }
 
-async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: Format['_name'], parentInfo: ParentInfo): Promise<string> {
+async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: Format['_name'], parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
     const upDownDirection = format === 'left' || format === 'right';
     return await renderContainerWindow(xorItem, parentInfo, {
+        ...commonOptions,
         onRenderChild: async (type, child, parent) => {
             if (type === 'icon') {
                 const childName = child.name?.toLowerCase();
                 if (childName === 'first') {
-                    return await renderIcon({ ...child, spritetype: upDownDirection ? 'GFX_techtree_xor_up' : 'GFX_techtree_xor_left' } as HOIPartial<IconType>,
-                        parent, { getSprite: defaultGetSprite });
+                    return await renderIcon({...child, spritetype: upDownDirection ? 'GFX_techtree_xor_up' : 'GFX_techtree_xor_left' } as HOIPartial<IconType>,
+                        parent, commonOptions);
                 }
                 if (childName === 'second') {
                     return await renderIcon({ ...child, spritetype: upDownDirection ? 'GFX_techtree_xor_down' : 'GFX_techtree_xor_right' } as HOIPartial<IconType>,
-                        parent, { getSprite: defaultGetSprite });
+                        parent, commonOptions);
                 }
             }
 
             return undefined;
         },
-        getSprite: defaultGetSprite
     });
 }
 
-async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefined, technology: Technology, folder: TechnologyFolder, parentInfo: ParentInfo): Promise<string> {
+async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefined, technology: Technology, folder: TechnologyFolder, parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
     if (!item) {
         return `<div>${localize('techtree.cantfindtechitemin', "Can't find containerwindowtype \"{0}\" in {1}", `techtree_${folder.name}_item`, guiFilePath)}</div>`;
     }
 
     const subSlotRegex = /^sub_technology_slot_(\d)$/;
     const containerWindow = await renderContainerWindow(item, parentInfo, {
+        ...commonOptions,
         noSize: true,
         getSprite: (sprite, callerType, callerName) => getTechnologySprite(sprite, technology, folder.name, callerType, callerName),
         onRenderChild: async (type, child, parentInfo) => {
@@ -303,7 +316,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
                 if (childname === 'bonus') {
                     return '';
                 } else if (childname === 'name') {
-                    return await renderInstantTextBox({ ...child, text: technology.id } as HOIPartial<InstantTextBoxType>, parentInfo, {});
+                    return await renderInstantTextBox({ ...child, text: technology.id } as HOIPartial<InstantTextBoxType>, parentInfo, commonOptions);
                 }
             }
 
@@ -311,7 +324,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
                 const subSlot = subSlotRegex.exec(child.name.toLowerCase());
                 if (subSlot) {
                     const slotId = parseInt(subSlot[1]);
-                    return await renderSubTechnology(child as HOIPartial<ContainerWindowType>, folder, technology.subTechnologies[slotId], parentInfo);
+                    return await renderSubTechnology(child as HOIPartial<ContainerWindowType>, folder, technology.subTechnologies[slotId], parentInfo, commonOptions);
                 }
             }
 
@@ -324,7 +337,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
         start="${technology.token?.start}"
         end="${technology.token?.end}"
         title="${technology.id}\n(${folder.x}, ${folder.y})"
-        style="
+        class="${commonOptions.styleTable.style('navigator', () => `
             position: absolute;
             left: 0;
             top: 0;
@@ -332,7 +345,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
             height: 0;
             cursor: pointer;
             pointer-events: auto;
-        ">
+        `)}">
             ${containerWindow}
         </div>`;
 }
@@ -355,12 +368,13 @@ async function getTechnologySprite(sprite: string, technology: Technology, folde
     return await getSpriteFromTryList(imageTryList);
 }
 
-async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowType>, folder: TechnologyFolder, subTechnology: Technology | undefined, parentInfo: ParentInfo): Promise<string> {
+async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowType>, folder: TechnologyFolder, subTechnology: Technology | undefined, parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
     if (subTechnology === undefined) {
         return '';
     }
 
     const containerWindowResult = await renderContainerWindow(containerWindow, parentInfo, {
+        ...commonOptions,
         getSprite: (sprite, callerType, callerName) => {
             let imageTryList = [sprite];
             if (callerType === 'bg' && callerName === containerWindow.background?.name) {
@@ -381,7 +395,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
         start="${subTechnology.token?.start}"
         end="${subTechnology.token?.end}"
         title="${subTechnology.id}\n(${folder.x}, ${folder.y})"
-        style="
+        class="${commonOptions.styleTable.style('navigator', () => `
             position: absolute;
             left: 0;
             top: 0;
@@ -389,7 +403,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
             height: p;
             cursor: pointer;
             pointer-events: auto;
-        ">
+        `)}">
             ${containerWindowResult}
         </div>`;
 }
@@ -405,7 +419,7 @@ async function renderLineItem(
     lineItem: HOIPartial<ContainerWindowType>,
     item: GridBoxConnectionItem,
     parentInfo: ParentInfo,
-    technologies: Record<string, Technology>
+    commonOptions: RenderCommonOptions,
 ): Promise<string> {
     const centerNameCode = (item.up ? 1 : 0) | (item.right ? 2 : 0) | (item.down ? 4 : 0) | (item.left ? 8 : 0);
     const centerName: string | undefined = centerNameTable[centerNameCode];
@@ -426,6 +440,7 @@ async function renderLineItem(
     }
 
     const containerWindow = await renderContainerWindow(lineItem, parentInfo, {
+        ...commonOptions,
         noSize: true,
         onRenderChild: async (type, child, parent) => {
             if (type === 'icon') {
@@ -436,7 +451,7 @@ async function renderLineItem(
                             ...child,
                             spritetype: `GFX_techtree_line_${childName}_${sameInOut ? 'dot_' : ''}states`,
                             frame: 2
-                        } as HOIPartial<IconType>, parent, { getSprite: defaultGetSprite });
+                        } as HOIPartial<IconType>, parent, commonOptions);
                     } else {
                         return '';
                     }
@@ -445,7 +460,7 @@ async function renderLineItem(
                         return await renderIcon({
                             ...child,
                             spritetype: `GFX_techline_center_${centerName}_states`, frame: 2
-                        } as HOIPartial<IconType>, parent, { getSprite: defaultGetSprite });
+                        } as HOIPartial<IconType>, parent, commonOptions);
                     } else {
                         return '';
                     }
@@ -454,7 +469,6 @@ async function renderLineItem(
 
             return undefined;
         },
-        getSprite: defaultGetSprite,
     });
 
     return containerWindow;

@@ -6,7 +6,7 @@ export interface DynamicScript {
     content: string;
 }
 
-export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[]): string {
+export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: StyleTable): string {
     const preparedScripts = scripts.map<[string, string]>(script => {
         if (typeof script === 'string') {
             const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + script)));
@@ -22,6 +22,9 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
             ];
         }
     });
+
+    const styleNonce = randomString(32);
+
     return `
 <!DOCTYPE html>
 <html>
@@ -29,14 +32,17 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         <meta charset="UTF-8">
         <meta http-equiv="Content-Security-Policy" content="
             default-src 'none';
-            style-src 'unsafe-inline';
+            style-src ${styles ? `'nonce-${styleNonce}'` : "'unsafe-inline'"};
             script-src ${preparedScripts.map(v => v[1]).filter(v => v.length > 0).join(' ')} ${webview.cspSource};
             img-src data:;
         ">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         ${preparedScripts.map(v => v[0]).join('')}
+        ${styles?.toStyleElement(styleNonce) ?? ''}
     </head>
-    <body>${body}</body>
+    <body>${body.replace(/(<\w+(?:\s+\w+\s*=\s*".*?")*?\s+class\s*=\s*")(.*?)("(?:\s+\w+\s*=\s*".*?")*?\s*\/?>)/gs, (substr, g1, g2, g3) => {
+        return g1 + g2.replace(/\s+/g, ' ').trim() + g3;
+    })}</body>
 </html>
 `;
 }
@@ -50,3 +56,49 @@ export function randomString(length: number, charset: string | undefined = undef
     }
     return result;
  }
+
+export function htmlEscape(unsafe: string): string {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+export class StyleTable {
+    readonly records: Record<string, string> = {};
+    private id: number = 0;
+
+    public style(name: string, callback: () => string): string
+    public style(name: string, callback: () => Promise<string>): Promise<string>
+    public style(name: string, callback: (() => string) | (() => Promise<string>)): string | Promise<string> {
+        name = 'st-' + name;
+        const result = this.records[name];
+        if (result !== undefined) {
+            return name;
+        }
+    
+        const callbackResult = callback();
+        if (typeof callbackResult === 'string') {
+            this.records[name] = callbackResult;
+            return name;
+        } else {
+            return callbackResult.then<string>(v => {
+                this.records[name] = v;
+                return name;
+            });
+        }
+    }
+
+    public oneTimeStyle(name: string, callback: () => string): string
+    public oneTimeStyle(name: string, callback: () => Promise<string>): Promise<string>
+    public oneTimeStyle(name: string, callback: (() => string) | (() => Promise<string>)): string | Promise<string> {
+        const sid = this.id++;
+        return this.style(name + '-' + sid, callback as any);
+    }
+
+    public toStyleElement(nonce: string): string {
+        return `<style nonce="${nonce}">${Object.entries(this.records).map(([k, v]) => `.${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}</style>`;
+    }
+}

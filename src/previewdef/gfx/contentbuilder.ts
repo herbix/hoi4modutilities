@@ -4,28 +4,33 @@ import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { SpriteType } from '../../hoiformat/schema';
-import { html } from '../../util/html';
+import { html, StyleTable, htmlEscape } from '../../util/html';
 
 export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+    const styleTable = new StyleTable();
     let baseContent = '';
     try {
         const spriteTypes = getSpriteTypes(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
-        baseContent = await renderSpriteTypes(spriteTypes);
+        baseContent = await renderSpriteTypes(spriteTypes, styleTable);
     } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${e.toString()}</pre>`;
+        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
     }
 
-    return html(webview, baseContent, [
-        { content: `window.previewedFileUri = "${uri.toString()}";` },
-        'common.js',
-        'gfx.js',
-    ]);
+    return html(
+        webview,
+        baseContent, 
+        [
+            { content: `window.previewedFileUri = "${uri.toString()}";` },
+            'common.js',
+            'gfx.js',
+        ],
+        styleTable);
 }
 
-async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
-    const imageList = (await Promise.all(spriteTypes.map(st => renderSpriteType(st)))).join('');
+async function renderSpriteTypes(spriteTypes: SpriteType[], styleTable: StyleTable): Promise<string> {
+    const imageList = (await Promise.all(spriteTypes.map(st => renderSpriteType(st, styleTable)))).join('');
     const filter = `<div
-    style="
+    class="${styleTable.style('filterBar', () => `
         position: fixed;
         padding-top: 10px;
         padding-left: 20px;
@@ -35,8 +40,8 @@ async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
         left: 0;
         background: var(--vscode-editor-background);
         border-bottom: 1px solid var(--vscode-panel-border);
-    ">
-        <label for="filter" style="margin-right:5px">${localize('gfx.filter', 'Filter: ')}</label>
+    `)}">
+        <label for="filter" class="${styleTable.style('filterLabel', () => `margin-right:5px`)}">${localize('gfx.filter', 'Filter: ')}</label>
         <input
             id="filter"
             type="text"
@@ -44,47 +49,55 @@ async function renderSpriteTypes(spriteTypes: SpriteType[]): Promise<string> {
     </div>`;
 
     return `${filter}
-    <div style="margin-top: 40px">
+    <div class="${styleTable.style('imageList', () => `margin-top: 40px`)}">
         ${imageList}
     </div>`;
 }
 
-async function renderSpriteType(spriteType: SpriteType): Promise<string> {
+async function renderSpriteType(spriteType: SpriteType, styleTable: StyleTable): Promise<string> {
     const image = await getImageByPath(spriteType.texturefile);
     return `<div
         id="${spriteType.name}"
-        class="spriteTypePreview navigator"
+        class="
+            spriteTypePreview
+            navigator
+            ${styleTable.style('spriteTypePreview', () => `
+                display: inline-block;
+                text-align: center;
+                margin: 10px;
+                cursor: pointer;
+            `)}
+        "
         start="${spriteType._token?.start}"
         end="${spriteType._token?.end}"
         title="${spriteType.name}${image ? ` (${
             image.width / spriteType.noofframes}x${image.height}x${spriteType.noofframes})` : ''
-            }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}"
-        style="
-            display: inline-block;
-            text-align: center;
-            margin: 10px;
-            cursor: pointer;
-        ">
+            }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}">
         ${image ? `<img src="${image.uri}" />` :
-            `<div style="
+            `<div 
+            class="${styleTable.style('missingImageOuter', () => `
                 height: 100px;
                 width: 100px;
                 background: grey;
                 margin: auto;
                 display: table;
-            ">
-                <div style="display:table-cell;vertical-align:middle;color:black;">
+            `)}">
+                <div class="${styleTable.style('missingImageInner', () => `display:table-cell;vertical-align:middle;color:black;`)}">
                     MISSING
                 </div>
             </div>`}
-        <p style="
-            min-width: 120px;
-            max-width: ${Math.max(image?.width || 100, 120)}px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-top: 0
+        <p class="
+            ${styleTable.style('imageName-common', () => `
+                min-width: 120px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                margin-top: 0
+            `)}
+            ${styleTable.oneTimeStyle('imageName', () => `
+                max-width: ${Math.max(image?.width || 100, 120)}px;
+            `)}
         ">
-            ${spriteType.name}
+            ${htmlEscape(spriteType.name)}
         </p>
     </div>`;
 }

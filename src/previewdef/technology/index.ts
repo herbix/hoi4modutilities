@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import { renderTechnologyFile, guiFilePath, relatedGfxFiles } from './contentbuilder';
 import { PreviewProviderDef } from '../../previewProviderDef';
 import { matchPathEnd } from '../../util/common';
+import { localize } from '../../util/i18n';
 
 async function showTechnologyPreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = 'Loading...';
+    panel.webview.html = localize('loading', 'Loading...');
     panel.webview.html = await renderTechnologyFile(document.getText(), document.uri, panel.webview);
 }
 
