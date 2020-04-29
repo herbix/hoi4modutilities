@@ -14,54 +14,78 @@ export interface SymbolNode {
     name: string;
 }
 
-interface Tokenizer {
-    peek: () => Token | null;
-    next: () => Token | null;
-    throw: (message: string) => never;
+interface Tokenizer<T extends string> {
+    peek: () => Token<T>;
+    next: () => Token<T>;
+    throw: (message: string, prev?: boolean) => never;
 }
 
-export interface Token {
+export interface Token<T extends string = string> {
     value: string;
     start: number;
     end: number;
+    type: T;
 }
 
-function tokenizer(input: string, errorMessagePrefix: string = ''): Tokenizer {
-    const regex = /^\s*((#.*[\r\n])|([\w\d:\._@%\[\]\-]+)|([={}<>]|>=|<=|!=)|("(?:\\"|\\\\|[^"])*")|$)/;
+function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T, [string, number]>, errorMessagePrefix: string = ''): Tokenizer<T> {
+    const types = Object.keys(tokenRegexStrings);
+    const typeEntries = Object.entries<[string, number]>(tokenRegexStrings);
+    typeEntries.sort((a, b) => a[1][1] - b[1][1]);
+
+    const regex = new RegExp(
+        '\\s*(?<result>' +
+            typeEntries.map(([n, [s]]) => `(?<${n}>${s})`).join('|')
+            + ')',
+        'y');
+    let prevPos = 0;
     let pos = 0;
-    let token: Token | null = null;
+    let token: Token<T> | null = null;
     let groups: RegExpExecArray | null = null;
 
+    let sum = 0;
+    const lineLengthSums = input.split('\n').map(v => v.length).map(v => sum = (sum+ v + 1));
+
     function nextGroups() {
+        prevPos = pos;
         do {
             groups = regex.exec(input);
             if (groups === null) {
-                throw new Error(errorMessagePrefix + "Invalid token at " + input.substring(0, Math.min(30, input.length)));
+                throwError("Invalid token");
             }
 
-            input = input.substr(groups[0].length);
+            const result = groups.groups!['result'];
+            // input = input.substr(groups[0].length);
             pos += groups[0].length;
-            const result = groups[1];
-            if (result.length === 0) {
-                token = null;
-                break;
-            }
+
+            const localGroups = groups;
+            const type = types.find(t => localGroups.groups![t] !== undefined);
 
             token = {
                 value: result,
-                start: pos - groups[1].length,
+                start: pos - result.length,
                 end: pos,
+                type: type as T,
             };
-        } while (token.value.startsWith('#'));
+        } while (token.type === 'comment');
     }
 
-    function peek() {
+    function peek(): Token<T> {
         if (groups !== null) {
-            return token;
+            return token!;
         }
 
         nextGroups();
-        return token;
+        return token!;
+    }
+
+    function throwError(message: string, prev: boolean = false): never {
+        const calculatePos = prev ? prevPos : pos;
+        const line = lineLengthSums.findIndex(v => v > calculatePos);
+        const column = line > 0 ? calculatePos - lineLengthSums[line - 1] : calculatePos;
+        const posString = line === -1 ?
+            ` at (${lineLengthSums.length}, ${lineLengthSums.length > 1 ? lineLengthSums[lineLengthSums.length - 1] - lineLengthSums[lineLengthSums.length - 2] + 1 : lineLengthSums[lineLengthSums.length - 1] + 1})` :
+            ` at (${line + 1}, ${column + 1})`;
+        throw new Error(errorMessagePrefix + message + `${posString}: ` + (input + "(EOF)").substring(calculatePos, Math.min(calculatePos + 30, input.length + 5)));
     }
     
     return {
@@ -71,34 +95,52 @@ function tokenizer(input: string, errorMessagePrefix: string = ''): Tokenizer {
             groups = null;
             return result;
         },
-        throw: (message: string) => {
-            throw new Error(errorMessagePrefix + message + ": " + input.substring(0, Math.min(30, input.length)));
-        }
+        throw: throwError,
     };
 }
 
+type HOITokenType = 'comment' | 'symbol' | 'operator' | 'string' | 'number' | 'unitnumber' | 'eof';
+const tokenRegexStrings: Record<HOITokenType, [string, number]> = {
+    comment: ['#.*[\\r\\n]', 0],
+    symbol: ['[a-zA-Z_@][\\w:\\._@\\[\\]\\-]*', 80],
+    operator: ['[={}<>;]|>=|<=|!=', 0],
+    string: ['"(?:\\\\"|\\\\\\\\|[^"])*"', 0],
+    number: ['-?\\d*\\.\\d+|-?\\d+|0x\\d+', 50],
+    unitnumber: ['(?:-?\\d*\\.\\d+|-?\\d+)%%?', 49],
+    eof: ['$', 1000],
+};
+
 export function parseHoi4File(input: string, errorMessagePrefix: string = ''): Node {
-    const tokens = tokenizer(input, errorMessagePrefix);
+    const tokens = tokenizer(input, tokenRegexStrings, errorMessagePrefix);
+    const value = parseBlockContent(tokens);
+
+    if (tokens.peek().type !== 'eof') {
+        tokens.throw("File content can't be completely parsed");
+    }
 
     return {
         name: null,
         nameToken: null,
         operator: null,
         operatorToken: null,
-        value: parseBlockContent(tokens),
+        value,
         valueStartToken: null,
         valueEndToken: null,
     };
 }
 
-function parseNode(tokens: Tokenizer): Node {
+function parseNode(tokens: Tokenizer<HOITokenType>): Node {
     const name = tokens.next();
-    const nextToken = tokens.peek();
-    if (name === null) {
-        tokens.throw("Expect name");
+    if (name.type !== 'string' && name.type !== 'symbol' && name.type !== 'number') {
+        tokens.throw("Expect name to be symbol, string or number", true);
     }
 
-    if (nextToken === null || nextToken.value.match(/^([\w\d:\._@\-]+|})$/)) {
+    const nextToken = tokens.peek();
+    if (nextToken.type !== 'operator' || nextToken.value === '}') {
+        let nameValue = name.value;
+        if (name.type === 'string') {
+            nameValue = nameValue.substr(1, nameValue.length - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        }
         return {
             name: name.value,
             nameToken: name,
@@ -111,11 +153,12 @@ function parseNode(tokens: Tokenizer): Node {
     }
 
     const operator = tokens.next();
-    if (operator === null) {
-        tokens.throw("Expect operator");
-    }
-
     const [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+
+    const tailComma = tokens.peek();
+    if (tailComma.value === ';') {
+        tokens.next();
+    }
 
     return {
         name: name.value,
@@ -128,48 +171,54 @@ function parseNode(tokens: Tokenizer): Node {
     };
 }
 
-function parseNodeValue(tokens: Tokenizer): [ NodeValue, Token, Token ] {
+function parseNodeValue(tokens: Tokenizer<HOITokenType>): [ NodeValue, Token<HOITokenType>, Token<HOITokenType> ] {
     const nextToken = tokens.next();
-    if (nextToken === null) {
-        tokens.throw("Expect a node value");
-    } else if (nextToken.value.startsWith('"')) {
-        return [
-            nextToken.value.substr(1, nextToken.end - nextToken.start - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
-            nextToken,
-            nextToken,
-        ];
-    } else if (nextToken.value.match(/^-?(?:\d+(?:\.\d*)?|\.\d+)$/)) {
-        return [
-            parseFloat(nextToken.value),
-            nextToken,
-            nextToken,
-        ];
-    } else if (nextToken.value === '{') {
-        const result = parseBlockContent(tokens);
-        const right = tokens.next();
-        if (right === null || right.value !== '}') {
-            tokens.throw("Expect a '}'");
-        }
-        return [
-            result,
-            nextToken,
-            right,
-        ];
-    } else {
-        return [
-            { name: nextToken.value },
-            nextToken,
-            nextToken,
-        ];
+    switch (nextToken.type) {
+        case 'string':
+            return [
+                nextToken.value.substr(1, nextToken.end - nextToken.start - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\'),
+                nextToken,
+                nextToken,
+            ];
+        case 'number':
+            const nextTokenValue = nextToken.value;
+            return [
+                nextTokenValue.startsWith('0x') ? parseInt(nextTokenValue.substr(2), 16) : parseFloat(nextTokenValue),
+                nextToken,
+                nextToken,
+            ];
+        case 'symbol':
+        case 'unitnumber':
+            return [
+                { name: nextToken.value },
+                nextToken,
+                nextToken,
+            ];
+        case 'operator':
+            if (nextToken.value === '{') {
+                const result = parseBlockContent(tokens);
+                const right = tokens.next();
+                if (right.value !== '}') {
+                    tokens.throw("Expect a '}'", true);
+                }
+                return [
+                    result,
+                    nextToken,
+                    right,
+                ];
+            }
+            break;
     }
+    
+    tokens.throw("Expect string, number, symbol, or {", true);
 }
 
-function parseBlockContent(tokens: Tokenizer): Node[] {
+function parseBlockContent(tokens: Tokenizer<HOITokenType>): Node[] {
     const nodes: Node[] = [];
 
     while (true) {
         const nextToken = tokens.peek();
-        if (nextToken === null || nextToken.value === "}") {
+        if (nextToken.type === 'eof' || nextToken.value === "}") {
             break;
         }
 

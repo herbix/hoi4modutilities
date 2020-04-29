@@ -4,7 +4,7 @@ import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
-import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbol } from '../../hoiformat/schema';
+import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html, StyleTable, htmlEscape } from '../../util/html';
 
@@ -47,7 +47,7 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable): Pr
 
     const gridBox: HOIPartial<GridBoxType> = {
         position: { x: toNumberLike(leftPadding), y: toNumberLike(topPadding) },
-        format: toStringAsSymbol('up'),
+        format: toStringAsSymbolIgnoreCase('up'),
         size: { width: toNumberLike(xGridSize), height: undefined },
         slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
     } as HOIPartial<GridBoxType>;
@@ -87,7 +87,7 @@ function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
 
         prerequisites.forEach(p => {
             const fp = focustree.focuses[p];
-            const classNames2 = fp.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
+            const classNames2 = fp?.inAllowBranch.map(v => 'inbranch_' + v).join(' ') ?? '';
             connections.push({
                 target: p,
                 targetType: 'parent',
@@ -99,7 +99,7 @@ function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
 
     focus.exclusive.forEach(e => {
         const fe = focustree.focuses[e];
-        const classNames2 = fe.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
+        const classNames2 = fe?.inAllowBranch.map(v => 'inbranch_' + v).join(' ') ?? '';
         connections.push({
             target: e,
             targetType: 'related',

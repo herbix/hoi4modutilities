@@ -18,8 +18,13 @@ export interface CustomSymbol extends TokenObject {
     _name: string;
 }
 
-export interface StringAsSymbol<T extends string> extends TokenObject {
+export interface StringAsSymbol extends TokenObject {
     _stringAsSymbol: true;
+    _name: string;
+}
+
+export interface StringAsSymbolIgnoreCase<T extends string> extends TokenObject {
+    _stringAsSymbolIgnoreCase: true;
     _name: T;
 }
 
@@ -32,7 +37,7 @@ export type NumberUnit = '%' | '%%';
 
 export type HOIPartial<T> =
     T extends Enum ? T :
-    T extends undefined | string | number | CustomSymbol | StringAsSymbol<string> | NumberLike | boolean ? T | undefined :
+    T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
     { [K in keyof T]:
@@ -44,7 +49,8 @@ export type HOIPartial<T> =
 
 type SchemaDef<T> =
     T extends boolean ? 'boolean' :
-    T extends StringAsSymbol<string> ? 'stringassymbol' :
+    T extends StringAsSymbol ? 'stringassymbol' :
+    T extends StringAsSymbolIgnoreCase<string> ? 'stringassymbolignorecase' :
     T extends CustomSymbol ? 'symbol' :
     T extends string ? 'string' :
     T extends number ? 'number' :
@@ -88,8 +94,8 @@ export interface Margin {
     bottom: NumberLike;
 }
 
-export type Format = StringAsSymbol<'left' | 'right' | 'up' | 'down' | 'center'>;
-export type Orientation = StringAsSymbol<
+export type Format = StringAsSymbolIgnoreCase<'left' | 'right' | 'up' | 'down' | 'center'>;
+export type Orientation = StringAsSymbolIgnoreCase<
     'upper_left' | 'upper_right' |
     'lower_left' | 'lower_right' |
     'center_up' | 'center_down' | 'center_left' | 'center_right' | 'center_middle' | 'center' |
@@ -361,17 +367,17 @@ const spriteTypesSchema: SchemaDef<SpriteTypes> = {
 
 const gridBoxTypeSchema: SchemaDef<GridBoxType> = {
     name: "string",
-    orientation: "stringassymbol",
+    orientation: "stringassymbolignorecase",
     position: positionSchema,
     size: sizeSchema,
     slotsize: sizeSchema,
     background: backgroundSchema,
-    format: "stringassymbol",
+    format: "stringassymbolignorecase",
 };
 
 const iconTypeSchema: SchemaDef<IconType> = {
     name: "string",
-    orientation: "stringassymbol",
+    orientation: "stringassymbolignorecase",
     position: positionSchema,
     centerposition: 'boolean',
     spritetype: "string",
@@ -381,20 +387,20 @@ const iconTypeSchema: SchemaDef<IconType> = {
 
 const instantTextBoxTypeSchema: SchemaDef<InstantTextBoxType> = {
     name: "string",
-    orientation: "stringassymbol",
+    orientation: "stringassymbolignorecase",
     position: positionSchema,
     bordersize: positionSchema,
     maxwidth: "numberlike",
     maxheight: "numberlike",
-    format: "stringassymbol",
+    format: "stringassymbolignorecase",
     font: "string",
     text: "string",
 };
 
 const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {
     name: "string",
-    orientation: "stringassymbol",
-    origo: "stringassymbol",
+    orientation: "stringassymbolignorecase",
+    origo: "stringassymbolignorecase",
     position: positionSchema,
     size: complexSizeSchema,
     margin: marginSchema,
@@ -464,7 +470,7 @@ function applyConstantsToNode(node: Node, constants: Record<string, NodeValue>):
     if (isSymbolNode(node.value) && node.value.name.startsWith('@')) {
         return {
             ...node,
-            value: constants[node.value.name.toLowerCase()],
+            value: constants[node.value.name],
         };
     }
 
@@ -497,9 +503,14 @@ function convertSymbol(node: Node): HOIPartial<CustomSymbol> {
     return isSymbolNode(node.value) ? { _name: node.value.name, _token: undefined } : undefined;
 }
 
-function convertStringAsSymbol(node: Node): HOIPartial<StringAsSymbol<string>> {
-    return isSymbolNode(node.value) ? { _name: node.value.name.toLowerCase(), _stringAsSymbol: true, _token: undefined } :
-        typeof node.value === 'string' ? { _name: node.value.toLowerCase(), _stringAsSymbol: true, _token: undefined } : undefined;
+function convertStringAsSymbol(node: Node): HOIPartial<StringAsSymbol> {
+    return isSymbolNode(node.value) ? { _name: node.value.name, _stringAsSymbol: true, _token: undefined } :
+        typeof node.value === 'string' ? { _name: node.value, _stringAsSymbol: true, _token: undefined } : undefined;
+}
+
+function convertStringAsSymbolIgnoreCase(node: Node): HOIPartial<StringAsSymbolIgnoreCase<string>> {
+    return isSymbolNode(node.value) ? { _name: node.value.name.toLowerCase(), _stringAsSymbolIgnoreCase: true, _token: undefined } :
+        typeof node.value === 'string' ? { _name: node.value.toLowerCase(), _stringAsSymbolIgnoreCase: true, _token: undefined } : undefined;
 }
 
 function convertBoolean(node: Node): HOIPartial<boolean> {
@@ -521,7 +532,7 @@ function convertMap<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<
             return;
         }
 
-        const childName = child.name.toLowerCase();
+        const childName = child.name;
 
         if (childName.startsWith('@') && child.operator === '=') {
             constants[childName] = child.value;
@@ -559,12 +570,12 @@ function convertObject<T>(node: Node, schemaDef: SchemaDef<T>, constants: Record
             return;
         }
 
-        const childName = child.name.toLowerCase();
-
-        if (childName.startsWith('@') && child.operator === '=') {
-            constants[childName] = child.value;
+        if (child.name.startsWith('@') && child.operator === '=') {
+            constants[child.name] = child.value;
             return;
         }
+
+        const childName = child.name.toLowerCase();
 
         const childSchemaDef = schema[childName];
         if (!childSchemaDef) {
@@ -628,6 +639,9 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
             case 'stringassymbol':
                 result = convertStringAsSymbol(node) as HOIPartial<T>;
                 break;
+            case 'stringassymbolignorecase':
+                result = convertStringAsSymbolIgnoreCase(node) as HOIPartial<T>;
+                break;
             case 'boolean':
                 result = convertBoolean(node) as HOIPartial<T>;
                 break;
@@ -684,10 +698,10 @@ export function parseNumberLike(value: string): NumberLike | undefined {
     };
 }
 
-export function toStringAsSymbol<T extends string>(value: T): StringAsSymbol<T> {
+export function toStringAsSymbolIgnoreCase<T extends string>(value: T): StringAsSymbolIgnoreCase<T> {
     return {
         _name: value,
-        _stringAsSymbol: true,
+        _stringAsSymbolIgnoreCase: true,
         _token: undefined,
     };
 }

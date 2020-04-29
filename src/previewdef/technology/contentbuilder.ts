@@ -153,8 +153,7 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
 
     return `<div
         id="techfolder_${folder}"
-        class="techfolder"
-        class="${styleTable.style('displayNone', () => `display:none;`)}"
+        class="techfolder ${styleTable.style('displayNone', () => `display:none;`)}"
     >
         ${children}
     </div>`;
@@ -333,19 +332,21 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
     });
 
     return `<div
-        class="navigator"
         start="${technology.token?.start}"
         end="${technology.token?.end}"
         title="${technology.id}\n(${folder.x}, ${folder.y})"
-        class="${commonOptions.styleTable.style('navigator', () => `
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 0;
-            height: 0;
-            cursor: pointer;
-            pointer-events: auto;
-        `)}">
+        class="
+            navigator 
+            ${commonOptions.styleTable.style('navigator', () => `
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 0;
+                height: 0;
+                cursor: pointer;
+                pointer-events: auto;
+            `)}
+        ">
             ${containerWindow}
         </div>`;
 }
@@ -362,7 +363,7 @@ async function getTechnologySprite(sprite: string, technology: Technology, folde
             `GFX_technology_available_item_bg`,
         ];
     } else if (sprite === 'GFX_technology_medium' && callerType === 'icon') {
-        return await getTechnologyIcon(`GFX_${technology.id}_medium`, 'medium');
+        return await getTechnologyIcon(`GFX_${technology.id}_medium`, 'GFX_technology_medium');
     }
 
     return await getSpriteFromTryList(imageTryList);
@@ -383,7 +384,7 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
                     `GFX_subtechnology_available_item_bg`,
                 ];
             } else if (callerType === 'icon' && callerName?.toLowerCase() === 'picture') {
-                return getTechnologyIcon(sprite, 'small');
+                return getTechnologyIcon(sprite);
             }
 
             return getSpriteFromTryList(imageTryList);
@@ -391,19 +392,21 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
     });
 
     return `<div
-        class="navigator"
         start="${subTechnology.token?.start}"
         end="${subTechnology.token?.end}"
         title="${subTechnology.id}\n(${folder.x}, ${folder.y})"
-        class="${commonOptions.styleTable.style('navigator', () => `
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 0;
-            height: p;
-            cursor: pointer;
-            pointer-events: auto;
-        `)}">
+        class="
+            navigator
+            ${commonOptions.styleTable.style('navigator', () => `
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 0;
+                height: p;
+                cursor: pointer;
+                pointer-events: auto;
+            `)}
+        ">
             ${containerWindowResult}
         </div>`;
 }
@@ -486,13 +489,13 @@ async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefin
     return background;
 }
 
-async function getTechnologyIcon(name: string, type: 'medium' | 'small'): Promise<Sprite | undefined> {
+async function getTechnologyIcon(name: string, defaultIcon?: string): Promise<Sprite | undefined> {
     const result = await getSpriteByGfxName(name, technologiesGFX);
-    if (result !== undefined) {
+    if (result !== undefined || !defaultIcon) {
         return result;
     }
 
-    return await getSpriteByGfxName('GFX_technology_' + type, technologyUIGfxFiles);
+    return await getSpriteByGfxName(defaultIcon, technologyUIGfxFiles);
 }
 
 function defaultGetSprite(sprite: string): Promise<Sprite | undefined> {

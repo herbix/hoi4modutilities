@@ -52,7 +52,7 @@ function getFocuses(hoiFocuses: HOIPartial<SFocus>[]): Record<string, Focus> {
             continue;
         }
 
-        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null);
+        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo] : null);
         if (focus !== null) {
             focuses[focus.id] = focus;
         }

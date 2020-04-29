@@ -153,7 +153,6 @@ export function renderLineConnections(items: Record<string, GridBoxItem>, format
 export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, style: string, type: GridBoxConnectionType, format: Format['_name'], gridSize: NumberSize, classNames: string | undefined, styleTable: StyleTable, cornerPosition: number = 1.5): string {
     if (a.y === b.y) {
         return `<div
-            ${classNames ? `class="${classNames}"` : ''}
             class="
                 ${classNames ? classNames : ''}
                 ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
