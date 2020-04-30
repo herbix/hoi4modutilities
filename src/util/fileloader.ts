@@ -3,7 +3,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified } from './common';
+import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, getConfiguration } from './common';
+import { parseHoi4File } from '../hoiformat/hoiparser';
+import { localize } from './i18n';
+import { convertNodeToJson, SchemaDef } from '../hoiformat/schema';
+import { error } from './debug';
+import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
 
 let dlcPaths: string[] | null = null;
 const dlcZipPathsCache = new PromiseCache({
@@ -21,9 +26,7 @@ function isSamePath(a: string, b: string): boolean {
     return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 }
 
-function getFilePathFromModOrHOI4(relativePath: string): string | undefined;
-function getFilePathFromModOrHOI4(relativePath: string, canPromise: true): Promise<string | undefined>;
-function getFilePathFromModOrHOI4(relativePath: string, canPromise: boolean = false): string | undefined | Promise<string | undefined> {
+async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     let absolutePath: string | undefined = undefined;
 
@@ -46,13 +49,23 @@ function getFilePathFromModOrHOI4(relativePath: string, canPromise: boolean = fa
             const document = vscode.workspace.textDocuments.some(d => isSamePath(d.uri.fsPath, absolutePath!));
             if (document) {
                 const openedPath = 'opened?' + absolutePath;
-                return canPromise ? Promise.resolve(openedPath) : openedPath;
+                return openedPath;
+            }
+        }
+    }
+
+    const replacePaths = await getReplacePaths();
+    if (replacePaths) {
+        const relativePathDir = path.dirname(relativePath);
+        for (const replacePath of replacePaths) {
+            if (isSamePath(relativePathDir, replacePath)) {
+                return undefined;
             }
         }
     }
 
     // Find in HOI4 install path
-    const conf = vscode.workspace.getConfiguration('hoi4ModUtilities');
+    const conf = getConfiguration();
     const installPath: string = conf.installPath;
     if (!absolutePath) {
         const findPath = path.join(installPath, relativePath);
@@ -61,7 +74,9 @@ function getFilePathFromModOrHOI4(relativePath: string, canPromise: boolean = fa
         }
     }
 
-    function readFromDlcs(dlcs: string[] | null): string | undefined {
+    // Find in HOI4 DLCs
+    if (!absolutePath && conf.loadDlcContents) {
+        const dlcs = await dlcZipPathsCache.get(installPath);
         if (dlcs !== null) {
             for (const dlc of dlcs) {
                 const dlcZip = dlcZipCache.get(dlc);
@@ -71,26 +86,15 @@ function getFilePathFromModOrHOI4(relativePath: string, canPromise: boolean = fa
                 }
             }
         }
-
-        return undefined;
     }
 
-    // Find in HOI4 DLCs
-    if (!absolutePath && conf.loadDlcContents) {
-        if (canPromise) {
-            return dlcZipPathsCache.get(installPath).then(readFromDlcs);
-        } else {
-            absolutePath = readFromDlcs(dlcPaths);
-        }
-    }
-
-    return canPromise ? Promise.resolve(absolutePath) : absolutePath;
+    return absolutePath;
 }
 
-export function hoiFileExpiryToken(relativePath: string): string | undefined {
-    const realPath = getFilePathFromModOrHOI4(relativePath);
+export async function hoiFileExpiryToken(relativePath: string): Promise<string> {
+    const realPath = await getFilePathFromModOrHOI4(relativePath);
     if (!realPath) {
-        return undefined;
+        return '';
     }
 
     if (realPath.includes("?")) {
@@ -98,15 +102,15 @@ export function hoiFileExpiryToken(relativePath: string): string | undefined {
         if (split[0] === 'opened') {
             return split[1] + '@' + Date.now();
         } else {
-            return split[0] + '@' + getLastModified(split[0]);
+            return split[0] + '@' + await getLastModifiedAsync(split[0]);
         }
     }
 
-    return realPath + '@' + getLastModified(realPath);
+    return realPath + '@' + await getLastModifiedAsync(realPath);
 }
 
 export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, string]> {
-    const realPath = await getFilePathFromModOrHOI4(relativePath, true);
+    const realPath = await getFilePathFromModOrHOI4(relativePath);
 
     if (!realPath) {
         throw new Error("Can't find file " + relativePath);
@@ -127,17 +131,14 @@ export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buff
             const dlcZip = dlcZipCache.get(dlc);
             const entry = dlcZip.getEntry(filePath);
             if (entry !== null) {
-                return await Promise.all([new Promise<Buffer>(resolve => entry.getDataAsync(resolve)), realPath]);
+                return [await new Promise<Buffer>(resolve => entry.getDataAsync(resolve)), realPath];
             }
 
             throw new Error("Can't find file " + relativePath);
         }
     }
 
-    return Promise.all([
-        new Promise<Buffer>((resolve, reject) => fs.readFile(realPath, (err, data) => err ? reject(err) : resolve(data))),
-        realPath,
-    ]);
+    return [ await readFile(realPath), realPath ];
 }
 
 async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
@@ -146,12 +147,12 @@ async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
         return dlcPaths = null;
     }
 
-    const dlcFolders = await new Promise<string[]>((resolve, reject) => fs.readdir(dlcPath, (err, files) => err ? reject(err) : resolve(files)));
+    const dlcFolders = await readdir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
         const dlcZipFolder = path.join(dlcPath, dlcFolder);
-        const stats = await new Promise<fs.Stats>((resolve, reject) => fs.lstat(dlcZipFolder, (err, stats) => err ? reject(err) : resolve(stats)));
+        const stats = await lstat(dlcZipFolder);
         if (stats.isDirectory()) {
-            const files = await new Promise<string[]>((resolve, reject) => fs.readdir(dlcZipFolder, (err, files) => err ? reject(err) : resolve(files)));
+            const files = await readdir(dlcZipFolder);
             const zipFile = files.find(file => file.endsWith('.zip'));
             if (zipFile) {
                 return path.join(dlcZipFolder, zipFile);
@@ -166,4 +167,59 @@ async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
 
 function getDlcZip(path: string): AdmZip {
     return new AdmZip(path);
+}
+
+const replacePathsCache = new PromiseCache({
+    factory: getReplacePathsFromModFile,
+    expireWhenChange: getLastModifiedAsync,
+    life: 60 * 1000,
+});
+
+interface ModFile {
+    replace_path: string[];
+}
+
+const modFileSchema: SchemaDef<ModFile> = {
+    replace_path: {
+        _innerType: "string",
+        _type: "array",
+    },
+};
+
+async function getReplacePaths(): Promise<string[] | undefined> {
+    const conf = getConfiguration();
+    let modFile = conf.modFile;
+
+    if (modFile === "") {
+        if (vscode.workspace.workspaceFolders) {
+            for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+                const workspaceFolderPath = workspaceFolder.uri.fsPath;
+                const mods = await workspaceModFilesCache.get(workspaceFolderPath);
+                if (mods.length > 0) {
+                    modFile = mods[0];
+                    break;
+                }
+            }
+        }
+    }
+
+    try {
+        if (fs.existsSync(modFile)) {
+            const result = await replacePathsCache.get(modFile);
+            updateSelectedModFileStatus(modFile);
+            return result;
+        }
+    } catch (e) {
+        error(e);
+    }
+
+    updateSelectedModFileStatus(modFile, true);
+    return undefined;
+}
+
+async function getReplacePathsFromModFile(absolutePath: string): Promise<string[]> {
+    const content = (await readFile(absolutePath)).toString();
+    const node = parseHoi4File(content, localize('infile', 'In file {0}:\n', absolutePath));
+    const modFile = convertNodeToJson<ModFile>(node, modFileSchema);
+    return modFile.replace_path.filter((v): v is string => typeof v === 'string');
 }

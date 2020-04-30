@@ -9,6 +9,7 @@ import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
+import { getLastModifiedAsync } from '../common';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -49,9 +50,14 @@ export async function getSpriteByGfxName(name: string, gfxFilePath: string | str
     return result;
 }
 
-function spriteCacheExpiryToken(key: string): string | undefined {
+async function spriteCacheExpiryToken(key: string, spritePromise: Promise<Sprite | undefined>): Promise<string> {
     const [gfxFilePath] = key.split('?');
-    return hoiFileExpiryToken(gfxFilePath);
+    const gfxToken = await hoiFileExpiryToken(gfxFilePath);
+    const sprite = await spritePromise;
+    if (sprite) {
+        return `${gfxToken}:${sprite.image.path}@${await getLastModifiedAsync(sprite.image.path)}`;
+    }
+    return gfxToken;
 }
 
 function getSpriteByKey(key: string): Promise<Sprite | undefined> {
@@ -80,8 +86,23 @@ async function getSpriteByGfxNameImpl(name: string, gfxFilePath: string): Promis
 }
 
 async function getImage(relativePath: string): Promise<Image | undefined> {
+    let readFileResult: [Buffer, string] | undefined = undefined;
     try {
-        const [buffer, realPath] = await readFileFromModOrHOI4(relativePath);
+        readFileResult = await readFileFromModOrHOI4(relativePath);
+    } catch(e) {
+        error("Failed to get image " + relativePath);
+        error(e);
+
+        if (relativePath.length <= 4 || relativePath.endsWith('.dds')) {
+            return undefined;
+        }
+
+        // in case .png or .tga not exist but .dds exist
+        relativePath = relativePath.substr(0, relativePath.length - 4) + '.dds';
+    }
+
+    try {
+        const [buffer, realPath] = readFileResult ?? await readFileFromModOrHOI4(relativePath);
         let png: PNG;
         let pngBuffer: Buffer;
 

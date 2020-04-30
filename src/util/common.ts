@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 
 export interface NumberSize {
     width: number;
@@ -44,4 +45,28 @@ export function arrayToMap<T, K extends keyof T>(items: T[], key: K): T[K] exten
 export function getLastModified(path: string): number {
     const stat = fs.lstatSync(path);
     return stat.mtimeMs;
+}
+
+export function getLastModifiedAsync(path: string): Promise<number> {
+    return lstat(path).then(s => s.mtimeMs);
+}
+
+export function readFile(path: string): Promise<Buffer> {
+    return fsFuncWrapper(fs.readFile, path);
+}
+
+export function readdir(path: string): Promise<string[]> {
+    return fsFuncWrapper(fs.readdir, path);
+}
+
+export function lstat(path: string): Promise<fs.Stats> {
+    return fsFuncWrapper(fs.lstat, path);
+}
+
+function fsFuncWrapper<T>(func: (path: fs.PathLike, cb: (err: NodeJS.ErrnoException | null, result: T) => void) => void, path: fs.PathLike): Promise<T> {
+    return new Promise<T>((resolve, reject) => func(path, (err, files) => err ? reject(err) : resolve(files)));
+}
+
+export function getConfiguration() {
+    return vscode.workspace.getConfiguration('hoi4ModUtilities');
 }

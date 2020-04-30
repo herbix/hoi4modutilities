@@ -1,5 +1,11 @@
 import * as vscode from 'vscode';
 
-export const contextContainer: { current: vscode.ExtensionContext | null;  } = {
-    current: null
+interface ContextContainer {
+    current: vscode.ExtensionContext | null;
+    modName: vscode.StatusBarItem | null;
+}
+
+export const contextContainer: ContextContainer = {
+    current: null,
+    modName: null,
 };

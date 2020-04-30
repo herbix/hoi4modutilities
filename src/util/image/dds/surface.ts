@@ -14,21 +14,10 @@ export class Surface {
     }
 
     public getFullRgba(): Uint8Array {
-        let startTime: [number, number];
-        if (isNotProd()) {
-            startTime = process.hrtime();
-        }
-        try {
-            if (!this.pixelFormat.compressed) {
-                return this.getFullRgbaFromRawPixels(this.pixelFormat);
-            } else {
-                return Uint8Array.from(this.getFullRgbaFromCompressedPixels(this.pixelFormat));
-            }
-        } finally {   
-            if (isNotProd()) {
-                const endTime = process.hrtime(startTime!);
-                debug('getFullRgba (%dx%d) (%s) time: %dms', this.width, this.height, pixelFormatToString(this.pixelFormat), endTime[0] * 1000 + endTime[1] / 1000000);
-            }
+        if (!this.pixelFormat.compressed) {
+            return this.getFullRgbaFromRawPixels(this.pixelFormat);
+        } else {
+            return Uint8Array.from(this.getFullRgbaFromCompressedPixels(this.pixelFormat));
         }
     }
 

@@ -47,7 +47,7 @@ export type HOIPartial<T> =
         K extends ('_token' | '_index') ? T[K] | undefined :
         HOIPartial<T[K]> | undefined; };
 
-type SchemaDef<T> =
+export type SchemaDef<T> =
     T extends boolean ? 'boolean' :
     T extends StringAsSymbol ? 'stringassymbol' :
     T extends StringAsSymbolIgnoreCase<string> ? 'stringassymbolignorecase' :

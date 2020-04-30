@@ -1,8 +1,14 @@
+import { debug } from "./debug";
+
 export interface CacheOptions<V> {
     factory(key: string): V;
-    expireWhenChange?(key: string): any;
+    expireWhenChange?(key: string, cachedValue: V): any;
     life: number;
     nonExpireLife?: number;
+}
+
+export interface PromiseCacheOptions<V> extends CacheOptions<Promise<V>> {
+    expireWhenChange?(key: string, cachedValue: Promise<V>): Promise<any> | any;
 }
 
 interface CacheEntry<V> {
@@ -12,10 +18,10 @@ interface CacheEntry<V> {
 }
 
 export class Cache<V> {
-    private _cache: Record<string, CacheEntry<V>> = {};
+    protected _cache: Record<string, CacheEntry<V>> = {};
     private _intervalToken: NodeJS.Timeout | null = null;
     
-    constructor(private readonly options: CacheOptions<V>) {
+    constructor(protected readonly options: CacheOptions<V>) {
         if (options.life > 0) {
             this._intervalToken = setInterval(() => this.tryClean(), options.life / 5);
         }
@@ -30,16 +36,24 @@ export class Cache<V> {
     public get(key: string = ''): V {
         const cacheEntry = this._cache[key];
         const now = Date.now();
-        if (cacheEntry && (now - cacheEntry.lastAccess < this.options.nonExpireLife! || this.options.expireWhenChange!(key) === cacheEntry.expiryToken)) {
+        let expireToken: any = undefined;
+        if (cacheEntry &&
+            (now - cacheEntry.lastAccess < this.options.nonExpireLife! ||
+                (expireToken = this.options.expireWhenChange!(key, cacheEntry.value)) === cacheEntry.expiryToken
+            )) {
+            debug("Cache found. Key=%s, Token=%s", key, cacheEntry.expiryToken);
             cacheEntry.lastAccess = now;
             return cacheEntry.value;
         }
 
+        const value = this.options.factory(key);
         const newEntry = {
             lastAccess: now,
-            expiryToken: this.options.expireWhenChange!(key),
-            value: this.options.factory(key)
+            expiryToken: expireToken ?? this.options.expireWhenChange!(key, value),
+            value
         };
+
+        debug("Cache miss. Key=%s, Token=%s", key, newEntry.expiryToken);
 
         this._cache[key] = newEntry;
         return newEntry.value;
@@ -71,7 +85,7 @@ export class Cache<V> {
 }
 
 export class PromiseCache<V> extends Cache<Promise<V>> {
-    constructor(options: CacheOptions<Promise<V>>) {
+    constructor(options: PromiseCacheOptions<V>) {
         super({
             ...options,
             factory: (key) => {
@@ -88,5 +102,31 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
                     });
             }
         });
+    }
+
+    public async get(key: string = ''): Promise<V> {
+        const cacheEntry = this._cache[key];
+        const now = Date.now();
+        let expireToken: any = undefined;
+        if (cacheEntry &&
+            (now - cacheEntry.lastAccess < this.options.nonExpireLife! ||
+                await (expireToken = Promise.resolve(this.options.expireWhenChange!(key, cacheEntry.value))) === await cacheEntry.expiryToken)
+            ) {
+            debug("PromiseCache found. Key=%s, Token=%s", key, await cacheEntry.expiryToken);
+            cacheEntry.lastAccess = now;
+            return await cacheEntry.value;
+        }
+
+        const value = this.options.factory(key);
+        const newEntry = {
+            lastAccess: now,
+            expiryToken: expireToken ?? Promise.resolve(this.options.expireWhenChange!(key, value)),
+            value
+        };
+
+        debug("PromiseCache miss. Key=%s", key);
+
+        this._cache[key] = newEntry;
+        return await newEntry.value;
     }
 }

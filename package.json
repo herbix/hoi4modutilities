@@ -44,6 +44,12 @@
 						"type": "boolean",
 						"default": false,
 						"description": "%hoi4modutilities.loadDlcContents.desc%"
+					},
+					"hoi4ModUtilities.modFile": {
+						"title": "%hoi4modutilities.modFile.title%",
+						"type": "string",
+						"default": "",
+						"description": "%hoi4modutilities.modFile.desc%"
 					}
 				}
 			}
@@ -56,6 +62,11 @@
 					"dark": "static/preview-right-dark.svg",
 					"light": "static/preview-right-light.svg"
 				},
+				"category": "HOI4 Mod Utilities"
+			},
+			{
+				"command": "hoi4modutilities.selectmodfile",
+				"title": "%hoi4modutilities.selectmodfile.title%",
 				"category": "HOI4 Mod Utilities"
 			},
 			{
