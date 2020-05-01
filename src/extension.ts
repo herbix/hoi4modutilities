@@ -3,14 +3,15 @@ import { previewManager } from './previewmanager';
 import { contextContainer } from './context';
 import { PreviewWebviewType, ViewTypeDDS, Commands } from './constants';
 import { DDSViewProvider } from './ddsviewprovider';
-import { selectModFile, onChangeWorkspaceConfiguration } from './util/modfile';
+import { selectModFile, onChangeWorkspaceConfiguration, modFileStatusContainer, checkAndUpdateModFileStatus } from './util/modfile';
+import { getConfiguration } from './util/common';
 
 export function activate(context: vscode.ExtensionContext) {
     contextContainer.current = context;
     context.subscriptions.push({
         dispose() {
             contextContainer.current = null;
-            contextContainer.modName = null;
+            modFileStatusContainer.current = null;
         }
     });
 
@@ -21,8 +22,10 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(previewManager.onChangeActiveTextEditor, previewManager));
     context.subscriptions.push(vscode.window.registerWebviewPanelSerializer(PreviewWebviewType, previewManager));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewTypeDDS, new DDSViewProvider() as any));
-    context.subscriptions.push(contextContainer.modName = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50));
+    context.subscriptions.push(modFileStatusContainer.current = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50));
     context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(onChangeWorkspaceConfiguration));
+
+    checkAndUpdateModFileStatus(getConfiguration().modFile);
 	
 	// Trigger context value setting
 	previewManager.onChangeActiveTextEditor(vscode.window.activeTextEditor);

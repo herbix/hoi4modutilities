@@ -2,7 +2,7 @@
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.2.0-preview",
+	"version": "0.2.1-preview",
 	"author": "Chaofan Yang",
 	"publisher": "Chaofan",
 	"icon": "icon.png",
@@ -24,6 +24,7 @@
 	],
 	"activationEvents": [
 		"onCommand:hoi4modutilities.preview",
+		"onCommand:hoi4modutilities.selectmodfile",
 		"onWebviewPanel:hoi4ftpreview",
 		"onCustomEditor:hoi4modutilities.dds"
 	],

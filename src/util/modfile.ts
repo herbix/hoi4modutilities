@@ -3,9 +3,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigurationKey, Commands } from '../constants';
 import { getConfiguration, readdir } from './common';
-import { contextContainer } from '../context';
 import { PromiseCache } from './cache';
 import { localize } from './i18n';
+
+export const modFileStatusContainer: { current: vscode.StatusBarItem | null } = {
+    current: null,
+};
 
 export const workspaceModFilesCache = new PromiseCache({
     factory: getWorkspaceModFiles,
@@ -18,6 +21,37 @@ export function onChangeWorkspaceConfiguration(e: vscode.ConfigurationChangeEven
     }
 }
 
+export function checkAndUpdateModFileStatus(modFile: string | undefined): void {
+    if (modFile === undefined || modFile.trim() === '') {
+        updateSelectedModFileStatus(undefined);
+        return;
+    }
+
+    const error = !fs.existsSync(modFile);
+    updateSelectedModFileStatus(modFile, error);
+    if (error) {
+        vscode.window.showErrorMessage(localize('modfile.filenotexist', 'Mod file not exist: {0}', modFile));
+    }
+}
+
+export function updateSelectedModFileStatus(modFile: string | undefined, error: boolean = false): void {
+    if (modFileStatusContainer.current) {
+        const modName = modFileStatusContainer.current;
+        if (modFile) {
+            const modFileName = path.basename(modFile, ".mod");
+            modName.command = Commands.SelectModFile;
+            modName.text = (error ? "$(error) " : "$(file-code) ") + modFileName;
+            modName.tooltip = (error ? localize('modfile.errorreading', "[Error reading this file]") : '') + modFile;
+            modName.show();
+        } else {
+            modName.command = Commands.SelectModFile;
+            modName.text = "$(file-code) " + localize('modfile.nomodfile', '(No mod definition)');
+            modName.tooltip = localize('modfile.clicktoselect', 'Click to select a mod file...');
+            modName.show();
+        }
+    }
+}
+
 export async function selectModFile(): Promise<void> {
     const conf = getConfiguration();
     const modFileInspect = conf.inspect<string>('modFile');
@@ -27,14 +61,14 @@ export async function selectModFile(): Promise<void> {
         detail: modFileInspect.globalValue
     }];
 
-    let selected = conf.modFile;
+    let selected = conf.modFile.trim();
 
     workspaceModFilesCache.clear();
     if (vscode.workspace.workspaceFolders) {
         for (const workspaceFolder of vscode.workspace.workspaceFolders) {
             const workspaceFolderPath = workspaceFolder.uri.fsPath;
             const mods = await workspaceModFilesCache.get(workspaceFolderPath);
-            if (selected === '') {
+            if (selected === '' && mods.length > 0) {
                 selected = mods[0];
             }
             modsList.push(...mods.map(mod => ({
@@ -46,7 +80,7 @@ export async function selectModFile(): Promise<void> {
     }
 
     modsList.forEach(r => r.detail === selected ? r.picked = true : undefined);
-    if (modsList.every(r => !r.picked)) {
+    if (modsList.every(r => !r.picked) && selected !== '') {
         modsList.push({
             label: path.basename(selected, '.mod'),
             description: localize('modfile.workspacesetting', 'Workspace setting'),
@@ -70,6 +104,8 @@ export async function selectModFile(): Promise<void> {
             const result = await vscode.window.showOpenDialog({ filters: { [localize('modfile.type', 'Mod file')]: ['mod'] } });
             if (result) {
                 modPath = result[0].fsPath;
+            } else {
+                return;
             }
         }
         
@@ -80,37 +116,6 @@ export async function selectModFile(): Promise<void> {
         }
 
         checkAndUpdateModFileStatus(modPath);
-    }
-}
-
-export function updateSelectedModFileStatus(modFile: string | undefined, error: boolean = false): void {
-    if (contextContainer.modName) {
-        const modName = contextContainer.modName;
-        if (modFile) {
-            const modFileName = path.basename(modFile, ".mod");
-            modName.command = Commands.SelectModFile;
-            modName.text = (error ? "$(error) " : "$(file-code) ") + modFileName;
-            modName.tooltip = (error ? localize('modfile.errorreading', "[Error reading this file]") : '') + modFile;
-            modName.show();
-        } else {
-            modName.command = Commands.SelectModFile;
-            modName.text = "$(file-code) " + localize('modfile.nomodfile', '(No mod definition)');
-            modName.tooltip = localize('modfile.clicktoselect', 'Click to select a mod file...');
-            modName.show();
-        }
-    }
-}
-
-function checkAndUpdateModFileStatus(modFile: string | undefined): void {
-    if (modFile === undefined) {
-        updateSelectedModFileStatus(undefined);
-        return;
-    }
-
-    const error = !fs.existsSync(modFile);
-    updateSelectedModFileStatus(modFile, error);
-    if (error) {
-        vscode.window.showErrorMessage(localize('modfile.filenotexist', 'Mod file not exist: {0}', modFile));
     }
 }
 
