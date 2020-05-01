@@ -41,7 +41,6 @@ export class Cache<V> {
             (now - cacheEntry.lastAccess < this.options.nonExpireLife! ||
                 (expireToken = this.options.expireWhenChange!(key, cacheEntry.value)) === cacheEntry.expiryToken
             )) {
-            debug("Cache found. Key=%s, Token=%s", key, cacheEntry.expiryToken);
             cacheEntry.lastAccess = now;
             return cacheEntry.value;
         }
@@ -52,8 +51,6 @@ export class Cache<V> {
             expiryToken: expireToken ?? this.options.expireWhenChange!(key, value),
             value
         };
-
-        debug("Cache miss. Key=%s, Token=%s", key, newEntry.expiryToken);
 
         this._cache[key] = newEntry;
         return newEntry.value;
@@ -112,7 +109,6 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
             (now - cacheEntry.lastAccess < this.options.nonExpireLife! ||
                 await (expireToken = Promise.resolve(this.options.expireWhenChange!(key, cacheEntry.value))) === await cacheEntry.expiryToken)
             ) {
-            debug("PromiseCache found. Key=%s, Token=%s", key, await cacheEntry.expiryToken);
             cacheEntry.lastAccess = now;
             return await cacheEntry.value;
         }
@@ -123,8 +119,6 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
             expiryToken: expireToken ?? Promise.resolve(this.options.expireWhenChange!(key, value)),
             value
         };
-
-        debug("PromiseCache miss. Key=%s", key);
 
         this._cache[key] = newEntry;
         return await newEntry.value;

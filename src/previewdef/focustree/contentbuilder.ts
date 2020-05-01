@@ -7,17 +7,17 @@ import { arrayToMap } from '../../util/common';
 import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html, StyleTable, htmlEscape } from '../../util/html';
+import { PreviewDependency } from '../previewbase';
 
-export const focusesGFX = 'interface/goals.gfx';
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
-export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview, dependencies: PreviewDependency): Promise<string> {
     const styleTable = new StyleTable();
     let baseContent = '';
     try {
         const focustrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
         if (focustrees.length > 0) {
-            baseContent = await renderFocusTree(focustrees[0], styleTable);
+            baseContent = await renderFocusTree(focustrees[0], styleTable, dependencies.gfx);
         } else {
             baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }
@@ -39,7 +39,7 @@ const xGridSize = 90;
 const yGridSize = 120;
 const optionHeight = 20;
 
-async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable): Promise<string> {
+async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
     const focuses = Object.values(focustree.focuses);
     const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 1000);
     const leftPadding = leftPaddingBase - minX * xGridSize;
@@ -67,7 +67,7 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable): Pr
         }, {
             styleTable,
             items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
-            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable),
+            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
             cornerPosition: 0.5,
         })
     );
@@ -132,8 +132,8 @@ function renderAllowBranchOptions(option: string, index: number, styleTable: Sty
     </div>`;
 }
 
-async function renderFocus(focus: Focus, styleTable: StyleTable): Promise<string> {
-    const icon = focus.icon ? await getFocusIcon(focus.icon) : null;
+async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
+    const icon = focus.icon ? await getFocusIcon(focus.icon, gfxFiles) : null;
 
     return `<div
     class="
@@ -164,8 +164,8 @@ async function renderFocus(focus: Focus, styleTable: StyleTable): Promise<string
     </div>`;
 }
 
-export async function getFocusIcon(name: string): Promise<Image | undefined> {
-    const sprite = await getSpriteByGfxName(name, focusesGFX);
+export async function getFocusIcon(name: string, gfxFiles: string[]): Promise<Image | undefined> {
+    const sprite = await getSpriteByGfxName(name, gfxFiles);
     if (sprite !== undefined) {
         return sprite.image;
     }

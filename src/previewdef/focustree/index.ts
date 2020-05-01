@@ -1,17 +1,8 @@
 import * as vscode from 'vscode';
-import { renderFocusTreeFile, focusesGFX } from './contentbuilder';
-import { PreviewProviderDef } from '../../previewProviderDef';
+import { renderFocusTreeFile } from './contentbuilder';
 import { matchPathEnd } from '../../util/common';
-import { localize } from '../../util/i18n';
-
-async function showFocusTreePreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = localize('loading', 'Loading...');
-    panel.webview.html = await renderFocusTreeFile(document.getText(), document.uri, panel.webview);
-}
-
-async function updateFocusTreePreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = await renderFocusTreeFile(document.getText(), document.uri, panel.webview);
-}
+import { PreviewBase, PreviewDependency } from '../previewbase';
+import { PreviewProviderDef } from '../previewmanager';
 
 function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
@@ -23,10 +14,28 @@ function canPreviewFocusTree(document: vscode.TextDocument) {
     return /(focus_tree|shared_focus)\s*=\s*{/.test(text);
 }
 
+const focusesGFX = 'interface/goals.gfx';
+class FocusTreePreview extends PreviewBase {
+    protected getContent(document: vscode.TextDocument, dependencies: PreviewDependency): Promise<string> {
+        return renderFocusTreeFile(document.getText(), document.uri, this.panel.webview, dependencies);
+    }
+
+    public getInitialDependencies(): PreviewDependency {
+        return {
+            gfx: [focusesGFX],
+            gui: [],
+        };
+    }
+
+    public async getDependencies(document: vscode.TextDocument): Promise<PreviewDependency> {
+        const result = await super.getDependencies(document);
+        result.gui.length = 0;
+        return result;
+    }
+}
+
 export const focusTreePreviewDef: PreviewProviderDef = {
     type: 'focustree',
-    show: showFocusTreePreview,
-    update: updateFocusTreePreview,
     canPreview: canPreviewFocusTree,
-    updateWhenChange: [ focusesGFX.split('/') ]
+    previewContructor: FocusTreePreview,
 };

@@ -1,31 +1,27 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { debounce } from 'lodash';
-import { PreviewProviderDef } from './previewProviderDef';
-import { focusTreePreviewDef } from './previewdef/focustree';
-import { localize } from './util/i18n';
-import { gfxPreviewDef } from './previewdef/gfx';
-import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from './constants';
-import { technologyPreviewDef } from './previewdef/technology';
-import { arrayToMap, matchPathEnd } from './util/common';
-import { debug, error } from './util/debug';
+import { focusTreePreviewDef } from './focustree';
+import { localize } from '../util/i18n';
+import { gfxPreviewDef } from './gfx';
+import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from '../constants';
+import { technologyPreviewDef } from './technology';
+import { arrayToMap, matchPathEnd, debounceByInput, getDocumentByUri } from '../util/common';
+import { debug, error } from '../util/debug';
+import { PreviewBase, PreviewDependency } from './previewbase';
 
-interface PreviewMeta {
-    uri: vscode.Uri;
-    panel: vscode.WebviewPanel;
-    previewProvider: PreviewProviderDef;
-    debouncedUpdateMethod(document: vscode.TextDocument, panel: vscode.WebviewPanel): void;
-    disposed: boolean;
+export interface PreviewProviderDef {
+    type: string;
+    canPreview(document: vscode.TextDocument): boolean;
+    previewContructor: new (uri: vscode.Uri, panel: vscode.WebviewPanel) => PreviewBase;
 }
 
-class PreviewManager implements vscode.WebviewPanelSerializer {
-    private _previews: Record<string, PreviewMeta> = {};
+export class PreviewManager implements vscode.WebviewPanelSerializer {
+    private _previews: Record<string, PreviewBase> = {};
 
     private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = arrayToMap(this._previewProviders, 'type');
 
-    private _updateSubscriptions: Map<string[], PreviewMeta[]> = new Map();
-    private _cachedDebounceUpdateBySubscriptions: Record<string, () => void> = {};
+    private _updateSubscriptions: Map<string[], PreviewBase[]> = new Map();
 
     public showPreview(uri?: vscode.Uri): Promise<void> {
         return this.showPreviewImpl(uri);
@@ -43,7 +39,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         const key = document.uri.toString();
         const preview = this._previews[key];
         if (preview !== undefined) {
-            preview.debouncedUpdateMethod(document, preview.panel);
+            this.updatePreviewItem(preview, document);
         }
 
         this.updatePreviewItemsInSubscription(document.uri);
@@ -84,7 +80,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         if (requestUri === undefined) {
             document = vscode.window.activeTextEditor?.document;
         } else {
-            document = this.getDocumentByUri(requestUri);
+            document = getDocumentByUri(requestUri);
         }
 
         if (document === undefined) {
@@ -126,50 +122,23 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
             }
         );
 
-        const previewItem: PreviewMeta = {
-            panel,
-            uri,
-            previewProvider,
-            disposed: false,
-            debouncedUpdateMethod: debounce((d, p) => {
-                const preview = this._previews[key];
-                if (preview && !preview.disposed) {
-                    previewProvider.update(d, p, d);
-                }
-            }, 1000, { trailing: true })
-        };
+        const previewItem = new previewProvider.previewContructor(uri, panel);
         this._previews[key] = previewItem;
-        this.addPreviewToSubscription(previewItem);
 
-        panel.onDidDispose(() => {
+        previewItem.onDispose(() => {
             const preview = this._previews[key];
             if (preview) {
-                if (preview.previewProvider.dispose) {
-                    const document = this.getDocumentByUri(uri);
-                    preview.previewProvider.dispose(document, preview.panel);
-                }
-
-                preview.disposed = true;
                 this.removePreviewFromSubscription(preview);
                 delete this._previews[key];
             }
         });
 
-        panel.webview.onDidReceiveMessage((msg) => {
-            if (msg.command === 'navigate' && msg.start !== undefined) {
-                const document = this.getDocumentByUri(uri);
-                if (document === undefined) {
-                    return;
-                }
-
-                vscode.window.showTextDocument(uri, {
-                    selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
-                    viewColumn: vscode.ViewColumn.One
-                });
-            }
+        previewItem.onDependencyChanged((newDep) => {
+            this.removePreviewFromSubscription(previewItem);
+            this.addPreviewToSubscription(previewItem, newDep);
         });
 
-        previewProvider.show(document, panel);
+        previewItem.initializePanelContent(document);
     }
 
     private findPreviewProvider(document: vscode.TextDocument): PreviewProviderDef | undefined {
@@ -182,16 +151,12 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         return undefined;
     }
 
-    private getDocumentByUri(uri: vscode.Uri): vscode.TextDocument | undefined {
-        return vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString());
-    }
+    private addPreviewToSubscription(previewItem: PreviewBase, dependency: PreviewDependency): void {
+        const matchStrings = Object.values(dependency)
+            .map((dl: string[]) => dl.map(d => d.split('/').filter(v => v)))
+            .reduce<string[][]>((p, c) => p.concat(c), []);
 
-    private addPreviewToSubscription(previewItem: PreviewMeta): void {
-        if (!previewItem.previewProvider.updateWhenChange) {
-            return;
-        }
-
-        for (const matchString of previewItem.previewProvider.updateWhenChange) {
+        for (const matchString of matchStrings) {
             const subscriptions = this._updateSubscriptions.get(matchString);
             if (subscriptions) {
                 subscriptions.push(previewItem);
@@ -201,14 +166,9 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         }
     }
 
-    private removePreviewFromSubscription(previewItem: PreviewMeta): void {
-        if (!previewItem.previewProvider.updateWhenChange) {
-            return;
-        }
-
-        for (const matchString of previewItem.previewProvider.updateWhenChange) {
-            const subscriptions = this._updateSubscriptions.get(matchString);
-            if (subscriptions) {
+    private removePreviewFromSubscription(previewItem: PreviewBase): void {
+        for (const [matchString, subscriptions] of this._updateSubscriptions.entries()) {
+            if (subscriptions.includes(previewItem)) {
                 const newSubscriptions = subscriptions.filter(v => v !== previewItem);
                 if (newSubscriptions.length === 0) {
                     this._updateSubscriptions.delete(matchString);
@@ -219,8 +179,8 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         }
     }
 
-    private getPreviewItemsNeedsUpdate(path: string): PreviewMeta[] {
-        const result = [];
+    private getPreviewItemsNeedsUpdate(path: string): PreviewBase[] {
+        const result: PreviewBase[] = [];
         for (const [ matchString, previewItems ] of this._updateSubscriptions.entries()) {
             if (matchPathEnd(path, matchString)) {
                 result.push(...previewItems);
@@ -230,26 +190,29 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         return result;
     }
 
-    private updatePreviewItemsInSubscription(uri: vscode.Uri): void {
-        const path = uri.fsPath;
-        const method = this._cachedDebounceUpdateBySubscriptions[path];
-        if (method) {
-            return method();
-        }
-
-        const newMethod = debounce(() => {
-            delete this._cachedDebounceUpdateBySubscriptions[path];
-            const document = this.getDocumentByUri(uri);
-            for (const otherPreview of this.getPreviewItemsNeedsUpdate(path)) {
-                const otherDocument = this.getDocumentByUri(otherPreview.uri);
-                if (otherDocument && !otherPreview.disposed) {
-                    otherPreview.previewProvider.update(otherDocument, otherPreview.panel, document);
+    private updatePreviewItemsInSubscription = debounceByInput(
+        (uri: vscode.Uri): void => {
+            const document = getDocumentByUri(uri);
+            for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.fsPath)) {
+                const otherDocument = getDocumentByUri(otherPreview.uri);
+                if (otherDocument) {
+                    otherPreview.onDocumentChange(otherDocument, document);
                 }
             }
-        }, 1000, { trailing: true });
-        this._cachedDebounceUpdateBySubscriptions[path] = newMethod;
-        newMethod();
-    }
+        },
+        uri => uri.fsPath,
+        1000,
+        { trailing: true });
+
+    private updatePreviewItem = debounceByInput(
+        (previewItem: PreviewBase, document: vscode.TextDocument) => {
+            if (!previewItem.isDisposed) {
+                previewItem.onDocumentChange(document, document);
+            }
+        },
+        (preview) => preview.uri.toString(),
+        1000,
+        { trailing: true });
 }
 
 export const previewManager = new PreviewManager();

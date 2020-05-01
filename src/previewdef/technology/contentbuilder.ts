@@ -12,14 +12,11 @@ import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } 
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { html, StyleTable, htmlEscape } from '../../util/html';
+import { PreviewDependency } from '../previewbase';
 
-export const guiFilePath = 'interface/countrytechtreeview.gui';
-const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
-const technologiesGFX = 'interface/technologies.gfx';
-export const relatedGfxFiles = [...technologyUIGfxFiles, technologiesGFX];
 const techTreeViewName = 'countrytechtreeview';
 
-export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview, dependencies: PreviewDependency): Promise<string> {
     let baseContent = '';
     const styleTable = new StyleTable();
     try {
@@ -28,7 +25,7 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
         if (folders.length < 1) {
             baseContent = localize('techtree.notechtree', 'No technology tree.');
         } else {
-            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable);
+            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, dependencies);
         }
 
     } catch (e) {
@@ -46,18 +43,23 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
         styleTable);
 }
 
-async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable): Promise<string> {
-    const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
-    const fileContent = guiFile.toString();
+async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, dependencies: PreviewDependency): Promise<string> {
+    const guiFiles = dependencies.gui;
+    const guiTypes = (await Promise.all(guiFiles.map(async (guiFilePath) => {
+        const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
+        const fileContent = guiFile.toString();
+    
+        return convertNodeFromFileToJson(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath))).guitypes;
+    }))).reduce((p, c) => p.concat(c), []);
 
-    const guiTypes = convertNodeFromFileToJson(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath))).guitypes;
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
     const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
     if (!techTreeView) {
-        throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFilePath));
+        throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
     }
 
-    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes, styleTable)))).join('');
+    const gfxFiles = dependencies.gfx;
+    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
 
     return `
     ${renderFolderSelector(folders, styleTable)}
@@ -111,11 +113,19 @@ function renderFolderSelector(folders: string[], styleTable: StyleTable): string
     </div>`;
 }
 
-async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder: string, techTreeView: HOIPartial<ContainerWindowType>, allContainerWindowTypes: HOIPartial<ContainerWindowType>[],  styleTable: StyleTable): Promise<string> {
+async function renderTechnologyFolder(
+    technologyTrees: TechnologyTree[],
+    folder: string,
+    techTreeView: HOIPartial<ContainerWindowType>,
+    allContainerWindowTypes: HOIPartial<ContainerWindowType>[],
+    styleTable: StyleTable,
+    guiFiles: string[],
+    gfxFiles: string[],
+): Promise<string> {
     const folderTreeView = techTreeView.containerwindowtype.find(c => c.name === folder);
     let children: string;
     if (!folderTreeView) {
-        children = `<div>${localize('techtree.cantfindtechfolderin', "Can't find technology folder {0} in {1}.", folder, guiFilePath)}</div>`;
+        children = `<div>${localize('techtree.cantfindtechfolderin', "Can't find technology folder {0} in {1}.", folder, guiFiles)}</div>`;
 
     } else {
         const folderItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_item`);
@@ -124,7 +134,7 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
         const xorItem = allContainerWindowTypes.find(c => c.name === 'techtree_xor_item');
 
         const commonOptions: RenderCommonOptions = {
-            getSprite: defaultGetSprite,
+            getSprite: defaultGetSprite(gfxFiles),
             styleTable,
         };
 
@@ -141,7 +151,7 @@ async function renderTechnologyFolder(technologyTrees: TechnologyTree[], folder:
                         const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
                         if (tree) {
                             const gridboxType = child as HOIPartial<GridBoxType>;
-                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo, commonOptions);
+                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo, commonOptions, guiFiles, gfxFiles);
                         }
                     }
 
@@ -169,6 +179,8 @@ async function renderTechnologyTreeGridBox(
     xorItem: HOIPartial<ContainerWindowType> | undefined,
     parentInfo: ParentInfo,
     commonOptions: RenderCommonOptions,
+    guiFiles: string[],
+    gfxFiles: string[],
 ): Promise<string> {
     const xorJointKey = "#xorJoint#";
     const treeMap = arrayToMap(tree.technologies, 'id');
@@ -233,7 +245,7 @@ async function renderTechnologyTreeGridBox(
             } else {
                 const technology = treeMap[item.id];
                 const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
-                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent, commonOptions);
+                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent, commonOptions, guiFiles, gfxFiles);
             }
         },
         onRenderLineBox: async (item, parent) => {
@@ -295,16 +307,24 @@ async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: F
     });
 }
 
-async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefined, technology: Technology, folder: TechnologyFolder, parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
+async function renderTechnology(
+    item: HOIPartial<ContainerWindowType> | undefined,
+    technology: Technology,
+    folder: TechnologyFolder,
+    parentInfo: ParentInfo,
+    commonOptions: RenderCommonOptions,
+    guiFiles: string[],
+    gfxFiles: string[],
+): Promise<string> {
     if (!item) {
-        return `<div>${localize('techtree.cantfindtechitemin', "Can't find containerwindowtype \"{0}\" in {1}", `techtree_${folder.name}_item`, guiFilePath)}</div>`;
+        return `<div>${localize('techtree.cantfindtechitemin', "Can't find containerwindowtype \"{0}\" in {1}", `techtree_${folder.name}_item`, guiFiles)}</div>`;
     }
 
     const subSlotRegex = /^sub_technology_slot_(\d)$/;
     const containerWindow = await renderContainerWindow(item, parentInfo, {
         ...commonOptions,
         noSize: true,
-        getSprite: (sprite, callerType, callerName) => getTechnologySprite(sprite, technology, folder.name, callerType, callerName),
+        getSprite: (sprite, callerType, callerName) => getTechnologySprite(sprite, technology, folder.name, callerType, callerName, gfxFiles),
         onRenderChild: async (type, child, parentInfo) => {
             if (type === 'icon' && child.name === 'bonus_icon') {
                 return '';
@@ -323,7 +343,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
                 const subSlot = subSlotRegex.exec(child.name.toLowerCase());
                 if (subSlot) {
                     const slotId = parseInt(subSlot[1]);
-                    return await renderSubTechnology(child as HOIPartial<ContainerWindowType>, folder, technology.subTechnologies[slotId], parentInfo, commonOptions);
+                    return await renderSubTechnology(child as HOIPartial<ContainerWindowType>, folder, technology.subTechnologies[slotId], parentInfo, commonOptions, gfxFiles);
                 }
             }
 
@@ -351,7 +371,7 @@ async function renderTechnology(item: HOIPartial<ContainerWindowType> | undefine
         </div>`;
 }
 
-async function getTechnologySprite(sprite: string, technology: Technology, folder: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined> {
+async function getTechnologySprite(sprite: string, technology: Technology, folder: string, callerType: 'bg' | 'icon', callerName: string | undefined, gfxFiles: string[]): Promise<Sprite | undefined> {
     let imageTryList: string[] = [sprite];
     if (sprite === 'GFX_technology_unavailable_item_bg' && callerType === 'bg') {
         imageTryList = technology.enableEquipments ? [
@@ -363,13 +383,20 @@ async function getTechnologySprite(sprite: string, technology: Technology, folde
             `GFX_technology_available_item_bg`,
         ];
     } else if (sprite === 'GFX_technology_medium' && callerType === 'icon') {
-        return await getTechnologyIcon(`GFX_${technology.id}_medium`, 'GFX_technology_medium');
+        return await getTechnologyIcon(`GFX_${technology.id}_medium`, gfxFiles, 'GFX_technology_medium');
     }
 
-    return await getSpriteFromTryList(imageTryList);
+    return await getSpriteFromTryList(imageTryList, gfxFiles);
 }
 
-async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowType>, folder: TechnologyFolder, subTechnology: Technology | undefined, parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
+async function renderSubTechnology(
+    containerWindow: HOIPartial<ContainerWindowType>,
+    folder: TechnologyFolder,
+    subTechnology: Technology | undefined,
+    parentInfo: ParentInfo,
+    commonOptions: RenderCommonOptions,
+    gfxFiles: string[],
+): Promise<string> {
     if (subTechnology === undefined) {
         return '';
     }
@@ -384,10 +411,10 @@ async function renderSubTechnology(containerWindow: HOIPartial<ContainerWindowTy
                     `GFX_subtechnology_available_item_bg`,
                 ];
             } else if (callerType === 'icon' && callerName?.toLowerCase() === 'picture') {
-                return getTechnologyIcon(sprite);
+                return getTechnologyIcon(sprite, gfxFiles);
             }
 
-            return getSpriteFromTryList(imageTryList);
+            return getSpriteFromTryList(imageTryList, gfxFiles);
         }
     });
 
@@ -477,10 +504,10 @@ async function renderLineItem(
     return containerWindow;
 }
 
-async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefined> {
+async function getSpriteFromTryList(tryList: string[], gfxFiles: string[]): Promise<Sprite | undefined> {
     let background: Sprite | undefined = undefined;
     for (const imageName of tryList) {
-        background = await getSpriteByGfxName(imageName, technologyUIGfxFiles);
+        background = await getSpriteByGfxName(imageName, gfxFiles);
         if (background !== undefined) {
             break;
         }
@@ -489,15 +516,17 @@ async function getSpriteFromTryList(tryList: string[]): Promise<Sprite | undefin
     return background;
 }
 
-async function getTechnologyIcon(name: string, defaultIcon?: string): Promise<Sprite | undefined> {
-    const result = await getSpriteByGfxName(name, technologiesGFX);
+async function getTechnologyIcon(name: string, gfxFiles: string[], defaultIcon?: string): Promise<Sprite | undefined> {
+    const result = await getSpriteByGfxName(name, gfxFiles);
     if (result !== undefined || !defaultIcon) {
         return result;
     }
 
-    return await getSpriteByGfxName(defaultIcon, technologyUIGfxFiles);
+    return await getSpriteByGfxName(defaultIcon, gfxFiles);
 }
 
-function defaultGetSprite(sprite: string): Promise<Sprite | undefined> {
-    return getSpriteByGfxName(sprite, technologyUIGfxFiles);
+function defaultGetSprite(gfxFiles: string[]) {
+    return (sprite: string) => {
+        return getSpriteByGfxName(sprite, gfxFiles);
+    };
 }

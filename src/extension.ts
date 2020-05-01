@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { previewManager } from './previewmanager';
+import { previewManager } from './previewdef/previewmanager';
 import { contextContainer } from './context';
 import { PreviewWebviewType, ViewTypeDDS, Commands } from './constants';
 import { DDSViewProvider } from './ddsviewprovider';

@@ -26,7 +26,7 @@ function isSamePath(a: string, b: string): boolean {
     return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 }
 
-async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
+export async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     let absolutePath: string | undefined = undefined;
 
@@ -109,13 +109,7 @@ export async function hoiFileExpiryToken(relativePath: string): Promise<string> 
     return realPath + '@' + await getLastModifiedAsync(realPath);
 }
 
-export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, string]> {
-    const realPath = await getFilePathFromModOrHOI4(relativePath);
-
-    if (!realPath) {
-        throw new Error("Can't find file " + relativePath);
-    }
-
+export async function readFileFromPath(realPath: string, relativePath?: string): Promise<[Buffer, string]> {
     if (realPath.includes("?")) {
         const split = realPath.split('?');
         if (split[0] === 'opened') {
@@ -139,6 +133,16 @@ export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buff
     }
 
     return [ await readFile(realPath), realPath ];
+}
+
+export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, string]> {
+    const realPath = await getFilePathFromModOrHOI4(relativePath);
+
+    if (!realPath) {
+        throw new Error("Can't find file " + relativePath);
+    }
+
+    return await readFileFromPath(realPath, relativePath);
 }
 
 async function getDlcZipPaths(installPath: string): Promise<string[] | null> {

@@ -1,25 +1,25 @@
 import * as vscode from 'vscode';
 import { renderGfxFile } from './contentbuilder';
-import { PreviewProviderDef } from '../../previewProviderDef';
-import { localize } from '../../util/i18n';
-
-async function showGfxPreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = localize('loading', 'Loading...');
-    panel.webview.html = await renderGfxFile(document.getText(), document.uri, panel.webview);
-}
-
-async function updateGfxPreview(document: vscode.TextDocument, panel: vscode.WebviewPanel) {
-    panel.webview.html = await renderGfxFile(document.getText(), document.uri, panel.webview);
-}
+import { PreviewProviderDef } from '../previewmanager';
+import { PreviewBase, emptyPreviewDependency, PreviewDependency } from '../previewbase';
 
 function canPreviewGfx(document: vscode.TextDocument) {
     const uri = document.uri;
     return uri.path.endsWith('.gfx');
 }
 
+class GfxPreview extends PreviewBase {
+    protected getContent(document: vscode.TextDocument): Promise<string> {
+        return renderGfxFile(document.getText(), document.uri, this.panel.webview);
+    }
+
+    public getDependencies(document: vscode.TextDocument): Promise<PreviewDependency> {
+        return Promise.resolve(emptyPreviewDependency);
+    }
+}
+
 export const gfxPreviewDef: PreviewProviderDef = {
     type: 'gfx',
-    show: showGfxPreview,
-    update: updateGfxPreview,
     canPreview: canPreviewGfx,
+    previewContructor: GfxPreview,
 };
