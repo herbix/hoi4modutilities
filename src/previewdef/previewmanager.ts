@@ -8,6 +8,7 @@ import { technologyPreviewDef } from './technology';
 import { arrayToMap, matchPathEnd, debounceByInput, getDocumentByUri } from '../util/common';
 import { debug, error } from '../util/debug';
 import { PreviewBase, PreviewDependency } from './previewbase';
+import { contextContainer } from '../context';
 
 export interface PreviewProviderDef {
     type: string;
@@ -121,6 +122,13 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
                 enableScripts: true
             }
         );
+
+        if (contextContainer.current) {
+            panel.iconPath = {
+                light: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-light.svg')),
+                dark: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-dark.svg')),
+            };
+        }
 
         const previewItem = new previewProvider.previewContructor(uri, panel);
         this._previews[key] = previewItem;

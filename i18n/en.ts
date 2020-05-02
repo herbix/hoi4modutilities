@@ -19,7 +19,7 @@ export = {
     'preview.noactivedoc': "No active document.",
     'preview.viewtitle': 'Preview: {0}',
     'techtree.cantfindtechfolderin': "Can't find technology folder {0} in {1}.",
-    'techtree.cantfindtechitemin': "Can't find containerwindowtype \"{0}\" in {1}",
+    'techtree.cantfindtechitemin': "Can't find containerwindowtype \"{0}\" in {1}.",
     'techtree.cantfindviewin': "Can't find view {0} in {1}.",
     'techtree.notechtree': 'No technology tree.',
     'techtree.techfolder': 'Technology folder: ',
