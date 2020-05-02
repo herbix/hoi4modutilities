@@ -3,12 +3,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, getConfiguration } from './common';
+import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat } from './common';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
+import { getConfiguration } from './vsccommon';
 
 let dlcPaths: string[] | null = null;
 const dlcZipPathsCache = new PromiseCache({

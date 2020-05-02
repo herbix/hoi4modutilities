@@ -5,10 +5,11 @@ import { localize } from '../util/i18n';
 import { gfxPreviewDef } from './gfx';
 import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from '../constants';
 import { technologyPreviewDef } from './technology';
-import { arrayToMap, matchPathEnd, debounceByInput, getDocumentByUri } from '../util/common';
+import { arrayToMap, matchPathEnd, debounceByInput } from '../util/common';
 import { debug, error } from '../util/debug';
 import { PreviewBase, PreviewDependency } from './previewbase';
 import { contextContainer } from '../context';
+import { getDocumentByUri } from '../util/vsccommon';
 
 export interface PreviewProviderDef {
     type: string;

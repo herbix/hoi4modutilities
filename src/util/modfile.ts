@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigurationKey, Commands } from '../constants';
-import { getConfiguration, readdir } from './common';
+import { readdir } from './common';
 import { PromiseCache } from './cache';
 import { localize } from './i18n';
+import { getConfiguration } from './vsccommon';
 
 export const modFileStatusContainer: { current: vscode.StatusBarItem | null } = {
     current: null,

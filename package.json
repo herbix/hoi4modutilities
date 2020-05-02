@@ -121,7 +121,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch --display errors-only --info-verbosity verbose",
-		"test-compile": "tsc -p ./",
+		"test-compile": "tsc -d -p ./",
 		"lint": "eslint src --ext ts",
 		"watch": "tsc -watch -p ./",
 		"pretest": "npm run test-compile && npm run lint",

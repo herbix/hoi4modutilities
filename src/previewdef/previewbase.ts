@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { localize } from '../util/i18n';
 import { error, debug } from '../util/debug';
-import { getDocumentByUri } from '../util/common';
+import { getDocumentByUri } from '../util/vsccommon';
 import { getFilePathFromModOrHOI4, readFileFromPath } from '../util/fileloader';
 
 export interface PreviewDependency {

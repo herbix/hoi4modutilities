@@ -1,6 +1,5 @@
 import * as path from 'path';
 import * as fs from 'fs';
-import * as vscode from 'vscode';
 import { debounce, DebounceSettings } from 'lodash';
 
 export interface NumberSize {
@@ -68,10 +67,6 @@ function fsFuncWrapper<T>(func: (path: fs.PathLike, cb: (err: NodeJS.ErrnoExcept
     return new Promise<T>((resolve, reject) => func(path, (err, files) => err ? reject(err) : resolve(files)));
 }
 
-export function getConfiguration() {
-    return vscode.workspace.getConfiguration('hoi4ModUtilities');
-}
-
 export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO, keySelector: (...input: TI) => string, wait?: number, debounceSettings?: DebounceSettings): (...input: TI) => TO {
     const cachedMethods: Record<string, (input: TI) => TO> = {};
     
@@ -91,8 +86,4 @@ export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO
     }
 
     return result;
-}
-
-export function getDocumentByUri(uri: vscode.Uri): vscode.TextDocument | undefined {
-    return vscode.workspace.textDocuments.find(document => document.uri.toString() === uri.toString());
 }

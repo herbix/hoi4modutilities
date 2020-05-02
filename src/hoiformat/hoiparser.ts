@@ -101,12 +101,12 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
 
 type HOITokenType = 'comment' | 'symbol' | 'operator' | 'string' | 'number' | 'unitnumber' | 'eof';
 const tokenRegexStrings: Record<HOITokenType, [string, number]> = {
-    comment: ['#.*[\\r\\n]', 0],
-    symbol: ['[a-zA-Z_@][\\w:\\._@\\[\\]\\-]*', 80],
-    operator: ['[={}<>;]|>=|<=|!=', 0],
-    string: ['"(?:\\\\"|\\\\\\\\|[^"])*"', 0],
+    comment: ['#.*(?:[\\r\\n]|$)', 0],
+    symbol: ['(?:\\d+\\.)?[a-zA-Z_@][\\w:\\._@\\[\\]\\-\\?\\^\\/]*', 40],
+    operator: ['[={}<>;,]|>=|<=|!=', 10],
+    string: ['"(?:\\\\"|\\\\\\\\|[^"])*"', 10],
     number: ['-?\\d*\\.\\d+|-?\\d+|0x\\d+', 50],
-    unitnumber: ['(?:-?\\d*\\.\\d+|-?\\d+)%%?', 49],
+    unitnumber: ['(?:-?\\d*\\.\\d+|-?\\d+)(?:%%?)', 49],
     eof: ['$', 1000],
 };
 
@@ -135,8 +135,13 @@ function parseNode(tokens: Tokenizer<HOITokenType>): Node {
         tokens.throw("Expect name to be symbol, string or number", true);
     }
 
-    const nextToken = tokens.peek();
-    if (nextToken.type !== 'operator' || nextToken.value === '}') {
+    let nextToken = tokens.peek();
+    if (nextToken.type !== 'operator' || nextToken.value.match(/^[,;}]$/)) {
+        while (nextToken.value.match(/^[,;]$/)) {
+            tokens.next();
+            nextToken = tokens.peek();
+        }
+
         let nameValue = name.value;
         if (name.type === 'string') {
             nameValue = nameValue.substr(1, nameValue.length - 2).replace(/\\"/g, '"').replace(/\\\\/g, '\\');
@@ -152,12 +157,22 @@ function parseNode(tokens: Tokenizer<HOITokenType>): Node {
         };
     }
 
-    const operator = tokens.next();
+    let operator: Token<HOITokenType>;
+    if (nextToken.value === '{') {
+        operator = {
+            ...nextToken,
+            value: '=',
+        };
+    } else {
+        operator = tokens.next();
+    }
+
     const [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
 
-    const tailComma = tokens.peek();
-    if (tailComma.value === ';') {
+    let tailComma = tokens.peek();
+    while (tailComma.value.match(/^[,;]$/)) {
         tokens.next();
+        tailComma = tokens.peek();
     }
 
     return {

@@ -4,7 +4,7 @@ import { contextContainer } from './context';
 import { PreviewWebviewType, ViewTypeDDS, Commands } from './constants';
 import { DDSViewProvider } from './ddsviewprovider';
 import { selectModFile, onChangeWorkspaceConfiguration, modFileStatusContainer, checkAndUpdateModFileStatus } from './util/modfile';
-import { getConfiguration } from './util/common';
+import { getConfiguration } from './util/vsccommon';
 
 export function activate(context: vscode.ExtensionContext) {
     contextContainer.current = context;
