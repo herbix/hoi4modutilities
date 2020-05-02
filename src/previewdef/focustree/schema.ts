@@ -1,9 +1,12 @@
-import { Node, Token, SymbolNode } from "../../hoiformat/hoiparser";
+import { Node, Token } from "../../hoiformat/hoiparser";
 import { convertNodeFromFileToJson, Focus as SFocus, HOIPartial, CustomSymbol } from "../../hoiformat/schema";
+import { normalizeNumberLike } from "../../util/hoi4gui/common";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
     allowBranchOptions: string[];
+    continuousFocusPositionX?: number;
+    continuousFocusPositionY?: number;
 }
 
 export interface Focus {
@@ -26,7 +29,9 @@ export function getFocusTree(node: Node): FocusTree[] {
         const focuses = getFocuses(focusTree.focus);
         focusTrees.push({
             focuses,
-            allowBranchOptions: getAllowBranchOptions(focuses)
+            allowBranchOptions: getAllowBranchOptions(focuses),
+            continuousFocusPositionX: normalizeNumberLike(focusTree.continuous_focus_position?.x, 0) ?? 50,
+            continuousFocusPositionY: normalizeNumberLike(focusTree.continuous_focus_position?.y, 0) ?? 1000,
         });
     }
 
@@ -34,7 +39,7 @@ export function getFocusTree(node: Node): FocusTree[] {
         const focuses = getFocuses(file.shared_focus);
         focusTrees.push({
             focuses,
-            allowBranchOptions: getAllowBranchOptions(focuses)
+            allowBranchOptions: getAllowBranchOptions(focuses),
         });
     }
 

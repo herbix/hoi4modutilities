@@ -33,15 +33,15 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
 }
 
 
-const leftPaddingBase = 30;
-const topPaddingBase = 30;
-const xGridSize = 90;
-const yGridSize = 120;
+const leftPaddingBase = 50;
+const topPaddingBase = 50;
+const xGridSize = 96;
+const yGridSize = 130;
 const optionHeight = 20;
 
 async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
     const focuses = Object.values(focustree.focuses);
-    const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 1000);
+    const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 0);
     const leftPadding = leftPaddingBase - minX * xGridSize;
     const topPadding = focustree.allowBranchOptions.length * optionHeight + topPaddingBase;
 
@@ -69,7 +69,19 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
             onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
             cornerPosition: 0.5,
-        })
+        }) +
+        (focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
+        `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
+            position: absolute;
+            width: 770px;
+            height: 380px;
+            left: ${focustree.continuousFocusPositionX}px;
+            top: ${focustree.continuousFocusPositionY}px;
+            margin: 20px;
+            background: rgba(128, 128, 128, 0.2);
+            text-align: center;
+            pointer-events: none;
+        `)}">Continuous focuses</div>` : '')
     );
 }
 

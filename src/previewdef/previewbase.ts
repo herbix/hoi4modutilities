@@ -26,8 +26,6 @@ export abstract class PreviewBase {
 
     private disposed = false;
 
-    protected noDependency = false;
-
     constructor(
         readonly uri: vscode.Uri,
         readonly panel: vscode.WebviewPanel,

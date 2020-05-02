@@ -115,6 +115,7 @@ export interface FocusTree {
     id: CustomSymbol;
     shared_focus: CustomSymbol;
     focus: Focus[];
+    continuous_focus_position: Position;
 }
 
 export interface Focus {
@@ -307,7 +308,8 @@ const focusTreeSchema: SchemaDef<FocusTree> = {
     focus: {
         _innerType: focusSchema,
         _type: 'array',
-    }
+    },
+    continuous_focus_position: positionSchema,
 };
 
 const technologySchema: SchemaDef<Technology> = {
