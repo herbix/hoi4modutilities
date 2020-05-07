@@ -5,3 +5,4 @@ out/
 /package.nls.*.json
 /src/util/debug.shouldignore.ts
 /benchmark/*.log
+/static/

@@ -3,59 +3,49 @@ import * as path from 'path';
 import { focusTreePreviewDef } from './focustree';
 import { localize } from '../util/i18n';
 import { gfxPreviewDef } from './gfx';
-import { PreviewWebviewType, ShouldHideHoi4PreviewContextName } from '../constants';
+import { Commands, WebviewType, ContextName } from '../constants';
 import { technologyPreviewDef } from './technology';
 import { arrayToMap, matchPathEnd, debounceByInput } from '../util/common';
 import { debug, error } from '../util/debug';
 import { PreviewBase, PreviewDependency } from './previewbase';
 import { contextContainer } from '../context';
 import { getDocumentByUri } from '../util/vsccommon';
+import { worldMapPreviewDef } from './worldmap';
 
-export interface PreviewProviderDef {
+export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
+
+interface PreviewProviderDefNormal {
     type: string;
     canPreview(document: vscode.TextDocument): boolean;
     previewContructor: new (uri: vscode.Uri, panel: vscode.WebviewPanel) => PreviewBase;
 }
 
+interface PreviewProviderDefAlternative {
+    type: string;
+    canPreview(document: vscode.TextDocument): boolean;
+    onPreview(document: vscode.TextDocument): Promise<void>;
+}
+
 export class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewBase> = {};
 
-    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef ];
+    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef, worldMapPreviewDef ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = arrayToMap(this._previewProviders, 'type');
 
     private _updateSubscriptions: Map<string[], PreviewBase[]> = new Map();
 
-    public showPreview(uri?: vscode.Uri): Promise<void> {
-        return this.showPreviewImpl(uri);
-    }
+    public register(): vscode.Disposable {
+        const disposables: vscode.Disposable[] = [];
+        disposables.push(vscode.commands.registerCommand(Commands.Preview, this.showPreview, this));
+        disposables.push(vscode.workspace.onDidCloseTextDocument(this.onCloseTextDocument, this));
+        disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
+        disposables.push(vscode.window.onDidChangeActiveTextEditor(this.onChangeActiveTextEditor, this));
+        disposables.push(vscode.window.registerWebviewPanelSerializer(WebviewType.Preview, this));
+        
+        // Trigger context value setting
+        this.onChangeActiveTextEditor(vscode.window.activeTextEditor);
 
-	public onCloseTextDocument(document: vscode.TextDocument): void {
-        const key = document.uri.toString();
-        this._previews[key]?.panel.dispose();
-        debug(`dispose panel ${key} because text document closed`);
-        this.updatePreviewItemsInSubscription(document.uri);
-    }
-    
-	public onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
-        const document = e.document;
-        const key = document.uri.toString();
-        const preview = this._previews[key];
-        if (preview !== undefined) {
-            this.updatePreviewItem(preview, document);
-        }
-
-        this.updatePreviewItemsInSubscription(document.uri);
-    }
-
-    public onChangeActiveTextEditor(textEditor: vscode.TextEditor | undefined): void {
-        let shouldShowPreviewButton = false;
-        if (textEditor) {
-            if (this.findPreviewProvider(textEditor.document)) {
-                shouldShowPreviewButton = true;
-            }
-        }
-
-        vscode.commands.executeCommand('setContext', ShouldHideHoi4PreviewContextName, !shouldShowPreviewButton);
+        return vscode.Disposable.from(...disposables);
     }
 
     public async deserializeWebviewPanel(panel: vscode.WebviewPanel, state: any): Promise<void> {
@@ -75,6 +65,39 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             panel.dispose();
             debug(`dispose panel ${uriStr} because reopen error`);
         }
+    }
+
+    private showPreview(uri?: vscode.Uri): Promise<void> {
+        return this.showPreviewImpl(uri);
+    }
+
+	private onCloseTextDocument(document: vscode.TextDocument): void {
+        const key = document.uri.toString();
+        this._previews[key]?.panel.dispose();
+        debug(`dispose panel ${key} because text document closed`);
+        this.updatePreviewItemsInSubscription(document.uri);
+    }
+    
+	private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
+        const document = e.document;
+        const key = document.uri.toString();
+        const preview = this._previews[key];
+        if (preview !== undefined) {
+            this.updatePreviewItem(preview, document);
+        }
+
+        this.updatePreviewItemsInSubscription(document.uri);
+    }
+
+    private onChangeActiveTextEditor(textEditor: vscode.TextEditor | undefined): void {
+        let shouldShowPreviewButton = false;
+        if (textEditor) {
+            if (this.findPreviewProvider(textEditor.document)) {
+                shouldShowPreviewButton = true;
+            }
+        }
+
+        vscode.commands.executeCommand('setContext', ContextName.ShouldHideHoi4Preview, !shouldShowPreviewButton);
     }
 
     private async showPreviewImpl(requestUri?: vscode.Uri, panel?: vscode.WebviewPanel): Promise<void> {
@@ -114,11 +137,15 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             return;
         }
 
+        if ('onPreview' in previewProvider) {
+            return previewProvider.onPreview(document);
+        }
+
 		const filename = path.basename(uri.path);
 		panel = panel ?? vscode.window.createWebviewPanel(
-            PreviewWebviewType,
+            WebviewType.Preview,
             localize('preview.viewtitle', "HOI4: {0}", filename),
-			vscode.ViewColumn.Two,
+			vscode.ViewColumn.Beside,
 			{
                 enableScripts: true
             }

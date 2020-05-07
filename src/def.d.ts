@@ -7,3 +7,13 @@ declare module 'vscode' {
         };
     }
 }
+
+declare module '*.html' {
+    const _default: string;
+    export default _default;
+}
+
+declare module '*.css' {
+    const _default: string;
+    export default _default;
+}

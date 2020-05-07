@@ -1,7 +1,8 @@
 import { error } from "./debug";
+import { __table } from '../../i18n/en';
 
 const config = JSON.parse(process.env.VSCODE_NLS_CONFIG || '{}');
-const locale = config.locale;
+const locale = config.locale ?? 'en';
 
 let table: Record<string, string> = {};
 
@@ -11,7 +12,7 @@ try {
     error(e);
 }
 
-export function localize(key: string, message: string, ...args: any[]): string {
+export function localize(key: keyof typeof __table, message: string, ...args: any[]): string {
     if (key in table) {
         message = table[key];
     }

@@ -6,7 +6,7 @@ import { PromiseCache, Cache } from './cache';
 import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat } from './common';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
-import { convertNodeToJson, SchemaDef } from '../hoiformat/schema';
+import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
 import { getConfiguration } from './vsccommon';
@@ -144,6 +144,74 @@ export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buff
     }
 
     return await readFileFromPath(realPath, relativePath);
+}
+
+export async function readFileFromModOrHOI4AsJson<T>(relativePath: string, schema: SchemaDef<T>): Promise<HOIPartial<T>> {
+    const [buffer, realPath] = await readFileFromModOrHOI4(relativePath);
+    const nodes = parseHoi4File(buffer.toString(), localize('infile', 'In file {0}:\n', realPath));
+    return convertNodeToJson<T>(nodes, schema);
+}
+
+export async function listFilesFromModOrHOI4(relativePath: string): Promise<string[]> {
+    const result: string[] = [];
+
+    // Find in opened workspace folders
+    if (vscode.workspace.workspaceFolders) {
+        for (const folder of vscode.workspace.workspaceFolders) {
+            if (folder.uri.scheme !== 'file') {
+                continue;
+            }
+
+            const findPath = path.join(folder.uri.fsPath, relativePath);
+            if (fs.existsSync(findPath)) {
+                try {
+                    result.push(...await readdir(findPath));
+                } catch(e) {}
+            }
+        }
+    }
+
+    const replacePaths = await getReplacePaths();
+    if (replacePaths) {
+        const relativePathDir = path.dirname(relativePath);
+        for (const replacePath of replacePaths) {
+            if (isSamePath(relativePathDir, replacePath)) {
+                return result.filter((v, i, a) => i === a.indexOf(v));
+            }
+        }
+    }
+
+    // Find in HOI4 install path
+    const conf = getConfiguration();
+    const installPath: string = conf.installPath;
+    {
+        const findPath = path.join(installPath, relativePath);
+        if (fs.existsSync(findPath)) {
+            try {
+                result.push(...await readdir(findPath));
+            } catch(e) {}
+        }
+    }
+
+    // Find in HOI4 DLCs
+    if (conf.loadDlcContents) {
+        const dlcs = await dlcZipPathsCache.get(installPath);
+        if (dlcs !== null) {
+            for (const dlc of dlcs) {
+                const dlcZip = dlcZipCache.get(dlc);
+                const folderEntry = dlcZip.getEntry(relativePath);
+                if (folderEntry && folderEntry.isDirectory) {
+                    for (const entry of dlcZip.getEntries()) {
+                        if (isSamePath(entry.entryName.replace(/^[\\/]/, ''), relativePath)) {
+                            result.push(path.basename(entry.name));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return result.filter((v, i, a) => i === a.indexOf(v));
 }
 
 async function getDlcZipPaths(installPath: string): Promise<string[] | null> {

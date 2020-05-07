@@ -1,0 +1,34 @@
+body {
+    margin: 0;
+    padding: 0;
+}
+
+#main-canvas {
+    height: 100vh;
+    width: 100vw;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+#topbar {
+    position: fixed;
+    padding-top: 10px;
+    padding-left: 20px;
+    width: 100%;
+    height: 30px;
+    top: 0;
+    left: 0;
+    background: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    z-index: 10;
+}
+
+label {
+    margin-right: 5px;
+}
+
+select, input {
+    margin-right: 10px;
+    min-width: 100px;
+}

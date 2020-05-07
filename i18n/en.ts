@@ -1,4 +1,5 @@
-export = {
+// Hack tsc
+export const __table = {
     'error': 'Error',
     'focustree.nofocustree': 'No focus tree.',
     'gfx.filter': 'Filter: ',
@@ -24,3 +25,6 @@ export = {
     'techtree.notechtree': 'No technology tree.',
     'techtree.techfolder': 'Technology folder: ',
 };
+
+// Real export
+module.exports = __table;

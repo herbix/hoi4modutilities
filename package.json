@@ -24,9 +24,11 @@
 	],
 	"activationEvents": [
 		"onCommand:hoi4modutilities.preview",
+		"onCommand:hoi4modutilities.previewworld",
 		"onCommand:hoi4modutilities.selectmodfile",
+		"onCustomEditor:hoi4modutilities.dds",
 		"onWebviewPanel:hoi4ftpreview",
-		"onCustomEditor:hoi4modutilities.dds"
+		"onWebviewPanel:hoi4worldmappreview"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -71,6 +73,11 @@
 				"category": "HOI4 Mod Utilities"
 			},
 			{
+				"command": "hoi4modutilities.previewworld",
+				"title": "%hoi4modutilities.previewworld.title%",
+				"category": "HOI4 Mod Utilities"
+			},
+			{
 				"command": "hoi4modutilities.test",
 				"title": "HOI4 test",
 				"category": "HOI4 Mod Utilities"
@@ -111,6 +118,12 @@
 					"when": "!shouldHideHoi4Preview"
 				},
 				{
+					"command": "hoi4modutilities.selectmodfile"
+				},
+				{
+					"command": "hoi4modutilities.previewworld"
+				},
+				{
 					"command": "hoi4modutilities.test",
 					"when": "Hoi4MUInDev"
 				}
@@ -142,6 +155,7 @@
 		"eslint": "^6.8.0",
 		"glob": "^7.1.6",
 		"mocha": "^7.1.1",
+		"raw-loader": "^4.0.1",
 		"ts-loader": "^7.0.0",
 		"typescript": "^3.8.3",
 		"vscode-test": "^1.3.0",

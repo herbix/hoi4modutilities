@@ -27,7 +27,6 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
 
     return html(webview, baseContent, [
         { content: `window.previewedFileUri = "${uri.toString()}";` },
-        'common.js',
         'focustree.js',
     ], styleTable);
 }

@@ -1,5 +1,5 @@
 import { Node, Token, NodeValue, SymbolNode } from "./hoiparser";
-import { NumberPosition, NumberSize } from "../util/common";
+import { NumberPosition } from "../util/common";
 
 //#region Common
 export interface TokenObject {
@@ -33,16 +33,23 @@ export interface NumberLike extends TokenObject {
     _unit: NumberUnit | undefined;
 }
 
+export interface Attachment<T> {
+    _attachment: string | undefined;
+    _value: T;
+}
+
 export type NumberUnit = '%' | '%%';
 
 export type HOIPartial<T> =
     T extends Enum ? T :
     T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
+    T extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
     { [K in keyof T]:
         T[K] extends Enum ? T[K] :
         T[K] extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
+        T[K] extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> :
         T[K] extends (infer T1)[] ? HOIPartial<T1>[] :
         K extends ('_token' | '_index') ? T[K] | undefined :
         HOIPartial<T[K]> | undefined; };
@@ -57,6 +64,7 @@ export type SchemaDef<T> =
     T extends NumberLike ? 'numberlike' :
     T extends Enum ? 'enum' :
     T extends CustomMap<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'map'; } :
+    T extends Attachment<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'attachment'; } :
     T extends (infer B)[] ? { _innerType: SchemaDef<B>; _type: 'array'; } :
     { [K in Exclude<keyof T, '_token' | '_index'>]: SchemaDef<T[K]>; };
 
@@ -550,6 +558,13 @@ function convertMap<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<
     return result;
 }
 
+function convertAttachment<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<string, NodeValue> = {}): HOIPartial<Attachment<T>> {
+    return {
+        _attachment: node.valueAttachment?.name,
+        _value: convertNodeToJson(node, innerSchema, constants),
+    };
+}
+
 function convertObject<T>(node: Node, schemaDef: SchemaDef<T>, constants: Record<string, NodeValue> = {}): HOIPartial<T> {
     const result: Record<string, any> = {};
     const schema = schemaDef as any;
@@ -660,6 +675,8 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
             result = convertMap(node, schema._innerType, constants) as HOIPartial<T>;
         } else if (type === 'array') {
             throw new Error("Array can't be here.");
+        } else if (type === 'attachment') {
+            result = convertAttachment(node, schema._innerType, constants) as HOIPartial<T>;
         } else {
             result = convertObject(node, schema, constants);
         }

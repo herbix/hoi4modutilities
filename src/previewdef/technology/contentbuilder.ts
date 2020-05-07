@@ -37,7 +37,6 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
         baseContent,
         [
             { content: `window.previewedFileUri = "${uri.toString()}";` },
-            'common.js',
             'techtree.js',
         ],
         styleTable);

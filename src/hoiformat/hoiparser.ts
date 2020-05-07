@@ -4,6 +4,8 @@ export interface Node {
     name: string | null;
     operator: string | null;
     value: NodeValue;
+    valueAttachment: SymbolNode | null;
+    valueAttachmentToken: Token | null;
     nameToken: Token | null;
     operatorToken: Token | null;
     valueStartToken: Token | null;
@@ -126,6 +128,8 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
         value,
         valueStartToken: null,
         valueEndToken: null,
+        valueAttachment: null,
+        valueAttachmentToken: null,
     };
 }
 
@@ -154,6 +158,8 @@ function parseNode(tokens: Tokenizer<HOITokenType>): Node {
             value: null,
             valueStartToken: null,
             valueEndToken: null,
+            valueAttachment: null,
+            valueAttachmentToken: null,
         };
     }
 
@@ -167,7 +173,18 @@ function parseNode(tokens: Tokenizer<HOITokenType>): Node {
         operator = tokens.next();
     }
 
-    const [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+    let valueAttachment: SymbolNode | null = null;
+    let valueAttachmentToken: Token | null = null;
+    let [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+
+    if (value !== null && typeof value === 'object' && 'name' in value) {
+        const nextToken = tokens.peek();
+        if (nextToken.value === '{') {
+            valueAttachment = value;
+            valueAttachmentToken = valueStartToken;
+            [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+        }
+    }
 
     let tailComma = tokens.peek();
     while (tailComma.value.match(/^[,;]$/)) {
@@ -183,6 +200,8 @@ function parseNode(tokens: Tokenizer<HOITokenType>): Node {
         value,
         valueStartToken,
         valueEndToken,
+        valueAttachment,
+        valueAttachmentToken,
     };
 }
 

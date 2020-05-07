@@ -6,7 +6,7 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 /**@type {import('webpack').Configuration}*/
-const config = {
+const mainConfig = {
   target: 'node', // vscode extensions run in a Node.js-context 📖 -> https://webpack.js.org/configuration/node/
 
   entry: './src/extension.ts', // the entry point of this extension, 📖 -> https://webpack.js.org/configuration/entry-context/
@@ -29,6 +29,10 @@ const config = {
   module: {
     rules: [
       {
+        test: /\.(css|html)$/,
+        use: 'raw-loader',
+      },
+      {
         test: /\.ts$/,
         exclude: /node_modules/,
         use: [
@@ -49,4 +53,52 @@ const config = {
     ])
   ]
 };
-module.exports = config;
+
+/**@type {import('webpack').Configuration}*/
+const webviewJsConfig = {
+  target: "web",
+
+  entry: {
+    focustree: './webviewsrc/focustree.ts',
+    gfx: './webviewsrc/gfx.ts',
+    techtree: './webviewsrc/techtree.ts',
+    worldmap: './webviewsrc/worldmap/index.ts',
+  },
+  
+  output: {
+    path: path.resolve(__dirname, 'static'),
+    filename: '[name].js',
+    library: 'window',
+  },
+
+  devtool: 'source-map',
+
+  resolve: {
+    extensions: ['.ts', '.js']
+  },
+  
+  module: {
+    rules: [
+      {
+        test: /\.ts$/,
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'ts-loader'
+          }
+        ]
+      }
+    ]
+  },
+  plugins: [
+    new CopyWebpackPlugin([
+      {
+        from: 'webviewresource/**/*',
+        to: path.resolve(__dirname, 'static'),
+        flatten: true
+      }
+    ])
+  ]
+};
+
+module.exports = [ mainConfig, webviewJsConfig ];

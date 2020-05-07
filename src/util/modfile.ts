@@ -16,23 +16,16 @@ export const workspaceModFilesCache = new PromiseCache({
     life: 10 * 1000,
 });
 
-export function onChangeWorkspaceConfiguration(e: vscode.ConfigurationChangeEvent): void {
-    if (e.affectsConfiguration(`${ConfigurationKey}.modFile`)) {
-        checkAndUpdateModFileStatus(getConfiguration().modFile);
-    }
-}
+export function registerModFile(): vscode.Disposable {
+    const disposables: vscode.Disposable[] = [];
+    disposables.push(vscode.commands.registerCommand(Commands.SelectModFile, selectModFile));
+    disposables.push(modFileStatusContainer.current = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50));
+    disposables.push(vscode.workspace.onDidChangeConfiguration(onChangeWorkspaceConfiguration));
+    disposables.push(new vscode.Disposable(() => { modFileStatusContainer.current = null; }));
 
-export function checkAndUpdateModFileStatus(modFile: string | undefined): void {
-    if (modFile === undefined || modFile.trim() === '') {
-        updateSelectedModFileStatus(undefined);
-        return;
-    }
-
-    const error = !fs.existsSync(modFile);
-    updateSelectedModFileStatus(modFile, error);
-    if (error) {
-        vscode.window.showErrorMessage(localize('modfile.filenotexist', 'Mod file not exist: {0}', modFile));
-    }
+    // Initial status bar
+    checkAndUpdateModFileStatus(getConfiguration().modFile);
+    return vscode.Disposable.from(...disposables);
 }
 
 export function updateSelectedModFileStatus(modFile: string | undefined, error: boolean = false): void {
@@ -53,7 +46,26 @@ export function updateSelectedModFileStatus(modFile: string | undefined, error: 
     }
 }
 
-export async function selectModFile(): Promise<void> {
+function onChangeWorkspaceConfiguration(e: vscode.ConfigurationChangeEvent): void {
+    if (e.affectsConfiguration(`${ConfigurationKey}.modFile`)) {
+        checkAndUpdateModFileStatus(getConfiguration().modFile);
+    }
+}
+
+function checkAndUpdateModFileStatus(modFile: string | undefined): void {
+    if (modFile === undefined || modFile.trim() === '') {
+        updateSelectedModFileStatus(undefined);
+        return;
+    }
+
+    const error = !fs.existsSync(modFile);
+    updateSelectedModFileStatus(modFile, error);
+    if (error) {
+        vscode.window.showErrorMessage(localize('modfile.filenotexist', 'Mod file not exist: {0}', modFile));
+    }
+}
+
+async function selectModFile(): Promise<void> {
     const conf = getConfiguration();
     const modFileInspect = conf.inspect<string>('modFile');
     const modsList: (vscode.QuickPickItem & { selectModFile?: true })[] = !modFileInspect?.globalValue ? [] : [{

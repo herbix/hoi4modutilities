@@ -6,7 +6,7 @@ export interface DynamicScript {
     content: string;
 }
 
-export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: StyleTable): string {
+export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: StyleTable | DynamicScript[]): string {
     const preparedScripts = scripts.map<[string, string]>(script => {
         if (typeof script === 'string') {
             const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + script)));
@@ -24,6 +24,15 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
     });
 
     const styleNonce = randomString(32);
+    const preparedStyles = styles === undefined ? [['', `'unsafe-inline'`] as [string, string]] :
+        Array.isArray(styles) ? styles.map<[string, string]>(style => {
+            const nonce = randomString(32);
+            return [
+                `<style nonce="${nonce}">${style.content}</style>`,
+                `'nonce-${nonce}'`,
+            ];
+        }) :
+        [[styles.toStyleElement(styleNonce), `'nonce-${styleNonce}'`] as [string, string]];
 
     return `
 <!DOCTYPE html>
@@ -32,13 +41,13 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         <meta charset="UTF-8">
         <meta http-equiv="Content-Security-Policy" content="
             default-src 'none';
-            style-src ${styles ? `'nonce-${styleNonce}'` : "'unsafe-inline'"};
+            style-src ${preparedStyles.map(v => v[1]).join(' ')};
             script-src ${preparedScripts.map(v => v[1]).filter(v => v.length > 0).join(' ')} ${webview.cspSource};
             img-src data:;
         ">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         ${preparedScripts.map(v => v[0]).join('')}
-        ${styles?.toStyleElement(styleNonce) ?? ''}
+        ${preparedStyles.map(v => v[0]).join('')}
     </head>
     <body>${body.replace(/(<\w+(?:\s+\w+\s*=\s*".*?")*?\s+class\s*=\s*")(.*?)("(?:\s+\w+\s*=\s*".*?")*?\s*\/?>)/gs, (substr, g1, g2, g3) => {
         return g1 + g2.replace(/\s+/g, ' ').trim() + g3;

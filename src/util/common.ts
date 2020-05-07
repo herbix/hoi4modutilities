@@ -29,11 +29,12 @@ export function matchPathEnd(pathname: string, segments: string[]): boolean {
     return true;
 }
 
-export function arrayToMap<T, K extends keyof T>(items: T[], key: K): T[K] extends string ? Record<string, T> : never {
-    const result: Record<string, T> = {};
+export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
+    T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never {
+    const result: Record<string | number, T> = {};
     for (const item of items) {
         const id = item[key];
-        if (typeof id !== 'string') {
+        if (typeof id !== 'string' && typeof id !== 'number') {
             throw new Error('key of arrayToMap must be a string type');
         }
         result[id] = item;

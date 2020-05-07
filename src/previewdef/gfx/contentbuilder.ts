@@ -21,7 +21,6 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
         baseContent, 
         [
             { content: `window.previewedFileUri = "${uri.toString()}";` },
-            'common.js',
             'gfx.js',
         ],
         styleTable);

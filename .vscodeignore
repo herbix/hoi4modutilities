@@ -15,3 +15,5 @@ icon.xcf
 demo/**
 loader/**
 benchmark/**
+webviewsrc/**
+webviewresource/**

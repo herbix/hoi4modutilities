@@ -1,5 +1,4 @@
 import { PixelFormat, RawPixelFormat, CompressedPixelFormat, getBlockSize, CompressFormat, PixelValueType, ChannelFormat, pixelFormatToString } from "./pixelformat";
-import { isNotProd, debug } from "../../debug";
 
 export class Surface {
     constructor(
@@ -17,7 +16,7 @@ export class Surface {
         if (!this.pixelFormat.compressed) {
             return this.getFullRgbaFromRawPixels(this.pixelFormat);
         } else {
-            return Uint8Array.from(this.getFullRgbaFromCompressedPixels(this.pixelFormat));
+            return this.getFullRgbaFromCompressedPixels(this.pixelFormat);
         }
     }
 
