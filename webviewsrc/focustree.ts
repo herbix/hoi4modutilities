@@ -1,4 +1,4 @@
-import { getState, setState } from "./common";
+import { getState, setState } from "./util/common";
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);

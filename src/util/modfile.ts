@@ -105,11 +105,11 @@ async function selectModFile(): Promise<void> {
     modsList.sort((a, b) => a.picked ? -1 : b.picked ? 1 : 0);
 
     modsList.push({
-        label: localize('modfile.select', 'Select a .mod file...'),
+        label: localize('modfile.select', 'Browse a .mod file...'),
         selectModFile: true,
     });
 
-    const selectResult = await vscode.window.showQuickPick(modsList);
+    const selectResult = await vscode.window.showQuickPick(modsList, { placeHolder: localize('modfile.selectworkingmod', 'Select working mod') });
 
     if (selectResult) {
         let modPath = selectResult.detail;

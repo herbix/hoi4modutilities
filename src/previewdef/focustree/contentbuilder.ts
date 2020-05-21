@@ -25,10 +25,18 @@ export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, 
         baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
     }
 
-    return html(webview, baseContent, [
-        { content: `window.previewedFileUri = "${uri.toString()}";` },
-        'focustree.js',
-    ], styleTable);
+    return html(
+        webview,
+        baseContent,
+        [
+            { content: `window.previewedFileUri = "${uri.toString()}";` },
+            'focustree.js',
+        ],
+        [
+            'common.css',
+            styleTable,
+        ],
+    );
 }
 
 

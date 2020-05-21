@@ -20,3 +20,21 @@ export function localize(key: keyof typeof __table, message: string, ...args: an
     const regex = new RegExp('\\{(' + args.map((_, i) => i.toString()).join('|') + ')\\}', 'g');
     return message.replace(regex, (_, group1) => args[parseInt(group1)]?.toString());
 }
+
+export function localizeText(text: string): string {
+    return text.replace(/%(.*?)(?:\|(.*?))?%/g, (substr, key, message) => {
+        if (substr === '%%') {
+            return '%';
+        }
+
+        if (!key) {
+            return substr;
+        }
+
+        if (!message) {
+            message = key;
+        }
+
+        return localize(key, message);
+    });
+}

@@ -1,19 +1,30 @@
-import { ProvinceMap, Province, Zone, Point } from "../definitions";
+import { ProvinceMap, Province, Zone, Point, ProvinceEdge, Warning } from "../definitions";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { arrayToMap } from "../../../util/common";
+import { SchemaDef } from "../../../hoiformat/schema";
+import { mergeBoundingBox } from "./common";
 
 interface DefaultMap {
     definitions: string;
     provinces: string;
+    adjacencies: string;
 }
+
+const defaultMapSchema: SchemaDef<DefaultMap> = {
+    definitions: 'string',
+    provinces: 'string',
+    adjacencies: 'string',
+};
+
+type ProvinceDefinition = Omit<Province, 'boundingBox'>;
 
 export async function loadProvinceMap(progressReporter: (progress: string) => Promise<void>): Promise<ProvinceMap> {
     await progressReporter('Loading default.map...');
 
-    const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', { definitions: 'string', provinces: 'string' });
-    if (!defaultMap.definitions || !defaultMap.provinces) {
-        throw new Error('definitions or provinces not found in default.map.');
+    const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', defaultMapSchema);
+    if (!defaultMap.definitions || !defaultMap.provinces || !defaultMap.adjacencies) {
+        throw new Error('definitions, provinces or adjacencies is not found in default.map.');
     }
 
     await progressReporter('Loading province bmp...');
@@ -26,6 +37,11 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
     const definitionsBuffer = await readFileFromModOrHOI4('map/' + defaultMap.definitions);
     const definition = definitionsBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter(v => v.length >= 8);
 
+    await progressReporter("Loading adjecencies...");
+
+    const adjecenciesBuffer = await readFileFromModOrHOI4('map/' + defaultMap.adjacencies);
+    const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
+
     if (provinceMapImage.bitsPerPixel !== 24) {
         throw new Error('provinces bmp must be 24 bits per pixel.');
     }
@@ -34,7 +50,7 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
         throw new Error('Width and height of provinces bmp must be multiply of 256.');
     }
 
-    const provinces = definition.map(row => {
+    const provinces = definition.map<ProvinceDefinition>(row => {
         const r = parseInt(row[1]);
         const g = parseInt(row[2]);
         const b = parseInt(row[3]);
@@ -42,7 +58,7 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
             id: parseInt(row[0]),
             color: (r << 16) | (g << 8) | b,
             coverZones: [],
-            edge: {},
+            edges: [],
             type: row[4],
             coastal: row[5].trim().toLowerCase() === 'true',
             terrain: row[6],
@@ -53,31 +69,39 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
 
     await progressReporter('Mapping province definitions to bmp...');
 
-    const provinceIdByPosition = getProvincesByPosition(provinceMapImage, provinces);
+    const warnings: Warning[] = [];
+    const { provinceIdByPosition, badProvinceId: notDefinedProvinceId } = getProvincesByPosition(provinceMapImage, provinces, warnings);
 
     await progressReporter('Calculating province region...');
 
     const width = provinceMapImage.width;
     const height = provinceMapImage.height;
-    const filledProvinces: Province[] = fillProvinceZones(provinces, provinceIdByPosition, width, height);
+    const { sortedProvinces, badProvinceId } = sortProvinces(provinces, notDefinedProvinceId, warnings);
+    const filledProvinces: (Province | undefined)[] = fillProvinceZones(sortedProvinces, provinceIdByPosition, width, height, warnings);
+
+    validateProvince(filledProvinces, provinceIdByPosition, width, height);
 
     await progressReporter('Calculating province edges...');
 
     fillEdges(filledProvinces, provinceIdByPosition, width, height);
+    fillAdjacencyEdges(filledProvinces, adjecencies, height, warnings);
 
     return {
         width,
         height,
         provinceId: provinceIdByPosition,
         provinces: filledProvinces,
-        warnings: [],
+        badProvincesCount: badProvinceId + 1,
+        warnings,
     };
 }
 
-function getProvincesByPosition(provinceMapImage: BMP, provinces: { id: number, color: number }[]): number[] {
+function getProvincesByPosition(provinceMapImage: BMP, provinces: ProvinceDefinition[], warnings: Warning[]): { provinceIdByPosition: number[], badProvinceId: number } {
     const colorToProvince = arrayToMap(provinces, 'color');
     const provinceIdByPosition: number[] = new Array(provinceMapImage.width * provinceMapImage.height);
     const bitmapData = provinceMapImage.data;
+    const badColors: Record<number, number> = {};
+    let badProvinceId = -1;
 
     for (let y = provinceMapImage.height - 1, sy = 0, dy = (provinceMapImage.height - 1) * provinceMapImage.width;
         y >= 0;
@@ -86,23 +110,46 @@ function getProvincesByPosition(provinceMapImage: BMP, provinces: { id: number, 
             const color = (bitmapData[sx + 2] << 16) | (bitmapData[sx + 1] << 8) | bitmapData[sx];
             const province = colorToProvince[color];
             if (province === undefined) {
-                throw new Error(`color #${color.toString(16)} in provinces bmp (${x}, ${y}) not exist in definitions.`);
-            }
+                if (badColors[color] === undefined) {
+                    warnings.push({
+                        type: 'province',
+                        sourceId: badProvinceId,
+                        text: `Color (${bitmapData[sx + 2]}, ${bitmapData[sx + 1]}, ${bitmapData[sx]}) in provinces bmp (${x}, ${y}) not exist in definitions.`,
+                    });
+                    provinces[badProvinceId] = {
+                        id: badProvinceId,
+                        color,
+                        coverZones: [],
+                        edges: [],
+                        type: '',
+                        coastal: false,
+                        terrain: '',
+                        continent: -1,
+                        warnings: [`The province don't exist in definition.`],
+                    };
 
-            provinceIdByPosition[dx] = province.id;
+                    badColors[color] = badProvinceId--;
+                }
+                provinceIdByPosition[dx] = badColors[color];
+            } else {
+                provinceIdByPosition[dx] = province.id;
+            }
         }
     }
 
-    return provinceIdByPosition;
+    return {
+        provinceIdByPosition,
+        badProvinceId,
+    };
 }
 
-function fillProvinceZones<T extends {id: number, coverZones: Zone[]}>(
-    provinces: (T & { boundingBox?: Zone })[],
+function fillProvinceZones<T extends ProvinceDefinition>(
+    provinces: (T & { boundingBox?: Zone } | undefined)[],
     provinceIdByPosition: number[],
     width: number,
     height: number,
-): (T & { boundingBox: Zone })[] {
-    const provinceMap: Record<number, typeof provinces[0]> = arrayToMap(provinces, 'id');
+    warnings: Warning[],
+): (T & { boundingBox: Zone } | undefined)[] {
     const blockStack: Zone[] = [];
     const blockSize = 256;
     for (let x = 0; x < width; x += blockSize) {
@@ -117,11 +164,11 @@ function fillProvinceZones<T extends {id: number, coverZones: Zone[]}>(
         const l = block.x;
         const b = block.y + block.h;
         const r = block.x + block.w;
-        const color = provinceIdByPosition[t * width + l];
+        const provinceId = provinceIdByPosition[t * width + l];
         let sameColor = true;
         for (let y = t, yi = t * width; y < b; y++, yi += width) {
             for (let x = l, xi = yi + l; x < r; x++, xi++) {
-                if (provinceIdByPosition[xi] !== color) {
+                if (provinceIdByPosition[xi] !== provinceId) {
                     sameColor = false;
                     break;
                 }
@@ -129,7 +176,7 @@ function fillProvinceZones<T extends {id: number, coverZones: Zone[]}>(
         }
 
         if (sameColor) {
-            provinceMap[color].coverZones.push(block);
+            provinces[provinceId]!.coverZones.push(block);
         } else {
             const blockSize = block.w >> 1;
             blockStack.push({ ...block, w: blockSize, h: blockSize });
@@ -140,35 +187,65 @@ function fillProvinceZones<T extends {id: number, coverZones: Zone[]}>(
     }
 
     for (const province of provinces) {
+        if (!province) {
+            continue;
+        }
         if (province.coverZones.length > 0) {
             province.boundingBox = province.coverZones.reduce((p, c) => mergeBoundingBox(p, c, width));
+            if (province.boundingBox.w > width / 2 || province.boundingBox.h > height / 2) {
+                province.warnings.push(`The province is too large: ${province.boundingBox.w}x${province.boundingBox.h}`);
+            }
         } else {
-            province.boundingBox = { x: 0, y: -5000, w: 0, h: 0 };
+            if (province.id > 0) {
+                warnings.push({
+                    type: 'province',
+                    sourceId: province.id,
+                    text: `Province ${province.id} doesn't exist on map.`
+                });
+            }
+            province.boundingBox = { x: 0, y: 0, w: 0, h: 0 };
         }
     }
 
-    return provinces as (T & { boundingBox: Zone })[];
+    return provinces as (T & { boundingBox: Zone } | undefined)[];
 }
 
-function mergeBoundingBox(a: Zone, b: Zone, width: number): Zone {
-    if (a.x + a.w < width * 0.25 && b.x > width * 0.75) {
-        b = { ...b, x: b.x - width };
+function sortProvinces(provinces: ProvinceDefinition[], badProvinceId: number, warnings: Warning[]): { sortedProvinces: (ProvinceDefinition | undefined)[], badProvinceId: number } {
+    const maxProvinceId = provinces.reduce((p, c) => c.id > p ? c.id : p, 0);
+    if (maxProvinceId > 200000) {
+        throw new Error(`Max province id is too large: ${maxProvinceId}.`);
     }
 
-    const l = Math.min(a.x, b.x);
-    const t = Math.min(a.y, b.y);
-    const r = Math.max(a.x + a.w, b.x + b.w);
-    const bo = Math.max(a.y + a.h, b.y + b.h);
+    const result: ProvinceDefinition[] = new Array(maxProvinceId + 1);
+    provinces.forEach(p => {
+        if (result[p.id]) {
+            warnings.push({
+                type: 'province',
+                sourceId: badProvinceId,
+                text: `There're more than one rows for province id ${p.id}.`,
+            });
+            p.warnings.push(`Original province id ${p.id} conflict with other provinces.`);
+            p.id = badProvinceId--;
+        }
+        result[p.id] = p;
+    });
+    for (let i = 1; i < maxProvinceId; i++) {
+        if (!result[i]) {
+            warnings.push({
+                type: 'province',
+                sourceId: i,
+                text: `Province with id ${i} doesn't exist.`,
+            });
+        }
+    };
+
     return {
-        x: l,
-        y: t,
-        w: r - l,
-        h: bo - t,
+        sortedProvinces: result,
+        badProvinceId,
     };
 }
 
-function fillEdges(provinces: Province[], provinceIdByPosition: number[], width: number, height: number): void {
-    const provinceMap = arrayToMap(provinces, 'id');
+function fillEdges(provinces: (Province | undefined)[], provinceIdByPosition: number[], width: number, height: number): void {
     const accessedPixels = new Array<boolean>(provinceIdByPosition.length).fill(false);
 
     for (let y = 0, yi = 0; y < height; y++, yi += width) {
@@ -177,17 +254,17 @@ function fillEdges(provinces: Province[], provinceIdByPosition: number[], width:
                 continue;
             }
 
-            fillEdgesOfProvince(xi, provinceMap, provinceIdByPosition, accessedPixels, width, height);
+            fillEdgesOfProvince(xi, provinces, provinceIdByPosition, accessedPixels, width, height);
         }
     }
 }
 
 function fillEdgesOfProvince(
-    index: number, provinceMap: Record<number, Province>, provinceIdByPosition: number[],
+    index: number, provinces: (Province | undefined)[], provinceIdByPosition: number[],
     accessedPixels: boolean[], width: number, height: number
 ): void {
-    const color = provinceIdByPosition[index];
-    const edgePixels = findEdgePixels(index, accessedPixels, color, provinceIdByPosition, width, height);
+    const provinceId = provinceIdByPosition[index];
+    const edgePixels = findEdgePixels(index, accessedPixels, provinceId, provinceIdByPosition, width, height);
     const edgePixelsByAdjecentProvince: Record<number, [Point, Point][]> = {};
     edgePixels.forEach(([p, line]) => {
         let lines = edgePixelsByAdjecentProvince[p];
@@ -197,23 +274,26 @@ function fillEdgesOfProvince(
         lines.push(line);
     });
 
-    const province = provinceMap[color];
+    const province = provinces[provinceId]!;
     for (const [key, value] of Object.entries(edgePixelsByAdjecentProvince)) {
-        const numKey = key as unknown as number;
-        const edgeSet = province.edge[numKey] ?? [];
+        const numKey = parseInt(key);
+        const edgeSetIndex = province.edges.findIndex(e => e.to === numKey);
+        const edgeSet = edgeSetIndex !== -1 ? province.edges[edgeSetIndex] : { to: numKey, path: [], type: '' };
         const concatedEdges = concatEdges(value);
-        edgeSet.push(...concatedEdges);
-        province.edge[numKey] = edgeSet;
+        edgeSet.path.push(...concatedEdges);
+        if (edgeSetIndex === -1) {
+            province.edges.push(edgeSet);
+        }
     }
 }
 
 const indicesToOffset: [number, number][][] = [
-    [[0, 0], [0, 1]],
+    [[0, 1], [0, 0]],
     [[0, 0], [1, 0]],
     [[1, 0], [1, 1]],
-    [[0, 1], [1, 1]],
+    [[1, 1], [0, 1]],
 ];
-function findEdgePixels(index: number, accessedPixels: boolean[], color: number, provinceIdByPosition: number[], width: number, height: number) {
+function findEdgePixels(index: number, accessedPixels: boolean[], provinceId: number, provinceIdByPosition: number[], width: number, height: number) {
     const edgePixels: [number, [Point, Point]][] = [];
     const pixelStack: number[] = [ index ];
     const indices: number[] = new Array(4);
@@ -237,9 +317,9 @@ function findEdgePixels(index: number, accessedPixels: boolean[], color: number,
             if (adjecentIndex < 0) {
                 edgePixels.push([-1, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
             } else {
-                const adjecentColor = provinceIdByPosition[adjecentIndex];
-                if (color !== adjecentColor) {
-                    edgePixels.push([adjecentColor, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
+                const adjecentProvinceId = provinceIdByPosition[adjecentIndex];
+                if (provinceId !== adjecentProvinceId) {
+                    edgePixels.push([adjecentProvinceId, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
                 } else {
                     pixelStack.push(adjecentIndex);
                 }
@@ -266,12 +346,6 @@ function concatEdges(edges: [Point, Point][]): Point[][] {
         let foundNew = true;
         while (foundNew) {
             foundNew = false;
-            const headHead = edges.findIndex((e, i) => !accessedEdges[i] && pointEqual(edge[0], e[0]));
-            if (headHead !== -1) {
-                accessedEdges[headHead] = foundNew = true;
-                edge.unshift(edges[headHead][1]);
-            }
-
             const headTail = edges.findIndex((e, i) => !accessedEdges[i] && pointEqual(edge[0], e[1]));
             if (headTail !== -1) {
                 accessedEdges[headTail] = foundNew = true;
@@ -282,12 +356,6 @@ function concatEdges(edges: [Point, Point][]): Point[][] {
             if (tailHead !== -1) {
                 accessedEdges[tailHead] = foundNew = true;
                 edge.push(edges[tailHead][1]);
-            }
-
-            const tailTail = edges.findIndex((e, i) => !accessedEdges[i] && pointEqual(edge[edge.length - 1], e[1]));
-            if (tailTail !== -1) {
-                accessedEdges[tailTail] = foundNew = true;
-                edge.push(edges[tailTail][0]);
             }
         }
 
@@ -314,4 +382,83 @@ function concatEdges(edges: [Point, Point][]): Point[][] {
 
 function pointEqual(a: Point, b: Point): boolean {
     return a.x === b.x && a.y === b.y;
+}
+
+function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: string[][], height: number, warnings: Warning[]) {
+    for (const adjacency of adjacencies) {
+        const from = parseInt(adjacency[0]);
+        const to = parseInt(adjacency[1]);
+        const type = adjacency[2];
+        const through = parseInt(adjacency[3]);
+        const startX = parseInt(adjacency[4]);
+        const startY = parseInt(adjacency[5]);
+        const stopX = parseInt(adjacency[6]);
+        const stopY = parseInt(adjacency[7]);
+        const rule = adjacency[8];
+        // const comments = adjecency[9];
+
+        if (from === -1 || to === -1) {
+            continue;
+        }
+
+        if (!provinces[from] || !provinces[to]) {
+            warnings.push({
+                type: 'province',
+                sourceId: from,
+                text: `Adjacency not from or to an existing province: ${adjacency[0]},${adjacency[1]}`,
+            });
+            continue;
+        }
+
+        const resultThrough = !isNaN(through) && through !== -1 ? through : undefined;
+        if (resultThrough && !provinces[resultThrough]) {
+            warnings.push({
+                type: 'province',
+                sourceId: resultThrough,
+                text: `Adjacency not through an existing province: ${adjacency[3]}`,
+            });
+            continue;
+        }
+
+        const start: Point | undefined = !isNaN(startX) && !isNaN(startY) && startX !== -1 && startY !== -1 ? { x: startX, y: height - startY } : undefined;
+        const stop: Point | undefined = !isNaN(stopX) && !isNaN(stopY) && stopX !== -1 && stopY !== -1 ? { x: stopX, y: height - stopY } : undefined;
+
+        const existingEdgeInFrom = provinces[from]!.edges.find(e => e.to === to);
+        if (existingEdgeInFrom) {
+            Object.assign<ProvinceEdge, Partial<ProvinceEdge>>(existingEdgeInFrom, { through: resultThrough, start, stop, rule, type });
+        } else {
+            provinces[from]!.edges.push({ to, through: resultThrough, start, stop, rule, type, path: [] });
+        }
+        
+        const existingEdgeInTo = provinces[to]!.edges.find(e => e.to === from);
+        if (existingEdgeInTo) {
+            Object.assign<ProvinceEdge, Partial<ProvinceEdge>>(existingEdgeInTo, { through: resultThrough, start, stop, rule, type });
+        } else {
+            provinces[to]!.edges.push({ to: from, through: resultThrough, start: stop, stop: start, rule, type, path: [] });
+        }
+    }
+}
+
+function validateProvince(provinces: (Province | undefined)[], provinceIdByPosition: number[], width: number, height: number) {
+    const i = new Array(4);
+    for (let y = 1, y0 = width, index = width; y < height; y++, y0 += width) {
+        for (let x = 0; x < width; x++, index++) {
+            i[0] = index;
+            i[1] = index + (x === width - 1 ? -width : 0) + 1;
+            i[2] = i[0] - width;
+            i[3] = i[1] - width;
+            i.forEach((v, i0) => {
+                i[i0] = provinceIdByPosition[v];
+            });
+            if (i[0] !== i[1] && i[0] !== i[2] && i[0] !== i[3] && i[1] !== i[2] && i[1] !== i[3] && i[2] !== i[3]) {
+                const provinceIds = i.filter((v, i, a) => a.indexOf(v) === i);
+                for (const provinceId of provinceIds) {
+                    const province = provinces[provinceId];
+                    if (province) {
+                        province.warnings.push(`Unclear border between provinces: ${provinceIds.join(',')}.`);
+                    }
+                }
+            }
+        }
+    }
 }

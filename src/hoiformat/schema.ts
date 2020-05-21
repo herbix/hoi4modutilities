@@ -44,12 +44,12 @@ export type HOIPartial<T> =
     T extends Enum ? T :
     T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
-    T extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> :
+    T extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> | undefined :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
     { [K in keyof T]:
         T[K] extends Enum ? T[K] :
         T[K] extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
-        T[K] extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> :
+        T[K] extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> | undefined :
         T[K] extends (infer T1)[] ? HOIPartial<T1>[] :
         K extends ('_token' | '_index') ? T[K] | undefined :
         HOIPartial<T[K]> | undefined; };

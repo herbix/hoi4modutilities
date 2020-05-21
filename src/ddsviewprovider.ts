@@ -34,7 +34,7 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
                     <img src="data:image/png;base64,${pngBuffer.toString('base64')}"/>
                 </div>`,
                 [],
-                styleTable
+                [styleTable]
             );
         } catch (e) {
             webviewPanel.webview.html = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;

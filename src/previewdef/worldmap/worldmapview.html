@@ -1,20 +1,60 @@
 <!--Inside <body>-->
     <div id="topbar">
-        <label for="viewmode">View mode: </label>
-        <select id="viewmode">
-            <option value="province">Province</option>
-            <option value="state">State</option>
-        </select>
-        <label for="colorset">Color set: </label>
-        <select id="colorset">
-            <option value="provinceid">Province ID</option>
-            <option value="provincetype">Province Type</option>
-            <option value="terrain">Terrain</option>
-            <option value="country">Country</option>
-            <option value="stateid">State ID</option>
-        </select>
-        <label for="searchbox">Search: </label>
-        <input id="searchbox" type="text"/>
+        <div class="group">
+            <label for="viewmode">%worldmap.topbar.viewmode|View mode: %</label>
+            <div class="select-container">
+                <select id="viewmode">
+                    <option value="province">Province</option>
+                    <option value="state">State</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="group">
+            <label for="colorset">Color set: </label>
+            <div class="select-container">
+                <select id="colorset">
+                    <option viewmode="province" value="provinceid">Province ID</option>
+                    <option viewmode="province state" value="stateid">State ID</option>
+                    <option viewmode="province state" value="country">Country</option>
+                    <option viewmode="province state" value="provincetype">Province Type</option>
+                    <option viewmode="province state" value="terrain">Terrain</option>
+                    <option viewmode="province state" value="manpower">Manpower</option>
+                    <option viewmode="province state" value="warnings">Warnings</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="group">
+            <label for="searchbox">Search: </label>
+            <input id="searchbox" type="text"/>
+            <button id="search" title="Search">
+                <i class="codicon codicon-search"></i>
+            </button>
+        </div>
+
+        <div class="group">
+            <button id="refresh" title="Refresh" viewmode="province state">
+                <i class="codicon codicon-refresh"></i>
+            </button>
+        </div>
+        <div class="group">
+            <button id="show-warnings" title="World map warnings" viewmode="province state">
+                <i class="codicon codicon-warning"></i>
+            </button>
+        </div>
+
+        <div class="group">
+            <button id="open" title="Open in current mod" viewmode="state">
+                <i class="codicon codicon-link-external"></i>
+            </button>
+            <!--<button title="Edit">
+                <i class="codicon codicon-edit"></i>
+            </button>-->
+        </div>
     </div>
     <canvas id="main-canvas"></canvas>
+    <div id="warnings-container">
+        <textarea id="warnings" readonly wrap="off"></textarea>
+    </div>
 <!--Inside </body>-->

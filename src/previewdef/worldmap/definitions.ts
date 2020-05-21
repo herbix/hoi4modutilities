@@ -1,29 +1,26 @@
+import { Token } from "../../hoiformat/hoiparser";
+
 export interface WorldMapData {
     width: number;
     height: number;
-    provinceId: number[]; // width * height
-    provinces: Province[]; // count of provinces
-    states: State[];
-    warnings: string[];
-}
-
-export interface WorldMapDataSummary {
-    width: number;
-    height: number;
-    provinceId: []; // width * height
-    provinces: []; // count of provinces
-    states: [];
+    provinces: (Province | undefined | null)[]; // count of provinces
+    states: (State | undefined | null)[];
+    countries: Country[];
     provincesCount: number;
     statesCount: number;
-    warnings: string[];
+    countriesCount: number;
+    badProvincesCount: number; // will be * -1
+    badStatesCount: number; // will be * -1;
+    warnings: Warning[];
 }
 
 export interface ProvinceMap {
     width: number;
     height: number;
     provinceId: number[]; // width * height
-    provinces: Province[]; // count of provinces
-    warnings: string[];
+    provinces: (Province | undefined | null)[]; // count of provinces
+    badProvincesCount: number;
+    warnings: Warning[];
 }
 
 export interface Province {
@@ -31,7 +28,7 @@ export interface Province {
     color: number;
     boundingBox: Zone;
     coverZones: Zone[];
-    edge: Record<number, Point[][]>;
+    edges: ProvinceEdge[];
     type: string;
     coastal: boolean;
     terrain: string;
@@ -39,19 +36,39 @@ export interface Province {
     warnings: string[];
 }
 
+export interface ProvinceEdge {
+    to: number;
+    path: Point[][];
+    through?: number;
+    type: 'impassable' | string;
+    start?: Point;
+    stop?: Point;
+    rule?: string;
+}
+
 export interface State {
     id: number;
     name: string;
     manpower: number;
     category: string;
-    owner: string;
+    owner: string | undefined;
     provinces: number[];
     cores: string[];
+    impassable: boolean;
     warnings: string[];
+    boundingBox: Zone;
+    file: string;
+    token: Token | undefined;
+}
+
+export interface Warning {
+    type: 'province' | 'state';
+    sourceId: number;
+    text: string;
 }
 
 export interface Country {
-    id: string;
+    tag: string;
     color: number;
 }
 
@@ -67,21 +84,21 @@ export interface Zone {
     h: number;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestProvincesMessage | ProvincesMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage;
+export type WorldMapMessage = LoadedMessage | RequestProvincesMessage | ProvincesMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenStateMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
-    ready: boolean;
+    force: boolean;
 }
 
 export interface RequestProvincesMessage {
-    command: 'requestprovinces' | 'requestprovinceid' | 'requeststates';
+    command: 'requestprovinces' | 'requeststates' | 'requestcountries';
     start: number;
     end: number;
 }
 
 export interface ProvincesMessage {
-    command: 'provinces' | 'provinceid' | 'states';
+    command: 'provinces' | 'states' | 'countries';
     data: string;
     start: number;
     end: number;
@@ -99,5 +116,12 @@ export interface ProgressMessage {
 
 export interface ProvinceMapSummaryMessage {
     command: 'provincemapsummary';
-    data: WorldMapDataSummary;
+    data: WorldMapData;
+}
+
+export interface OpenStateMessage {
+    command: 'openstate';
+    file: string;
+    start: number | undefined;
+    end: number | undefined;
 }

@@ -39,7 +39,12 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
             { content: `window.previewedFileUri = "${uri.toString()}";` },
             'techtree.js',
         ],
-        styleTable);
+        [
+            'common.css',
+            'codicon.css',
+            styleTable,
+        ],
+    );
 }
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, dependencies: PreviewDependency): Promise<string> {
@@ -102,13 +107,15 @@ function renderFolderSelector(folders: string[], styleTable: StyleTable): string
         <label for="folderSelector" class="${styleTable.oneTimeStyle('folderSelectorLabel', () => `margin-right:5px`)}">
             ${localize('techtree.techfolder', 'Technology folder: ')}
         </label>
-        <select
-            id="folderSelector"
-            type="text"
-            class="${styleTable.oneTimeStyle('folderSelector', () => `min-width:200px`)}"
-        >
-            ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
-        </select>
+        <div class="select-container">
+            <select
+                id="folderSelector"
+                type="text"
+                class="${styleTable.oneTimeStyle('folderSelector', () => `min-width:200px`)}"
+            >
+                ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
+            </select>
+        </div>
     </div>`;
 }
 

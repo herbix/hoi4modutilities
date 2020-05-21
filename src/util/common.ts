@@ -43,6 +43,48 @@ export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
     return result as any;
 }
 
+export function hsvToRgb(h: number, s: number, v: number): Record<'r'|'g'|'b', number> {
+    var r: number, g: number, b: number, i: number, f: number, p: number, q: number, t: number;
+    i = Math.floor(h * 6);
+    f = h * 6 - i;
+    p = v * (1 - s);
+    q = v * (1 - f * s);
+    t = v * (1 - (1 - f) * s);
+    switch (i % 6) {
+        case 0: r = v, g = t, b = p; break;
+        case 1: r = q, g = v, b = p; break;
+        case 2: r = p, g = v, b = t; break;
+        case 3: r = p, g = q, b = v; break;
+        case 4: r = t, g = p, b = v; break;
+        case 5: r = v, g = p, b = q; break;
+    }
+    return {
+        r: Math.round(r! * 255),
+        g: Math.round(g! * 255),
+        b: Math.round(b! * 255)
+    };
+}
+
+export function slice<T>(array: T[] | undefined, start: number, end: number): T[] {
+    if (!array) {
+        return [];
+    }
+
+    if (start >= 0) {
+        return array.slice(start, end);
+    } else {
+        if (end <= start) {
+            return [];
+        }
+
+        const result = new Array<T>(end - start);
+        for (let i = start, j = 0; i < end; i++, j++) {
+            result[j] = array[i];
+        }
+        return result;
+    }
+}
+
 export function getLastModified(path: string): number {
     const stat = fs.lstatSync(path);
     return stat.mtimeMs;
@@ -64,8 +106,16 @@ export function lstat(path: string): Promise<fs.Stats> {
     return fsFuncWrapper(fs.lstat, path);
 }
 
+export function writeFile(path: string, buffer: Buffer): Promise<void> {
+    return fsFuncWrapperWrite(fs.writeFile, path, buffer);
+}
+
 function fsFuncWrapper<T>(func: (path: fs.PathLike, cb: (err: NodeJS.ErrnoException | null, result: T) => void) => void, path: fs.PathLike): Promise<T> {
     return new Promise<T>((resolve, reject) => func(path, (err, files) => err ? reject(err) : resolve(files)));
+}
+
+function fsFuncWrapperWrite<T>(func: (path: fs.PathLike, data: T, cb: (err: NodeJS.ErrnoException | null) => void) => void, path: fs.PathLike, data: T): Promise<void> {
+    return new Promise<void>((resolve, reject) => func(path, data, (err) => err ? reject(err) : resolve()));
 }
 
 export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO, keySelector: (...input: TI) => string, wait?: number, debounceSettings?: DebounceSettings): (...input: TI) => TO {

@@ -12,7 +12,8 @@ export const __table = {
     'modfile.globalsetting': 'Global setting',
     'modfile.infolder': 'In folder {0}',
     'modfile.nomodfile': '(No mod definition)',
-    'modfile.select':'Select a .mod file...',
+    'modfile.select':'Browse a .mod file...',
+    'modfile.selectworkingmod': 'Select working mod',
     'modfile.type': 'Mod file',
     'modfile.workspacesetting': 'Workspace setting',
     'preview.cantfinddoc': "Can't find opened document {0}.",
@@ -24,6 +25,7 @@ export const __table = {
     'techtree.cantfindviewin': "Can't find view {0} in {1}.",
     'techtree.notechtree': 'No technology tree.',
     'techtree.techfolder': 'Technology folder: ',
+    'worldmap.topbar.viewmode': 'View mode: ',
 };
 
 // Real export

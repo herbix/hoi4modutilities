@@ -27,8 +27,7 @@ function isSamePath(a: string, b: string): boolean {
     return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
 }
 
-export async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
-    relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
+export async function getFilePathFromMod(relativePath: string): Promise<string | undefined> {
     let absolutePath: string | undefined = undefined;
 
     // Find in opened workspace folders
@@ -47,20 +46,27 @@ export async function getFilePathFromModOrHOI4(relativePath: string): Promise<st
         
         if (absolutePath !== undefined) {
             // Opened document
-            const document = vscode.workspace.textDocuments.some(d => isSamePath(d.uri.fsPath, absolutePath!));
+            const document = vscode.workspace.textDocuments.find(d => isSamePath(d.uri.fsPath, absolutePath!));
             if (document) {
-                const openedPath = 'opened?' + absolutePath;
+                const openedPath = 'opened?' + document.uri.fsPath;
                 return openedPath;
             }
         }
     }
+
+    return absolutePath;
+}
+
+export async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
+    relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
+    let absolutePath: string | undefined = await getFilePathFromMod(relativePath);
 
     const replacePaths = await getReplacePaths();
     if (replacePaths) {
         const relativePathDir = path.dirname(relativePath);
         for (const replacePath of replacePaths) {
             if (isSamePath(relativePathDir, replacePath)) {
-                return undefined;
+                return absolutePath;
             }
         }
     }
@@ -173,9 +179,8 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
 
     const replacePaths = await getReplacePaths();
     if (replacePaths) {
-        const relativePathDir = path.dirname(relativePath);
         for (const replacePath of replacePaths) {
-            if (isSamePath(relativePathDir, replacePath)) {
+            if (isSamePath(relativePath, replacePath)) {
                 return result.filter((v, i, a) => i === a.indexOf(v));
             }
         }
@@ -202,7 +207,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
                 const folderEntry = dlcZip.getEntry(relativePath);
                 if (folderEntry && folderEntry.isDirectory) {
                     for (const entry of dlcZip.getEntries()) {
-                        if (isSamePath(entry.entryName.replace(/^[\\/]/, ''), relativePath)) {
+                        if (isSamePath(path.dirname(entry.entryName.replace(/^[\\/]/, '')), relativePath)) {
                             result.push(path.basename(entry.name));
                         }
                     }

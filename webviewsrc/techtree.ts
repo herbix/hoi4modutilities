@@ -1,4 +1,4 @@
-import { setState, getState, scrollToState } from "./common";
+import { setState, getState, scrollToState } from "./util/common";
 
 function folderChange(folder: string) {
     const elements = document.getElementsByClassName('techfolder');

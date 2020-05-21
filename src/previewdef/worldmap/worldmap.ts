@@ -1,15 +1,19 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import worldmapview from './worldmapview.html';
 import worldmapviewstyles from './worldmapview.css';
-import { localize } from '../../util/i18n';
+import { localize, localizeText } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
-import { WorldMapMessage, WorldMapData } from './definitions';
+import { WorldMapMessage, WorldMapData, ProvinceMap } from './definitions';
 import { loadProvinceMap } from './loader/provincemap';
 import { loadStates } from './loader/states';
+import { loadCountries } from './loader/countries';
+import { slice, writeFile } from '../../util/common';
+import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 
 export class WorldMap {
-    private cachedWorldMap: WorldMapData | undefined = undefined;
+    private cachedWorldMap: (WorldMapData & ProvinceMap) | undefined = undefined;
     private htmlLoaded: boolean = false;
 
     constructor(readonly panel: vscode.WebviewPanel) {
@@ -27,7 +31,7 @@ export class WorldMap {
     }
 
     private renderWorldMap(): string {
-        return html(this.panel.webview, worldmapview, ['worldmap.js'], [{ content: worldmapviewstyles }]);
+        return html(this.panel.webview, localizeText(worldmapview), ['worldmap.js'], ['common.css', 'codicon.css', { content: worldmapviewstyles }]);
     }
 
     private async onMessage(msg: WorldMapMessage): Promise<void> {
@@ -36,20 +40,12 @@ export class WorldMap {
             switch (msg.command) {
                 case 'loaded':
                     this.htmlLoaded = true;
-                    if (!msg.ready) {
-                        await this.sendProvinceMapSummaryToWebview();
-                    }
+                    await this.sendProvinceMapSummaryToWebview(msg.force);
                     break;
                 case 'requestprovinces':
                     await this.panel.webview.postMessage({
                         command: 'provinces',
-                        data: JSON.stringify(this.cachedWorldMap?.provinces.slice(msg.start, msg.end)),
-                    } as WorldMapMessage);
-                    break;
-                case 'requestprovinceid':
-                    await this.panel.webview.postMessage({
-                        command: 'provinceid',
-                        data: JSON.stringify(this.cachedWorldMap?.provinceId.slice(msg.start, msg.end)),
+                        data: JSON.stringify(slice(this.cachedWorldMap?.provinces, msg.start, msg.end)),
                         start: msg.start,
                         end: msg.end,
                     } as WorldMapMessage);
@@ -57,10 +53,21 @@ export class WorldMap {
                 case 'requeststates':
                     await this.panel.webview.postMessage({
                         command: 'states',
-                        data: JSON.stringify(this.cachedWorldMap?.states.slice(msg.start, msg.end)),
+                        data: JSON.stringify(slice(this.cachedWorldMap?.states, msg.start, msg.end)),
                         start: msg.start,
                         end: msg.end,
                     } as WorldMapMessage);
+                    break;
+                case 'requestcountries':
+                    await this.panel.webview.postMessage({
+                        command: 'countries',
+                        data: JSON.stringify(slice(this.cachedWorldMap?.countries, msg.start, msg.end)),
+                        start: msg.start,
+                        end: msg.end,
+                    } as WorldMapMessage);
+                    break;
+                case 'openstate':
+                    await this.openStateFile(msg.file, msg.start, msg.end);
                     break;
             }
         } catch (e) {
@@ -68,9 +75,9 @@ export class WorldMap {
         }
     }
 
-    private async sendProvinceMapSummaryToWebview() {
+    private async sendProvinceMapSummaryToWebview(force: boolean) {
         try {
-            if (!this.cachedWorldMap) {
+            if (force || !this.cachedWorldMap) {
                 const progressReporter = async (progress: string) => {
                     await this.panel.webview.postMessage({
                         command: 'progress',
@@ -78,9 +85,17 @@ export class WorldMap {
                     } as WorldMapMessage);
                 };
 
+                const provinceMap = await loadProvinceMap(progressReporter);
+                const stateMap = await loadStates(progressReporter, provinceMap);
+                const countries = await loadCountries(progressReporter);
+
                 this.cachedWorldMap = {
-                    ...await loadProvinceMap(progressReporter),
-                    states: await loadStates(progressReporter),
+                    ...provinceMap,
+                    ...stateMap,
+                    provincesCount: provinceMap.provinces.length,
+                    statesCount: stateMap.states.length,
+                    countriesCount: countries.length,
+                    countries,
                 };
             }
 
@@ -89,19 +104,59 @@ export class WorldMap {
                 command: 'provincemapsummary',
                 data: {
                     ...worldMap,
-                    provinceId: [],
+                    provinceId: undefined,
                     provinces: [],
                     states: [],
-                    provincesCount: worldMap.provinces.length,
-                    statesCount: worldMap.states.length,
+                    countries: [],
                 },
             } as WorldMapMessage);
         } catch (e) {
             error(e);
             await this.panel.webview.postMessage({
                 command: 'error',
-                data: 'Error load province' + e.toString(),
+                data: 'Failed to load world map ' + e.toString(),
             } as WorldMapMessage);
+        }
+    }
+
+    private async openStateFile(stateFile: string, start: number | undefined, end: number | undefined): Promise<void> {
+        const stateFilePathInMod = await getFilePathFromMod(stateFile);
+        if (stateFilePathInMod !== undefined) {
+            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === stateFilePathInMod.replace('opened?', ''))
+                ?? await vscode.workspace.openTextDocument(stateFilePathInMod);
+            await vscode.window.showTextDocument(document, {
+                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
+            });
+            return;
+        }
+        
+        if (!vscode.workspace.workspaceFolders?.length) {
+            await vscode.window.showErrorMessage('Must open a folder before opening state file.');
+            return;
+        }
+
+        let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        if (vscode.workspace.workspaceFolders.length >= 1) {
+            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: 'Select a folder to copy state file' });
+            if (!folder) {
+                return;
+            }
+
+            targetFolder = folder.uri.fsPath;
+        }
+
+        try {
+            const [buffer] = await readFileFromModOrHOI4(stateFile);
+            const targetPath = path.join(targetFolder, stateFile);
+            await writeFile(targetPath, buffer);
+
+            const document = await vscode.workspace.openTextDocument(targetPath);
+            await vscode.window.showTextDocument(document, {
+                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
+            });
+
+        } catch (e) {
+            await vscode.window.showErrorMessage('Error open state file: ' + e.toString());
         }
     }
 }

@@ -96,6 +96,16 @@ const webviewJsConfig = {
         from: 'webviewresource/**/*',
         to: path.resolve(__dirname, 'static'),
         flatten: true
+      },
+      {
+        from: 'node_modules/vscode-codicons/dist/codicon.css',
+        to: path.resolve(__dirname, 'static'),
+        flatten: true
+      },
+      {
+        from: 'node_modules/vscode-codicons/dist/codicon.ttf',
+        to: path.resolve(__dirname, 'static'),
+        flatten: true
       }
     ])
   ]

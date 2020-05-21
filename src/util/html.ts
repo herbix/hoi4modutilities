@@ -6,7 +6,7 @@ export interface DynamicScript {
     content: string;
 }
 
-export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: StyleTable | DynamicScript[]): string {
+export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: (string | StyleTable | DynamicScript)[]): string {
     const preparedScripts = scripts.map<[string, string]>(script => {
         if (typeof script === 'string') {
             const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + script)));
@@ -23,16 +23,27 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         }
     });
 
-    const styleNonce = randomString(32);
     const preparedStyles = styles === undefined ? [['', `'unsafe-inline'`] as [string, string]] :
-        Array.isArray(styles) ? styles.map<[string, string]>(style => {
+        styles.map<[string, string]>(style => {
             const nonce = randomString(32);
-            return [
-                `<style nonce="${nonce}">${style.content}</style>`,
-                `'nonce-${nonce}'`,
-            ];
-        }) :
-        [[styles.toStyleElement(styleNonce), `'nonce-${styleNonce}'`] as [string, string]];
+            if (style instanceof StyleTable) {
+                return [
+                    style.toStyleElement(nonce),
+                    `'nonce-${nonce}'`
+                ];
+            } else if (typeof style === 'object') {
+                return [
+                    `<style nonce="${nonce}">${style.content}</style>`,
+                    `'nonce-${nonce}'`,
+                ];
+            } else {
+                const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + style)));
+                return [
+                    `<link rel="stylesheet" href="${uri}"/>`,
+                    ''
+                ];
+            }
+        });
 
     return `
 <!DOCTYPE html>
@@ -41,9 +52,10 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         <meta charset="UTF-8">
         <meta http-equiv="Content-Security-Policy" content="
             default-src 'none';
-            style-src ${preparedStyles.map(v => v[1]).join(' ')};
+            style-src ${preparedStyles.map(v => v[1]).join(' ')} ${webview.cspSource};
             script-src ${preparedScripts.map(v => v[1]).filter(v => v.length > 0).join(' ')} ${webview.cspSource};
-            img-src data:;
+            img-src data: ${webview.cspSource};
+            font-src ${webview.cspSource};
         ">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         ${preparedScripts.map(v => v[0]).join('')}

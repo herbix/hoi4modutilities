@@ -23,7 +23,11 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
             { content: `window.previewedFileUri = "${uri.toString()}";` },
             'gfx.js',
         ],
-        styleTable);
+        [
+            'common.css',
+            styleTable,
+        ],
+    );
 }
 
 async function renderSpriteTypes(spriteTypes: SpriteType[], styleTable: StyleTable): Promise<string> {
