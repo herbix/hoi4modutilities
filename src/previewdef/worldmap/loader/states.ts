@@ -4,6 +4,7 @@ import { listFilesFromModOrHOI4, readFileFromModOrHOI4AsJson } from "../../../ut
 import { error } from "../../../util/debug";
 import { mergeBoundingBox } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
+import { arrayToMap } from "../../../util/common";
 
 interface StateFile {
     state: StateDefinition[];
@@ -45,7 +46,7 @@ const stateFileSchema: SchemaDef<StateFile> = {
                 },
             },
             provinces: "enum",
-            impassable: 'boolean',
+            impassable: "boolean",
         },
         _type: "array",
     },
@@ -109,13 +110,15 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
                 warnings.push(`The state doesn't have id field.`),
                 -1
             );
-            const name = state.name ? state.name : (warnings.push(`The state doesn't have name field.`), 'NO_NAME');
+            const name = state.name ? state.name : (warnings.push(`The state doesn't have name field.`), '');
             const manpower = state.manpower ?? 0;
-            const category = state.state_category?._name ? state.state_category._name : (warnings.push(`The state doesn't have category field.`), 'unknown');
+            const category = state.state_category?._name ? state.state_category._name : (warnings.push(`The state doesn't have category field.`), '');
             const owner = state.history?.owner?._name;
             const provinces = state.provinces._values.map(v => parseInt(v));
             const cores = state.history?.add_core_of.map(v => v?._name).filter((v): v is string => v !== undefined) ?? [];
             const impassable = state.impassable ?? false;
+            const victoryPointsArray = state.history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
+            const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
 
             if (provinces.length === 0) {
                 globalWarnings.push({
@@ -124,9 +127,17 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
                     text: `State ${id} in ${stateFile} doesn't have provinces.`,
                 });
             }
-            
+
+            for (const vpPair of victoryPointsArray) {
+                if (!provinces.includes(vpPair[0])) {
+                    warnings.push(`Province ${vpPair[0]} not included in this state. But victory points defined here.`);
+                }
+            }
+
             result.push({
-                id, name, manpower, category, owner, provinces, cores, impassable, warnings, file: stateFile, token: state._token
+                id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints, warnings,
+                file: stateFile,
+                token: state._token
             });
         }
 

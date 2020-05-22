@@ -11,6 +11,7 @@ export interface WorldMapData {
     countriesCount: number;
     badProvincesCount: number; // will be * -1
     badStatesCount: number; // will be * -1;
+    continents: string[];
     warnings: Warning[];
 }
 
@@ -20,6 +21,7 @@ export interface ProvinceMap {
     provinceId: number[]; // width * height
     provinces: (Province | undefined | null)[]; // count of provinces
     badProvincesCount: number;
+    continents: string[];
     warnings: Warning[];
 }
 
@@ -55,6 +57,7 @@ export interface State {
     provinces: number[];
     cores: string[];
     impassable: boolean;
+    victoryPoints: Record<number, number | undefined>;
     warnings: string[];
     boundingBox: Zone;
     file: string;

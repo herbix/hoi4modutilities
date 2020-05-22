@@ -30,14 +30,18 @@ export function matchPathEnd(pathname: string, segments: string[]): boolean {
 }
 
 export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
-    T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never {
-    const result: Record<string | number, T> = {};
+    T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never;
+export function arrayToMap<T, K extends keyof T, V>(items: T[], key: K, valueSelector: (value: T) => V):
+    T[K] extends string ? Record<string, V> : T[K] extends number ? Record<number, V> : never;
+export function arrayToMap<T, K extends keyof T, V = T>(items: T[], key: K, valueSelector?: (value: T) => V):
+    T[K] extends string ? Record<string, V | T> : T[K] extends number ? Record<number, V | T> : never {
+    const result: Record<string | number, V | T> = {};
     for (const item of items) {
         const id = item[key];
         if (typeof id !== 'string' && typeof id !== 'number') {
             throw new Error('key of arrayToMap must be a string type');
         }
-        result[id] = item;
+        result[id] = valueSelector ? valueSelector(item) : item;
     }
 
     return result as any;

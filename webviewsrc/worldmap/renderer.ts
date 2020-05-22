@@ -112,9 +112,10 @@ export class Renderer extends Subscriber {
         const renderedProvinces: Province[] = [];
 
         const provinceToState = worldMap.getProvinceToStateMap();
+        const extraState: [any] = [undefined];
         worldMap.forEachProvince(province => {
             if (this.viewPoint.bboxInView(province.boundingBox, xOffset)) {
-                const color = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState);
+                const color = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, extraState);
                 context.fillStyle = toColor(color);
                 this.renderProvince(context, province, scale, xOffset);
                 renderedProvinces.push(province);
@@ -140,7 +141,7 @@ export class Renderer extends Subscriber {
         context.textAlign = 'center';
         if (viewMode === 'province') {
             for (const province of renderedProvinces) {
-                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState);
+                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, extraState);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const bbox = province.boundingBox;
                 context.fillText(province.id.toString(), this.viewPoint.convertX(bbox.x + bbox.w / 2 + xOffset), this.viewPoint.convertY(bbox.y + bbox.h / 2));
@@ -154,7 +155,7 @@ export class Renderer extends Subscriber {
                     renderedStates[stateId] = true;
                     const state = worldMap.getStateById(stateId);
                     if (state) {
-                        const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState);
+                        const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, extraState);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                         const bbox = state.boundingBox;
                         context.fillText(state.id.toString(), this.viewPoint.convertX(bbox.x + bbox.w / 2 + xOffset), this.viewPoint.convertY(bbox.y + bbox.h / 2));
@@ -286,16 +287,21 @@ export class Renderer extends Subscriber {
 
     private renderProvinceTooltip(province: Province, worldMap: FEWorldMap) {
         const stateObject = worldMap.getStateByProvinceId(province.id);
+        const vp = stateObject?.victoryPoints[province.id];
 
         this.renderTooltip(`
 Province=${province.id}
+${vp ? `Victory point=${vp}` : ''}
 ${stateObject ?
-    `State=${stateObject.id}\nOwner=${stateObject.owner}\nCore of=${stateObject.cores.join(',')}\nManpower=${stateObject.manpower}` :
-    ''}
+    `
+State=${stateObject.id}
+Owner=${stateObject.owner}
+Core of=${stateObject.cores.join(',')}
+Manpower=${stateObject.manpower}` : ''}
 Type=${province.type}
 Coastal=${province.coastal}
 Terrain=${province.terrain}
-Continent=${province.continent}
+${province.continent !== 0 ? `Continent=${worldMap.continents[province.continent]}(${province.continent})` : 'Continent=0'}
 Adjecents=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
 ${province.warnings.map(v => '|r|' + v).join('\n')}
 ${stateObject ? stateObject.warnings.map(v => '|r|' + v).join('\n') : ''}`);
@@ -502,36 +508,73 @@ function findNearestPoints(start: Point | undefined, end: Point | undefined, a: 
     }
 }
 
-function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FEWorldMap, provinceToState: Record<number, number | undefined>): number {
+function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FEWorldMap, provinceToState: Record<number, number | undefined>, stateBox: [any]): number {
     switch (colorSet) {
         case 'provincetype':
             return (province.type === 'land' ? 0x007F00 : province.type === 'lake' ? 0x00FFFF : 0x00007F) | (province.coastal ? 0x7F0000 : 0);
         case 'country':
             {
-                const state = provinceToState[province.id];
-                return state !== undefined ? (worldMap.countries.find(c => c.tag === worldMap.getStateById(state)?.owner)?.color ?? 0) : 0;
+                const stateId = provinceToState[province.id];
+                return stateId !== undefined ? (worldMap.countries.find(c => c.tag === worldMap.getStateById(stateId)?.owner)?.color ?? 0) : 0;
             }
         case 'terrain':
-            return (worldMap.terrains.indexOf(province.terrain) + 1) * (0xFFFFFF / worldMap.terrains.length);
+            if (stateBox[0] === undefined) {
+                stateBox[0] = avoidPowerOf2(worldMap.terrains.length);
+            }
+            return valueAndMaxToColor(worldMap.terrains.indexOf(province.terrain) + 1, stateBox[0]);
+        case 'continent':
+            if (stateBox[0] === undefined) {
+                let continent = 0;
+                worldMap.forEachProvince(p => (p.continent > continent ? continent = p.continent : 0, false));
+                stateBox[0] = avoidPowerOf2(continent + 1);
+            }
+            return valueAndMaxToColor(province.continent + 1, stateBox[0]);
         case 'stateid':
             {
-                const state = provinceToState[province.id];
-                return (state === undefined || state < 0 ? 0 : state) * (0xFFFFFF / worldMap.statesCount);
+                if (stateBox[0] === undefined) {
+                    stateBox[0] = avoidPowerOf2(worldMap.statesCount);
+                }
+                const stateId = provinceToState[province.id];
+                return valueAndMaxToColor(stateId === undefined || stateId < 0 ? 0 : stateId, stateBox[0]);
             }
         case 'warnings':
             {
-                const state = provinceToState[province.id];
+                const stateId = provinceToState[province.id];
                 const isLand = province.type === 'land';
-                return province.warnings.length > 0 || (state !== undefined && worldMap.getStateById(state)?.warnings?.length) ?
+                return province.warnings.length > 0 || (stateId !== undefined && worldMap.getStateById(stateId)?.warnings?.length) ?
                     (isLand ? 0xE02020 : 0xC00000) :
                     (isLand ? 0x7FFF7F : 0x20E020);
             }
         case 'manpower':
             {
+                if (province.type === 'sea') {
+                    return 0;
+                }
+
+                if (stateBox[0] === undefined) {
+                    let maxManpower = 0;
+                    worldMap.forEachState(state => (state.manpower > maxManpower ? maxManpower = state.manpower : 0, false));
+                    stateBox[0] = maxManpower;
+                }
+
                 const stateId = provinceToState[province.id];
                 const state = stateId !== undefined ? worldMap.getStateById(stateId) : undefined;
-                const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(worldMap.maxManpower);
-                return value < 0.5 ? (0xFF0000 | (Math.floor(255 * 2 * value) << 8)) : (0xFF00 | (Math.floor(255 * 2 * (1 - value)) << 16));
+                const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(stateBox[0]);
+                return valueToColorGYR(value);
+            }
+        case 'victorypoints':
+            {
+                if (stateBox[0] === undefined) {
+                    let maxVictoryPoint = 0;
+                    worldMap.forEachState(state => Object.values(state.victoryPoints).forEach(
+                        vp => vp !== undefined && vp > maxVictoryPoint ? maxVictoryPoint = vp: 0));
+                    stateBox[0] = maxVictoryPoint;
+                }
+
+                const stateId = provinceToState[province.id];
+                const state = stateId !== undefined ? worldMap.getStateById(stateId) : undefined;
+                const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(stateBox[0]);
+                return valueToColorGreyScale(value);
             }
         default:
             return province.color;
@@ -543,7 +586,33 @@ function manpowerHandler(manpower: number): number {
         manpower = 0;
     }
     return Math.pow(manpower, 0.2);
-    // return Math.log2(manpower + 1);
+}
+
+function victoryPointsHandler(victoryPoints: number): number {
+    if (victoryPoints < 0) {
+        victoryPoints = 0;
+    }
+    return Math.pow(victoryPoints, 0.5);
+}
+
+function valueToColorRYG(value: number): number {
+    return value < 0.5 ? (0xFF0000 | (Math.floor(255 * 2 * value) << 8)) : (0xFF00 | (Math.floor(255 * 2 * (1 - value)) << 16));
+}
+
+function valueToColorGYR(value: number): number {
+    return value < 0.5 ? (0xFF00 | (Math.floor(255 * 2 * value) << 16)) : (0xFF0000 | (Math.floor(255 * 2 * (1 - value)) << 8));
+}
+
+function valueToColorBCG(value: number): number {
+    return value < 0.5 ? (0xFF | (Math.floor(255 * 2 * value) << 8)) : (0xFF00 | Math.floor(255 * 2 * (1 - value)));
+}
+
+function valueToColorGreyScale(value: number): number {
+    return Math.floor(value * 255) * 0x10101;
+}
+
+function valueAndMaxToColor(value: number, max: number): number {
+    return Math.floor(value * (0xFFFFFF / max));
 }
 
 function getHighConstrastColor(color: number): number {
@@ -551,4 +620,13 @@ function getHighConstrastColor(color: number): number {
     const g = (color >> 8) & 0xFF;
     const b = color & 0xFF;
     return r * 0.7 + g * 2 + b * 0.3 > 3 * 0x7F ? 0 : 0xFFFFFF;
+}
+
+function avoidPowerOf2(value: number): number {
+    const v = Math.log2(value);
+    if (v > 0 && (v >>> 0) === v) {
+        return value + 1;
+    }
+
+    return value;
 }

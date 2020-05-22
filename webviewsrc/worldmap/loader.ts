@@ -11,7 +11,6 @@ interface ExtraMapData {
 }
 
 interface FEWorldMapClassExtra {
-    maxManpower: number;
     terrains: string[];
     getStateByProvinceId(provinceId: number): State | undefined;
     getProvinceByPosition(x: number, y: number): Province | undefined;
@@ -43,21 +42,13 @@ export class Loader extends Subscriber {
     constructor() {
         super();
 
-        this.worldMap = new FEWorldMapClass({
-            width: 0, height: 0,
-            provinces: [], states: [], countries: [], warnings: [],
-            provincesCount: 0, statesCount: 0, countriesCount: 0, badProvincesCount: 0, badStatesCount: 0,
-        });
+        this.worldMap = new FEWorldMapClass();
 
         this.load();
     }
 
     public refresh() {
-        this.worldMap = new FEWorldMapClass({
-            width: 0, height: 0,
-            provinces: [], states: [], countries: [], warnings: [],
-            provincesCount: 0, statesCount: 0, countriesCount: 0, badProvincesCount: 0, badStatesCount: 0,
-        });
+        this.worldMap = new FEWorldMapClass();
         this.onMapChangedEmitter.fire(this.worldMap);
         vscode.postMessage({ command: 'loaded', force: true } as WorldMapMessage);
         this.loading.set(true);
@@ -166,18 +157,20 @@ class FEWorldMapClass implements FEWorldMap {
     countriesCount!: number;
     badProvincesCount!: number;
     badStatesCount!: number;
+    continents!: string[];
 
-    maxManpower: number;
     terrains: string[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
 
-    constructor(worldMap: WorldMapData & ExtraMapData) {
-        Object.assign(this, worldMap);
+    constructor(worldMap?: WorldMapData & ExtraMapData) {
+        Object.assign(this, worldMap ?? {
+            width: 0, height: 0,
+            provinces: [], states: [], countries: [], warnings: [], continents: [],
+            provincesCount: 0, statesCount: 0, countriesCount: 0, badProvincesCount: 0, badStatesCount: 0,
+        });
         this.terrains = this.getVisibleTerrains();
-        this.maxManpower = 0;
-        this.forEachState(state => (state.manpower > this.maxManpower ? this.maxManpower = state.manpower : 0, false));
     }
 
     public getProvinceById(provinceId: number): Province | undefined {

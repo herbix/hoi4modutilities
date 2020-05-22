@@ -5,7 +5,7 @@ import { vscode } from "../util/common";
 import { WorldMapMessage } from "../../src/previewdef/worldmap/definitions";
 
 export type ViewMode = 'province' | 'state';
-export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'warnings';
+export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoints' | 'continent' | 'warnings';
 
 export const topBarHeight = 40;
 

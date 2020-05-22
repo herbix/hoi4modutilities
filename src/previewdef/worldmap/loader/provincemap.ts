@@ -2,19 +2,21 @@ import { ProvinceMap, Province, Zone, Point, ProvinceEdge, Warning } from "../de
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { arrayToMap } from "../../../util/common";
-import { SchemaDef } from "../../../hoiformat/schema";
+import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { mergeBoundingBox } from "./common";
 
 interface DefaultMap {
     definitions: string;
     provinces: string;
     adjacencies: string;
+    continent: string;
 }
 
 const defaultMapSchema: SchemaDef<DefaultMap> = {
     definitions: 'string',
     provinces: 'string',
     adjacencies: 'string',
+    continent: 'string',
 };
 
 type ProvinceDefinition = Omit<Province, 'boundingBox'>;
@@ -23,9 +25,11 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
     await progressReporter('Loading default.map...');
 
     const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', defaultMapSchema);
-    if (!defaultMap.definitions || !defaultMap.provinces || !defaultMap.adjacencies) {
-        throw new Error('definitions, provinces or adjacencies is not found in default.map.');
-    }
+    (['definitions', 'provinces', 'adjacencies', 'continent'] as (keyof DefaultMap)[]).forEach(field => {
+        if (!defaultMap[field]) {
+            throw new Error(`Field ${field} is not found in default.map.`);
+        }
+    });
 
     await progressReporter('Loading province bmp...');
 
@@ -34,13 +38,17 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
 
     await progressReporter('Loading province definitions...');
 
-    const definitionsBuffer = await readFileFromModOrHOI4('map/' + defaultMap.definitions);
+    const [definitionsBuffer] = await readFileFromModOrHOI4('map/' + defaultMap.definitions);
     const definition = definitionsBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter(v => v.length >= 8);
 
     await progressReporter("Loading adjecencies...");
 
-    const adjecenciesBuffer = await readFileFromModOrHOI4('map/' + defaultMap.adjacencies);
+    const [adjecenciesBuffer] = await readFileFromModOrHOI4('map/' + defaultMap.adjacencies);
     const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
+
+    await progressReporter("Loading continents...");
+
+    const continents = ['', ...(await readFileFromModOrHOI4AsJson<{ continents: Enum }>('map/' + defaultMap.continent, { continents: 'enum' })).continents._values];
 
     if (provinceMapImage.bitsPerPixel !== 24) {
         throw new Error('provinces bmp must be 24 bits per pixel.');
@@ -50,22 +58,7 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
         throw new Error('Width and height of provinces bmp must be multiply of 256.');
     }
 
-    const provinces = definition.map<ProvinceDefinition>(row => {
-        const r = parseInt(row[1]);
-        const g = parseInt(row[2]);
-        const b = parseInt(row[3]);
-        return {
-            id: parseInt(row[0]),
-            color: (r << 16) | (g << 8) | b,
-            coverZones: [],
-            edges: [],
-            type: row[4],
-            coastal: row[5].trim().toLowerCase() === 'true',
-            terrain: row[6],
-            continent: parseInt(row[7]),
-            warnings: [],
-        };
-    });
+    const provinces = definition.map<ProvinceDefinition>(row => convertRowToProvince(row, continents));
 
     await progressReporter('Mapping province definitions to bmp...');
 
@@ -92,6 +85,33 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
         provinceId: provinceIdByPosition,
         provinces: filledProvinces,
         badProvincesCount: badProvinceId + 1,
+        continents,
+        warnings,
+    };
+}
+
+function convertRowToProvince(row: string[], continents: string[]): ProvinceDefinition {
+    const r = parseInt(row[1]);
+    const g = parseInt(row[2]);
+    const b = parseInt(row[3]);
+    const type = row[4];
+    const continent = parseInt(row[7]);
+    const warnings: string[] = [];
+    if (continent >= continents.length || continent < 0) {
+        warnings.push(`Continent ${continent} not defined.`);
+    }
+    if (type === 'land' && (continent === 0 || isNaN(continent))) {
+        warnings.push(`Land province must belong to a continent.`);
+    }
+    return {
+        id: parseInt(row[0]),
+        color: (r << 16) | (g << 8) | b,
+        coverZones: [],
+        edges: [],
+        type,
+        coastal: row[5].trim().toLowerCase() === 'true',
+        terrain: row[6],
+        continent,
         warnings,
     };
 }
