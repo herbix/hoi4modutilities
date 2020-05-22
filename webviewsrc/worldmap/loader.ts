@@ -15,10 +15,12 @@ interface FEWorldMapClassExtra {
     getStateByProvinceId(provinceId: number): State | undefined;
     getProvinceByPosition(x: number, y: number): Province | undefined;
     getProvinceToStateMap(): Record<number, number | undefined>;
-    getProvinceById(provinceId: number): Province | undefined;
-    getStateById(stateId: number): State | undefined;
+    getProvinceById(provinceId: number | undefined): Province | undefined;
+    getStateById(stateId: number | undefined): State | undefined;
     forEachProvince(callback: (province: Province) => boolean | void): void;
     forEachState(callback: (state: State) => boolean | void): void;
+    getProvinceWarnings(province: Province): string[];
+    getStateWarnings(state: State): string[];
 }
 
 export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces'> & ExtraMapData & FEWorldMapClassExtra;
@@ -50,7 +52,7 @@ export class Loader extends Subscriber {
     public refresh() {
         this.worldMap = new FEWorldMapClass();
         this.onMapChangedEmitter.fire(this.worldMap);
-        vscode.postMessage({ command: 'loaded', force: true } as WorldMapMessage);
+        vscode.postMessage({ command: 'loaded', force: false } as WorldMapMessage);
         this.loading.set(true);
     }
 
@@ -173,12 +175,12 @@ class FEWorldMapClass implements FEWorldMap {
         this.terrains = this.getVisibleTerrains();
     }
 
-    public getProvinceById(provinceId: number): Province | undefined {
-        return this.provinces[provinceId] ?? undefined;
+    public getProvinceById(provinceId: number | undefined): Province | undefined {
+        return provinceId ? this.provinces[provinceId] ?? undefined : undefined;
     }
 
-    public getStateById(stateId: number): State | undefined {
-        return this.states[stateId] ?? undefined;
+    public getStateById(stateId: number | undefined): State | undefined {
+        return stateId ? this.states[stateId] ?? undefined : undefined;
     }
 
     public getStateByProvinceId(provinceId: number): State | undefined {
@@ -234,6 +236,14 @@ class FEWorldMapClass implements FEWorldMap {
                 break;
             }
         }
+    }
+
+    public getProvinceWarnings(province: Province): string[] {
+        return this.warnings.filter(v => v.source.some(s => s.type === 'province' && (s.id === province.id || s.color === province.color))).map(v => v.text);
+    }
+
+    public getStateWarnings(state: State): string[] {
+        return this.warnings.filter(v => v.source.some(s => s.type === 'state' && s.id === state.id)).map(v => v.text);
     }
     
     private getVisibleTerrains(): string[] {

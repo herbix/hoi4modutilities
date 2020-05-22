@@ -1,10 +1,11 @@
-import { State, Province, Warning, Zone, ProvinceMap } from "../definitions";
+import { State, Province, Warning, Zone, ProvinceMap, WarningSource, ProgressReporter } from "../definitions";
 import { CustomSymbol, Enum, SchemaDef } from "../../../hoiformat/schema";
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { mergeBoundingBox } from "./common";
+import { mergeBoundingBox, Loader, LoadResult, FolderLoader, FileLoader, mergeInLoadResult } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
+import { DefaultMapLoader } from "./provincemap";
 
 interface StateFile {
     state: StateDefinition[];
@@ -54,43 +55,52 @@ const stateFileSchema: SchemaDef<StateFile> = {
 
 type StateNoBoundingBox = Omit<State, 'boundingBox'>;
 
-export async function loadStates(progressReporter: (progress: string) => Promise<void>, { provinces, width, height, warnings }: ProvinceMap): Promise<{ states: State[], badStatesCount: number }> {
-    await progressReporter('Loading states...');
-    const stateFiles = await listFilesFromModOrHOI4('history/states');
-
-    const states = (await Promise.all(stateFiles.map(file => loadState('history/states/' + file, warnings)))).reduce((p, c) => p.concat(c), []);
-    const { sortedStates, badStateId } = sortStates(states, warnings);
-
-    const filledStates: State[] = new Array(sortedStates.length);
-    for (let i = badStateId + 1; i < sortedStates.length; i++) {
-        if (sortedStates[i]) {
-            filledStates[i] = calculateBoundingBox(sortedStates[i], provinces, width, height, warnings);
-        }
+type StateLoaderResult = { states: State[], badStatesCount: number };
+export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
+    constructor(private defaultMapLoader: DefaultMapLoader, progressReporter: ProgressReporter) {
+        super('history/states', StateLoader, progressReporter);
     }
 
-    const badStatesCount = badStateId + 1;
-    validateProvinceInState(provinces, filledStates, badStatesCount);
+    protected async loadImpl(force: boolean): Promise<LoadResult<StateLoaderResult>> {
+        await this.progressReporter('Loading states...');
+        return super.loadImpl(force);
+    }
 
-    return {
-        states: filledStates,
-        badStatesCount,
-    };
+    protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], force: boolean): Promise<LoadResult<StateLoaderResult>> {
+        await this.progressReporter('Map provinces to states...');
+
+        const provinceMap = await this.defaultMapLoader.load(false);
+        const warnings = mergeInLoadResult(fileResults, 'warnings');
+        const { provinces, width, height } = provinceMap.result;
+
+        const states = fileResults.reduce<StateNoBoundingBox[]>((p, c) => p.concat(c.result), []);
+
+        const { sortedStates, badStateId } = sortStates(states, warnings);
+
+        const filledStates: State[] = new Array(sortedStates.length);
+        for (let i = badStateId + 1; i < sortedStates.length; i++) {
+            if (sortedStates[i]) {
+                filledStates[i] = calculateBoundingBox(sortedStates[i], provinces, width, height, warnings);
+            }
+        }
+
+        const badStatesCount = badStateId + 1;
+        validateProvinceInState(provinces, filledStates, badStatesCount, warnings);
+
+        return {
+            result: {
+                states: filledStates,
+                badStatesCount,
+            },
+            dependencies: [this.folder + '/*'],
+            warnings,
+        };
+    }
 }
 
-function validateProvinceInState(provinces: (Province | undefined | null)[], states: (State | undefined | null)[], badStatesCount: number) {
-    const provinceToState: Record<number, number> = {};
-
-    for (let i = badStatesCount; i < states.length; i++) {
-        const state = states[i];
-        if (state) {
-            state.provinces.forEach(p => {
-                if (provinceToState[p] !== undefined) {
-                    provinces[p]?.warnings.push(`Province ${p} exists in multiple states: ${provinceToState[p]}, ${state.id}`);
-                } else {
-                    provinceToState[p] = state.id;
-                }
-            });
-        }
+export class StateLoader extends FileLoader<StateNoBoundingBox[]> {
+    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateNoBoundingBox[]> {
+        return loadState(this.file, warnings);
     }
 }
 
@@ -101,15 +111,7 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
 
         for (const state of data.state) {
             const warnings: string[] = [];
-            const id = state.id ? state.id : (
-                globalWarnings.push({
-                    type: 'state',
-                    sourceId: -1,
-                    text: `A state in ${stateFile} doesn't have id field.`,
-                }),
-                warnings.push(`The state doesn't have id field.`),
-                -1
-            );
+            const id = state.id ? state.id : (warnings.push(`A state in ${stateFile} doesn't have id field.`), -1);
             const name = state.name ? state.name : (warnings.push(`The state doesn't have name field.`), '');
             const manpower = state.manpower ?? 0;
             const category = state.state_category?._name ? state.state_category._name : (warnings.push(`The state doesn't have category field.`), '');
@@ -122,8 +124,8 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
 
             if (provinces.length === 0) {
                 globalWarnings.push({
-                    type: 'state',
-                    sourceId: id,
+                    source: [{ type: 'state', id }],
+                    relatedFiles: [stateFile],
                     text: `State ${id} in ${stateFile} doesn't have provinces.`,
                 });
             }
@@ -134,8 +136,14 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
                 }
             }
 
+            globalWarnings.push(...warnings.map<Warning>(warning => ({
+                source: [{ type: 'state', id }],
+                relatedFiles: [stateFile],
+                text: warning,
+            })));
+
             result.push({
-                id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints, warnings,
+                id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints,
                 file: stateFile,
                 token: state._token
             });
@@ -162,11 +170,13 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
         }
         if (result[p.id]) {
             warnings.push({
-                type: 'state',
-                sourceId: badStateId,
+                source: [{
+                    type: 'state',
+                    id: badStateId,
+                }],
+                relatedFiles: [p.file, result[p.id].file],
                 text: `There're more than one states using state id ${p.id}.`,
             });
-            p.warnings.push(`Original state id ${p.id} conflict with other states.`);
             p.id = badStateId--;
         }
         result[p.id] = p;
@@ -174,8 +184,11 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
     for (let i = 1; i < maxStateId; i++) {
         if (!result[i]) {
             warnings.push({
-                type: 'state',
-                sourceId: i,
+                source: [{
+                    type: 'state',
+                    id: i,
+                }],
+                relatedFiles: [],
                 text: `State with id ${i} doesn't exist.`,
             });
         }
@@ -193,7 +206,11 @@ function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces:
         .map(p => {
             const province = provinces[p];
             if (!province) {
-                state.warnings.push(`Province ${p} doesn't exist.`);
+                warnings.push({
+                    source: [{ type: 'state', id: state.id }],
+                    relatedFiles: [state.file],
+                    text: `Province ${p} used in state ${state.id} doesn't exist.`
+                });
             }
             return province?.boundingBox;
         })
@@ -202,16 +219,49 @@ function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces:
     if (zones.length > 0) {
         state.boundingBox = zones.reduce((p, c) => mergeBoundingBox(p, c, width));
         if (state.boundingBox.w > width / 2 || state.boundingBox.h > height / 2) {
-            state.warnings.push(`The state is too large: ${state.boundingBox.w}x${state.boundingBox.h}`);
+            warnings.push({
+                source: [{ type: 'state', id: state.id }],
+                relatedFiles: [state.file],
+                text: `State ${state.id} is too large: ${state.boundingBox.w}x${state.boundingBox.h}`
+            });
         }
     } else {
         warnings.push({
-            type: 'state',
-            sourceId: state.id,
+            source: [{ type: 'state', id: state.id }],
+            relatedFiles: [state.file],
             text: `State ${state.id} in doesn't have valid provinces.`,
         });
         state.boundingBox = { x: 0, y: 0, w: 0, h: 0 };
     }
 
     return state;
+}
+
+function validateProvinceInState(provinces: (Province | undefined | null)[], states: (State | undefined | null)[], badStatesCount: number, warnings: Warning[]) {
+    const provinceToState: Record<number, number> = {};
+
+    for (let i = badStatesCount; i < states.length; i++) {
+        const state = states[i];
+        if (state) {
+            state.provinces.forEach(p => {
+                if (provinceToState[p] !== undefined) {
+                    const province = provinces[p];
+                    if (!province) {
+                        return;
+                    }
+
+                    warnings.push({
+                        source: [
+                            ...[state.id, provinceToState[p]].map<WarningSource>(id => ({ type: 'state', id })),
+                            { type: 'province', id: p, color: province.color }
+                        ],
+                        relatedFiles: [state.file, states[provinceToState[p]]!.file],
+                        text: `Province ${p} exists in multiple states: ${provinceToState[p]}, ${state.id}`,
+                    });
+                } else {
+                    provinceToState[p] = state.id;
+                }
+            });
+        }
+    }
 }

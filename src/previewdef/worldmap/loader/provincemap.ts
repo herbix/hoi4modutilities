@@ -1,9 +1,8 @@
-import { ProvinceMap, Province, Zone, Point, ProvinceEdge, Warning } from "../definitions";
+import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point } from "../definitions";
+import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual } from "./common";
+import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
-import { arrayToMap } from "../../../util/common";
-import { SchemaDef, Enum } from "../../../hoiformat/schema";
-import { mergeBoundingBox } from "./common";
 
 interface DefaultMap {
     definitions: string;
@@ -19,9 +18,92 @@ const defaultMapSchema: SchemaDef<DefaultMap> = {
     continent: 'string',
 };
 
-type ProvinceDefinition = Omit<Province, 'boundingBox'>;
+export class DefaultMapLoader extends FileLoader<ProvinceMap> {
+    private definitionsLoader: DefinitionsLoader | undefined;
+    private provinceBmpLoader: ProvinceBmpLoader | undefined;
+    private adjacenciesLoader: AdjacenciesLoader | undefined;
+    private continentsLoader: ContinentsLoader | undefined;
 
-export async function loadProvinceMap(progressReporter: (progress: string) => Promise<void>): Promise<ProvinceMap> {
+    constructor(progressReporter: ProgressReporter) {
+        super('map/default.map', progressReporter);
+    }
+
+    protected async loadFromFile(warnings: Warning[], force: boolean): Promise<LoadResult<ProvinceMap>> {
+        const progressReporter = this.progressReporter;
+
+        const defaultMap = await loadDefaultMap(progressReporter);
+
+        const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(force);
+        const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(force);
+        const adjacencies = await (this.adjacenciesLoader = this.checkAndCreateLoader(this.adjacenciesLoader, 'map/' + defaultMap.adjacencies, AdjacenciesLoader)).load(force);
+        const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(force);
+    
+        const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents ];
+
+        warnings.push(...mergeInLoadResult(subLoaderResults, 'warnings'));
+
+        await progressReporter('More calculation...');
+    
+        const { provinces, badProvinceId: badProvinceIdForMerge } =
+            mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
+    
+        validateProvinceContinents(provinces, continents.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.continent], warnings);
+        fillAdjacencyEdges(provinces, adjacencies.result, provinceBmp.result.height, ['map/' + defaultMap.provinces, 'map/' + defaultMap.definitions], warnings);
+    
+        const { sortedProvinces, badProvinceId } = sortProvinces(provinces, badProvinceIdForMerge, ['map/' + defaultMap.definitions], warnings);
+    
+        return {
+            result: {
+                width: provinceBmp.result.width,
+                height: provinceBmp.result.height,
+                colorByPosition: provinceBmp.result.colorByPosition, // width * height
+                provinces: sortedProvinces, // count of provinces
+                badProvincesCount: badProvinceId + 1,
+                continents: continents.result,
+            },
+            dependencies: mergeInLoadResult(subLoaderResults, 'dependencies'),
+            warnings,
+        };
+    }
+
+    private checkAndCreateLoader<T extends FileLoader<any>>(
+        loader: T | undefined,
+        file: string,
+        constructor: { new(file: string, progressReporter: ProgressReporter): T }
+    ): T {
+        if (loader && loader.file === file) {
+            return loader;
+        }
+
+        return new constructor(file, this.progressReporter);
+    }
+}
+
+class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
+    protected loadFromFile(warnings: Warning[]): Promise<ProvinceDefinition[]> {
+        return loadDefinitions(this.file, this.progressReporter, warnings);
+    }
+}
+
+class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
+    protected loadFromFile(warnings: Warning[]): Promise<ProvinceBmp> {
+        return loadProvincesBmp(this.file, this.progressReporter, warnings);
+    }
+}
+
+class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
+    protected loadFromFile(warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
+        return loadAdjacencies(this.file, this.progressReporter, warnings);
+    }
+}
+
+class ContinentsLoader extends FileLoader<string[]> {
+    protected loadFromFile(): Promise<string[]> {
+        return loadContinents(this.file, this.progressReporter);
+    }
+}
+
+async function loadDefaultMap(progressReporter: ProgressReporter): Promise<DefaultMap> {
     await progressReporter('Loading default.map...');
 
     const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', defaultMapSchema);
@@ -31,97 +113,86 @@ export async function loadProvinceMap(progressReporter: (progress: string) => Pr
         }
     });
 
-    await progressReporter('Loading province bmp...');
+    return defaultMap as DefaultMap;
+}
 
-    const [provinceMapImageBuffer] = await readFileFromModOrHOI4('map/' + defaultMap.provinces);
-    const provinceMapImage = parseBmp(provinceMapImageBuffer.buffer);
-
+async function loadDefinitions(definitionsFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceDefinition[]> {
     await progressReporter('Loading province definitions...');
 
-    const [definitionsBuffer] = await readFileFromModOrHOI4('map/' + defaultMap.definitions);
+    const [definitionsBuffer] = await readFileFromModOrHOI4(definitionsFile);
     const definition = definitionsBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter(v => v.length >= 8);
 
-    await progressReporter("Loading adjecencies...");
+    return definition.map(row => convertRowToProvince(row, warnings));
+}
 
-    const [adjecenciesBuffer] = await readFileFromModOrHOI4('map/' + defaultMap.adjacencies);
-    const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
+async function loadProvincesBmp(provincesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceBmp> {
+    await progressReporter('Loading province bmp...');
 
-    await progressReporter("Loading continents...");
+    const [provinceMapImageBuffer] = await readFileFromModOrHOI4(provincesFile);
+    const provinceMapImage = parseBmp(provinceMapImageBuffer.buffer);
+    
+    await progressReporter('Finding provinces from bmp...');
 
-    const continents = ['', ...(await readFileFromModOrHOI4AsJson<{ continents: Enum }>('map/' + defaultMap.continent, { continents: 'enum' })).continents._values];
-
-    if (provinceMapImage.bitsPerPixel !== 24) {
-        throw new Error('provinces bmp must be 24 bits per pixel.');
-    }
-
-    if (provinceMapImage.width % 256 !== 0 || provinceMapImage.height % 256 !== 0) {
-        throw new Error('Width and height of provinces bmp must be multiply of 256.');
-    }
-
-    const provinces = definition.map<ProvinceDefinition>(row => convertRowToProvince(row, continents));
-
-    await progressReporter('Mapping province definitions to bmp...');
-
-    const warnings: Warning[] = [];
-    const { provinceIdByPosition, badProvinceId: notDefinedProvinceId } = getProvincesByPosition(provinceMapImage, provinces, warnings);
-
+    const { colorByPosition, provinces: colorOnlyProvinces, colorToProvince } = getProvincesByPosition(provinceMapImage);
+    
     await progressReporter('Calculating province region...');
-
+    
     const width = provinceMapImage.width;
     const height = provinceMapImage.height;
-    const { sortedProvinces, badProvinceId } = sortProvinces(provinces, notDefinedProvinceId, warnings);
-    const filledProvinces: (Province | undefined)[] = fillProvinceZones(sortedProvinces, provinceIdByPosition, width, height, warnings);
-
-    validateProvince(filledProvinces, provinceIdByPosition, width, height);
-
+    const provincesWithZone = fillProvinceZones(colorOnlyProvinces, colorToProvince, colorByPosition, width, height, provincesFile, warnings);
+    
     await progressReporter('Calculating province edges...');
+    
+    const provinces = fillEdges(provincesWithZone, colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>, colorByPosition, width, height);
 
-    fillEdges(filledProvinces, provinceIdByPosition, width, height);
-    fillAdjacencyEdges(filledProvinces, adjecencies, height, warnings);
+    validateProvince(colorByPosition, width, height, provincesFile, warnings);
 
     return {
         width,
         height,
-        provinceId: provinceIdByPosition,
-        provinces: filledProvinces,
-        badProvincesCount: badProvinceId + 1,
-        continents,
-        warnings,
+        colorByPosition,
+        colorToProvince: colorToProvince as unknown as Record<number, ProvinceGraph>,
+        provinces,
     };
 }
 
-function convertRowToProvince(row: string[], continents: string[]): ProvinceDefinition {
+async function loadAdjacencies(adjacenciesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
+    await progressReporter("Loading adjecencies...");
+
+    const [adjecenciesBuffer] = await readFileFromModOrHOI4(adjacenciesFile);
+    const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
+
+    return adjecencies.map(row => convertRowToAdjacencies(row, warnings)).filter((v): v is ProvinceEdgeAdjacency => !!v);
+}
+
+async function loadContinents(continentFile: string, progressReporter: ProgressReporter): Promise<string[]> {
+    await progressReporter("Loading continents...");
+    return ['', ...(await readFileFromModOrHOI4AsJson<{ continents: Enum }>(continentFile, { continents: 'enum' })).continents._values];
+}
+
+function convertRowToProvince(row: string[], warnings: Warning[]): ProvinceDefinition {
     const r = parseInt(row[1]);
     const g = parseInt(row[2]);
     const b = parseInt(row[3]);
     const type = row[4];
     const continent = parseInt(row[7]);
-    const warnings: string[] = [];
-    if (continent >= continents.length || continent < 0) {
-        warnings.push(`Continent ${continent} not defined.`);
-    }
-    if (type === 'land' && (continent === 0 || isNaN(continent))) {
-        warnings.push(`Land province must belong to a continent.`);
-    }
+
     return {
         id: parseInt(row[0]),
         color: (r << 16) | (g << 8) | b,
-        coverZones: [],
-        edges: [],
         type,
         coastal: row[5].trim().toLowerCase() === 'true',
         terrain: row[6],
         continent,
-        warnings,
     };
 }
 
-function getProvincesByPosition(provinceMapImage: BMP, provinces: ProvinceDefinition[], warnings: Warning[]): { provinceIdByPosition: number[], badProvinceId: number } {
-    const colorToProvince = arrayToMap(provinces, 'color');
-    const provinceIdByPosition: number[] = new Array(provinceMapImage.width * provinceMapImage.height);
+type ColorContainer = { color: number, warnings: [] };
+function getProvincesByPosition(provinceMapImage: BMP): { colorByPosition: number[], provinces: ColorContainer[], colorToProvince: Record<number, ColorContainer> } {
+    const colorByPosition: number[] = new Array(provinceMapImage.width * provinceMapImage.height);
     const bitmapData = provinceMapImage.data;
-    const badColors: Record<number, number> = {};
-    let badProvinceId = -1;
+    const provinces: ColorContainer[] = [];
+    const colorToProvince: Record<number, ColorContainer> = {};
 
     for (let y = provinceMapImage.height - 1, sy = 0, dy = (provinceMapImage.height - 1) * provinceMapImage.width;
         y >= 0;
@@ -130,46 +201,34 @@ function getProvincesByPosition(provinceMapImage: BMP, provinces: ProvinceDefini
             const color = (bitmapData[sx + 2] << 16) | (bitmapData[sx + 1] << 8) | bitmapData[sx];
             const province = colorToProvince[color];
             if (province === undefined) {
-                if (badColors[color] === undefined) {
-                    warnings.push({
-                        type: 'province',
-                        sourceId: badProvinceId,
-                        text: `Color (${bitmapData[sx + 2]}, ${bitmapData[sx + 1]}, ${bitmapData[sx]}) in provinces bmp (${x}, ${y}) not exist in definitions.`,
-                    });
-                    provinces[badProvinceId] = {
-                        id: badProvinceId,
-                        color,
-                        coverZones: [],
-                        edges: [],
-                        type: '',
-                        coastal: false,
-                        terrain: '',
-                        continent: -1,
-                        warnings: [`The province don't exist in definition.`],
-                    };
+                const newProvince: ColorContainer = { color, warnings: [] };
 
-                    badColors[color] = badProvinceId--;
-                }
-                provinceIdByPosition[dx] = badColors[color];
+                provinces.push(newProvince);
+                colorToProvince[color] = newProvince;
+                colorByPosition[dx] = color;
             } else {
-                provinceIdByPosition[dx] = province.id;
+                colorByPosition[dx] = province.color;
             }
         }
     }
 
     return {
-        provinceIdByPosition,
-        badProvinceId,
+        colorByPosition,
+        colorToProvince,
+        provinces,
     };
 }
 
-function fillProvinceZones<T extends ProvinceDefinition>(
-    provinces: (T & { boundingBox?: Zone } | undefined)[],
-    provinceIdByPosition: number[],
+type ProvinceZoneDef = { boundingBox: Zone, coverZones: Zone[] };
+function fillProvinceZones<T extends ColorContainer>(
+    provincesWithoutCoverZones: (T & Partial<ProvinceZoneDef>)[],
+    colorToProvince: Record<number, T & Partial<ProvinceZoneDef>>,
+    colorByPosition: number[],
     width: number,
     height: number,
+    file: string,
     warnings: Warning[],
-): (T & { boundingBox: Zone } | undefined)[] {
+): (T & ProvinceZoneDef)[] {
     const blockStack: Zone[] = [];
     const blockSize = 256;
     for (let x = 0; x < width; x += blockSize) {
@@ -177,6 +236,12 @@ function fillProvinceZones<T extends ProvinceDefinition>(
             blockStack.push({ x, y, w: blockSize, h: blockSize });
         }
     }
+    
+    for (const province of provincesWithoutCoverZones) {
+        province.coverZones = [];
+    }
+
+    const provinces = provincesWithoutCoverZones as (T & Partial<ProvinceZoneDef> & { coverZones: Zone[] })[];
 
     while (blockStack.length > 0) {
         const block = blockStack.pop()!;
@@ -184,19 +249,22 @@ function fillProvinceZones<T extends ProvinceDefinition>(
         const l = block.x;
         const b = block.y + block.h;
         const r = block.x + block.w;
-        const provinceId = provinceIdByPosition[t * width + l];
+        const color = colorByPosition[t * width + l];
         let sameColor = true;
         for (let y = t, yi = t * width; y < b; y++, yi += width) {
             for (let x = l, xi = yi + l; x < r; x++, xi++) {
-                if (provinceIdByPosition[xi] !== provinceId) {
+                if (colorByPosition[xi] !== color) {
                     sameColor = false;
                     break;
                 }
             }
+            if (!sameColor) {
+                break;
+            }
         }
 
         if (sameColor) {
-            provinces[provinceId]!.coverZones.push(block);
+            colorToProvince[color].coverZones!.push(block);
         } else {
             const blockSize = block.w >> 1;
             blockStack.push({ ...block, w: blockSize, h: blockSize });
@@ -207,44 +275,33 @@ function fillProvinceZones<T extends ProvinceDefinition>(
     }
 
     for (const province of provinces) {
-        if (!province) {
-            continue;
-        }
-        if (province.coverZones.length > 0) {
-            province.boundingBox = province.coverZones.reduce((p, c) => mergeBoundingBox(p, c, width));
-            if (province.boundingBox.w > width / 2 || province.boundingBox.h > height / 2) {
-                province.warnings.push(`The province is too large: ${province.boundingBox.w}x${province.boundingBox.h}`);
-            }
-        } else {
-            if (province.id > 0) {
-                warnings.push({
-                    type: 'province',
-                    sourceId: province.id,
-                    text: `Province ${province.id} doesn't exist on map.`
-                });
-            }
-            province.boundingBox = { x: 0, y: 0, w: 0, h: 0 };
+        province.boundingBox = province.coverZones.reduce((p, c) => mergeBoundingBox(p, c, width));
+        if (province.boundingBox.w > width / 2 || province.boundingBox.h > height / 2) {
+            warnings.push({
+                source: [{ type: 'province', color: province.color, id: -1 }],
+                relatedFiles: [file],
+                text: `The province is too large: ${province.boundingBox.w}x${province.boundingBox.h}`,
+            });
         }
     }
 
-    return provinces as (T & { boundingBox: Zone } | undefined)[];
+    return provinces as (T & ProvinceZoneDef)[];
 }
 
-function sortProvinces(provinces: ProvinceDefinition[], badProvinceId: number, warnings: Warning[]): { sortedProvinces: (ProvinceDefinition | undefined)[], badProvinceId: number } {
+function sortProvinces(provinces: Province[], badProvinceId: number, relatedFiles: string[], warnings: Warning[]): { sortedProvinces: (Province | undefined)[], badProvinceId: number } {
     const maxProvinceId = provinces.reduce((p, c) => c.id > p ? c.id : p, 0);
     if (maxProvinceId > 200000) {
         throw new Error(`Max province id is too large: ${maxProvinceId}.`);
     }
 
-    const result: ProvinceDefinition[] = new Array(maxProvinceId + 1);
+    const result: Province[] = new Array(maxProvinceId + 1);
     provinces.forEach(p => {
         if (result[p.id]) {
             warnings.push({
-                type: 'province',
-                sourceId: badProvinceId,
-                text: `There're more than one rows for province id ${p.id}.`,
+                source: [{ type: 'province', id: badProvinceId, color: p.color }],
+                relatedFiles,
+                text: `There're more than one rows for province id ${p.id}. Set id to ${badProvinceId}.`,
             });
-            p.warnings.push(`Original province id ${p.id} conflict with other provinces.`);
             p.id = badProvinceId--;
         }
         result[p.id] = p;
@@ -252,8 +309,8 @@ function sortProvinces(provinces: ProvinceDefinition[], badProvinceId: number, w
     for (let i = 1; i < maxProvinceId; i++) {
         if (!result[i]) {
             warnings.push({
-                type: 'province',
-                sourceId: i,
+                source: [{ type: 'province', id: i, color: -1 }],
+                relatedFiles,
                 text: `Province with id ${i} doesn't exist.`,
             });
         }
@@ -265,8 +322,22 @@ function sortProvinces(provinces: ProvinceDefinition[], badProvinceId: number, w
     };
 }
 
-function fillEdges(provinces: (Province | undefined)[], provinceIdByPosition: number[], width: number, height: number): void {
-    const accessedPixels = new Array<boolean>(provinceIdByPosition.length).fill(false);
+type EdgeDef = { edges: ProvinceEdgeGraph[] };
+function fillEdges<T extends ColorContainer>(
+    provincesWithoutEdges: (T & Partial<EdgeDef>)[],
+    colorToProvinceWithoutEdges: Record<number, T & Partial<EdgeDef>>,
+    colorByPosition: number[],
+    width: number,
+    height: number
+): (T & EdgeDef)[] {
+    const accessedPixels = new Array<boolean>(colorByPosition.length).fill(false);
+
+    for (const province of provincesWithoutEdges) {
+        province.edges = [];
+    }
+
+    const provinces = provincesWithoutEdges as (T & EdgeDef)[];
+    const colorToProvince = colorToProvinceWithoutEdges as Record<number, T & EdgeDef>;
 
     for (let y = 0, yi = 0; y < height; y++, yi += width) {
         for (let x = 0, xi = yi; x < width; x++, xi++) {
@@ -274,17 +345,23 @@ function fillEdges(provinces: (Province | undefined)[], provinceIdByPosition: nu
                 continue;
             }
 
-            fillEdgesOfProvince(xi, provinces, provinceIdByPosition, accessedPixels, width, height);
+            fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height);
         }
     }
+
+    return provinces as (T & EdgeDef)[];
 }
 
-function fillEdgesOfProvince(
-    index: number, provinces: (Province | undefined)[], provinceIdByPosition: number[],
-    accessedPixels: boolean[], width: number, height: number
+function fillEdgesOfProvince<T extends EdgeDef>(
+    index: number,
+    colorToProvince: Record<number, T>,
+    colorByPosition: number[],
+    accessedPixels: boolean[],
+    width: number,
+    height: number
 ): void {
-    const provinceId = provinceIdByPosition[index];
-    const edgePixels = findEdgePixels(index, accessedPixels, provinceId, provinceIdByPosition, width, height);
+    const color = colorByPosition[index];
+    const edgePixels = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
     const edgePixelsByAdjecentProvince: Record<number, [Point, Point][]> = {};
     edgePixels.forEach(([p, line]) => {
         let lines = edgePixelsByAdjecentProvince[p];
@@ -294,11 +371,11 @@ function fillEdgesOfProvince(
         lines.push(line);
     });
 
-    const province = provinces[provinceId]!;
+    const province = colorToProvince[color]!;
     for (const [key, value] of Object.entries(edgePixelsByAdjecentProvince)) {
         const numKey = parseInt(key);
-        const edgeSetIndex = province.edges.findIndex(e => e.to === numKey);
-        const edgeSet = edgeSetIndex !== -1 ? province.edges[edgeSetIndex] : { to: numKey, path: [], type: '' };
+        const edgeSetIndex = province.edges.findIndex(e => e.toColor === numKey);
+        const edgeSet: ProvinceEdgeGraph = edgeSetIndex !== -1 ? province.edges[edgeSetIndex] : { toColor: numKey, path: [] };
         const concatedEdges = concatEdges(value);
         edgeSet.path.push(...concatedEdges);
         if (edgeSetIndex === -1) {
@@ -313,7 +390,7 @@ const indicesToOffset: [number, number][][] = [
     [[1, 0], [1, 1]],
     [[1, 1], [0, 1]],
 ];
-function findEdgePixels(index: number, accessedPixels: boolean[], provinceId: number, provinceIdByPosition: number[], width: number, height: number) {
+function findEdgePixels(index: number, accessedPixels: boolean[], color: number, colorByPosition: number[], width: number, height: number) {
     const edgePixels: [number, [Point, Point]][] = [];
     const pixelStack: number[] = [ index ];
     const indices: number[] = new Array(4);
@@ -337,9 +414,9 @@ function findEdgePixels(index: number, accessedPixels: boolean[], provinceId: nu
             if (adjecentIndex < 0) {
                 edgePixels.push([-1, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
             } else {
-                const adjecentProvinceId = provinceIdByPosition[adjecentIndex];
-                if (provinceId !== adjecentProvinceId) {
-                    edgePixels.push([adjecentProvinceId, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
+                const adjecentColor = colorByPosition[adjecentIndex];
+                if (color !== adjecentColor) {
+                    edgePixels.push([adjecentColor, indicesToOffset[i].map(([xOff, yOff]) => ({ x: x + xOff, y: y + yOff })) as [Point, Point]]);
                 } else {
                     pixelStack.push(adjecentIndex);
                 }
@@ -400,48 +477,170 @@ function concatEdges(edges: [Point, Point][]): Point[][] {
     return result;
 }
 
-function pointEqual(a: Point, b: Point): boolean {
-    return a.x === b.x && a.y === b.y;
+function convertRowToAdjacencies(adjacency: string[], warnings: Warning[]): ProvinceEdgeAdjacency | undefined {
+    const from = parseInt(adjacency[0]);
+    const to = parseInt(adjacency[1]);
+    const type = adjacency[2];
+    const through = parseInt(adjacency[3]);
+    const startX = parseInt(adjacency[4]);
+    const startY = parseInt(adjacency[5]);
+    const stopX = parseInt(adjacency[6]);
+    const stopY = parseInt(adjacency[7]);
+    const rule = adjacency[8];
+
+    if (from === -1 || to === -1) {
+        return undefined;
+    }
+
+    const start: Point | undefined = !isNaN(startX) && !isNaN(startY) && startX !== -1 && startY !== -1 ? { x: startX, y: startY } : undefined;
+    const stop: Point | undefined = !isNaN(stopX) && !isNaN(stopY) && stopX !== -1 && stopY !== -1 ? { x: stopX, y: stopY } : undefined;
+
+    return {
+        from,
+        to,
+        type,
+        through,
+        start,
+        stop,
+        rule,
+        row: adjacency,
+    };
 }
 
-function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: string[][], height: number, warnings: Warning[]) {
-    for (const adjacency of adjacencies) {
-        const from = parseInt(adjacency[0]);
-        const to = parseInt(adjacency[1]);
-        const type = adjacency[2];
-        const through = parseInt(adjacency[3]);
-        const startX = parseInt(adjacency[4]);
-        const startY = parseInt(adjacency[5]);
-        const stopX = parseInt(adjacency[6]);
-        const stopY = parseInt(adjacency[7]);
-        const rule = adjacency[8];
-        // const comments = adjecency[9];
+function mergeProvinceDefinitions(
+    provinceDefinitions: ProvinceDefinition[],
+    { provinces, colorToProvince }: ProvinceBmp,
+    relatedFiles: string[],
+    warnings: Warning[]
+): { provinces: Province[], badProvinceId: number } {
+    const result: Province[] = [];
+    const colorToProvinceId: Record<number, number> = {};
 
-        if (from === -1 || to === -1) {
+    for (const provinceDef of provinceDefinitions) {
+        if (colorToProvinceId[provinceDef.color] !== undefined) {
+            warnings.push({
+                source: [provinceDef.id, colorToProvinceId[provinceDef.color]].map(id => ({ type: 'province', id, color: provinceDef.color })),
+                relatedFiles: relatedFiles.slice(0, 1),
+                text: `Province ${provinceDef.id} has conflict color with province ${colorToProvinceId[provinceDef.color]}.`,
+            });
+        }
+
+        colorToProvinceId[provinceDef.color] = provinceDef.id;
+        const provinceInMap = colorToProvince[provinceDef.color];
+        if (provinceInMap) {
+            result.push({
+                ...provinceDef,
+                ...provinceInMap,
+                edges: [],
+            });
+
+        } else {
+            if (provinceDef.id !== 0) {
+                warnings.push({
+                    source: [{ type: 'province', id: provinceDef.id, color: provinceDef.color }],
+                    relatedFiles: relatedFiles,
+                    text: `Province ${provinceDef.id} doesn't exist on map.`,
+                });
+            }
+
+            result.push({ ...provinceDef, boundingBox: { x: 0, y: 0, w: 0, h: 0 }, coverZones: [], edges: [] });
+        }
+    }
+
+    let badId = -1;
+    for (const provinceInMap of provinces) {
+        const color = provinceInMap.color;
+        if (colorToProvinceId[color]) {
             continue;
         }
+
+        const useBadId = badId--;
+        warnings.push({
+            source: [{ type: 'province', id: useBadId, color }],
+            relatedFiles,
+            text: `Color (${(color >> 16) & 0xFF}, ${(color >> 8) & 0xFF}, ${color & 0xFF}) in provinces bmp (${provinceInMap.coverZones[0].x}, ${provinceInMap.coverZones[0].y}) not exist in definitions.`,
+        });
+
+        colorToProvinceId[color] = useBadId;
+        result.push({
+            ...provinceInMap,
+            edges: [], id: useBadId, continent: 0, type: 'sea', coastal: false, terrain: ''
+        });
+    }
+
+    for (const province of result) {
+        const provinceInMap = colorToProvince[province.color];
+        if (provinceInMap) {
+            province.edges = provinceInMap.edges.map(e => ({...e, to: colorToProvinceId[e.toColor], type: ''}));
+        }
+    }
+
+    for (const warning of warnings) {
+        for (const source of warning.source) {
+            if (source.type === 'province' && source.id === -1) {
+                const provinceId = colorToProvinceId[source.color];
+                if (provinceId !== undefined) {
+                    source.id = provinceId;
+                }
+            }
+        }
+    }
+
+    return { provinces: result, badProvinceId: badId };
+}
+
+function validateProvinceContinents(provinces: Province[], continents: string[], relatedFiles: string[], warnings: Warning[]) {
+    for (const province of provinces) {
+        const continent = province.continent;
+        if (continent >= continents.length || continent < 0) {
+            warnings.push({
+                source: [{
+                    type: 'province',
+                    id: province.id,
+                    color: province.color,
+                }],
+                relatedFiles,
+                text: `Continent ${continent} not defined.`,
+            });
+        }
+        if (province.type === 'land' && (continent === 0 || isNaN(continent)) && province.id !== 0) {
+            warnings.push({
+                source: [{
+                    type: 'province',
+                    id: province.id,
+                    color: province.color,
+                }],
+                relatedFiles,
+                text: `Land province ${province.id} must belong to a continent.`,
+            });
+        }
+    }
+}
+
+function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: ProvinceEdgeAdjacency[], height: number, relatedFiles: string[], warnings: Warning[]) {
+    for (const { row, from, to, through, start: saveStart, stop: saveStop, rule, type } of adjacencies) {
 
         if (!provinces[from] || !provinces[to]) {
             warnings.push({
-                type: 'province',
-                sourceId: from,
-                text: `Adjacency not from or to an existing province: ${adjacency[0]},${adjacency[1]}`,
+                source: [{ type: 'province', id: from, color: -1 }],
+                relatedFiles,
+                text: `Adjacency not from or to an existing province: ${row[0]},${row[1]}`,
             });
             continue;
         }
 
-        const resultThrough = !isNaN(through) && through !== -1 ? through : undefined;
+        const resultThrough = through !== undefined && !isNaN(through) && through !== -1 ? through : undefined;
         if (resultThrough && !provinces[resultThrough]) {
             warnings.push({
-                type: 'province',
-                sourceId: resultThrough,
-                text: `Adjacency not through an existing province: ${adjacency[3]}`,
+                source: [{ type: 'province', id: resultThrough, color: -1 }],
+                relatedFiles,
+                text: `Adjacency not through an existing province: ${row[3]}`,
             });
             continue;
         }
 
-        const start: Point | undefined = !isNaN(startX) && !isNaN(startY) && startX !== -1 && startY !== -1 ? { x: startX, y: height - startY } : undefined;
-        const stop: Point | undefined = !isNaN(stopX) && !isNaN(stopY) && stopX !== -1 && stopY !== -1 ? { x: stopX, y: height - stopY } : undefined;
+        const start = saveStart ? { ...saveStart, y: height - saveStart.y } : undefined;
+        const stop = saveStop ? { ...saveStop, y: height - saveStop.y } : undefined;
 
         const existingEdgeInFrom = provinces[from]!.edges.find(e => e.to === to);
         if (existingEdgeInFrom) {
@@ -459,7 +658,7 @@ function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: st
     }
 }
 
-function validateProvince(provinces: (Province | undefined)[], provinceIdByPosition: number[], width: number, height: number) {
+function validateProvince(colorByPosition: number[], width: number, height: number, file: string, warnings: Warning[]) {
     const i = new Array(4);
     for (let y = 1, y0 = width, index = width; y < height; y++, y0 += width) {
         for (let x = 0; x < width; x++, index++) {
@@ -468,16 +667,15 @@ function validateProvince(provinces: (Province | undefined)[], provinceIdByPosit
             i[2] = i[0] - width;
             i[3] = i[1] - width;
             i.forEach((v, i0) => {
-                i[i0] = provinceIdByPosition[v];
+                i[i0] = colorByPosition[v];
             });
             if (i[0] !== i[1] && i[0] !== i[2] && i[0] !== i[3] && i[1] !== i[2] && i[1] !== i[3] && i[2] !== i[3]) {
-                const provinceIds = i.filter((v, i, a) => a.indexOf(v) === i);
-                for (const provinceId of provinceIds) {
-                    const province = provinces[provinceId];
-                    if (province) {
-                        province.warnings.push(`Unclear border between provinces: ${provinceIds.join(',')}.`);
-                    }
-                }
+                const colors = i.filter((v, i, a) => a.indexOf(v) === i);
+                warnings.push({
+                    source: colors.map(color => ({ color, id: -1, type: 'province' })),
+                    relatedFiles: [file],
+                    text: `Unclear border between provinces at: (${x}, ${y - 1}).`
+                });
             }
         }
     }

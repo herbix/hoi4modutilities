@@ -2,7 +2,7 @@ import { Observable, asEvent, Subscriber } from "../util/event";
 import { Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/common";
-import { WorldMapMessage } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
 
 export type ViewMode = 'province' | 'state';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoints' | 'continent' | 'warnings';
@@ -169,7 +169,7 @@ export class TopBar extends Subscriber {
             if (wm.warnings.length === 0) {
                 warnings.value = 'No warnings.';
             } else {
-                warnings.value = 'World map warnings: \n\n' + wm.warnings.map(v => v.text).join('\n');
+                warnings.value = 'World map warnings: \n\n' + wm.warnings.map(warningToString).join('\n');
             }
         }));
     }
@@ -194,4 +194,8 @@ export class TopBar extends Subscriber {
             }
         }
     }
+}
+
+function warningToString(warning: Warning): string {
+    return `[${warning.source.map(s => `${s.type[0].toUpperCase()}${s.type.substr(1)} ${s.id}`).join(', ')}] ${warning.text}`;
 }

@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat } from './common';
+import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, readdirfiles } from './common';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
@@ -171,7 +171,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
             const findPath = path.join(folder.uri.fsPath, relativePath);
             if (fs.existsSync(findPath)) {
                 try {
-                    result.push(...await readdir(findPath));
+                    result.push(...await readdirfiles(findPath));
                 } catch(e) {}
             }
         }
@@ -193,7 +193,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
         const findPath = path.join(installPath, relativePath);
         if (fs.existsSync(findPath)) {
             try {
-                result.push(...await readdir(findPath));
+                result.push(...await readdirfiles(findPath));
             } catch(e) {}
         }
     }
@@ -207,7 +207,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
                 const folderEntry = dlcZip.getEntry(relativePath);
                 if (folderEntry && folderEntry.isDirectory) {
                     for (const entry of dlcZip.getEntries()) {
-                        if (isSamePath(path.dirname(entry.entryName.replace(/^[\\/]/, '')), relativePath)) {
+                        if (isSamePath(path.dirname(entry.entryName.replace(/^[\\/]/, '')), relativePath) && !entry.isDirectory) {
                             result.push(path.basename(entry.name));
                         }
                     }

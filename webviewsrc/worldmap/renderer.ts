@@ -303,8 +303,8 @@ Coastal=${province.coastal}
 Terrain=${province.terrain}
 ${province.continent !== 0 ? `Continent=${worldMap.continents[province.continent]}(${province.continent})` : 'Continent=0'}
 Adjecents=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
-${province.warnings.map(v => '|r|' + v).join('\n')}
-${stateObject ? stateObject.warnings.map(v => '|r|' + v).join('\n') : ''}`);
+${worldMap.getProvinceWarnings(province).map(v => '|r|' + v).join('\n')}
+${stateObject ? worldMap.getStateWarnings(stateObject).map(v => '|r|' + v).join('\n') : ''}`);
     }
 
     private renderLoadingText() {
@@ -320,52 +320,45 @@ ${stateObject ? stateObject.warnings.map(v => '|r|' + v).join('\n') : ''}`);
     }
 
     private renderProvinceHoverSelection(worldMap: FEWorldMap) {
-        if (this.topBar.selectedProvinceId.value !== undefined) {
-            const province = worldMap.getProvinceById(this.topBar.selectedProvinceId.value);
-            if (province) {
-                this.renderSelectedProvince(province, worldMap);
-            }
+        let province = worldMap.getProvinceById(this.topBar.selectedProvinceId.value);
+        if (province) {
+            this.renderSelectedProvince(province, worldMap);
         }
-        if (this.topBar.hoverProvinceId.value !== undefined) {
-            const province = worldMap.getProvinceById(this.topBar.hoverProvinceId.value);
-            if (province) {
-                if (this.topBar.selectedProvinceId !== this.topBar.hoverProvinceId) {
-                    this.renderHoverProvince(province, worldMap);
-                }
-                this.renderProvinceTooltip(province, worldMap);
+        province = worldMap.getProvinceById(this.topBar.hoverProvinceId.value);
+        if (province) {
+            if (this.topBar.selectedProvinceId !== this.topBar.hoverProvinceId) {
+                this.renderHoverProvince(province, worldMap);
             }
+            this.renderProvinceTooltip(province, worldMap);
         }
     }
 
     private renderStateHoverSelection(worldMap: FEWorldMap) {
-        if (this.topBar.selectedStateId.value !== undefined) {
-            const state = worldMap.getStateById(this.topBar.selectedStateId.value);
-            if (state) {
+        let state = worldMap.getStateById(this.topBar.selectedStateId.value);
+        if (state) {
+            for (const provinceId of state.provinces) {
+                const province = worldMap.getProvinceById(provinceId);
+                if (province) {
+                    this.renderSelectedProvince(province, worldMap);
+                }
+            }
+        }
+
+        state = worldMap.getStateById(this.topBar.hoverStateId.value);
+        if (state) {
+            if (this.topBar.selectedStateId.value !== this.topBar.hoverStateId.value) {
                 for (const provinceId of state.provinces) {
                     const province = worldMap.getProvinceById(provinceId);
                     if (province) {
-                        this.renderSelectedProvince(province, worldMap);
+                        this.renderHoverProvince(province, worldMap, false);
                     }
                 }
             }
-        }
-        if (this.topBar.hoverStateId.value !== undefined) {
-            const state = worldMap.getStateById(this.topBar.hoverStateId.value);
-            if (state) {
-                if (this.topBar.selectedStateId.value !== this.topBar.hoverStateId.value) {
-                    for (const provinceId of state.provinces) {
-                        const province = worldMap.getProvinceById(provinceId);
-                        if (province) {
-                            this.renderHoverProvince(province, worldMap, false);
-                        }
-                    }
-                }
-                this.renderStateTooltip(state);
-            }
+            this.renderStateTooltip(state, worldMap);
         }
     }
 
-    private renderStateTooltip(state: State) {
+    private renderStateTooltip(state: State, worldMap: FEWorldMap) {
         this.renderTooltip(`
 ${state.impassable ? '|r|Impassable' : ''}
 State=${state.id}
@@ -374,13 +367,20 @@ Core of=${state.cores.join(',')}
 Manpower=${state.manpower}
 Category=${state.category}
 Provinces=${state.provinces.join(',')}
-${state.warnings.map(v => '|r|' + v).join('\n')}`);
+${worldMap.getStateWarnings(state).map(v => '|r|' + v).join('\n')}`);
     }
 
     private renderTooltip(tooltip: string) {
         const backCanvasContext = this.backCanvasContext;
         const cursorX = this.cursorX;
         const cursorY = this.cursorY;
+
+        let mapX = this.viewPoint.convertBackX(cursorX);
+        if (this.loader.worldMap.width > 0 && mapX >= this.loader.worldMap.width) {
+            mapX -= this.loader.worldMap.width;
+        }
+
+        tooltip = `(${mapX}, ${this.viewPoint.convertBackY(cursorY)})\n` + tooltip;
 
         const colorPrefix = /^\|r\|/;
         const regex = /(\n)|((?:\|r\|)?(?:.{40}[^,]{0,20},|.{60}))/g;
@@ -515,7 +515,7 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
         case 'country':
             {
                 const stateId = provinceToState[province.id];
-                return stateId !== undefined ? (worldMap.countries.find(c => c.tag === worldMap.getStateById(stateId)?.owner)?.color ?? 0) : 0;
+                return worldMap.countries.find(c => c.tag === worldMap.getStateById(stateId)?.owner)?.color ?? 0;
             }
         case 'terrain':
             if (stateBox[0] === undefined) {
@@ -541,7 +541,8 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
             {
                 const stateId = provinceToState[province.id];
                 const isLand = province.type === 'land';
-                return province.warnings.length > 0 || (stateId !== undefined && worldMap.getStateById(stateId)?.warnings?.length) ?
+                const state = worldMap.getStateById(stateId);
+                return worldMap.getProvinceWarnings(province).length > 0 || (state !== undefined && worldMap.getStateWarnings(state)?.length) ?
                     (isLand ? 0xE02020 : 0xC00000) :
                     (isLand ? 0x7FFF7F : 0x20E020);
             }
@@ -558,7 +559,7 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
                 }
 
                 const stateId = provinceToState[province.id];
-                const state = stateId !== undefined ? worldMap.getStateById(stateId) : undefined;
+                const state = worldMap.getStateById(stateId);
                 const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(stateBox[0]);
                 return valueToColorGYR(value);
             }
@@ -572,7 +573,7 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
                 }
 
                 const stateId = provinceToState[province.id];
-                const state = stateId !== undefined ? worldMap.getStateById(stateId) : undefined;
+                const state = worldMap.getStateById(stateId);
                 const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(stateBox[0]);
                 return valueToColorGreyScale(value);
             }

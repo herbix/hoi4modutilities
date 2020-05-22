@@ -106,6 +106,12 @@ export function readdir(path: string): Promise<string[]> {
     return fsFuncWrapper(fs.readdir, path);
 }
 
+export async function readdirfiles(dir: string): Promise<string[]> {
+    const fileNames = await fsFuncWrapper<string[]>(fs.readdir, dir);
+    const stat = await Promise.all(fileNames.map<Promise<[string, fs.Stats]>>(f => Promise.all([f, lstat(path.join(dir, f))])));
+    return stat.filter(s => s[1].isFile()).map(s => s[0]);
+}
+
 export function lstat(path: string): Promise<fs.Stats> {
     return fsFuncWrapper(fs.lstat, path);
 }

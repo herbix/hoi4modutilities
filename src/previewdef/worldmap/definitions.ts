@@ -15,38 +15,60 @@ export interface WorldMapData {
     warnings: Warning[];
 }
 
+export interface ProvinceBmp {
+    width: number;
+    height: number;
+    colorByPosition: number[]; // width * height
+    colorToProvince: Record<number, ProvinceGraph>;
+    provinces: ProvinceGraph[];
+}
+
 export interface ProvinceMap {
     width: number;
     height: number;
-    provinceId: number[]; // width * height
+    colorByPosition: number[]; // width * height
     provinces: (Province | undefined | null)[]; // count of provinces
     badProvincesCount: number;
     continents: string[];
-    warnings: Warning[];
 }
 
-export interface Province {
-    id: number;
+export interface ProvinceGraph {
     color: number;
     boundingBox: Zone;
     coverZones: Zone[];
-    edges: ProvinceEdge[];
+    edges: ProvinceEdgeGraph[];
+}
+
+export interface ProvinceDefinition {
+    id: number;
+    color: number;
     type: string;
     coastal: boolean;
     terrain: string;
     continent: number;
-    warnings: string[];
 }
 
-export interface ProvinceEdge {
-    to: number;
+export type Province = Omit<ProvinceGraph & ProvinceDefinition, 'edges'> & {
+    edges: ProvinceEdge[];
+};
+
+export interface ProvinceEdgeGraph {
+    toColor: number;
     path: Point[][];
+}
+
+export interface ProvinceEdgeAdjacency {
+    from: number;
+    to: number;
     through?: number;
     type: 'impassable' | string;
     start?: Point;
     stop?: Point;
     rule?: string;
+    row: string[];
 }
+
+export type ProvinceEdge = Omit<ProvinceEdgeGraph & ProvinceEdgeAdjacency, 'from' | 'row' | 'toColor'>;
 
 export interface State {
     id: number;
@@ -58,16 +80,32 @@ export interface State {
     cores: string[];
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
-    warnings: string[];
     boundingBox: Zone;
     file: string;
     token: Token | undefined;
 }
 
 export interface Warning {
-    type: 'province' | 'state';
-    sourceId: number;
     text: string;
+    source: WarningSource[];
+    relatedFiles: string[];
+}
+
+export type WarningSource = WarningSourceProvince | WarningSourceState;
+
+interface WarningSourceBase {
+    type: string;
+}
+
+interface WarningSourceProvince extends WarningSourceBase {
+    type: 'province';
+    id: number | null;
+    color: number;
+}
+
+interface WarningSourceState extends WarningSourceBase {
+    type: 'state';
+    id: number;
 }
 
 export interface Country {
@@ -128,3 +166,5 @@ export interface OpenStateMessage {
     start: number | undefined;
     end: number | undefined;
 }
+
+export type ProgressReporter = (progress: string) => Promise<void>;

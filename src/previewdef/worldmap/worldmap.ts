@@ -5,18 +5,18 @@ import worldmapviewstyles from './worldmapview.css';
 import { localize, localizeText } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
-import { WorldMapMessage, WorldMapData, ProvinceMap } from './definitions';
-import { loadProvinceMap } from './loader/provincemap';
-import { loadStates } from './loader/states';
-import { loadCountries } from './loader/countries';
-import { slice, writeFile } from '../../util/common';
+import { WorldMapMessage, ProgressReporter } from './definitions';
+import { slice, writeFile, debounceByInput, matchPathEnd } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
+import { WorldMapLoader } from './loader/worldmaploader';
 
 export class WorldMap {
-    private cachedWorldMap: (WorldMapData & ProvinceMap) | undefined = undefined;
+    private worldMapLoader: WorldMapLoader;
+    private worldMapDependencies: string[] | undefined;
     private htmlLoaded: boolean = false;
 
     constructor(readonly panel: vscode.WebviewPanel) {
+        this.worldMapLoader = new WorldMapLoader(this.progressReporter);
     }
 
     public initialize(): void {
@@ -26,9 +26,19 @@ export class WorldMap {
         webview.onDidReceiveMessage((msg) => this.onMessage(msg));
     }
 
-    public rerender(): void {
-        // this.panel.webview.html = this.renderWorldMap();
-    }
+    public onDocumentChange = debounceByInput(
+        (uri: vscode.Uri) => {
+            if (!this.worldMapDependencies) {
+                return;
+            }
+
+            if (this.worldMapDependencies.some(d => matchPathEnd(uri.fsPath, d.split('/')))) {
+                this.sendProvinceMapSummaryToWebview(false);
+            }
+        },
+        uri => uri.fsPath,
+        1000,
+        { trailing: true });
 
     private renderWorldMap(): string {
         return html(this.panel.webview, localizeText(worldmapview), ['worldmap.js'], ['common.css', 'codicon.css', { content: worldmapviewstyles }]);
@@ -45,7 +55,7 @@ export class WorldMap {
                 case 'requestprovinces':
                     await this.panel.webview.postMessage({
                         command: 'provinces',
-                        data: JSON.stringify(slice(this.cachedWorldMap?.provinces, msg.start, msg.end)),
+                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).provinces, msg.start, msg.end)),
                         start: msg.start,
                         end: msg.end,
                     } as WorldMapMessage);
@@ -53,7 +63,7 @@ export class WorldMap {
                 case 'requeststates':
                     await this.panel.webview.postMessage({
                         command: 'states',
-                        data: JSON.stringify(slice(this.cachedWorldMap?.states, msg.start, msg.end)),
+                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).states, msg.start, msg.end)),
                         start: msg.start,
                         end: msg.end,
                     } as WorldMapMessage);
@@ -61,7 +71,7 @@ export class WorldMap {
                 case 'requestcountries':
                     await this.panel.webview.postMessage({
                         command: 'countries',
-                        data: JSON.stringify(slice(this.cachedWorldMap?.countries, msg.start, msg.end)),
+                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).countries, msg.start, msg.end)),
                         start: msg.start,
                         end: msg.end,
                     } as WorldMapMessage);
@@ -75,40 +85,29 @@ export class WorldMap {
         }
     }
 
+    private progressReporter: ProgressReporter = async (progress: string) => {
+        await this.panel.webview.postMessage({
+            command: 'progress',
+            data: progress,
+        } as WorldMapMessage);
+    };
+
     private async sendProvinceMapSummaryToWebview(force: boolean) {
         try {
-            if (force || !this.cachedWorldMap) {
-                const progressReporter = async (progress: string) => {
-                    await this.panel.webview.postMessage({
-                        command: 'progress',
-                        data: progress,
-                    } as WorldMapMessage);
-                };
+            this.worldMapLoader.shallowForceReload();
+            const { result: worldMap, dependencies } = await this.worldMapLoader.load(force);
+            this.worldMapDependencies = dependencies;
 
-                const provinceMap = await loadProvinceMap(progressReporter);
-                const stateMap = await loadStates(progressReporter, provinceMap);
-                const countries = await loadCountries(progressReporter);
-
-                this.cachedWorldMap = {
-                    ...provinceMap,
-                    ...stateMap,
-                    provincesCount: provinceMap.provinces.length,
-                    statesCount: stateMap.states.length,
-                    countriesCount: countries.length,
-                    countries,
-                };
-            }
-
-            const worldMap = this.cachedWorldMap;
+            const summary = {
+                ...worldMap,
+                colorByPosition: undefined,
+                provinces: [],
+                states: [],
+                countries: [],
+            };
             await this.panel.webview.postMessage({
                 command: 'provincemapsummary',
-                data: {
-                    ...worldMap,
-                    provinceId: undefined,
-                    provinces: [],
-                    states: [],
-                    countries: [],
-                },
+                data: summary,
             } as WorldMapMessage);
         } catch (e) {
             error(e);
