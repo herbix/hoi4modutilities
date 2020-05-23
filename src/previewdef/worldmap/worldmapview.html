@@ -4,50 +4,50 @@
             <label for="viewmode">%worldmap.topbar.viewmode|View mode: %</label>
             <div class="select-container">
                 <select id="viewmode">
-                    <option value="province">Province</option>
-                    <option value="state">State</option>
+                    <option value="province">%worldmap.topbar.viewmode.province|Province%</option>
+                    <option value="state">%worldmap.topbar.viewmode.state|State%</option>
                 </select>
             </div>
         </div>
 
         <div class="group">
-            <label for="colorset">Color set: </label>
+            <label for="colorset">%worldmap.topbar.colorset|Color set: %</label>
             <div class="select-container">
                 <select id="colorset">
-                    <option viewmode="province" value="provinceid">Province ID</option>
-                    <option viewmode="province state" value="stateid">State ID</option>
-                    <option viewmode="province state" value="country">Country</option>
-                    <option viewmode="province state" value="provincetype">Province Type</option>
-                    <option viewmode="province state" value="terrain">Terrain</option>
-                    <option viewmode="province state" value="continent">Continent</option>
-                    <option viewmode="province state" value="manpower">Manpower</option>
-                    <option viewmode="province state" value="victorypoints">Victory Points</option>
-                    <option viewmode="province state" value="warnings">Warnings</option>
+                    <option viewmode="province" value="provinceid">%worldmap.topbar.colorset.provinceid|Province ID%</option>
+                    <option viewmode="province state" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
+                    <option viewmode="province state" value="country">%worldmap.topbar.colorset.country|Country%</option>
+                    <option viewmode="province state" value="provincetype">%worldmap.topbar.colorset.provincetype|Province Type%</option>
+                    <option viewmode="province state" value="terrain">%worldmap.topbar.colorset.terrain|Terrain%</option>
+                    <option viewmode="province state" value="continent">%worldmap.topbar.colorset.continent|Continent%</option>
+                    <option viewmode="province state" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
+                    <option viewmode="province state" value="victorypoint">%worldmap.topbar.colorset.vicotrypoint|Victory Points%</option>
+                    <option viewmode="province state" value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
                 </select>
             </div>
         </div>
 
         <div class="group">
-            <label for="searchbox">Search: </label>
+            <label for="searchbox">%worldmap.topbar.search|Search: %</label>
             <input id="searchbox" type="text"/>
-            <button id="search" title="Search">
+            <button id="search" title="%worldmap.topbar.search.title|Search%">
                 <i class="codicon codicon-search"></i>
             </button>
         </div>
 
         <div class="group">
-            <button id="refresh" title="Refresh" viewmode="province state">
+            <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%" viewmode="province state">
                 <i class="codicon codicon-refresh"></i>
             </button>
         </div>
         <div class="group">
-            <button id="show-warnings" title="World map warnings" viewmode="province state">
+            <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%" viewmode="province state">
                 <i class="codicon codicon-warning"></i>
             </button>
         </div>
 
         <div class="group">
-            <button id="open" title="Open in current mod" viewmode="state">
+            <button id="open" title="%worldmap.topbar.open.title|Open in Workspace%" viewmode="state">
                 <i class="codicon codicon-link-external"></i>
             </button>
             <!--<button title="Edit">

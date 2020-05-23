@@ -4,7 +4,27 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.2.1] - 2020/05/02 - Latest
+## [0.3.0] - 2020/05/24 - Latest
+
+### Added
+* Command
+  * `HOI4 Mod Utilities: Preview World Map` to open world map preview window.
+* World map preview
+  * Possible view modes: province and state.
+  * Copy (if not in mod) and open state file from world map.
+  * Show warnings and informations about provinces and states.
+  * Various of color sets.
+  * Search province or state by ID.
+  * Auto reload world map when related file updates.
+  * Force reload world map from tool bar.
+
+### Changed
+* Update UI in preview page to match VSCode style.
+
+### Fixed
+* Fixed parsing rules of HOI4 file parser.
+
+## [0.2.1] - 2020/05/02
 
 ### Added
 * Reads `replace_path` of `.mod` file.

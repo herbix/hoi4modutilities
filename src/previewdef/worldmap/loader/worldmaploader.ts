@@ -43,7 +43,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         };
 
         const dependencies = mergeInLoadResult(subLoaderResults, 'dependencies');
-        debug(dependencies);
+        debug('World map dependencies', dependencies);
 
         return {
             result: worldMap,

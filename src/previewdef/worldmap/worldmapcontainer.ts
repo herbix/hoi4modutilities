@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Commands, WebviewType } from '../../constants';
 import { WorldMap } from './worldmap';
 import { contextContainer } from '../../context';
+import { localize } from '../../util/i18n';
 
 export class WorldMapContainer implements vscode.WebviewPanelSerializer {
     private worldMap: WorldMap | undefined = undefined;
@@ -32,7 +33,7 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
 
         panel = panel ?? vscode.window.createWebviewPanel(
             WebviewType.PreviewWorldMap,
-            'Preview world map',
+            localize('worldmap.preview.title', 'Preview World Map'),
             vscode.ViewColumn.Active,
             {
                 enableScripts: true,

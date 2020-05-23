@@ -38,3 +38,7 @@ export function localizeText(text: string): string {
         return localize(key, message);
     });
 }
+
+export function i18nTableAsScript(): string {
+    return 'window.__i18ntable = ' + JSON.stringify(table) + ';';
+}

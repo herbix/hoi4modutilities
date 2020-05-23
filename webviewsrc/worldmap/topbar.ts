@@ -3,9 +3,10 @@ import { Loader, FEWorldMap } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/common";
 import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
+import { feLocalize } from "../util/i18n";
 
 export type ViewMode = 'province' | 'state';
-export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoints' | 'continent' | 'warnings';
+export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoint' | 'continent' | 'warnings';
 
 export const topBarHeight = 40;
 
@@ -172,9 +173,9 @@ export class TopBar extends Subscriber {
         this.subscriptions.push(this.loader.onMapChanged(wm => {
             const warnings = document.getElementById('warnings') as HTMLTextAreaElement;
             if (wm.warnings.length === 0) {
-                warnings.value = 'No warnings.';
+                warnings.value = feLocalize('worldmap.warnings.nowarnings', 'No warnings.');
             } else {
-                warnings.value = 'World map warnings: \n\n' + wm.warnings.map(warningToString).join('\n');
+                warnings.value = feLocalize('worldmap.warnings', 'World map warnings: \n\n{0}', wm.warnings.map(warningToString).join('\n'));
             }
 
             this.setSearchBoxPlaceHolder(wm);

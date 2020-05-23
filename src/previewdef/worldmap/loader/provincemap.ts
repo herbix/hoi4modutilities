@@ -5,6 +5,7 @@ import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../uti
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { TerrainDefinitionLoader } from "./terrain";
 import { arrayToMap } from "../../../util/common";
+import { localize } from "../../../util/i18n";
 
 interface DefaultMap {
     definitions: string;
@@ -61,7 +62,7 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
 
         warnings.push(...mergeInLoadResult(subLoaderResults, 'warnings'));
 
-        await progressReporter('More calculation...');
+        await progressReporter(localize('worldmap.progress.mergeandvalidateprovince', 'Merging and validating provinces...'));
     
         const { provinces, badProvinceId: badProvinceIdForMerge } =
             mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
@@ -126,12 +127,12 @@ class ContinentsLoader extends FileLoader<string[]> {
 }
 
 async function loadDefaultMap(progressReporter: ProgressReporter): Promise<DefaultMap> {
-    await progressReporter('Loading default.map...');
+    await progressReporter(localize('worldmap.progress.loadingdefaultmap', 'Loading default.map...'));
 
     const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', defaultMapSchema);
     (['definitions', 'provinces', 'adjacencies', 'continent'] as (keyof DefaultMap)[]).forEach(field => {
         if (!defaultMap[field]) {
-            throw new Error(`Field ${field} is not found in default.map.`);
+            throw new Error(localize('worldmap.error.fieldnotindefaultmap', 'Field "{0}" is not found in default.map.', field));
         }
     });
 
@@ -139,7 +140,7 @@ async function loadDefaultMap(progressReporter: ProgressReporter): Promise<Defau
 }
 
 async function loadDefinitions(definitionsFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceDefinition[]> {
-    await progressReporter('Loading province definitions...');
+    await progressReporter(localize('worldmap.progress.loadingprovincedef', 'Loading province definitions...'));
 
     const [definitionsBuffer] = await readFileFromModOrHOI4(definitionsFile);
     const definition = definitionsBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter(v => v.length >= 8);
@@ -148,22 +149,20 @@ async function loadDefinitions(definitionsFile: string, progressReporter: Progre
 }
 
 async function loadProvincesBmp(provincesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceBmp> {
-    await progressReporter('Loading province bmp...');
+    await progressReporter(localize('worldmap.progress.loadingprovincebmp', 'Loading province bmp...',));
 
     const [provinceMapImageBuffer] = await readFileFromModOrHOI4(provincesFile);
     const provinceMapImage = parseBmp(provinceMapImageBuffer.buffer);
     
-    await progressReporter('Finding provinces from bmp...');
+    await progressReporter(localize('worldmap.progress.calculatingregion', 'Calculating province region...'));
 
     const { colorByPosition, provinces: colorOnlyProvinces, colorToProvince } = getProvincesByPosition(provinceMapImage);
-    
-    await progressReporter('Calculating province region...');
     
     const width = provinceMapImage.width;
     const height = provinceMapImage.height;
     const provincesWithZone = fillProvinceZones(colorOnlyProvinces, colorToProvince, colorByPosition, width, height, provincesFile, warnings);
     
-    await progressReporter('Calculating province edges...');
+    await progressReporter(localize('worldmap.progress.calculatingedge', 'Calculating province edges...'));
     
     const provinces = fillEdges(provincesWithZone, colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>, colorByPosition, width, height);
 
@@ -179,7 +178,7 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
 }
 
 async function loadAdjacencies(adjacenciesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
-    await progressReporter("Loading adjecencies...");
+    await progressReporter(localize('worldmap.progress.loadingadjacencies', 'Loading adjecencies...'));
 
     const [adjecenciesBuffer] = await readFileFromModOrHOI4(adjacenciesFile);
     const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
@@ -188,7 +187,7 @@ async function loadAdjacencies(adjacenciesFile: string, progressReporter: Progre
 }
 
 async function loadContinents(continentFile: string, progressReporter: ProgressReporter): Promise<string[]> {
-    await progressReporter("Loading continents...");
+    await progressReporter(localize('worldmap.progress.loadingcontinents', 'Loading continents...'));
     return ['', ...(await readFileFromModOrHOI4AsJson<{ continents: Enum }>(continentFile, { continents: 'enum' })).continents._values];
 }
 
@@ -302,7 +301,7 @@ function fillProvinceZones<T extends ColorContainer>(
             warnings.push({
                 source: [{ type: 'province', color: province.color, id: -1 }],
                 relatedFiles: [file],
-                text: `The province is too large: ${province.boundingBox.w}x${province.boundingBox.h}`,
+                text: localize('worldmap.warnings.provincetoolarge', 'The province is too large: {0}x{1}.', province.boundingBox.w, province.boundingBox.h),
             });
         }
     }
@@ -313,7 +312,7 @@ function fillProvinceZones<T extends ColorContainer>(
 function sortProvinces(provinces: Province[], badProvinceId: number, relatedFiles: string[], warnings: Warning[]): { sortedProvinces: (Province | undefined)[], badProvinceId: number } {
     const maxProvinceId = provinces.reduce((p, c) => c.id > p ? c.id : p, 0);
     if (maxProvinceId > 200000) {
-        throw new Error(`Max province id is too large: ${maxProvinceId}.`);
+        throw new Error(localize('worldmap.error.provinceidtoolarge', 'Max province id is too large: {0}.', maxProvinceId));
     }
 
     const result: Province[] = new Array(maxProvinceId + 1);
@@ -322,7 +321,7 @@ function sortProvinces(provinces: Province[], badProvinceId: number, relatedFile
             warnings.push({
                 source: [{ type: 'province', id: badProvinceId, color: p.color }],
                 relatedFiles,
-                text: `There're more than one rows for province id ${p.id}. Set id to ${badProvinceId}.`,
+                text: localize('worldmap.warnings.provinceidconflict', "There're more than one rows for province id {0}. Set id to {1}.", p.id, badProvinceId),
             });
             p.id = badProvinceId--;
         }
@@ -339,7 +338,7 @@ function sortProvinces(provinces: Province[], badProvinceId: number, relatedFile
                         id: i,
                     }],
                     relatedFiles,
-                    text: `Province with id ${lastNotExistProvinceId === i - 1 ? i - 1 : `${lastNotExistProvinceId}-${i - 1}`} doesn't exist.`,
+                    text: localize('worldmap.warnings.provincenotexist', "Province with id {0} doesn't exist.", lastNotExistProvinceId === i - 1 ? i - 1 : `${lastNotExistProvinceId}-${i - 1}`),
                 });
                 lastNotExistProvinceId = undefined;
             }
@@ -555,7 +554,7 @@ function mergeProvinceDefinitions(
             warnings.push({
                 source: [provinceDef.id, colorToProvinceId[provinceDef.color]].map(id => ({ type: 'province', id, color: provinceDef.color })),
                 relatedFiles: relatedFiles.slice(0, 1),
-                text: `Province ${provinceDef.id} has conflict color with province ${colorToProvinceId[provinceDef.color]}.`,
+                text: localize('worldmap.warnings.provincecolorconflict', 'Province {0} has conflict color with province {1}.', provinceDef.id, colorToProvinceId[provinceDef.color]),
             });
         }
 
@@ -573,7 +572,7 @@ function mergeProvinceDefinitions(
                 warnings.push({
                     source: [{ type: 'province', id: provinceDef.id, color: provinceDef.color }],
                     relatedFiles: relatedFiles,
-                    text: `Province ${provinceDef.id} doesn't exist on map.`,
+                    text: localize('worldmap.warnings.provincenotexistonmap', "Province {0} doesn't exist on map.", provinceDef.id),
                 });
             }
 
@@ -592,7 +591,8 @@ function mergeProvinceDefinitions(
         warnings.push({
             source: [{ type: 'province', id: useBadId, color }],
             relatedFiles,
-            text: `Color (${(color >> 16) & 0xFF}, ${(color >> 8) & 0xFF}, ${color & 0xFF}) in provinces bmp (${provinceInMap.coverZones[0].x}, ${provinceInMap.coverZones[0].y}) not exist in definitions.`,
+            text: localize('worldmap.warnings.provincenotexistindef', "Province with color ({0}, {1}, {2}) in provinces bmp ({3}, {4}) doesn't exist in definitions.",
+                (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, provinceInMap.coverZones[0].x, provinceInMap.coverZones[0].y),
         });
 
         colorToProvinceId[color] = useBadId;
@@ -634,7 +634,7 @@ function validateProvinceContinents(provinces: Province[], continents: string[],
                     color: province.color,
                 }],
                 relatedFiles,
-                text: `Continent ${continent} is not defined.`,
+                text: localize('worldmap.warnings.continentnotdefined', 'Continent {0} is not defined.', continent),
             });
         }
         if (province.type === 'land' && (continent === 0 || isNaN(continent)) && province.id !== 0) {
@@ -645,7 +645,7 @@ function validateProvinceContinents(provinces: Province[], continents: string[],
                     color: province.color,
                 }],
                 relatedFiles,
-                text: `Land province ${province.id} must belong to a continent.`,
+                text: localize('worldmap.warnings.provincenocontinent', 'Land province {0} must belong to a continent.', province.id),
             });
         }
     }
@@ -664,7 +664,7 @@ function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], re
                     color: province.color,
                 }],
                 relatedFiles,
-                text: `Terrain "${terrain}" is not defined.`,
+                text: localize('worldmap.warnings.terrainnotdefined', 'Terrain "{0}" is not defined.', terrain),
             });
         }
     }
@@ -677,7 +677,7 @@ function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: Pr
             warnings.push({
                 source: [{ type: 'province', id: from, color: -1 }],
                 relatedFiles,
-                text: `Adjacency not from or to an existing province: ${row[0]},${row[1]}`,
+                text: localize('worldmap.warnings.adjacencynotexist', 'Adjacency not from or to an existing province: {0}, {1}', row[0], row[1]),
             });
             continue;
         }
@@ -687,7 +687,7 @@ function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: Pr
             warnings.push({
                 source: [{ type: 'province', id: resultThrough, color: -1 }],
                 relatedFiles,
-                text: `Adjacency not through an existing province: ${row[3]}`,
+                text: localize('worldmap.warnings.adjacencythroughnotexist', 'Adjacency not through an existing province: {0}', row[3]),
             });
             continue;
         }
@@ -727,7 +727,7 @@ function validateProvince(colorByPosition: number[], width: number, height: numb
                 warnings.push({
                     source: colors.map(color => ({ color, id: -1, type: 'province' })),
                     relatedFiles: [file],
-                    text: `Map invalid X crossing at: (${x}, ${y - 1}).`
+                    text: localize('worldmap.warnings.xcrossing', 'Map invalid X crossing at: ({0}, {1}).', x, y - 1),
                 });
             }
         }

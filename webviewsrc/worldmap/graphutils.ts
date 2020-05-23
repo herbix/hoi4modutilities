@@ -14,3 +14,7 @@ export function bboxCenter(bbox: Zone): Point {
 export function distanceSqr(a: Point, b: Point): number {
     return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
 }
+
+export function distanceHamming(a: Point, b: Point): number {
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}

@@ -1,4 +1,5 @@
 {
+    "hoi4modutilities.category": "钢四模组工具",
     "hoi4modutilities.dds.editorName": "DDS预览",
     "hoi4modutilities.displayName": "钢四模组工具",
     "hoi4modutilities.installPath.title": "安装路径",
@@ -8,5 +9,6 @@
     "hoi4modutilities.modFile.title": "模组定义文件",
     "hoi4modutilities.modFile.desc": "模组定义文件的路径，用于读取其中的replace_path。如果没有设置，会使用当前目录下的第一个.mod文件。",
     "hoi4modutilities.preview.title": "预览钢四文件",
+    "hoi4modutilities.previewworld.title": "预览世界地图",
     "hoi4modutilities.selectmodfile.title": "选择模组定义文件"
 }

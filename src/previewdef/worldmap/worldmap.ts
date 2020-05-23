@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import worldmapview from './worldmapview.html';
 import worldmapviewstyles from './worldmapview.css';
-import { localize, localizeText } from '../../util/i18n';
+import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage } from './definitions';
@@ -42,12 +42,17 @@ export class WorldMap {
         { trailing: true });
 
     private renderWorldMap(): string {
-        return html(this.panel.webview, localizeText(worldmapview), ['worldmap.js'], ['common.css', 'codicon.css', { content: worldmapviewstyles }]);
+        return html(
+            this.panel.webview,
+            localizeText(worldmapview),
+            [{ content: i18nTableAsScript() }, 'worldmap.js'],
+            ['common.css', 'codicon.css', { content: worldmapviewstyles }]
+        );
     }
 
     private async onMessage(msg: WorldMapMessage): Promise<void> {
         try {
-            debug('requestprovinces ' + JSON.stringify(msg));
+            debug('worldmap message ' + JSON.stringify(msg));
             switch (msg.command) {
                 case 'loaded':
                     await this.sendProvinceMapSummaryToWebview(msg.force);
@@ -119,7 +124,7 @@ export class WorldMap {
             error(e);
             await this.panel.webview.postMessage({
                 command: 'error',
-                data: 'Failed to load world map ' + e.toString(),
+                data: localize('worldmap.failedtoload', 'Failed to load world map: {0}.', e.toString()),
             } as WorldMapMessage);
         }
     }
@@ -136,13 +141,13 @@ export class WorldMap {
         }
         
         if (!vscode.workspace.workspaceFolders?.length) {
-            await vscode.window.showErrorMessage('Must open a folder before opening state file.');
+            await vscode.window.showErrorMessage(localize('worldmap.mustopenafolder', 'Must open a folder before opening state file.'));
             return;
         }
 
         let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
         if (vscode.workspace.workspaceFolders.length >= 1) {
-            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: 'Select a folder to copy state file' });
+            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('worldmap.selectafolder', 'Select a folder to copy state file') });
             if (!folder) {
                 return;
             }
@@ -161,12 +166,12 @@ export class WorldMap {
             });
 
         } catch (e) {
-            await vscode.window.showErrorMessage('Error open state file: ' + e.toString());
+            await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open state file: {0}.', e.toString()));
         }
     }
 
     private async sendDifferences(cachedWorldMap: WorldMapData, worldMap: WorldMapData): Promise<boolean> {
-        this.progressReporter('Comparing changes...');
+        this.progressReporter(localize('worldmap.progress.comparing', 'Comparing changes...'));
         const changeMessages: WorldMapMessage[] = [];
 
         if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount',
@@ -199,7 +204,7 @@ export class WorldMap {
             return false;
         }
 
-        this.progressReporter('Applying changes...');
+        this.progressReporter(localize('worldmap.progress.applying', 'Applying changes...'));
 
         for (const message of changeMessages) {
             await this.panel.webview.postMessage(message);

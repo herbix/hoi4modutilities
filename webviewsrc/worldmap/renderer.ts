@@ -1,10 +1,11 @@
 import { Province, Point, State, Zone, Terrain } from "../../src/previewdef/worldmap/definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
-import { bboxCenter, distanceSqr } from "./graphutils";
+import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
 import { TopBar, topBarHeight, ColorSet } from "./topbar";
 import { asEvent, Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
+import { feLocalize } from "../util/i18n";
 
 export class Renderer extends Subscriber {
     private canvasWidth: number = 0;
@@ -55,7 +56,6 @@ export class Renderer extends Subscriber {
         backCanvasContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
         backCanvasContext.fillStyle = 'white';
         backCanvasContext.font = '12px sans-serif';
-        backCanvasContext.textBaseline = 'top';
 
         this.renderMap();
         backCanvasContext.drawImage(this.mapCanvas, 0, 0);
@@ -67,7 +67,7 @@ export class Renderer extends Subscriber {
         if (this.loader.progressText !== '') {
             this.renderLoadingText(this.loader.progressText);
         } else if (this.loader.loading.value) {
-            this.renderLoadingText('Visualizing map data: ' + Math.round(this.loader.progress * 100) + '%');
+            this.renderLoadingText(feLocalize('worldmap.progress.visualizing', 'Visualizing map data: {0}', Math.round(this.loader.progress * 100) + '%'));
         }
     
         this.mainCanvasContext.drawImage(this.backCanvas, 0, 0);
@@ -138,12 +138,13 @@ export class Renderer extends Subscriber {
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
+        context.textBaseline = 'middle';
         if (viewMode === 'province') {
             for (const province of renderedProvinces) {
                 const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, extraState);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                const bbox = province.boundingBox;
-                context.fillText(province.id.toString(), this.viewPoint.convertX(bbox.x + bbox.w / 2 + xOffset), this.viewPoint.convertY(bbox.y + bbox.h / 2));
+                const labelPosition = getCOG(province.coverZones);
+                context.fillText(province.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
             }
         } else if (viewMode === 'state') {
             const renderedStates: Record<number, boolean> = {};
@@ -156,8 +157,8 @@ export class Renderer extends Subscriber {
                     if (state) {
                         const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, extraState);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                        const bbox = state.boundingBox;
-                        context.fillText(state.id.toString(), this.viewPoint.convertX(bbox.x + bbox.w / 2 + xOffset), this.viewPoint.convertY(bbox.y + bbox.h / 2));
+                        const labelPosition = getCOG(state.provinces.map(worldMap.getProvinceById, worldMap).reduce<Zone[]>((p, c) => c ? p.concat(c.coverZones) : p, []));
+                        context.fillText(state.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
                     }
                 }
             }
@@ -201,7 +202,7 @@ export class Renderer extends Subscriber {
                 context.beginPath();
                 context.moveTo(viewPoint.convertX(path[0].x + xOffset), viewPoint.convertY(path[0].y));
                 for (let j = 0; j < path.length; j++) {
-                    if (viewPoint.scale <= 4 && j !== 0 && j !== path.length - 1 && j % (6 - viewPoint.scale) !== 0) {
+                    if (viewPoint.scale <= 4 && j % (6 - viewPoint.scale) !== 0 && !isCriticalPoint(path, j)) {
                         continue;
                     }
                     const pos = path[j];
@@ -295,20 +296,20 @@ export class Renderer extends Subscriber {
         const vp = stateObject?.victoryPoints[province.id];
 
         this.renderTooltip(`
-${stateObject?.impassable ? '|r|Impassable' : ''}
-Province=${province.id}
-${vp ? `Victory point=${vp}` : ''}
+${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
+${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}
+${vp ? `${feLocalize('worldmap.tooltip.victorypoint', 'Victory point')}=${vp}` : ''}
 ${stateObject ?
     `
-State=${stateObject.id}
-Owner=${stateObject.owner}
-Core of=${stateObject.cores.join(',')}
-Manpower=${stateObject.manpower}` : ''}
-Type=${province.type}
-Coastal=${province.coastal}
-Terrain=${province.terrain}
-${province.continent !== 0 ? `Continent=${worldMap.continents[province.continent]}(${province.continent})` : 'Continent=0'}
-Adjecents=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
+${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}
+${feLocalize('worldmap.tooltip.owner', 'Owner')}=${stateObject.owner}
+${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${stateObject.cores.join(',')}
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${stateObject.manpower}` : ''}
+${feLocalize('worldmap.tooltip.type', 'Type')}=${province.type}
+${feLocalize('worldmap.tooltip.coastal', 'Coastal')}=${province.coastal}
+${feLocalize('worldmap.tooltip.terrain', 'Terrain')}=${province.terrain}
+${feLocalize('worldmap.tooltip.continent', 'Continent')}=${province.continent !== 0 ? `${worldMap.continents[province.continent]}(${province.continent})` : '0'}
+${feLocalize('worldmap.tooltip.adjacencies', 'Adjecencies')}=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
 ${worldMap.getProvinceWarnings(province, stateObject).map(v => '|r|' + v).join('\n')}`
         );
     }
@@ -321,6 +322,7 @@ ${worldMap.getProvinceWarnings(province, stateObject).map(v => '|r|' + v).join('
         backCanvasContext.fillStyle = 'white';
         backCanvasContext.font = '12px sans-serif';
         backCanvasContext.textAlign = 'start';
+        backCanvasContext.textBaseline = 'top';
         backCanvasContext.fillText(text, 10, 10 + topBarHeight);
     }
 
@@ -365,13 +367,13 @@ ${worldMap.getProvinceWarnings(province, stateObject).map(v => '|r|' + v).join('
 
     private renderStateTooltip(state: State, worldMap: FEWorldMap) {
         this.renderTooltip(`
-${state.impassable ? '|r|Impassable' : ''}
-State=${state.id}
-Owner=${state.owner}
-Core of=${state.cores.join(',')}
-Manpower=${state.manpower}
-Category=${state.category}
-Provinces=${state.provinces.join(',')}
+${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
+${feLocalize('worldmap.tooltip.state', 'State')}=${state.id}
+${feLocalize('worldmap.tooltip.owner', 'Owner')}=${state.owner}
+${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${state.cores.join(',')}
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${state.manpower}
+${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
+${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${state.provinces.join(',')}
 ${worldMap.getStateWarnings(state).map(v => '|r|' + v).join('\n')}`);
     }
 
@@ -408,13 +410,14 @@ ${worldMap.getStateWarnings(state).map(v => '|r|' + v).join('\n')}`);
             })
             .filter(v => v?.trim());
 
-        const fontSize = 12;
+        const fontSize = 14;
         let toolTipOffsetX = 10;
         let toolTipOffsetY = 10;
         const marginX = 10;
         const marginY = 10;
         const linePadding = 3;
 
+        backCanvasContext.font = `${fontSize}px sans-serif`;
         const width = text.map(t => backCanvasContext.measureText(t).width).reduce((p, c) => p > c ? p : c, 0);
         const height = fontSize * text.length + linePadding * (text.length - 1);
 
@@ -425,10 +428,9 @@ ${worldMap.getStateWarnings(state).map(v => '|r|' + v).join('\n')}`);
         if (cursorY + toolTipOffsetY + height + 2 * marginY > this.canvasHeight) {
             toolTipOffsetY = -10 - (height + 2 * marginY);
         }
-
-        backCanvasContext.font = `${fontSize}px sans-serif`;
         backCanvasContext.strokeStyle = '#7F7F7F';
         backCanvasContext.fillStyle = 'white';
+        backCanvasContext.textBaseline = 'top';
 
         backCanvasContext.fillRect(cursorX + toolTipOffsetX, cursorY + toolTipOffsetY, width + 2 * marginX, height + 2 * marginY);
         backCanvasContext.strokeRect(cursorX + toolTipOffsetX, cursorY + toolTipOffsetY, width + 2 * marginX, height + 2 * marginY);
@@ -568,7 +570,7 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
                 const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(stateBox[0]);
                 return valueToColorGYR(value);
             }
-        case 'victorypoints':
+        case 'victorypoint':
             {
                 if (stateBox[0] === undefined) {
                     let maxVictoryPoint = 0;
@@ -635,4 +637,24 @@ function avoidPowerOf2(value: number): number {
     }
 
     return value;
+}
+
+function isCriticalPoint(path: Point[], index: number): boolean {
+    return index === 0 || index === path.length - 1 ||
+        (distanceHamming(path[index], path[index - 1]) > 2 && distanceHamming(path[index], path[index + 1]) > 2);
+}
+
+function getCOG(zones: Zone[]): Point {
+    let x = 0;
+    let y = 0;
+    let mass = 0;
+
+    for (const zone of zones) {
+        const zoneMass = zone.w * zone.h;
+        mass += zoneMass;
+        x += (zone.x + zone.w / 2) * zoneMass;
+        y += (zone.y + zone.h / 2) * zoneMass;
+    }
+
+    return { x: x / mass, y: y / mass };
 }
