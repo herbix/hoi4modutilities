@@ -1,9 +1,10 @@
-import { Province, Point, State, Zone } from "../../src/previewdef/worldmap/definitions";
+import { Province, Point, State, Zone, Terrain } from "../../src/previewdef/worldmap/definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr } from "./graphutils";
 import { TopBar, topBarHeight, ColorSet } from "./topbar";
 import { asEvent, Subscriber } from "../util/event";
+import { arrayToMap } from "../util/common";
 
 export class Renderer extends Subscriber {
     private canvasWidth: number = 0;
@@ -55,20 +56,18 @@ export class Renderer extends Subscriber {
         backCanvasContext.fillStyle = 'white';
         backCanvasContext.font = '12px sans-serif';
         backCanvasContext.textBaseline = 'top';
+
+        this.renderMap();
+        backCanvasContext.drawImage(this.mapCanvas, 0, 0);
+        if (this.topBar.viewMode.value === 'province') {
+            this.renderProvinceHoverSelection(this.loader.worldMap);
+        } else if (this.topBar.viewMode.value === 'state') {
+            this.renderStateHoverSelection(this.loader.worldMap);
+        }
         if (this.loader.progressText !== '') {
-            backCanvasContext.textAlign = 'start';
-            backCanvasContext.fillText(this.loader.progressText, 10, 10 + topBarHeight);
-        } else {
-            this.renderMap();
-            backCanvasContext.drawImage(this.mapCanvas, 0, 0);
-            if (this.topBar.viewMode.value === 'province') {
-                this.renderProvinceHoverSelection(this.loader.worldMap);
-            } else if (this.topBar.viewMode.value === 'state') {
-                this.renderStateHoverSelection(this.loader.worldMap);
-            }
-            if (this.loader.loading.value) {
-                this.renderLoadingText();
-            }
+            this.renderLoadingText(this.loader.progressText);
+        } else if (this.loader.loading.value) {
+            this.renderLoadingText('Visualizing map data: ' + Math.round(this.loader.progress * 100) + '%');
         }
     
         this.mainCanvasContext.drawImage(this.backCanvas, 0, 0);
@@ -134,7 +133,7 @@ export class Renderer extends Subscriber {
         }
 
         for (const province of renderedProvinces) {
-            this.renderEdges(provinceToState, province, renderedProvinces, context, xOffset);
+            this.renderEdges(provinceToState, province, renderedProvinces, worldMap, context, xOffset);
         }
 
         context.font = '10px sans-serif';
@@ -165,7 +164,7 @@ export class Renderer extends Subscriber {
         }
     }
 
-    private renderEdges(provinceToState: Record<number, number | undefined>, province: Province, renderedProvinces: Province[], context: CanvasRenderingContext2D, xOffset: number) {
+    private renderEdges(provinceToState: Record<number, number | undefined>, province: Province, renderedProvinces: Province[], worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const viewPoint = this.viewPoint;
         context.lineWidth = 2;
         for (const provinceEdge of province.edges) {
@@ -177,17 +176,23 @@ export class Renderer extends Subscriber {
                 continue;
             }
 
+            const stateFromId = provinceToState[province.id];
+            const stateToId = provinceToState[provinceEdge.to];
+
             const impassable = provinceEdge.type === 'impassable';
             const paths = provinceEdge.path;
             if (this.topBar.viewMode.value === 'state') {
                 if (!impassable && paths.length > 0) {
-                    if (provinceToState[provinceEdge.to] === provinceToState[province.id]) {
+                    if (stateFromId === stateToId) {
                         continue;
                     }
                 }
             }
 
-            context.strokeStyle = impassable ? 'red' : 'black';
+            const stateFromImpassable = worldMap.getStateById(stateFromId)?.impassable ?? false;
+            const stateToImpassable = worldMap.getStateById(stateToId)?.impassable ?? false;
+
+            context.strokeStyle = impassable || stateFromImpassable !== stateToImpassable ? 'red' : 'black';
             for (const path of paths) {
                 if (path.length === 0) {
                     continue;
@@ -205,7 +210,7 @@ export class Renderer extends Subscriber {
                 context.stroke();
             }
 
-            if (paths.length === 0) {
+            if (paths.length === 0 && provinceEdge.type !== 'impassable') {
                 const toProvince = renderedProvinces.find(p => p.id === provinceEdge.to);
                 const [startPoint, endPoint] = findNearestPoints(provinceEdge.start, provinceEdge.stop, province, toProvince);
 
@@ -290,6 +295,7 @@ export class Renderer extends Subscriber {
         const vp = stateObject?.victoryPoints[province.id];
 
         this.renderTooltip(`
+${stateObject?.impassable ? '|r|Impassable' : ''}
 Province=${province.id}
 ${vp ? `Victory point=${vp}` : ''}
 ${stateObject ?
@@ -303,13 +309,12 @@ Coastal=${province.coastal}
 Terrain=${province.terrain}
 ${province.continent !== 0 ? `Continent=${worldMap.continents[province.continent]}(${province.continent})` : 'Continent=0'}
 Adjecents=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
-${worldMap.getProvinceWarnings(province).map(v => '|r|' + v).join('\n')}
-${stateObject ? worldMap.getStateWarnings(stateObject).map(v => '|r|' + v).join('\n') : ''}`);
+${worldMap.getProvinceWarnings(province, stateObject).map(v => '|r|' + v).join('\n')}`
+        );
     }
 
-    private renderLoadingText() {
+    private renderLoadingText(text: string) {
         const backCanvasContext = this.backCanvasContext;
-        const text = 'Visualizing map data: ' + Math.round(this.loader.progress * 100) + '%';
         const mesurement = backCanvasContext.measureText(text);
         backCanvasContext.fillStyle = 'black';
         backCanvasContext.fillRect(0, topBarHeight, 20 + mesurement.width, 32);
@@ -519,9 +524,9 @@ function getColorByColorSet(colorSet: ColorSet, province: Province, worldMap: FE
             }
         case 'terrain':
             if (stateBox[0] === undefined) {
-                stateBox[0] = avoidPowerOf2(worldMap.terrains.length);
+                stateBox[0] = arrayToMap(worldMap.terrains, 'name');
             }
-            return valueAndMaxToColor(worldMap.terrains.indexOf(province.terrain) + 1, stateBox[0]);
+            return (stateBox[0] as Record<string, Terrain | undefined>)[province.terrain]?.color ?? 0;
         case 'continent':
             if (stateBox[0] === undefined) {
                 let continent = 0;

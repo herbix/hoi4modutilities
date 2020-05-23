@@ -32,7 +32,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         const subLoaderResults = [ provinceMap, stateMap, countries ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
 
-        const worldMap = {
+        const worldMap: WorldMapData = {
             ...provinceMap.result,
             ...stateMap.result,
             provincesCount: provinceMap.result.provinces.length,

@@ -1,8 +1,8 @@
-import { WorldMapMessage, Province, WorldMapData, RequestProvincesMessage, State, Country, Point } from "./definitions";
+import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, Country, Point } from "./definitions";
 import { vscode, copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
-import { Warning } from "../../src/previewdef/worldmap/definitions";
+import { Warning, Terrain } from "../../src/previewdef/worldmap/definitions";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -11,7 +11,6 @@ interface ExtraMapData {
 }
 
 interface FEWorldMapClassExtra {
-    terrains: string[];
     getStateByProvinceId(provinceId: number): State | undefined;
     getProvinceByPosition(x: number, y: number): Province | undefined;
     getProvinceToStateMap(): Record<number, number | undefined>;
@@ -19,7 +18,7 @@ interface FEWorldMapClassExtra {
     getStateById(stateId: number | undefined): State | undefined;
     forEachProvince(callback: (province: Province) => boolean | void): void;
     forEachState(callback: (state: State) => boolean | void): void;
-    getProvinceWarnings(province: Province): string[];
+    getProvinceWarnings(province: Province, state?: State): string[];
     getStateWarnings(state: State): string[];
 }
 
@@ -52,7 +51,7 @@ export class Loader extends Subscriber {
     public refresh() {
         this.worldMap = new FEWorldMapClass();
         this.onMapChangedEmitter.fire(this.worldMap);
-        vscode.postMessage({ command: 'loaded', force: false } as WorldMapMessage);
+        vscode.postMessage({ command: 'loaded', force: true } as WorldMapMessage);
         this.loading.set(true);
     }
 
@@ -79,6 +78,24 @@ export class Loader extends Subscriber {
                 case 'countries':
                     this.receiveData(this.loadingProvinceMap?.countries, message.start, message.end, message.data);
                     this.loadNext();
+                    break;
+                case 'warnings':
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.warnings = JSON.parse(message.data);
+                        this.loadNext();
+                    }
+                    break;
+                case 'continents':
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.continents = JSON.parse(message.data);
+                        this.loadNext();
+                    }
+                    break;
+                case 'terrains':
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.terrains = JSON.parse(message.data);
+                        this.loadNext();
+                    }
                     break;
                 case 'progress':
                     this.progressText = message.data;
@@ -114,7 +131,7 @@ export class Loader extends Subscriber {
         this.loadNext();
     }
 
-    private queueLoadingRequest<C extends RequestProvincesMessage['command']>(command: C, count: number, step: number, offset: number = 0) {
+    private queueLoadingRequest<C extends RequestMapItemMessage['command']>(command: C, count: number, step: number, offset: number = 0) {
         for (let i = offset, j = 0; j < count; i += step, j += step) {
             this.loadingQueue.push({
                 command,
@@ -160,8 +177,7 @@ class FEWorldMapClass implements FEWorldMap {
     badProvincesCount!: number;
     badStatesCount!: number;
     continents!: string[];
-
-    terrains: string[];
+    terrains!: Terrain[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
@@ -172,7 +188,6 @@ class FEWorldMapClass implements FEWorldMap {
             provinces: [], states: [], countries: [], warnings: [], continents: [],
             provincesCount: 0, statesCount: 0, countriesCount: 0, badProvincesCount: 0, badStatesCount: 0,
         });
-        this.terrains = this.getVisibleTerrains();
     }
 
     public getProvinceById(provinceId: number | undefined): Province | undefined {
@@ -238,24 +253,16 @@ class FEWorldMapClass implements FEWorldMap {
         }
     }
 
-    public getProvinceWarnings(province: Province): string[] {
-        return this.warnings.filter(v => v.source.some(s => s.type === 'province' && (s.id === province.id || s.color === province.color))).map(v => v.text);
+    public getProvinceWarnings(province: Province, state?: State): string[] {
+        return this.warnings
+            .filter(v => v.source.some(s =>
+                (s.type === 'province' && (s.id === province.id || s.color === province.color)) || 
+                (state && s.type === 'state' && s.id === state?.id)
+                ))
+            .map(v => v.text);
     }
 
     public getStateWarnings(state: State): string[] {
         return this.warnings.filter(v => v.source.some(s => s.type === 'state' && s.id === state.id)).map(v => v.text);
-    }
-    
-    private getVisibleTerrains(): string[] {
-        const result: string[] = [];
-        for (const province of this.provinces) {
-            if (!province) {
-                continue;
-            }
-            if (!result.includes(province.terrain)) {
-                result.push(province.terrain);
-            }
-        }
-        return result;
     }
 }

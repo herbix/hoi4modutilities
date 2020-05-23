@@ -3,7 +3,7 @@ import { Country, ProgressReporter, Warning } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { hsvToRgb } from "../../../util/common";
 import { error } from "../../../util/debug";
-import { FolderLoader, FileLoader, Loader, LoadResult, mergeInLoadResult } from "./common";
+import { FolderLoader, FileLoader, Loader, LoadResult, mergeInLoadResult, convertColor } from "./common";
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -55,7 +55,7 @@ export class CountriesLoader extends Loader<Country[]> {
     }
 
     public async shouldReload(): Promise<boolean> {
-        if (await this.countryTagsLoader.shouldReload()) {
+        if (await this.countryTagsLoader.shouldReload() || await this.colorsLoader.shouldReload()) {
             return true;
         }
 
@@ -185,26 +185,4 @@ async function applyColorFromColorTxt(countries: Country[], colorsFile: HOIParti
             country.color = convertColor(colorIncolors?._value.color);
         }
     }
-}
-
-function convertColor(color: Attachment<Enum> | undefined): number {
-    if (!color) {
-        return 0;
-    }
-
-    const vec = color._value._values.map(e => parseFloat(e));
-    if (vec.length < 3) {
-        return 0;
-    }
-
-    if (!color._attachment || color._attachment.toLowerCase() === 'rgb') {
-        return (vec[0] << 16) | (vec[1] << 8) | vec[2];
-    }
-
-    if (color._attachment.toLowerCase() === 'hsv') {
-        const { r, g, b } = hsvToRgb(vec[0], vec[1], vec[2]);
-        return (r << 16) | (g << 8) | b;
-    }
-
-    return 0;
 }

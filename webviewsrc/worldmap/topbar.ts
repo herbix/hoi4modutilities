@@ -1,5 +1,5 @@
 import { Observable, asEvent, Subscriber } from "../util/event";
-import { Loader } from "./loader";
+import { Loader, FEWorldMap } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/common";
 import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
@@ -21,6 +21,7 @@ export class TopBar extends Subscriber {
 
     private viewModeElement: HTMLSelectElement;
     private colorSetElement: HTMLSelectElement;
+    private searchBox: HTMLInputElement;
 
     constructor(canvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, state: any) {
         super();
@@ -34,6 +35,8 @@ export class TopBar extends Subscriber {
 
         this.viewModeElement = document.getElementById('viewmode') as HTMLSelectElement;
         this.colorSetElement = document.getElementById('colorset') as HTMLSelectElement;
+        this.searchBox = document.getElementById("searchbox") as HTMLInputElement;
+
         this.loadControls();
         this.registerEventListeners(canvas);
     }
@@ -64,6 +67,8 @@ export class TopBar extends Subscriber {
             this.colorSetElement.value = newColorset;
             this.colorSet.set(newColorset as any);
         }
+
+        this.setSearchBoxPlaceHolder();
     }
     
     private loadControls() {
@@ -93,7 +98,7 @@ export class TopBar extends Subscriber {
             }
         }));
 
-        const searchBox = document.getElementById("searchbox") as HTMLInputElement;
+        const searchBox = this.searchBox;
         const search = document.getElementById("search")!;
         this.subscriptions.push(asEvent(searchBox, 'keypress')(function(e) {
             if (e.code === 'Enter') {
@@ -171,6 +176,8 @@ export class TopBar extends Subscriber {
             } else {
                 warnings.value = 'World map warnings: \n\n' + wm.warnings.map(warningToString).join('\n');
             }
+
+            this.setSearchBoxPlaceHolder(wm);
         }));
     }
 
@@ -192,6 +199,23 @@ export class TopBar extends Subscriber {
                 this.selectedStateId.set(number);
                 this.viewPoint.centerZone(state.boundingBox);
             }
+        }
+    }
+
+    private setSearchBoxPlaceHolder(worldMap?: FEWorldMap) {
+        if (!worldMap) {
+            worldMap = this.loader.worldMap;
+        }
+        switch (this.viewMode.value) {
+            case 'province':
+                this.searchBox.placeholder = worldMap.provincesCount > 1 ? `1-${worldMap.provincesCount - 1}` : '';
+                break;
+            case 'state':
+                this.searchBox.placeholder = worldMap.statesCount > 1 ? `1-${worldMap.statesCount - 1}` : '';
+                break;
+            default:
+                this.searchBox.placeholder = '';
+                break;
         }
     }
 }

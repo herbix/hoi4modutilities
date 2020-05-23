@@ -12,6 +12,7 @@ export interface WorldMapData {
     badProvincesCount: number; // will be * -1
     badStatesCount: number; // will be * -1;
     continents: string[];
+    terrains: Terrain[];
     warnings: Warning[];
 }
 
@@ -30,6 +31,7 @@ export interface ProvinceMap {
     provinces: (Province | undefined | null)[]; // count of provinces
     badProvincesCount: number;
     continents: string[];
+    terrains: Terrain[];
 }
 
 export interface ProvinceGraph {
@@ -113,6 +115,12 @@ export interface Country {
     color: number;
 }
 
+export interface Terrain {
+    name: string;
+    color: number;
+    isNaval: boolean;
+}
+
 export interface Point {
     x: number;
     y: number;
@@ -125,21 +133,21 @@ export interface Zone {
     h: number;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestProvincesMessage | ProvincesMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenStateMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenStateMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
     force: boolean;
 }
 
-export interface RequestProvincesMessage {
+export interface RequestMapItemMessage {
     command: 'requestprovinces' | 'requeststates' | 'requestcountries';
     start: number;
     end: number;
 }
 
-export interface ProvincesMessage {
-    command: 'provinces' | 'states' | 'countries';
+export interface MapItemMessage {
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains';
     data: string;
     start: number;
     end: number;

@@ -1,6 +1,8 @@
 import * as path from 'path';
 import { Zone, Point, ProgressReporter, Warning } from "../definitions";
 import { hoiFileExpiryToken, readFileFromModOrHOI4, listFilesFromModOrHOI4 } from "../../../util/fileloader";
+import { Attachment, Enum } from '../../../hoiformat/schema';
+import { hsvToRgb } from '../../../util/common';
 
 export function mergeBoundingBox(a: Zone, b: Zone, width: number): Zone {
     if (a.x + a.w < width * 0.25 && b.x > width * 0.75) {
@@ -26,6 +28,29 @@ export function mergeBoundingBox(a: Zone, b: Zone, width: number): Zone {
 export function pointEqual(a: Point, b: Point): boolean {
     return a.x === b.x && a.y === b.y;
 }
+
+export function convertColor(color: Attachment<Enum> | undefined): number {
+    if (!color) {
+        return 0;
+    }
+
+    const vec = color._value._values.map(e => parseFloat(e));
+    if (vec.length < 3) {
+        return 0;
+    }
+
+    if (!color._attachment || color._attachment.toLowerCase() === 'rgb') {
+        return (vec[0] << 16) | (vec[1] << 8) | vec[2];
+    }
+
+    if (color._attachment.toLowerCase() === 'hsv') {
+        const { r, g, b } = hsvToRgb(vec[0], vec[1], vec[2]);
+        return (r << 16) | (g << 8) | b;
+    }
+
+    return 0;
+}
+
 
 export type LoadResult<T> = { result: T, dependencies: string[], warnings: Warning[] };
 export abstract class Loader<T> {
@@ -66,7 +91,7 @@ export abstract class FileLoader<T> extends Loader<T> {
 
         const result = await this.loadFromFile(warnings, force);
 
-        if (!('dependencies' in result)) {
+        if (typeof result !== 'object' || !('dependencies' in result)) {
             return {
                 result,
                 dependencies: [this.file],

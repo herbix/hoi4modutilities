@@ -1,8 +1,8 @@
-import { State, Province, Warning, Zone, ProvinceMap, WarningSource, ProgressReporter } from "../definitions";
-import { CustomSymbol, Enum, SchemaDef } from "../../../hoiformat/schema";
-import { listFilesFromModOrHOI4, readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
+import { State, Province, Warning, Zone, WarningSource, ProgressReporter } from "../definitions";
+import { CustomSymbol, Enum, SchemaDef, StringAsSymbol } from "../../../hoiformat/schema";
+import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { mergeBoundingBox, Loader, LoadResult, FolderLoader, FileLoader, mergeInLoadResult } from "./common";
+import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -15,7 +15,7 @@ interface StateDefinition {
 	id: number;
 	name: string;
 	manpower: number;
-	state_category: CustomSymbol;
+	state_category: StringAsSymbol;
 	history: StateHistory;
     provinces: Enum;
     impassable: boolean;
@@ -34,7 +34,7 @@ const stateFileSchema: SchemaDef<StateFile> = {
             id: "number",
             name: "string",
             manpower: "number",
-            state_category: "symbol",
+            state_category: "stringassymbol",
             history: {
                 owner: "symbol",
                 victory_points: {
@@ -181,16 +181,25 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
         }
         result[p.id] = p;
     });
-    for (let i = 1; i < maxStateId; i++) {
-        if (!result[i]) {
-            warnings.push({
-                source: [{
-                    type: 'state',
-                    id: i,
-                }],
-                relatedFiles: [],
-                text: `State with id ${i} doesn't exist.`,
-            });
+
+    let lastNotExistStateId: number | undefined = undefined;
+    for (let i = 1; i <= maxStateId; i++) {
+        if (result[i]) {
+            if (lastNotExistStateId !== undefined) {
+                warnings.push({
+                    source: [{
+                        type: 'state',
+                        id: i,
+                    }],
+                    relatedFiles: [],
+                    text: `State with id ${lastNotExistStateId === i - 1 ? i - 1 : `${lastNotExistStateId}-${i - 1}`} doesn't exist.`,
+                });
+                lastNotExistStateId = undefined;
+            }
+        } else {
+            if (lastNotExistStateId === undefined) {
+                lastNotExistStateId = i;
+            }
         }
     };
 
@@ -244,8 +253,8 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
         const state = states[i];
         if (state) {
             state.provinces.forEach(p => {
+                const province = provinces[p];
                 if (provinceToState[p] !== undefined) {
-                    const province = provinces[p];
                     if (!province) {
                         return;
                     }
@@ -260,6 +269,17 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
                     });
                 } else {
                     provinceToState[p] = state.id;
+                }
+
+                if (province?.type === 'sea') {
+                    warnings.push({
+                        source: [
+                            { type: 'state', id: state.id },
+                            { type: 'province', id: p, color: province.color },
+                        ],
+                        relatedFiles: [state.file],
+                        text: `Sea province ${p} shouldn't belong to a state.`,
+                    });
                 }
             });
         }

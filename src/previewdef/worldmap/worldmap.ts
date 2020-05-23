@@ -5,15 +5,16 @@ import worldmapviewstyles from './worldmapview.css';
 import { localize, localizeText } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
-import { WorldMapMessage, ProgressReporter } from './definitions';
+import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage } from './definitions';
 import { slice, writeFile, debounceByInput, matchPathEnd } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
+import { isEqual } from 'lodash';
 
 export class WorldMap {
     private worldMapLoader: WorldMapLoader;
     private worldMapDependencies: string[] | undefined;
-    private htmlLoaded: boolean = false;
+    private cachedWorldMap: WorldMapData | undefined;
 
     constructor(readonly panel: vscode.WebviewPanel) {
         this.worldMapLoader = new WorldMapLoader(this.progressReporter);
@@ -49,7 +50,6 @@ export class WorldMap {
             debug('requestprovinces ' + JSON.stringify(msg));
             switch (msg.command) {
                 case 'loaded':
-                    this.htmlLoaded = true;
                     await this.sendProvinceMapSummaryToWebview(msg.force);
                     break;
                 case 'requestprovinces':
@@ -95,8 +95,14 @@ export class WorldMap {
     private async sendProvinceMapSummaryToWebview(force: boolean) {
         try {
             this.worldMapLoader.shallowForceReload();
+            const oldCachedWorldMap = this.cachedWorldMap;
             const { result: worldMap, dependencies } = await this.worldMapLoader.load(force);
             this.worldMapDependencies = dependencies;
+            this.cachedWorldMap = worldMap;
+
+            if (!force && oldCachedWorldMap && await this.sendDifferences(oldCachedWorldMap, worldMap)) {
+                return;
+            }
 
             const summary = {
                 ...worldMap,
@@ -157,5 +163,96 @@ export class WorldMap {
         } catch (e) {
             await vscode.window.showErrorMessage('Error open state file: ' + e.toString());
         }
+    }
+
+    private async sendDifferences(cachedWorldMap: WorldMapData, worldMap: WorldMapData): Promise<boolean> {
+        this.progressReporter('Comparing changes...');
+        const changeMessages: WorldMapMessage[] = [];
+
+        if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount',
+            'badProvincesCount', 'badStatesCount'] as (keyof WorldMapData)[])
+            .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
+            return false;
+        }
+
+        if (!isEqual(cachedWorldMap.warnings, worldMap.warnings)) {
+            changeMessages.push({ command: 'warnings', data: JSON.stringify(worldMap.warnings), start: 0, end: 0 });
+        }
+
+        if (!isEqual(cachedWorldMap.continents, worldMap.continents)) {
+            changeMessages.push({ command: 'continents', data: JSON.stringify(worldMap.continents), start: 0, end: 0 });
+        }
+
+        if (!isEqual(cachedWorldMap.terrains, worldMap.terrains)) {
+            changeMessages.push({ command: 'terrains', data: JSON.stringify(worldMap.terrains), start: 0, end: 0 });
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.provinces, cachedWorldMap.provinces, 'provinces', worldMap.badProvincesCount, worldMap.provincesCount)) {
+            return false;
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.states, cachedWorldMap.states, 'states', worldMap.badStatesCount, worldMap.statesCount)) {
+            return false;
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.countries, cachedWorldMap.countries, 'countries', 0, worldMap.countriesCount)) {
+            return false;
+        }
+
+        this.progressReporter('Applying changes...');
+
+        for (const message of changeMessages) {
+            await this.panel.webview.postMessage(message);
+        }
+
+        this.progressReporter('');
+        return true;
+    }
+
+    private fillMessageForItem(
+        changeMessages: WorldMapMessage[],
+        list: unknown[],
+        cachedList: unknown[],
+        command: MapItemMessage['command'],
+        listStart: number,
+        listEnd: number,
+    ): boolean {
+        const changeMessagesCountLimit = 30;
+        const messageCountLimit = 300;
+
+        let lastDifferenceStart: number | undefined = undefined;
+        for (let i = listStart; i <= listEnd; i++) {
+            if (i === listEnd || isEqual(list[i], cachedList[i])) {
+                if (lastDifferenceStart !== undefined) {
+                    changeMessages.push({
+                        command,
+                        data: JSON.stringify(slice(list, lastDifferenceStart, i)),
+                        start: lastDifferenceStart,
+                        end: i,
+                    });
+                    if (changeMessages.length > changeMessagesCountLimit) {
+                        return false;
+                    }
+                    lastDifferenceStart = undefined;
+                }
+            } else {
+                if (lastDifferenceStart === undefined) {
+                    lastDifferenceStart = i;
+                } else if (i - lastDifferenceStart >= messageCountLimit) {
+                    changeMessages.push({
+                        command,
+                        data: JSON.stringify(slice(list, lastDifferenceStart, i)),
+                        start: lastDifferenceStart,
+                        end: i,
+                    });
+                    if (changeMessages.length > changeMessagesCountLimit) {
+                        return false;
+                    }
+                    lastDifferenceStart = i;
+                }
+            }
+        }
+
+        return true;
     }
 }

@@ -1,8 +1,10 @@
-import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point } from "../definitions";
+import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain } from "../definitions";
 import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
+import { TerrainDefinitionLoader } from "./terrain";
+import { arrayToMap } from "../../../util/common";
 
 interface DefaultMap {
     definitions: string;
@@ -23,9 +25,25 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
     private provinceBmpLoader: ProvinceBmpLoader | undefined;
     private adjacenciesLoader: AdjacenciesLoader | undefined;
     private continentsLoader: ContinentsLoader | undefined;
+    private terrainDefinitionLoader: TerrainDefinitionLoader;
 
     constructor(progressReporter: ProgressReporter) {
         super('map/default.map', progressReporter);
+        this.terrainDefinitionLoader = new TerrainDefinitionLoader(progressReporter);
+    }
+
+    public async shouldReload(): Promise<boolean> {
+        if (await super.shouldReload()) {
+            return true;
+        }
+
+        return (await Promise.all([
+            this.definitionsLoader,
+            this.provinceBmpLoader,
+            this.adjacenciesLoader,
+            this.continentsLoader,
+            this.terrainDefinitionLoader
+        ].map(v => v?.shouldReload() ?? Promise.resolve(false)))).some(v => v);
     }
 
     protected async loadFromFile(warnings: Warning[], force: boolean): Promise<LoadResult<ProvinceMap>> {
@@ -36,9 +54,10 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(force);
         const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(force);
         const adjacencies = await (this.adjacenciesLoader = this.checkAndCreateLoader(this.adjacenciesLoader, 'map/' + defaultMap.adjacencies, AdjacenciesLoader)).load(force);
-        const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(force);
-    
-        const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents ];
+        const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(force);    
+        const terrains = await this.terrainDefinitionLoader.load(force);
+
+        const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents, terrains ];
 
         warnings.push(...mergeInLoadResult(subLoaderResults, 'warnings'));
 
@@ -48,6 +67,8 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
             mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
     
         validateProvinceContinents(provinces, continents.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.continent], warnings);
+        validateProvinceTerrains(provinces, terrains.result, ['map/' + defaultMap.definitions, this.terrainDefinitionLoader.file], warnings);
+
         fillAdjacencyEdges(provinces, adjacencies.result, provinceBmp.result.height, ['map/' + defaultMap.provinces, 'map/' + defaultMap.definitions], warnings);
     
         const { sortedProvinces, badProvinceId } = sortProvinces(provinces, badProvinceIdForMerge, ['map/' + defaultMap.definitions], warnings);
@@ -60,6 +81,7 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
                 provinces: sortedProvinces, // count of provinces
                 badProvincesCount: badProvinceId + 1,
                 continents: continents.result,
+                terrains: terrains.result,
             },
             dependencies: mergeInLoadResult(subLoaderResults, 'dependencies'),
             warnings,
@@ -306,13 +328,25 @@ function sortProvinces(provinces: Province[], badProvinceId: number, relatedFile
         }
         result[p.id] = p;
     });
-    for (let i = 1; i < maxProvinceId; i++) {
-        if (!result[i]) {
-            warnings.push({
-                source: [{ type: 'province', id: i, color: -1 }],
-                relatedFiles,
-                text: `Province with id ${i} doesn't exist.`,
-            });
+    
+    let lastNotExistProvinceId: number | undefined = undefined;
+    for (let i = 1; i <= maxProvinceId; i++) {
+        if (result[i]) {
+            if (lastNotExistProvinceId !== undefined) {
+                warnings.push({
+                    source: [{
+                        type: 'state',
+                        id: i,
+                    }],
+                    relatedFiles,
+                    text: `Province with id ${lastNotExistProvinceId === i - 1 ? i - 1 : `${lastNotExistProvinceId}-${i - 1}`} doesn't exist.`,
+                });
+                lastNotExistProvinceId = undefined;
+            }
+        } else {
+            if (lastNotExistProvinceId === undefined) {
+                lastNotExistProvinceId = i;
+            }
         }
     };
 
@@ -600,7 +634,7 @@ function validateProvinceContinents(provinces: Province[], continents: string[],
                     color: province.color,
                 }],
                 relatedFiles,
-                text: `Continent ${continent} not defined.`,
+                text: `Continent ${continent} is not defined.`,
             });
         }
         if (province.type === 'land' && (continent === 0 || isNaN(continent)) && province.id !== 0) {
@@ -612,6 +646,25 @@ function validateProvinceContinents(provinces: Province[], continents: string[],
                 }],
                 relatedFiles,
                 text: `Land province ${province.id} must belong to a continent.`,
+            });
+        }
+    }
+}
+
+function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], relatedFiles: string[], warnings: Warning[]) {
+    const terrainMap = arrayToMap(terrains, 'name');
+    for (const province of provinces) {
+        const terrain = province.terrain;
+        const terrainObj = terrainMap[terrain];
+        if (!terrainObj || terrainObj.isNaval) {
+            warnings.push({
+                source: [{
+                    type: 'province',
+                    id: province.id,
+                    color: province.color,
+                }],
+                relatedFiles,
+                text: `Terrain "${terrain}" is not defined.`,
             });
         }
     }
@@ -674,7 +727,7 @@ function validateProvince(colorByPosition: number[], width: number, height: numb
                 warnings.push({
                     source: colors.map(color => ({ color, id: -1, type: 'province' })),
                     relatedFiles: [file],
-                    text: `Unclear border between provinces at: (${x}, ${y - 1}).`
+                    text: `Map invalid X crossing at: (${x}, ${y - 1}).`
                 });
             }
         }
