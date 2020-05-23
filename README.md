@@ -67,7 +67,7 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 ## Release Notes
 
-### 0.2.1
+### 0.3.0
 
 ### Added
 * Command
