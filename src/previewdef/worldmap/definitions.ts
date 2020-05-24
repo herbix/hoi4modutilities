@@ -37,9 +37,8 @@ export interface ProvinceMap {
     terrains: Terrain[];
 }
 
-export interface ProvinceGraph {
+export interface ProvinceGraph extends Region {
     color: number;
-    boundingBox: Zone;
     coverZones: Zone[];
     edges: ProvinceEdgeGraph[];
 }
@@ -75,7 +74,7 @@ export interface ProvinceEdgeAdjacency {
 
 export type ProvinceEdge = Omit<ProvinceEdgeGraph & ProvinceEdgeAdjacency, 'from' | 'row' | 'toColor'>;
 
-export interface State {
+export interface State extends Region {
     id: number;
     name: string;
     manpower: number;
@@ -85,7 +84,6 @@ export interface State {
     cores: string[];
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
-    boundingBox: Zone;
     file: string;
     token: Token | null;
 }
@@ -124,7 +122,7 @@ export interface Terrain {
     isNaval: boolean;
 }
 
-export interface StrategicRegion {
+export interface StrategicRegion extends Region {
     id: number;
     name: string;
     provinces: number[];
@@ -143,6 +141,12 @@ export interface Zone {
     y: number;
     w: number;
     h: number;
+}
+
+export interface Region {
+    boundingBox: Zone;
+    centerOfMass: Point;
+    mass: number;
 }
 
 export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage;

@@ -209,17 +209,17 @@ class FEWorldMapClass implements FEWorldMap {
         } as WorldMapData & ExtraMapData));
     }
 
-    public getProvinceById(provinceId: number | undefined): Province | undefined {
+    public getProvinceById = (provinceId: number | undefined): Province | undefined => {
         return provinceId ? this.provinces[provinceId] ?? undefined : undefined;
-    }
+    };
 
-    public getStateById(stateId: number | undefined): State | undefined {
+    public getStateById = (stateId: number | undefined): State | undefined => {
         return stateId ? this.states[stateId] ?? undefined : undefined;
-    }
+    };
 
-    public getStrategicRegionById(strategicRegionId: number | undefined): StrategicRegion | undefined {
+    public getStrategicRegionById = (strategicRegionId: number | undefined): StrategicRegion | undefined => {
         return strategicRegionId ? this.strategicRegions[strategicRegionId] ?? undefined : undefined;
-    }
+    };
 
     public getStateByProvinceId(provinceId: number): State | undefined {
         let resultState: State | undefined = undefined;

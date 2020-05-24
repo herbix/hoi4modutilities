@@ -1,7 +1,7 @@
 import { Enum, CustomSymbol, SchemaDef } from "../../../hoiformat/schema";
-import { StrategicRegion, ProgressReporter, Warning, Province, WarningSource, State, Terrain } from "../definitions";
+import { StrategicRegion, ProgressReporter, Warning, Province, WarningSource, State, Terrain, Region } from "../definitions";
 import { DefaultMapLoader } from "./provincemap";
-import { FolderLoader, FileLoader, LoadResult, mergeInLoadResult, sortItems } from "./common";
+import { FolderLoader, FileLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegions } from "./common";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { localize } from "../../../util/i18n";
@@ -34,7 +34,7 @@ const strategicRegionFileSchema: SchemaDef<StrategicRegionFile> = {
 };
 
 type StrategicRegionsLoaderResult = { strategicRegions: StrategicRegion[], badStrategicRegionsCount: number };
-export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderResult, StrategicRegion[]> {
+export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderResult, StrategicRegionNoRegion[]> {
     constructor(private defaultMapLoader: DefaultMapLoader, private statesLoader: StatesLoader, progressReporter: ProgressReporter) {
         super('map/strategicregions', StrategicRegionLoader, progressReporter);
     }
@@ -48,16 +48,16 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         return super.loadImpl(force);
     }
 
-    protected async mergeFiles(fileResults: LoadResult<StrategicRegion[]>[], force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
+    protected async mergeFiles(fileResults: LoadResult<StrategicRegionNoRegion[]>[], force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
         const provinceMap = await this.defaultMapLoader.load(false);
         const stateMap = await this.statesLoader.load(false);
 
         await this.progressReporter(localize('TODO', 'Mapping provinces to strategic regions...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
-        const strategicRegions = fileResults.reduce<StrategicRegion[]>((p, c) => p.concat(c.result), []);
+        const strategicRegions = fileResults.reduce<StrategicRegionNoRegion[]>((p, c) => p.concat(c.result), []);
 
-        const { provinces, terrains } = provinceMap.result;
+        const { width, height, provinces, terrains } = provinceMap.result;
         validateStrategicRegions(strategicRegions, terrains, warnings);
 
         const { sortedStrategicRegions, badStrategicRegionId } = sortStrategicRegions(strategicRegions, warnings);
@@ -65,11 +65,18 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         const { states, badStatesCount } = stateMap.result;
         const badStrategicRegionsCount = badStrategicRegionId + 1;
 
-        validateProvincesInStrategicRegions(provinces, states, sortedStrategicRegions, badStatesCount, badStrategicRegionsCount, warnings);
+        const filledStrategicRegions: StrategicRegion[] = new Array(sortedStrategicRegions.length);
+        for (let i = badStrategicRegionsCount; i < sortedStrategicRegions.length; i++) {
+            if (sortedStrategicRegions[i]) {
+                filledStrategicRegions[i] = calculateBoundingBox(sortedStrategicRegions[i], provinces, width, warnings);
+            }
+        }
+
+        validateProvincesInStrategicRegions(provinces, states, filledStrategicRegions, badStatesCount, badStrategicRegionsCount, warnings);
 
         return {
             result: {
-                strategicRegions: sortedStrategicRegions,
+                strategicRegions: filledStrategicRegions,
                 badStrategicRegionsCount,
             },
             dependencies: [this.folder + '/*'],
@@ -78,14 +85,15 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
     }
 }
 
-export class StrategicRegionLoader extends FileLoader<StrategicRegion[]> {
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StrategicRegion[]> {
+export class StrategicRegionLoader extends FileLoader<StrategicRegionNoRegion[]> {
+    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StrategicRegionNoRegion[]> {
         return loadStrategicRegion(this.file, warnings);
     }
 }
 
-async function loadStrategicRegion(file: string, globalWarnings: Warning[]): Promise<StrategicRegion[]> {
-    const result: StrategicRegion[] = [];
+type StrategicRegionNoRegion = Omit<StrategicRegion, keyof Region>;
+async function loadStrategicRegion(file: string, globalWarnings: Warning[]): Promise<StrategicRegionNoRegion[]> {
+    const result: StrategicRegionNoRegion[] = [];
     try {
         const data = await readFileFromModOrHOI4AsJson<StrategicRegionFile>(file, strategicRegionFileSchema);
         for (const strategicRegion of data.strategic_region) {
@@ -122,7 +130,7 @@ async function loadStrategicRegion(file: string, globalWarnings: Warning[]): Pro
     return result;
 }
 
-function validateStrategicRegions(strategicRegions: StrategicRegion[], terrains: Terrain[], warnings: Warning[]): void {
+function validateStrategicRegions(strategicRegions: StrategicRegionNoRegion[], terrains: Terrain[], warnings: Warning[]): void {
     const terrainMap = arrayToMap(terrains, 'name');
     for (const strategicRegion of strategicRegions) {
         const terrain = strategicRegion.navalTerrain;
@@ -142,7 +150,7 @@ function validateStrategicRegions(strategicRegions: StrategicRegion[], terrains:
     }
 }
 
-function sortStrategicRegions(strategicRegions: StrategicRegion[], warnings: Warning[]): { sortedStrategicRegions: StrategicRegion[], badStrategicRegionId: number } {
+function sortStrategicRegions(strategicRegions: StrategicRegionNoRegion[], warnings: Warning[]): { sortedStrategicRegions: StrategicRegionNoRegion[], badStrategicRegionId: number } {
     const { sorted, badId } = sortItems(
         strategicRegions,
         10000,
@@ -163,6 +171,38 @@ function sortStrategicRegions(strategicRegions: StrategicRegion[], warnings: War
         sortedStrategicRegions: sorted,
         badStrategicRegionId: badId,
     };
+}
+
+function calculateBoundingBox(strategicRegionNoRegion: StrategicRegionNoRegion, provinces: (Province | undefined | null)[], width: number, warnings: Warning[]): StrategicRegion {
+    const provincesInStrategicRegion = strategicRegionNoRegion.provinces
+        .map(p => {
+            const province = provinces[p];
+            if (!province) {
+                warnings.push({
+                    source: [{ type: 'strategicregion', id: strategicRegion.id }],
+                    relatedFiles: [strategicRegion.file],
+                    text: localize('TODO', "Province {0} used in strategic region {1} doesn't exist.", p, strategicRegion.id),
+                });
+            }
+            return province;
+        })
+        .filter((p): p is Province => !!p);
+
+    let strategicRegion: StrategicRegion;
+    if (provincesInStrategicRegion.length > 0) {
+        strategicRegion = Object.assign(strategicRegionNoRegion, mergeRegions(provincesInStrategicRegion, width));
+    } else {
+        strategicRegion = Object.assign(strategicRegionNoRegion, { boundingBox: { x: 0, y: 0, w: 0, h: 0 }, centerOfMass: { x: 0, y: 0 }, mass: 0 });
+        if (strategicRegionNoRegion.provinces.length > 0) {
+            warnings.push({
+                source: [{ type: 'strategicregion', id: strategicRegionNoRegion.id }],
+                relatedFiles: [strategicRegionNoRegion.file],
+                text: localize('TODO', "Strategic region {0} in doesn't have valid provinces.", strategicRegionNoRegion.id),
+            });
+        }
+    }
+
+    return strategicRegion;
 }
 
 function validateProvincesInStrategicRegions(

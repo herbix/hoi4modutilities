@@ -1,5 +1,5 @@
-import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain } from "../definitions";
-import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual, sortItems } from "./common";
+import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain, Region } from "../definitions";
+import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual, sortItems, mergeRegions } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
@@ -240,7 +240,7 @@ function getProvincesByPosition(provinceMapImage: BMP): { colorByPosition: numbe
     };
 }
 
-type ProvinceZoneDef = { boundingBox: Zone, coverZones: Zone[] };
+type ProvinceZoneDef = { coverZones: Zone[] } & Region;
 function fillProvinceZones<T extends ColorContainer>(
     provincesWithoutCoverZones: (T & Partial<ProvinceZoneDef>)[],
     colorToProvince: Record<number, T & Partial<ProvinceZoneDef>>,
@@ -295,8 +295,8 @@ function fillProvinceZones<T extends ColorContainer>(
         }
     }
 
-    for (const province of provinces) {
-        province.boundingBox = province.coverZones.reduce((p, c) => mergeBoundingBox(p, c, width));
+    for (const provinceWithoutRegion of provinces) {
+        const province = Object.assign(provinceWithoutRegion, mergeRegions(provinceWithoutRegion.coverZones, width));
         if (province.boundingBox.w > width / 2 || province.boundingBox.h > height / 2) {
             warnings.push({
                 source: [{ type: 'province', color: province.color, id: -1 }],
@@ -555,7 +555,7 @@ function mergeProvinceDefinitions(
                 });
             }
 
-            result.push({ ...provinceDef, boundingBox: { x: 0, y: 0, w: 0, h: 0 }, coverZones: [], edges: [] });
+            result.push({ ...provinceDef, boundingBox: { x: 0, y: 0, w: 0, h: 0 }, mass: 0, centerOfMass: { x: 0, y: 0 }, coverZones: [], edges: [] });
         }
     }
 

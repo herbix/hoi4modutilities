@@ -1,11 +1,17 @@
-import { Province, Point, State, Zone, Terrain, StrategicRegion } from "../../src/previewdef/worldmap/definitions";
+import { Province, Point, State, Zone, Terrain, StrategicRegion, Region } from "../../src/previewdef/worldmap/definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
-import { TopBar, topBarHeight, ColorSet } from "./topbar";
+import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
 import { asEvent, Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
 import { feLocalize } from "../util/i18n";
+
+const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> = {
+    province: { edge: 2, labels: 3 },
+    state: { edge: 1, labels: 1 },
+    strategicregion: { edge: 0.25, labels: 0.25 },
+};
 
 export class Renderer extends Subscriber {
     private canvasWidth: number = 0;
@@ -140,78 +146,70 @@ export class Renderer extends Subscriber {
         });
     }
 
-    private renderMapForeground(worldMap: FEWorldMap, xOffset: number, provinceToState: Record<number, number | undefined>,
-        provinceToStrategicRegion: Record<number, number | undefined>, renderedProvinces: Province[], extraState: [any]) {
+    private renderMapForeground(
+        worldMap: FEWorldMap,
+        xOffset: number,
+        provinceToState: Record<number, number | undefined>,
+        provinceToStrategicRegion: Record<number, number | undefined>,
+        renderedProvinces: Province[],
+        extraState: [any]
+    ) {
         const viewMode = this.topBar.viewMode.value;
-
-        // Skip borderline and text when scale is small
-        if (viewMode === 'province' && this.viewPoint.scale <= 2) {
-            return;
-        }
-
-        if (this.viewPoint.scale < 1) {
-            return;
-        }
-
+        const renderScale = renderScaleByViewMode[viewMode];
+        const scale = this.viewPoint.scale;
         const context = this.mapCanvasContext;
-        for (const province of renderedProvinces) {
-            this.renderEdges(provinceToState, provinceToStrategicRegion, province, renderedProvinces, worldMap, context, xOffset);
+
+        if (renderScale.edge <= scale) {
+            for (const province of renderedProvinces) {
+                this.renderEdges(provinceToState, provinceToStrategicRegion, province, renderedProvinces, worldMap, context, xOffset);
+            }
         }
+
+        if (renderScale.labels <= scale) {
+            this.renderMapLabels(provinceToState, provinceToStrategicRegion, renderedProvinces, extraState, worldMap, context, xOffset);
+        }
+    }
+
+    private renderMapLabels(
+        provinceToState: Record<number, number | undefined>,
+        provinceToStrategicRegion: Record<number, number | undefined>,
+        renderedProvinces: Province[],
+        extraState: [any],
+        worldMap: FEWorldMap,
+        context: CanvasRenderingContext2D,
+        xOffset: number,
+    ) {
+        const viewMode = this.topBar.viewMode.value;
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        switch (viewMode) {
-            case 'province':
-                for (const province of renderedProvinces) {
-                    const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, provinceToStrategicRegion, extraState);
-                    context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                    const labelPosition = getCOG(province.coverZones, worldMap.width);
-                    context.fillText(province.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
-                }
-                break;
-            case 'state':
-                {
-                    const renderedStates: Record<number, boolean> = {};
+        if (viewMode === 'province') {
+            for (const province of renderedProvinces) {
+                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, provinceToStrategicRegion, extraState);
+                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
+                const labelPosition = province.centerOfMass;
+                context.fillText(province.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
+            }
+        } else {
+            const renderedRegions: Record<number, boolean> = {};
+            const regionMap = viewMode === 'state' ? provinceToState : provinceToStrategicRegion;
+            const getRegionById = viewMode === 'state' ? worldMap.getStateById : worldMap.getStrategicRegionById;
 
-                    for (const province of renderedProvinces) {
-                        const stateId = provinceToState[province.id];
-                        if (stateId !== undefined && !renderedStates[stateId]) {
-                            renderedStates[stateId] = true;
-                            const state = worldMap.getStateById(stateId);
-                            if (state) {
-                                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, provinceToStrategicRegion, extraState);
-                                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                                const labelPosition = getCOG(state.provinces.map(worldMap.getProvinceById, worldMap)
-                                        .reduce<Zone[]>((p, c) => c ? p.concat(c.coverZones) : p, []),
-                                    worldMap.width);
-                                context.fillText(state.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
-                            }
-                        }
+            for (const province of renderedProvinces) {
+                const regionId = regionMap[province.id];
+                if (regionId !== undefined && !renderedRegions[regionId]) {
+                    renderedRegions[regionId] = true;
+                    const region = getRegionById(regionId);
+                    if (region) {
+                        const labelPosition = region.centerOfMass;
+                        const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
+                        const provinceColor = getColorByColorSet(this.topBar.colorSet.value, provinceAtLabel ?? province, worldMap, provinceToState, provinceToStrategicRegion, extraState);
+                        context.fillStyle = toColor(getHighConstrastColor(provinceColor));
+                        context.fillText(region.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
                     }
                 }
-                break;
-            case 'strategicregion':
-                {
-                    const renderedStrategicRegions: Record<number, boolean> = {};
-
-                    for (const province of renderedProvinces) {
-                        const strategicRegionId = provinceToStrategicRegion[province.id];
-                        if (strategicRegionId !== undefined && !renderedStrategicRegions[strategicRegionId]) {
-                            renderedStrategicRegions[strategicRegionId] = true;
-                            const strategicRegion = worldMap.getStrategicRegionById(strategicRegionId);
-                            if (strategicRegion) {
-                                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, provinceToState, provinceToStrategicRegion, extraState);
-                                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                                const labelPosition = getCOG(strategicRegion.provinces.map(worldMap.getProvinceById, worldMap)
-                                        .reduce<Zone[]>((p, c) => c ? p.concat(c.coverZones) : p, []),
-                                    worldMap.width);
-                                context.fillText(strategicRegion.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
-                            }
-                        }
-                    }
-                }
-                break;
+            }
         }
     }
 
@@ -269,7 +267,7 @@ export class Renderer extends Subscriber {
                 context.beginPath();
                 context.moveTo(viewPoint.convertX(path[0].x + xOffset), viewPoint.convertY(path[0].y));
                 for (let j = 0; j < path.length; j++) {
-                    if (scale <= 4 && j % (scale < 1 ? 10 : 6 - scale) !== 0 && !isCriticalPoint(path, j)) {
+                    if (scale <= 4 && j % (scale < 1 ? Math.floor(10 / scale) : 6 - scale) !== 0 && !isCriticalPoint(path, j)) {
                         continue;
                     }
                     const pos = path[j];
@@ -649,7 +647,7 @@ function getColorByColorSet(
                 worldMap.forEachProvince(p => (p.continent > continent ? continent = p.continent : 0, false));
                 stateBox[0] = avoidPowerOf2(continent + 1);
             }
-            return valueAndMaxToColor(province.continent + 1, stateBox[0]);
+            return province.continent !== 0 ? valueAndMaxToColor(province.continent + 1, stateBox[0]) : defaultColor(province);
         case 'stateid':
             {
                 if (stateBox[0] === undefined) {
@@ -766,32 +764,6 @@ function avoidPowerOf2(value: number): number {
 function isCriticalPoint(path: Point[], index: number): boolean {
     return index === 0 || index === path.length - 1 ||
         (distanceHamming(path[index], path[index - 1]) > 2 && distanceHamming(path[index], path[index + 1]) > 2);
-}
-
-function getCOG(zones: Zone[], width: number): Point {
-    const smallBound = width * 0.25;
-    const center = width * 0.5;
-    const largeBound = width * 0.75;
-    const nearBorder = zones.every(z => z.w + z.x < smallBound || z.x > largeBound);
-
-    let x = 0;
-    let y = 0;
-    let mass = 0;
-
-    for (const zone of zones) {
-        const zoneMass = zone.w * zone.h;
-        mass += zoneMass;
-        x += (zone.x + zone.w / 2 + (nearBorder && zone.x > center ? -width : 0)) * zoneMass;
-        y += (zone.y + zone.h / 2) * zoneMass;
-    }
-
-    x /= mass;
-    y /= mass;
-    if (x < 0) {
-        x += width;
-    }
-
-    return { x, y };
 }
 
 function defaultColor(province: Province) {

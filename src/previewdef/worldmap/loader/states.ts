@@ -1,8 +1,8 @@
-import { State, Province, Warning, Zone, WarningSource, ProgressReporter } from "../definitions";
+import { State, Province, Warning, Zone, WarningSource, ProgressReporter, Region } from "../definitions";
 import { CustomSymbol, Enum, SchemaDef, StringAsSymbol } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems } from "./common";
+import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -54,7 +54,7 @@ const stateFileSchema: SchemaDef<StateFile> = {
     },
 };
 
-type StateNoBoundingBox = Omit<State, 'boundingBox'>;
+type StateNoBoundingBox = Omit<State, keyof Region>;
 
 type StateLoaderResult = { states: State[], badStatesCount: number };
 export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
@@ -186,23 +186,23 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
 }
 
 function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces: (Province | undefined | null)[], width: number, height: number, warnings: Warning[]): State {
-    const state = noBoundingBoxState as State;
-    const zones = state.provinces
+    const provincesInState = noBoundingBoxState.provinces
         .map(p => {
             const province = provinces[p];
             if (!province) {
                 warnings.push({
-                    source: [{ type: 'state', id: state.id }],
-                    relatedFiles: [state.file],
-                    text: localize('worldmap.warnings.stateprovincenotexist', "Province {0} used in state {1} doesn't exist.", p, state.id),
+                    source: [{ type: 'state', id: noBoundingBoxState.id }],
+                    relatedFiles: [noBoundingBoxState.file],
+                    text: localize('worldmap.warnings.stateprovincenotexist', "Province {0} used in state {1} doesn't exist.", p, noBoundingBoxState.id),
                 });
             }
-            return province?.boundingBox;
+            return province;
         })
-        .filter((p): p is Zone => !!p);
+        .filter((p): p is Province => !!p);
 
-    if (zones.length > 0) {
-        state.boundingBox = zones.reduce((p, c) => mergeBoundingBox(p, c, width));
+    let state: State;
+    if (provincesInState.length > 0) {
+        state = Object.assign(noBoundingBoxState, mergeRegions(provincesInState, width));
         if (state.boundingBox.w > width / 2 || state.boundingBox.h > height / 2) {
             warnings.push({
                 source: [{ type: 'state', id: state.id }],
@@ -211,12 +211,14 @@ function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces:
             });
         }
     } else {
-        warnings.push({
-            source: [{ type: 'state', id: state.id }],
-            relatedFiles: [state.file],
-            text: localize('worldmap.warnings.statenovalidprovinces', "State {0} in doesn't have valid provinces.", state.id),
-        });
-        state.boundingBox = { x: 0, y: 0, w: 0, h: 0 };
+        state = Object.assign(noBoundingBoxState, { boundingBox: { x: 0, y: 0, w: 0, h: 0 }, centerOfMass: { x: 0, y: 0 }, mass: 0 });
+        if (noBoundingBoxState.provinces.length > 0) {
+            warnings.push({
+                source: [{ type: 'state', id: noBoundingBoxState.id }],
+                relatedFiles: [noBoundingBoxState.file],
+                text: localize('worldmap.warnings.statenovalidprovinces', "State {0} in doesn't have valid provinces.", noBoundingBoxState.id),
+            });
+        }
     }
 
     return state;

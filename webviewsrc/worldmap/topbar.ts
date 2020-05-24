@@ -186,9 +186,17 @@ export class TopBar extends Subscriber {
         }));
     
         this.subscriptions.push(asEvent(canvas, 'click')(() => {
-            this.selectedProvinceId.set(this.selectedProvinceId.value === this.hoverProvinceId.value ? undefined : this.hoverProvinceId.value);
-            this.selectedStateId.set(this.selectedStateId.value === this.hoverStateId.value ? undefined : this.hoverStateId.value);
-            this.selectedStrategicRegionId.set(this.selectedStrategicRegionId.value === this.hoverStrategicRegionId.value ? undefined : this.hoverStrategicRegionId.value);
+            switch (this.viewMode.value) {
+                case 'province':
+                    this.selectedProvinceId.set(this.selectedProvinceId.value === this.hoverProvinceId.value ? undefined : this.hoverProvinceId.value);
+                    break;
+                case 'state':
+                    this.selectedStateId.set(this.selectedStateId.value === this.hoverStateId.value ? undefined : this.hoverStateId.value);
+                    break;
+                case 'strategicregion':
+                    this.selectedStrategicRegionId.set(this.selectedStrategicRegionId.value === this.hoverStrategicRegionId.value ? undefined : this.hoverStrategicRegionId.value);
+                    break;
+            }
         }));
 
         this.subscriptions.push(this.viewMode.onChange(() => this.onViewModeChange()));
@@ -211,18 +219,16 @@ export class TopBar extends Subscriber {
             return;
         }
 
-        if (this.viewMode.value === 'province') {
-            const province = this.loader.worldMap.getProvinceById(number);
-            if (province) {
-                this.selectedProvinceId.set(number);
-                this.viewPoint.centerZone(province.boundingBox);
-            }
-        } else if (this.viewMode.value === 'state') {
-            const state = this.loader.worldMap.getStateById(number);
-            if (state) {
-                this.selectedStateId.set(number);
-                this.viewPoint.centerZone(state.boundingBox);
-            }
+        const [getRegionById, selectedId] =
+            this.viewMode.value === 'province' ? [this.loader.worldMap.getProvinceById, this.selectedProvinceId] :
+            this.viewMode.value === 'state' ? [this.loader.worldMap.getStateById, this.selectedStateId] :
+            this.viewMode.value === 'strategicregion' ? [this.loader.worldMap.getStrategicRegionById, this.selectedStrategicRegionId] :
+            [() => undefined, undefined];
+            
+        const region = getRegionById(number);
+        if (region) {
+            selectedId?.set(number);
+            this.viewPoint.centerZone(region.boundingBox);
         }
     }
 
