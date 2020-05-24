@@ -129,6 +129,8 @@ export abstract class FolderLoader<T, TFile> extends Loader<T> {
 
     protected async loadImpl(force: boolean): Promise<LoadResult<T>> {
         const files = await listFilesFromModOrHOI4(this.folder);
+        this.fileCount = files.length;
+
         const subLoaders = this.subLoaders;
         const newSubLoaders: Record<string, FileLoader<TFile>> = {};
         const fileResultPromises: Promise<LoadResult<TFile>>[] = [];
@@ -153,4 +155,52 @@ export abstract class FolderLoader<T, TFile> extends Loader<T> {
 
 export function mergeInLoadResult<K extends 'warnings' | 'dependencies'>(loadResults: LoadResult<unknown>[], key: K): LoadResult<unknown>[K] {
     return loadResults.reduce<LoadResult<unknown>[K]>((p, c) => (p as any).concat(c[key]), []);
+}
+
+export function sortItems<T extends { id: number }>(
+    items: T[],
+    validMaxId: number,
+    onMaxIdTooLarge: (maxId: number) => void,
+    onConflict: (newItem: T, existingItem: T, badId: number) => void,
+    onNotExist: (startId: number, endId: number) => void,
+    reassignMinusOneId: boolean = true,
+    badId: number = -1,
+): { sorted: T[], badId: number } {
+    const maxId = items.reduce((p, c) => c.id > p ? c.id : p, 0);
+    if (maxId > validMaxId) {
+        onMaxIdTooLarge(maxId);
+    }
+
+    const result: T[] = new Array(maxId + 1);
+    items.forEach(p => {
+        if (reassignMinusOneId && p.id === -1) {
+            p.id = badId--;
+        }
+        if (result[p.id]) {
+            const conflictItem = result[p.id];
+            onConflict(p, conflictItem, badId);
+            conflictItem.id = badId--;
+            result[conflictItem.id] = conflictItem;
+        }
+        result[p.id] = p;
+    });
+
+    let lastNotExistStateId: number | undefined = undefined;
+    for (let i = 1; i <= maxId; i++) {
+        if (result[i]) {
+            if (lastNotExistStateId !== undefined) {
+                onNotExist(lastNotExistStateId, i - 1);
+                lastNotExistStateId = undefined;
+            }
+        } else {
+            if (lastNotExistStateId === undefined) {
+                lastNotExistStateId = i;
+            }
+        }
+    };
+
+    return {
+        sorted: result,
+        badId,
+    };
 }

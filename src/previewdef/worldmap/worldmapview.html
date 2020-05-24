@@ -6,6 +6,7 @@
                 <select id="viewmode">
                     <option value="province">%worldmap.topbar.viewmode.province|Province%</option>
                     <option value="state">%worldmap.topbar.viewmode.state|State%</option>
+                    <option value="strategicregion">%TODO|Strategic Region%</option>
                 </select>
             </div>
         </div>
@@ -16,13 +17,14 @@
                 <select id="colorset">
                     <option viewmode="province" value="provinceid">%worldmap.topbar.colorset.provinceid|Province ID%</option>
                     <option viewmode="province state" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
-                    <option viewmode="province state" value="country">%worldmap.topbar.colorset.country|Country%</option>
-                    <option viewmode="province state" value="provincetype">%worldmap.topbar.colorset.provincetype|Province Type%</option>
-                    <option viewmode="province state" value="terrain">%worldmap.topbar.colorset.terrain|Terrain%</option>
-                    <option viewmode="province state" value="continent">%worldmap.topbar.colorset.continent|Continent%</option>
-                    <option viewmode="province state" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
-                    <option viewmode="province state" value="victorypoint">%worldmap.topbar.colorset.vicotrypoint|Victory Points%</option>
-                    <option viewmode="province state" value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
+                    <option viewmode="province state strategicregion" value="strategicregionid">%TODO|Strategic Region ID%</option>
+                    <option viewmode="province state strategicregion" value="country">%worldmap.topbar.colorset.country|Country%</option>
+                    <option viewmode="province state strategicregion" value="provincetype">%worldmap.topbar.colorset.provincetype|Province Type%</option>
+                    <option viewmode="province state strategicregion" value="terrain">%worldmap.topbar.colorset.terrain|Terrain%</option>
+                    <option viewmode="province state strategicregion" value="continent">%worldmap.topbar.colorset.continent|Continent%</option>
+                    <option viewmode="province state strategicregion" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
+                    <option viewmode="province state strategicregion" value="victorypoint">%worldmap.topbar.colorset.vicotrypoint|Victory Points%</option>
+                    <option viewmode="province state strategicregion" value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
                 </select>
             </div>
         </div>
@@ -36,18 +38,18 @@
         </div>
 
         <div class="group">
-            <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%" viewmode="province state">
+            <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%" viewmode="province state strategicregion">
                 <i class="codicon codicon-refresh"></i>
             </button>
         </div>
         <div class="group">
-            <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%" viewmode="province state">
+            <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%" viewmode="province state strategicregion">
                 <i class="codicon codicon-warning"></i>
             </button>
         </div>
 
         <div class="group">
-            <button id="open" title="%worldmap.topbar.open.title|Open in Workspace%" viewmode="state">
+            <button id="open" title="%worldmap.topbar.open.title|Open in Workspace%" viewmode="state strategicregion">
                 <i class="codicon codicon-link-external"></i>
             </button>
             <!--<button title="Edit">

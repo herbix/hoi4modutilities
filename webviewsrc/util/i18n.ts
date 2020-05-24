@@ -12,7 +12,7 @@ try {
     console.error(e);
 }
 
-export function feLocalize(key: keyof typeof __table, message: string, ...args: any[]): string {
+export function feLocalize(key: keyof typeof __table | 'TODO', message: string, ...args: any[]): string {
     if (key in table) {
         message = table[key];
     }

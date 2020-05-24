@@ -6,11 +6,14 @@ export interface WorldMapData {
     provinces: (Province | undefined | null)[]; // count of provinces
     states: (State | undefined | null)[];
     countries: Country[];
+    strategicRegions: (StrategicRegion | undefined | null)[];
     provincesCount: number;
     statesCount: number;
     countriesCount: number;
+    strategicRegionsCount: number;
     badProvincesCount: number; // will be * -1
     badStatesCount: number; // will be * -1;
+    badStrategicRegionsCount: number;
     continents: string[];
     terrains: Terrain[];
     warnings: Warning[];
@@ -84,7 +87,7 @@ export interface State {
     victoryPoints: Record<number, number | undefined>;
     boundingBox: Zone;
     file: string;
-    token: Token | undefined;
+    token: Token | null;
 }
 
 export interface Warning {
@@ -93,7 +96,7 @@ export interface Warning {
     relatedFiles: string[];
 }
 
-export type WarningSource = WarningSourceProvince | WarningSourceState;
+export type WarningSource = WarningSourceProvince | WarningSourceIdOnly;
 
 interface WarningSourceBase {
     type: string;
@@ -105,8 +108,8 @@ interface WarningSourceProvince extends WarningSourceBase {
     color: number;
 }
 
-interface WarningSourceState extends WarningSourceBase {
-    type: 'state';
+interface WarningSourceIdOnly extends WarningSourceBase {
+    type: 'state' | 'strategicregion' | 'supplyarea';
     id: number;
 }
 
@@ -121,6 +124,15 @@ export interface Terrain {
     isNaval: boolean;
 }
 
+export interface StrategicRegion {
+    id: number;
+    name: string;
+    provinces: number[];
+    navalTerrain: string | null;
+    file: string;
+    token: Token | null;
+}
+
 export interface Point {
     x: number;
     y: number;
@@ -133,7 +145,7 @@ export interface Zone {
     h: number;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenStateMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
@@ -141,13 +153,13 @@ export interface LoadedMessage {
 }
 
 export interface RequestMapItemMessage {
-    command: 'requestprovinces' | 'requeststates' | 'requestcountries';
+    command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions';
     start: number;
     end: number;
 }
 
 export interface MapItemMessage {
-    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains';
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions';
     data: string;
     start: number;
     end: number;
@@ -168,8 +180,9 @@ export interface ProvinceMapSummaryMessage {
     data: WorldMapData;
 }
 
-export interface OpenStateMessage {
-    command: 'openstate';
+export interface OpenFileMessage {
+    command: 'openfile';
+    type: 'state' | 'strategicregion';
     file: string;
     start: number | undefined;
     end: number | undefined;

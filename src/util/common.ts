@@ -120,8 +120,16 @@ export function writeFile(path: string, buffer: Buffer): Promise<void> {
     return fsFuncWrapperWrite(fs.writeFile, path, buffer);
 }
 
+export function mkdirs(path: string): Promise<string> {
+    return fsFuncWrapperWithOption<string, { recursive: true; }>(fs.mkdir, path, { recursive: true });
+}
+
 function fsFuncWrapper<T>(func: (path: fs.PathLike, cb: (err: NodeJS.ErrnoException | null, result: T) => void) => void, path: fs.PathLike): Promise<T> {
     return new Promise<T>((resolve, reject) => func(path, (err, files) => err ? reject(err) : resolve(files)));
+}
+
+function fsFuncWrapperWithOption<T, O>(func: (path: fs.PathLike, options: O, cb: (err: NodeJS.ErrnoException | null, result: T) => void) => void, path: fs.PathLike, options: O): Promise<T> {
+    return new Promise<T>((resolve, reject) => func(path, options, (err, files) => err ? reject(err) : resolve(files)));
 }
 
 function fsFuncWrapperWrite<T>(func: (path: fs.PathLike, data: T, cb: (err: NodeJS.ErrnoException | null) => void) => void, path: fs.PathLike, data: T): Promise<void> {

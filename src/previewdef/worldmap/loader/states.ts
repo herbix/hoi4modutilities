@@ -2,7 +2,7 @@ import { State, Province, Warning, Zone, WarningSource, ProgressReporter } from 
 import { CustomSymbol, Enum, SchemaDef, StringAsSymbol } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult } from "./common";
+import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -62,15 +62,20 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         super('history/states', StateLoader, progressReporter);
     }
 
+    public async shouldReload(): Promise<boolean> {
+        return await super.shouldReload() || await this.defaultMapLoader.shouldReload();
+    }
+
     protected async loadImpl(force: boolean): Promise<LoadResult<StateLoaderResult>> {
         await this.progressReporter(localize('worldmap.progress.loadingstates', 'Loading states...'));
         return super.loadImpl(force);
     }
 
     protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], force: boolean): Promise<LoadResult<StateLoaderResult>> {
-        await this.progressReporter(localize('worldmap.progress.mapprovincestostates', 'Map provinces to states...'));
-
         const provinceMap = await this.defaultMapLoader.load(false);
+
+        await this.progressReporter(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
+
         const warnings = mergeInLoadResult(fileResults, 'warnings');
         const { provinces, width, height } = provinceMap.result;
 
@@ -146,7 +151,7 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
             result.push({
                 id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints,
                 file: stateFile,
-                token: state._token
+                token: state._token ?? null,
             });
         }
 
@@ -158,55 +163,25 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
 }
 
 function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sortedStates: StateNoBoundingBox[], badStateId: number } {
-    const maxStateId = states.reduce((p, c) => c.id > p ? c.id : p, 0);
-    if (maxStateId > 10000) {
-        throw new Error(`Max state id is too large: ${maxStateId}.`);
-    }
-
-    let badStateId = -1;
-    const result: StateNoBoundingBox[] = new Array(maxStateId + 1);
-    states.forEach(p => {
-        if (p.id === -1) {
-            p.id = badStateId--;
-        }
-        if (result[p.id]) {
-            warnings.push({
-                source: [{
-                    type: 'state',
-                    id: badStateId,
-                }],
-                relatedFiles: [p.file, result[p.id].file],
-                text: localize('worldmap.warnings.stateidconflict', "There're more than one states using state id {0}.", p.id),
-            });
-            p.id = badStateId--;
-        }
-        result[p.id] = p;
-    });
-
-    let lastNotExistStateId: number | undefined = undefined;
-    for (let i = 1; i <= maxStateId; i++) {
-        if (result[i]) {
-            if (lastNotExistStateId !== undefined) {
-                warnings.push({
-                    source: [{
-                        type: 'state',
-                        id: i,
-                    }],
-                    relatedFiles: [],
-                    text: localize('worldmap.warnings.statenotexist', "State with id {0} doesn't exist.", lastNotExistStateId === i - 1 ? i - 1 : `${lastNotExistStateId}-${i - 1}`),
-                });
-                lastNotExistStateId = undefined;
-            }
-        } else {
-            if (lastNotExistStateId === undefined) {
-                lastNotExistStateId = i;
-            }
-        }
-    };
+    const { sorted, badId } = sortItems(
+        states,
+        10000,
+        (maxId) => { throw new Error(localize('TODO', 'Max state id is too large: {0}', maxId)); },
+        (newState, existingState, badId) => warnings.push({
+                source: [{ type: 'state', id: badId }],
+                relatedFiles: [newState.file, existingState.file],
+                text: localize('worldmap.warnings.stateidconflict', "There're more than one states using state id {0}.", newState.id),
+            }),
+        (startId, endId) => warnings.push({
+                source: [{ type: 'state', id: startId }],
+                relatedFiles: [],
+                text: localize('worldmap.warnings.statenotexist', "State with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
+            }),
+    );
 
     return {
-        sortedStates: result,
-        badStateId,
+        sortedStates: sorted,
+        badStateId: badId,
     };
 }
 
@@ -252,37 +227,39 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
 
     for (let i = badStatesCount; i < states.length; i++) {
         const state = states[i];
-        if (state) {
-            state.provinces.forEach(p => {
-                const province = provinces[p];
-                if (provinceToState[p] !== undefined) {
-                    if (!province) {
-                        return;
-                    }
-
-                    warnings.push({
-                        source: [
-                            ...[state.id, provinceToState[p]].map<WarningSource>(id => ({ type: 'state', id })),
-                            { type: 'province', id: p, color: province.color }
-                        ],
-                        relatedFiles: [state.file, states[provinceToState[p]]!.file],
-                        text: localize('worldmap.warnings.provinceinmultistates', 'Province {0} exists in multiple states: {1}, {2}', p, provinceToState[p], state.id),
-                    });
-                } else {
-                    provinceToState[p] = state.id;
-                }
-
-                if (province?.type === 'sea') {
-                    warnings.push({
-                        source: [
-                            { type: 'state', id: state.id },
-                            { type: 'province', id: p, color: province.color },
-                        ],
-                        relatedFiles: [state.file],
-                        text: localize('worldmap.warnings.statehassea', "Sea province {0} shouldn't belong to a state.", p),
-                    });
-                }
-            });
+        if (!state) {
+            continue;
         }
+
+        state.provinces.forEach(p => {
+            const province = provinces[p];
+            if (provinceToState[p] !== undefined) {
+                if (!province) {
+                    return;
+                }
+
+                warnings.push({
+                    source: [
+                        ...[state.id, provinceToState[p]].map<WarningSource>(id => ({ type: 'state', id })),
+                        { type: 'province', id: p, color: province.color }
+                    ],
+                    relatedFiles: [state.file, states[provinceToState[p]]!.file],
+                    text: localize('worldmap.warnings.provinceinmultistates', 'Province {0} exists in multiple states: {1}, {2}', p, provinceToState[p], state.id),
+                });
+            } else {
+                provinceToState[p] = state.id;
+            }
+
+            if (province?.type === 'sea') {
+                warnings.push({
+                    source: [
+                        { type: 'state', id: state.id },
+                        { type: 'province', id: p, color: province.color },
+                    ],
+                    relatedFiles: [state.file],
+                    text: localize('worldmap.warnings.statehassea', "Sea province {0} shouldn't belong to a state.", p),
+                });
+            }
+        });
     }
 }

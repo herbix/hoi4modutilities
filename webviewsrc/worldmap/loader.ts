@@ -2,7 +2,7 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { vscode, copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
-import { Warning, Terrain } from "../../src/previewdef/worldmap/definitions";
+import { Warning, Terrain, StrategicRegion } from "../../src/previewdef/worldmap/definitions";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -11,18 +11,28 @@ interface ExtraMapData {
 }
 
 interface FEWorldMapClassExtra {
-    getStateByProvinceId(provinceId: number): State | undefined;
-    getProvinceByPosition(x: number, y: number): Province | undefined;
-    getProvinceToStateMap(): Record<number, number | undefined>;
     getProvinceById(provinceId: number | undefined): Province | undefined;
     getStateById(stateId: number | undefined): State | undefined;
+    getStrategicRegionById(strategicRegionId: number | undefined): StrategicRegion | undefined;
+
+    getStateByProvinceId(provinceId: number): State | undefined;
+    getProvinceToStateMap(): Record<number, number | undefined>;
+    
+    getStrategicRegionByProvinceId(provinceId: number): StrategicRegion | undefined;
+    getProvinceToStrategicRegionMap(): Record<number, number | undefined>;
+
+    getProvinceByPosition(x: number, y: number): Province | undefined;
+
+    getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion): string[];
+    getStateWarnings(state: State): string[];
+    getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[];
+
     forEachProvince(callback: (province: Province) => boolean | void): void;
     forEachState(callback: (state: State) => boolean | void): void;
-    getProvinceWarnings(province: Province, state?: State): string[];
-    getStateWarnings(state: State): string[];
+    forEachStrategicRegion(callback: (strategicRegion: StrategicRegion) => boolean | void): void;
 }
 
-export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces'> & ExtraMapData & FEWorldMapClassExtra;
+export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicRegions'> & ExtraMapData & FEWorldMapClassExtra;
 
 export class Loader extends Subscriber {
     public worldMap: FEWorldMapClass;
@@ -42,10 +52,9 @@ export class Loader extends Subscriber {
 
     constructor() {
         super();
-
         this.worldMap = new FEWorldMapClass();
-
         this.load();
+        this.onMapChanged(wm => (window as any)['worldMap'] = wm);
     }
 
     public refresh() {
@@ -64,6 +73,7 @@ export class Loader extends Subscriber {
                     this.loadingProvinceMap.provinces = new Array(this.loadingProvinceMap.provincesCount);
                     this.loadingProvinceMap.states = new Array(this.loadingProvinceMap.statesCount);
                     this.loadingProvinceMap.countries = new Array(this.loadingProvinceMap.countriesCount);
+                    this.loadingProvinceMap.strategicRegions = new Array(this.loadingProvinceMap.strategicRegionsCount);
                     console.log(message.data);
                     this.startLoading();
                     break;
@@ -77,6 +87,10 @@ export class Loader extends Subscriber {
                     break;
                 case 'countries':
                     this.receiveData(this.loadingProvinceMap?.countries, message.start, message.end, message.data);
+                    this.loadNext();
+                    break;
+                case 'strategicregions':
+                    this.receiveData(this.loadingProvinceMap?.strategicRegions, message.start, message.end, message.data);
                     this.loadNext();
                     break;
                 case 'warnings':
@@ -121,6 +135,8 @@ export class Loader extends Subscriber {
         this.loadingQueue.length = 0;
     
         this.queueLoadingRequest('requestcountries', this.loadingProvinceMap.countriesCount, 300);
+        this.queueLoadingRequest('requeststrategicregions', this.loadingProvinceMap.strategicRegionsCount, 300);
+        this.queueLoadingRequest('requeststrategicregions', -this.loadingProvinceMap.badStrategicRegionsCount, 300, this.loadingProvinceMap.badStrategicRegionsCount);
         this.queueLoadingRequest('requeststates', this.loadingProvinceMap.statesCount, 300);
         this.queueLoadingRequest('requeststates', -this.loadingProvinceMap.badStatesCount, 300, this.loadingProvinceMap.badStatesCount);
         this.queueLoadingRequest('requestprovinces', this.loadingProvinceMap.provincesCount, 300);
@@ -146,7 +162,6 @@ export class Loader extends Subscriber {
     
         if (updateMap) {
             this.worldMap = new FEWorldMapClass(this.loadingProvinceMap!);
-            (window as any)['worldMap'] = this.worldMap;
             this.onMapChangedEmitter.fire(this.worldMap);
         }
     
@@ -174,20 +189,24 @@ class FEWorldMapClass implements FEWorldMap {
     provincesCount!: number;
     statesCount!: number;
     countriesCount!: number;
+    strategicRegionsCount!: number;
     badProvincesCount!: number;
     badStatesCount!: number;
+    badStrategicRegionsCount!: number;
     continents!: string[];
     terrains!: Terrain[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
+    private strategicRegions!: (StrategicRegion | null | undefined)[];
 
     constructor(worldMap?: WorldMapData & ExtraMapData) {
-        Object.assign(this, worldMap ?? {
+        Object.assign(this, worldMap ?? ({
             width: 0, height: 0,
-            provinces: [], states: [], countries: [], warnings: [], continents: [],
-            provincesCount: 0, statesCount: 0, countriesCount: 0, badProvincesCount: 0, badStatesCount: 0,
-        });
+            provinces: [], states: [], countries: [], warnings: [], continents: [], strategicRegions: [], terrains: [],
+            provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0,
+            badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0,
+        } as WorldMapData & ExtraMapData));
     }
 
     public getProvinceById(provinceId: number | undefined): Province | undefined {
@@ -196,6 +215,10 @@ class FEWorldMapClass implements FEWorldMap {
 
     public getStateById(stateId: number | undefined): State | undefined {
         return stateId ? this.states[stateId] ?? undefined : undefined;
+    }
+
+    public getStrategicRegionById(strategicRegionId: number | undefined): StrategicRegion | undefined {
+        return strategicRegionId ? this.strategicRegions[strategicRegionId] ?? undefined : undefined;
     }
 
     public getStateByProvinceId(provinceId: number): State | undefined {
@@ -207,6 +230,17 @@ class FEWorldMapClass implements FEWorldMap {
             }
         });
         return resultState;
+    }
+    
+    public getStrategicRegionByProvinceId(provinceId: number): StrategicRegion | undefined {
+        let resultStrategicRegion: StrategicRegion | undefined = undefined;
+        this.forEachStrategicRegion(strategicRegion => {
+            if (strategicRegion.provinces.includes(provinceId)) {
+                resultStrategicRegion = strategicRegion;
+                return true;
+            }
+        });
+        return resultStrategicRegion;
     }
     
     public getProvinceByPosition(x: number, y: number): Province | undefined {
@@ -233,6 +267,18 @@ class FEWorldMapClass implements FEWorldMap {
         return result;
     }
 
+    public getProvinceToStrategicRegionMap(): Record<number, number | undefined> {
+        const result: Record<number, number | undefined> = {};
+
+        this.forEachStrategicRegion(strategicRegion =>
+            strategicRegion.provinces.forEach(p => {
+                result[p] = strategicRegion.id;
+            })
+        );
+    
+        return result;
+    }
+
     public forEachProvince(callback: (province: Province) => boolean | void) {
         const count = this.provincesCount;
         for (let i = this.badProvincesCount; i < count; i++) {
@@ -253,16 +299,31 @@ class FEWorldMapClass implements FEWorldMap {
         }
     }
 
-    public getProvinceWarnings(province: Province, state?: State): string[] {
+    public forEachStrategicRegion(callback: (strategicRegion: StrategicRegion) => boolean | void): void {
+        const count = this.strategicRegionsCount;
+        for (let i = this.badStrategicRegionsCount; i < count; i++) {
+            const strategicRegion = this.strategicRegions[i];
+            if (strategicRegion && callback(strategicRegion)) {
+                break;
+            }
+        }
+    }
+
+    public getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion): string[] {
         return this.warnings
             .filter(v => v.source.some(s =>
                 (s.type === 'province' && (s.id === province.id || s.color === province.color)) || 
-                (state && s.type === 'state' && s.id === state?.id)
+                (state && s.type === 'state' && s.id === state.id) ||
+                (strategicRegion && s.type === 'strategicregion' && s.id === strategicRegion.id)
                 ))
             .map(v => v.text);
     }
 
     public getStateWarnings(state: State): string[] {
         return this.warnings.filter(v => v.source.some(s => s.type === 'state' && s.id === state.id)).map(v => v.text);
+    }
+
+    public getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[] {
+        return this.warnings.filter(v => v.source.some(s => s.type === 'strategicregion' && s.id === strategicRegion.id)).map(v => v.text);
     }
 }

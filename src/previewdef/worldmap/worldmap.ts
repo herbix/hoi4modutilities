@@ -6,7 +6,7 @@ import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage } from './definitions';
-import { slice, writeFile, debounceByInput, matchPathEnd } from '../../util/common';
+import { slice, writeFile, debounceByInput, matchPathEnd, mkdirs } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
@@ -81,8 +81,16 @@ export class WorldMap {
                         end: msg.end,
                     } as WorldMapMessage);
                     break;
-                case 'openstate':
-                    await this.openStateFile(msg.file, msg.start, msg.end);
+                case 'requeststrategicregions':
+                    await this.panel.webview.postMessage({
+                        command: 'strategicregions',
+                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).strategicRegions, msg.start, msg.end)),
+                        start: msg.start,
+                        end: msg.end,
+                    } as WorldMapMessage);
+                    break;
+                case 'openfile':
+                    await this.openFile(msg.file, msg.type, msg.start, msg.end);
                     break;
             }
         } catch (e) {
@@ -91,6 +99,7 @@ export class WorldMap {
     }
 
     private progressReporter: ProgressReporter = async (progress: string) => {
+        debug('Progress:', progress);
         await this.panel.webview.postMessage({
             command: 'progress',
             data: progress,
@@ -129,25 +138,27 @@ export class WorldMap {
         }
     }
 
-    private async openStateFile(stateFile: string, start: number | undefined, end: number | undefined): Promise<void> {
-        const stateFilePathInMod = await getFilePathFromMod(stateFile);
-        if (stateFilePathInMod !== undefined) {
-            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === stateFilePathInMod.replace('opened?', ''))
-                ?? await vscode.workspace.openTextDocument(stateFilePathInMod);
+    private async openFile(file: string, type: 'state' | 'strategicregion', start: number | undefined, end: number | undefined): Promise<void> {
+        const filePathInMod = await getFilePathFromMod(file);
+        if (filePathInMod !== undefined) {
+            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
+                ?? await vscode.workspace.openTextDocument(filePathInMod);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
             });
             return;
         }
+
+        const typeName = localize('worldmap.openfiletype.' + type as any, type);
         
         if (!vscode.workspace.workspaceFolders?.length) {
-            await vscode.window.showErrorMessage(localize('worldmap.mustopenafolder', 'Must open a folder before opening state file.'));
+            await vscode.window.showErrorMessage(localize('worldmap.mustopenafolder', 'Must open a folder before opening {0} file.', typeName));
             return;
         }
 
         let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
         if (vscode.workspace.workspaceFolders.length >= 1) {
-            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('worldmap.selectafolder', 'Select a folder to copy state file') });
+            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('worldmap.selectafolder', 'Select a folder to copy {0} file', typeName) });
             if (!folder) {
                 return;
             }
@@ -156,8 +167,9 @@ export class WorldMap {
         }
 
         try {
-            const [buffer] = await readFileFromModOrHOI4(stateFile);
-            const targetPath = path.join(targetFolder, stateFile);
+            const [buffer] = await readFileFromModOrHOI4(file);
+            const targetPath = path.join(targetFolder, file);
+            await mkdirs(path.dirname(targetPath));
             await writeFile(targetPath, buffer);
 
             const document = await vscode.workspace.openTextDocument(targetPath);
@@ -166,16 +178,16 @@ export class WorldMap {
             });
 
         } catch (e) {
-            await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open state file: {0}.', e.toString()));
+            await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open {0} file: {1}.', typeName, e.toString()));
         }
     }
 
     private async sendDifferences(cachedWorldMap: WorldMapData, worldMap: WorldMapData): Promise<boolean> {
-        this.progressReporter(localize('worldmap.progress.comparing', 'Comparing changes...'));
+        await this.progressReporter(localize('worldmap.progress.comparing', 'Comparing changes...'));
         const changeMessages: WorldMapMessage[] = [];
 
-        if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount',
-            'badProvincesCount', 'badStatesCount'] as (keyof WorldMapData)[])
+        if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount',
+            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount'] as (keyof WorldMapData)[])
             .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
             return false;
         }
@@ -204,13 +216,17 @@ export class WorldMap {
             return false;
         }
 
-        this.progressReporter(localize('worldmap.progress.applying', 'Applying changes...'));
+        if (!this.fillMessageForItem(changeMessages, worldMap.strategicRegions, cachedWorldMap.strategicRegions, 'strategicregions', worldMap.badStrategicRegionsCount, worldMap.strategicRegionsCount)) {
+            return false;
+        }
+
+        await this.progressReporter(localize('worldmap.progress.applying', 'Applying changes...'));
 
         for (const message of changeMessages) {
             await this.panel.webview.postMessage(message);
         }
 
-        this.progressReporter('');
+        await this.progressReporter('');
         return true;
     }
 

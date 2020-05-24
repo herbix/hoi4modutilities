@@ -1,5 +1,5 @@
 import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain } from "../definitions";
-import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual } from "./common";
+import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual, sortItems } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
@@ -310,48 +310,27 @@ function fillProvinceZones<T extends ColorContainer>(
 }
 
 function sortProvinces(provinces: Province[], badProvinceId: number, relatedFiles: string[], warnings: Warning[]): { sortedProvinces: (Province | undefined)[], badProvinceId: number } {
-    const maxProvinceId = provinces.reduce((p, c) => c.id > p ? c.id : p, 0);
-    if (maxProvinceId > 200000) {
-        throw new Error(localize('worldmap.error.provinceidtoolarge', 'Max province id is too large: {0}.', maxProvinceId));
-    }
-
-    const result: Province[] = new Array(maxProvinceId + 1);
-    provinces.forEach(p => {
-        if (result[p.id]) {
-            warnings.push({
-                source: [{ type: 'province', id: badProvinceId, color: p.color }],
+    const { sorted, badId } = sortItems(
+        provinces,
+        200000,
+        (maxId) => { throw new Error(localize('worldmap.error.provinceidtoolarge', 'Max province id is too large: {0}.', maxId)); },
+        (newProvince, existingProvince, badId) => warnings.push({
+                source: [{ type: 'province', id: badId, color: existingProvince.color }],
                 relatedFiles,
-                text: localize('worldmap.warnings.provinceidconflict', "There're more than one rows for province id {0}. Set id to {1}.", p.id, badProvinceId),
-            });
-            p.id = badProvinceId--;
-        }
-        result[p.id] = p;
-    });
-    
-    let lastNotExistProvinceId: number | undefined = undefined;
-    for (let i = 1; i <= maxProvinceId; i++) {
-        if (result[i]) {
-            if (lastNotExistProvinceId !== undefined) {
-                warnings.push({
-                    source: [{
-                        type: 'state',
-                        id: i,
-                    }],
-                    relatedFiles,
-                    text: localize('worldmap.warnings.provincenotexist', "Province with id {0} doesn't exist.", lastNotExistProvinceId === i - 1 ? i - 1 : `${lastNotExistProvinceId}-${i - 1}`),
-                });
-                lastNotExistProvinceId = undefined;
-            }
-        } else {
-            if (lastNotExistProvinceId === undefined) {
-                lastNotExistProvinceId = i;
-            }
-        }
-    };
+                text: localize('worldmap.warnings.provinceidconflict', "There're more than one rows for province id {0}. Set id to {1}.", newProvince.id, badProvinceId),
+            }),
+        (startId, endId) => warnings.push({
+                source: [{ type: 'province', id: startId, color: -1 }],
+                relatedFiles: [],
+                text: localize('worldmap.warnings.provincenotexist', "Province with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
+            }),
+        false,
+        badProvinceId,
+    );
 
     return {
-        sortedProvinces: result,
-        badProvinceId,
+        sortedProvinces: sorted,
+        badProvinceId: badId,
     };
 }
 
@@ -605,7 +584,7 @@ function mergeProvinceDefinitions(
     for (const province of result) {
         const provinceInMap = colorToProvince[province.color];
         if (provinceInMap) {
-            province.edges = provinceInMap.edges.map(e => ({...e, to: colorToProvinceId[e.toColor], type: ''}));
+            province.edges = provinceInMap.edges.map(e => ({...e, to: colorToProvinceId[e.toColor] ?? -1, type: ''}));
         }
     }
 

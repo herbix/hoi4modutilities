@@ -5,8 +5,8 @@ import { vscode } from "../util/common";
 import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
 import { feLocalize } from "../util/i18n";
 
-export type ViewMode = 'province' | 'state';
-export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoint' | 'continent' | 'warnings';
+export type ViewMode = 'province' | 'state' | 'strategicregion';
+export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' | 'victorypoint' | 'continent' | 'warnings' | 'strategicregionid';
 
 export const topBarHeight = 40;
 
@@ -17,6 +17,8 @@ export class TopBar extends Subscriber {
     public selectedProvinceId: Observable<number | undefined>;
     public hoverStateId: Observable<number | undefined>;
     public selectedStateId: Observable<number | undefined>;
+    public hoverStrategicRegionId: Observable<number | undefined>;
+    public selectedStrategicRegionId: Observable<number | undefined>;
 
     public warningsVisible: boolean = false;
 
@@ -33,6 +35,8 @@ export class TopBar extends Subscriber {
         this.selectedProvinceId = new Observable<number | undefined>(state.selectedProvinceId ?? undefined);
         this.hoverStateId = new Observable<number | undefined>(undefined);
         this.selectedStateId = new Observable<number | undefined>(state.selectedStateId ?? undefined);
+        this.hoverStrategicRegionId = new Observable<number | undefined>(undefined);
+        this.selectedStrategicRegionId = new Observable<number | undefined>(state.selectedStrategicRegionId ?? undefined);
 
         this.viewModeElement = document.getElementById('viewmode') as HTMLSelectElement;
         this.colorSetElement = document.getElementById('colorset') as HTMLSelectElement;
@@ -124,23 +128,39 @@ export class TopBar extends Subscriber {
         const open = document.getElementById("open") as HTMLButtonElement;
         this.subscriptions.push(asEvent(open, 'click')((e) => {
             e.stopPropagation();
-            if (this.selectedStateId.value) {
-                const state = this.loader.worldMap.getStateById(this.selectedStateId.value);
-                if (state) {
-                    vscode.postMessage<WorldMapMessage>({ command: 'openstate', file: state.file, start: state.token?.start, end: state.token?.end });
+            if (this.viewMode.value === 'state') {
+                if (this.selectedStateId.value) {
+                    const state = this.loader.worldMap.getStateById(this.selectedStateId.value);
+                    if (state) {
+                        vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'state', file: state.file, start: state.token?.start, end: state.token?.end });
+                    }
+                }
+            } else if (this.viewMode.value === 'strategicregion') {
+                if (this.selectedStrategicRegionId.value) {
+                    const strategicRegion = this.loader.worldMap.getStrategicRegionById(this.selectedStrategicRegionId.value);
+                    if (strategicRegion) {
+                        vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'strategicregion', file: strategicRegion.file,
+                            start: strategicRegion.token?.start, end: strategicRegion.token?.end });
+                    }
                 }
             }
         }));
-        open.disabled = this.selectedStateId.value === undefined;
-        this.subscriptions.push(this.selectedStateId.onChange(v => {
-            open.disabled = this.selectedStateId.value === undefined;
-        }));
+        const setOpenDisabled = () => {
+            open.disabled = !((this.viewMode.value === 'state' && this.selectedStateId.value !== undefined) ||
+                (this.viewMode.value === 'strategicregion' && this.selectedStrategicRegionId.value !== undefined));
+        };
+        setOpenDisabled();
+        this.subscriptions.push(this.selectedStateId.onChange(setOpenDisabled));
+        this.subscriptions.push(this.selectedStrategicRegionId.onChange(setOpenDisabled));
+        this.subscriptions.push(this.viewMode.onChange(setOpenDisabled));
     }
     
     private registerEventListeners(canvas: HTMLCanvasElement) {
         this.subscriptions.push(asEvent(canvas, 'mousemove')((e) => {
             if (!this.loader.worldMap) {
                 this.hoverProvinceId.set(undefined);
+                this.hoverStateId.set(undefined);
+                this.hoverStrategicRegionId.set(undefined);
                 return;
             }
     
@@ -156,16 +176,19 @@ export class TopBar extends Subscriber {
 
             this.hoverProvinceId.set(worldMap.getProvinceByPosition(x, y)?.id);
             this.hoverStateId.set(this.hoverProvinceId.value === undefined ? undefined : worldMap.getStateByProvinceId(this.hoverProvinceId.value)?.id);
+            this.hoverStrategicRegionId.set(this.hoverProvinceId.value === undefined ? undefined : worldMap.getStrategicRegionByProvinceId(this.hoverProvinceId.value)?.id);
         }));
     
         this.subscriptions.push(asEvent(canvas, 'mouseleave')(() => {
             this.hoverProvinceId.set(undefined);
             this.hoverStateId.set(undefined);
+            this.hoverStrategicRegionId.set(undefined);
         }));
     
         this.subscriptions.push(asEvent(canvas, 'click')(() => {
             this.selectedProvinceId.set(this.selectedProvinceId.value === this.hoverProvinceId.value ? undefined : this.hoverProvinceId.value);
             this.selectedStateId.set(this.selectedStateId.value === this.hoverStateId.value ? undefined : this.hoverStateId.value);
+            this.selectedStrategicRegionId.set(this.selectedStrategicRegionId.value === this.hoverStrategicRegionId.value ? undefined : this.hoverStrategicRegionId.value);
         }));
 
         this.subscriptions.push(this.viewMode.onChange(() => this.onViewModeChange()));
@@ -213,6 +236,9 @@ export class TopBar extends Subscriber {
                 break;
             case 'state':
                 this.searchBox.placeholder = worldMap.statesCount > 1 ? `1-${worldMap.statesCount - 1}` : '';
+                break;
+            case 'strategicregion':
+                this.searchBox.placeholder = worldMap.strategicRegionsCount > 1 ? `1-${worldMap.strategicRegionsCount - 1}` : '';
                 break;
             default:
                 this.searchBox.placeholder = '';
