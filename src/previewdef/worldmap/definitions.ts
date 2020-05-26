@@ -7,13 +7,16 @@ export interface WorldMapData {
     states: (State | undefined | null)[];
     countries: Country[];
     strategicRegions: (StrategicRegion | undefined | null)[];
+    supplyAreas: (SupplyArea | undefined | null)[];
     provincesCount: number;
     statesCount: number;
     countriesCount: number;
     strategicRegionsCount: number;
+    supplyAreasCount: number;
     badProvincesCount: number; // will be * -1
     badStatesCount: number; // will be * -1;
     badStrategicRegionsCount: number;
+    badSupplyAreasCount: number;
     continents: string[];
     terrains: Terrain[];
     warnings: Warning[];
@@ -74,7 +77,7 @@ export interface ProvinceEdgeAdjacency {
 
 export type ProvinceEdge = Omit<ProvinceEdgeGraph & ProvinceEdgeAdjacency, 'from' | 'row' | 'toColor'>;
 
-export interface State extends Region {
+export interface State extends Region, TokenInFile {
     id: number;
     name: string;
     manpower: number;
@@ -84,8 +87,6 @@ export interface State extends Region {
     cores: string[];
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
-    file: string;
-    token: Token | null;
 }
 
 export interface Warning {
@@ -122,13 +123,18 @@ export interface Terrain {
     isNaval: boolean;
 }
 
-export interface StrategicRegion extends Region {
+export interface StrategicRegion extends Region, TokenInFile {
     id: number;
     name: string;
     provinces: number[];
     navalTerrain: string | null;
-    file: string;
-    token: Token | null;
+}
+
+export interface SupplyArea extends Region, TokenInFile {
+    id: number;
+    name: string;
+    value: number;
+    states: number[];
 }
 
 export interface Point {
@@ -149,6 +155,11 @@ export interface Region {
     mass: number;
 }
 
+export interface TokenInFile {
+    file: string;
+    token: Token | null;
+}
+
 export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage;
 
 export interface LoadedMessage {
@@ -157,13 +168,13 @@ export interface LoadedMessage {
 }
 
 export interface RequestMapItemMessage {
-    command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions';
+    command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions' | 'requestsupplyareas';
     start: number;
     end: number;
 }
 
 export interface MapItemMessage {
-    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions';
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas';
     data: string;
     start: number;
     end: number;
@@ -186,7 +197,7 @@ export interface ProvinceMapSummaryMessage {
 
 export interface OpenFileMessage {
     command: 'openfile';
-    type: 'state' | 'strategicregion';
+    type: 'state' | 'strategicregion' | 'supplyarea';
     file: string;
     start: number | undefined;
     end: number | undefined;

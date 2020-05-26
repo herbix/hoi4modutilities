@@ -1,8 +1,8 @@
-import { State, Province, Warning, Zone, WarningSource, ProgressReporter, Region } from "../definitions";
+import { State, Province, Warning, WarningSource, ProgressReporter, Region } from "../definitions";
 import { CustomSymbol, Enum, SchemaDef, StringAsSymbol } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { mergeBoundingBox, LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions } from "./common";
+import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions, mergeRegion } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -104,7 +104,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
     }
 }
 
-export class StateLoader extends FileLoader<StateNoBoundingBox[]> {
+class StateLoader extends FileLoader<StateNoBoundingBox[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateNoBoundingBox[]> {
         return loadState(this.file, warnings);
     }
@@ -186,39 +186,29 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
 }
 
 function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces: (Province | undefined | null)[], width: number, height: number, warnings: Warning[]): State {
-    const provincesInState = noBoundingBoxState.provinces
-        .map(p => {
-            const province = provinces[p];
-            if (!province) {
-                warnings.push({
-                    source: [{ type: 'state', id: noBoundingBoxState.id }],
-                    relatedFiles: [noBoundingBoxState.file],
-                    text: localize('worldmap.warnings.stateprovincenotexist', "Province {0} used in state {1} doesn't exist.", p, noBoundingBoxState.id),
-                });
-            }
-            return province;
-        })
-        .filter((p): p is Province => !!p);
-
-    let state: State;
-    if (provincesInState.length > 0) {
-        state = Object.assign(noBoundingBoxState, mergeRegions(provincesInState, width));
-        if (state.boundingBox.w > width / 2 || state.boundingBox.h > height / 2) {
-            warnings.push({
-                source: [{ type: 'state', id: state.id }],
-                relatedFiles: [state.file],
-                text: localize('worldmap.warnings.statetoolarge', 'State {0} is too large: {1}x{2}.', state.id, state.boundingBox.w, state.boundingBox.h),
-            });
-        }
-    } else {
-        state = Object.assign(noBoundingBoxState, { boundingBox: { x: 0, y: 0, w: 0, h: 0 }, centerOfMass: { x: 0, y: 0 }, mass: 0 });
-        if (noBoundingBoxState.provinces.length > 0) {
-            warnings.push({
+    const state = mergeRegion(
+        noBoundingBoxState,
+        'provinces',
+        provinces,
+        width, 
+        provinceId => warnings.push({
+                source: [{ type: 'state', id: noBoundingBoxState.id }],
+                relatedFiles: [noBoundingBoxState.file],
+                text: localize('worldmap.warnings.stateprovincenotexist', "Province {0} used in state {1} doesn't exist.", provinceId, noBoundingBoxState.id),
+            }),
+        () => warnings.push({
                 source: [{ type: 'state', id: noBoundingBoxState.id }],
                 relatedFiles: [noBoundingBoxState.file],
                 text: localize('worldmap.warnings.statenovalidprovinces', "State {0} in doesn't have valid provinces.", noBoundingBoxState.id),
-            });
-        }
+            })
+    );
+
+    if (state.boundingBox.w > width / 2 || state.boundingBox.h > height / 2) {
+        warnings.push({
+            source: [{ type: 'state', id: state.id }],
+            relatedFiles: [state.file],
+            text: localize('worldmap.warnings.statetoolarge', 'State {0} is too large: {1}x{2}.', state.id, state.boundingBox.w, state.boundingBox.h),
+        });
     }
 
     return state;
@@ -246,7 +236,7 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
                         { type: 'province', id: p, color: province.color }
                     ],
                     relatedFiles: [state.file, states[provinceToState[p]]!.file],
-                    text: localize('worldmap.warnings.provinceinmultistates', 'Province {0} exists in multiple states: {1}, {2}', p, provinceToState[p], state.id),
+                    text: localize('worldmap.warnings.provinceinmultistates', 'Province {0} exists in multiple states: {1}, {2}.', p, provinceToState[p], state.id),
                 });
             } else {
                 provinceToState[p] = state.id;

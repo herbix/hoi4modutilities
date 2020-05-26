@@ -89,6 +89,14 @@ export class WorldMap {
                         end: msg.end,
                     } as WorldMapMessage);
                     break;
+                case 'requestsupplyareas':
+                    await this.panel.webview.postMessage({
+                        command: 'supplyareas',
+                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).supplyAreas, msg.start, msg.end)),
+                        start: msg.start,
+                        end: msg.end,
+                    } as WorldMapMessage);
+                    break;
                 case 'openfile':
                     await this.openFile(msg.file, msg.type, msg.start, msg.end);
                     break;
@@ -118,12 +126,13 @@ export class WorldMap {
                 return;
             }
 
-            const summary = {
+            const summary: WorldMapData = {
                 ...worldMap,
-                colorByPosition: undefined,
                 provinces: [],
                 states: [],
                 countries: [],
+                strategicRegions: [],
+                supplyAreas: [],
             };
             await this.panel.webview.postMessage({
                 command: 'provincemapsummary',
@@ -138,7 +147,7 @@ export class WorldMap {
         }
     }
 
-    private async openFile(file: string, type: 'state' | 'strategicregion', start: number | undefined, end: number | undefined): Promise<void> {
+    private async openFile(file: string, type: 'state' | 'strategicregion' | 'supplyarea', start: number | undefined, end: number | undefined): Promise<void> {
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
             const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
@@ -186,8 +195,8 @@ export class WorldMap {
         await this.progressReporter(localize('worldmap.progress.comparing', 'Comparing changes...'));
         const changeMessages: WorldMapMessage[] = [];
 
-        if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount',
-            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount'] as (keyof WorldMapData)[])
+        if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount', 'supplyAreasCount',
+            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount'] as (keyof WorldMapData)[])
             .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
             return false;
         }
@@ -217,6 +226,10 @@ export class WorldMap {
         }
 
         if (!this.fillMessageForItem(changeMessages, worldMap.strategicRegions, cachedWorldMap.strategicRegions, 'strategicregions', worldMap.badStrategicRegionsCount, worldMap.strategicRegionsCount)) {
+            return false;
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.supplyAreas, cachedWorldMap.supplyAreas, 'supplyareas', worldMap.badSupplyAreasCount, worldMap.supplyAreasCount)) {
             return false;
         }
 

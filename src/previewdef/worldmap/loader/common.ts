@@ -4,27 +4,6 @@ import { hoiFileExpiryToken, listFilesFromModOrHOI4 } from "../../../util/filelo
 import { Attachment, Enum } from '../../../hoiformat/schema';
 import { hsvToRgb } from '../../../util/common';
 
-export function mergeBoundingBox(a: Zone, b: Zone, width: number): Zone {
-    if (a.x + a.w < width * 0.25 && b.x > width * 0.75) {
-        b = { ...b, x: b.x - width };
-    }
-
-    if (b.x + b.w < width * 0.25 && a.x > width * 0.75) {
-        a = { ...a, x: a.x - width };
-    }
-
-    const l = Math.min(a.x, b.x);
-    const t = Math.min(a.y, b.y);
-    const r = Math.max(a.x + a.w, b.x + b.w);
-    const bo = Math.max(a.y + a.h, b.y + b.h);
-    return {
-        x: l,
-        y: t,
-        w: r - l,
-        h: bo - t,
-    };
-}
-
 export function pointEqual(a: Point, b: Point): boolean {
     return a.x === b.x && a.y === b.y;
 }
@@ -203,6 +182,37 @@ export function sortItems<T extends { id: number }>(
         sorted: result,
         badId,
     };
+}
+
+export function mergeRegion<K extends string, T extends { [k in K]: number[] }>(
+    input: T,
+    subRegionIdType: K,
+    subRegions: (Region | undefined | null)[],
+    width: number,
+    onRegionNotExist: (regionId: number) => void,
+    onNoRegion: () => void
+): T & Region {
+    const regionsInInput = input[subRegionIdType]
+        .map(r => {
+            const region = subRegions[r];
+            if (!region) {
+                onRegionNotExist(r);
+            }
+            return region;
+        })
+        .filter((r): r is Region => !!r);
+
+    let result: T & Region;
+    if (regionsInInput.length > 0) {
+        result = Object.assign(input, mergeRegions(regionsInInput, width));
+    } else {
+        result = Object.assign(input, { boundingBox: { x: 0, y: 0, w: 0, h: 0 }, centerOfMass: { x: 0, y: 0 }, mass: 0 });
+        if (input[subRegionIdType].length > 0) {
+            onNoRegion();
+        }
+    }
+
+    return result;
 }
 
 export function mergeRegions(regions: (Zone | Region)[], width: number): Region {

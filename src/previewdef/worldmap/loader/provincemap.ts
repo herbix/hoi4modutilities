@@ -1,5 +1,5 @@
 import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain, Region } from "../definitions";
-import { FileLoader, mergeInLoadResult, LoadResult, mergeBoundingBox, pointEqual, sortItems, mergeRegions } from "./common";
+import { FileLoader, mergeInLoadResult, LoadResult, pointEqual, sortItems, mergeRegions } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";

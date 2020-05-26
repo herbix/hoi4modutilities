@@ -2,7 +2,7 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { vscode, copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
-import { Warning, Terrain, StrategicRegion } from "../../src/previewdef/worldmap/definitions";
+import { Warning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -14,6 +14,7 @@ interface FEWorldMapClassExtra {
     getProvinceById(provinceId: number | undefined): Province | undefined;
     getStateById(stateId: number | undefined): State | undefined;
     getStrategicRegionById(strategicRegionId: number | undefined): StrategicRegion | undefined;
+    getSupplyAreaById(supplyAreaId: number | undefined): SupplyArea | undefined;
 
     getStateByProvinceId(provinceId: number): State | undefined;
     getProvinceToStateMap(): Record<number, number | undefined>;
@@ -21,18 +22,23 @@ interface FEWorldMapClassExtra {
     getStrategicRegionByProvinceId(provinceId: number): StrategicRegion | undefined;
     getProvinceToStrategicRegionMap(): Record<number, number | undefined>;
 
+    getSupplyAreaByStateId(stateId: number): SupplyArea | undefined;
+    getStateToSupplyAreaMap(): Record<number, number | undefined>;
+
     getProvinceByPosition(x: number, y: number): Province | undefined;
 
-    getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion): string[];
-    getStateWarnings(state: State): string[];
+    getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[];
+    getStateWarnings(state: State, supplyArea?: SupplyArea): string[];
     getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[];
+    getSupplyAreaWarnings(supplyArea: SupplyArea): string[];
 
     forEachProvince(callback: (province: Province) => boolean | void): void;
     forEachState(callback: (state: State) => boolean | void): void;
     forEachStrategicRegion(callback: (strategicRegion: StrategicRegion) => boolean | void): void;
+    forEachSupplyArea(callback: (supplyArea: SupplyArea) => boolean | void): void;
 }
 
-export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicRegions'> & ExtraMapData & FEWorldMapClassExtra;
+export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicRegions' | 'supplyAreas'> & ExtraMapData & FEWorldMapClassExtra;
 
 export class Loader extends Subscriber {
     public worldMap: FEWorldMapClass;
@@ -93,6 +99,10 @@ export class Loader extends Subscriber {
                     this.receiveData(this.loadingProvinceMap?.strategicRegions, message.start, message.end, message.data);
                     this.loadNext();
                     break;
+                case 'supplyareas':
+                    this.receiveData(this.loadingProvinceMap?.supplyAreas, message.start, message.end, message.data);
+                    this.loadNext();
+                    break;
                 case 'warnings':
                     if (this.loadingProvinceMap) {
                         this.loadingProvinceMap.warnings = JSON.parse(message.data);
@@ -137,6 +147,8 @@ export class Loader extends Subscriber {
         this.queueLoadingRequest('requestcountries', this.loadingProvinceMap.countriesCount, 300);
         this.queueLoadingRequest('requeststrategicregions', this.loadingProvinceMap.strategicRegionsCount, 300);
         this.queueLoadingRequest('requeststrategicregions', -this.loadingProvinceMap.badStrategicRegionsCount, 300, this.loadingProvinceMap.badStrategicRegionsCount);
+        this.queueLoadingRequest('requestsupplyareas', this.loadingProvinceMap.supplyAreasCount, 300);
+        this.queueLoadingRequest('requestsupplyareas', -this.loadingProvinceMap.badSupplyAreasCount, 300, this.loadingProvinceMap.badSupplyAreasCount);
         this.queueLoadingRequest('requeststates', this.loadingProvinceMap.statesCount, 300);
         this.queueLoadingRequest('requeststates', -this.loadingProvinceMap.badStatesCount, 300, this.loadingProvinceMap.badStatesCount);
         this.queueLoadingRequest('requestprovinces', this.loadingProvinceMap.provincesCount, 300);
@@ -190,22 +202,25 @@ class FEWorldMapClass implements FEWorldMap {
     statesCount!: number;
     countriesCount!: number;
     strategicRegionsCount!: number;
+    supplyAreasCount!: number;
     badProvincesCount!: number;
     badStatesCount!: number;
     badStrategicRegionsCount!: number;
+    badSupplyAreasCount!: number;
     continents!: string[];
     terrains!: Terrain[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
     private strategicRegions!: (StrategicRegion | null | undefined)[];
+    private supplyAreas!: (SupplyArea | null | undefined)[];
 
     constructor(worldMap?: WorldMapData & ExtraMapData) {
         Object.assign(this, worldMap ?? ({
             width: 0, height: 0,
-            provinces: [], states: [], countries: [], warnings: [], continents: [], strategicRegions: [], terrains: [],
-            provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0,
-            badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0,
+            provinces: [], states: [], countries: [], warnings: [], continents: [], strategicRegions: [], supplyAreas: [], terrains: [],
+            provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
+            badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
         } as WorldMapData & ExtraMapData));
     }
 
@@ -219,6 +234,10 @@ class FEWorldMapClass implements FEWorldMap {
 
     public getStrategicRegionById = (strategicRegionId: number | undefined): StrategicRegion | undefined => {
         return strategicRegionId ? this.strategicRegions[strategicRegionId] ?? undefined : undefined;
+    };
+
+    public getSupplyAreaById = (supplyAreaId: number | undefined): SupplyArea | undefined => {
+        return supplyAreaId ? this.supplyAreas[supplyAreaId] ?? undefined : undefined;
     };
 
     public getStateByProvinceId(provinceId: number): State | undefined {
@@ -241,6 +260,17 @@ class FEWorldMapClass implements FEWorldMap {
             }
         });
         return resultStrategicRegion;
+    }
+
+    public getSupplyAreaByStateId(stateId: number): SupplyArea | undefined {
+        let resultSupplyArea: SupplyArea | undefined = undefined;
+        this.forEachSupplyArea(supplyArea => {
+            if (supplyArea.states.includes(stateId)) {
+                resultSupplyArea = supplyArea;
+                return true;
+            }
+        });
+        return resultSupplyArea;
     }
     
     public getProvinceByPosition(x: number, y: number): Province | undefined {
@@ -279,6 +309,18 @@ class FEWorldMapClass implements FEWorldMap {
         return result;
     }
 
+    public getStateToSupplyAreaMap(): Record<number, number | undefined> {
+        const result: Record<number, number | undefined> = {};
+
+        this.forEachSupplyArea(supplyArea =>
+            supplyArea.states.forEach(s => {
+                result[s] = supplyArea.id;
+            })
+        );
+    
+        return result;
+    }
+
     public forEachProvince(callback: (province: Province) => boolean | void) {
         const count = this.provincesCount;
         for (let i = this.badProvincesCount; i < count; i++) {
@@ -308,22 +350,42 @@ class FEWorldMapClass implements FEWorldMap {
             }
         }
     }
+    
+    public forEachSupplyArea(callback: (supplyArea: SupplyArea) => boolean | void): void {
+        const count = this.supplyAreasCount;
+        for (let i = this.badSupplyAreasCount; i < count; i++) {
+            const supplyArea = this.supplyAreas[i];
+            if (supplyArea && callback(supplyArea)) {
+                break;
+            }
+        }
+    }
 
-    public getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion): string[] {
+    public getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[] {
         return this.warnings
             .filter(v => v.source.some(s =>
                 (s.type === 'province' && (s.id === province.id || s.color === province.color)) || 
                 (state && s.type === 'state' && s.id === state.id) ||
-                (strategicRegion && s.type === 'strategicregion' && s.id === strategicRegion.id)
+                (strategicRegion && s.type === 'strategicregion' && s.id === strategicRegion.id) ||
+                (supplyArea && s.type === 'supplyarea' && s.id === supplyArea.id)
                 ))
             .map(v => v.text);
     }
 
-    public getStateWarnings(state: State): string[] {
-        return this.warnings.filter(v => v.source.some(s => s.type === 'state' && s.id === state.id)).map(v => v.text);
+    public getStateWarnings(state: State, supplyArea?: SupplyArea): string[] {
+        return this.warnings
+            .filter(v => v.source.some(s =>
+                (s.type === 'state' && s.id === state.id) ||
+                (supplyArea && s.type === 'supplyarea' && s.id === supplyArea.id)
+                ))
+            .map(v => v.text);
     }
 
     public getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[] {
         return this.warnings.filter(v => v.source.some(s => s.type === 'strategicregion' && s.id === strategicRegion.id)).map(v => v.text);
+    }
+    
+    public getSupplyAreaWarnings(supplyArea: SupplyArea): string[] {
+        return this.warnings.filter(v => v.source.some(s => s.type === 'supplyarea' && s.id === supplyArea.id)).map(v => v.text);
     }
 }

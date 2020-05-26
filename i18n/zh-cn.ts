@@ -33,6 +33,7 @@ export = {
     'worldmap.mustopenafolder': '要打开{0}文件，必须先打开文件夹。',
     'worldmap.openfiletype.state': '省份',
     'worldmap.openfiletype.strategicregion': '战略区域',
+    'worldmap.openfiletype.supplyarea': '补给区域',
     'worldmap.preview.title': '预览世界地图',
     'worldmap.progress.applying': '引入更新……',
     'worldmap.progress.calculatingedge': '计算地块边界……',
