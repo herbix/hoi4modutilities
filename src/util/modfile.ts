@@ -35,7 +35,7 @@ export function updateSelectedModFileStatus(modFile: string | undefined, error: 
             const modFileName = path.basename(modFile, ".mod");
             modName.command = Commands.SelectModFile;
             modName.text = (error ? "$(error) " : "$(file-code) ") + modFileName;
-            modName.tooltip = (error ? localize('modfile.errorreading', "[Error reading this file]") : '') + modFile;
+            modName.tooltip = (error ? localize('modfile.errorreading', "Error reading this file: ") : '') + modFile;
             modName.show();
         } else {
             modName.command = Commands.SelectModFile;

@@ -376,10 +376,10 @@ ${stateObject ? `
 ${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}`: ''
 }
 ${supplyArea ? `
-${feLocalize('TODO', 'Supply area')}=${supplyArea.id}
+${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}
 ${strategicRegion ? `
-${feLocalize('TODO', 'Strategic Region')}=${strategicRegion.id}
+${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}
 `: ''
 }
 ${stateObject ? `
@@ -388,12 +388,12 @@ ${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${stateObject.cores.join(','
 ${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${stateObject.manpower}` : ''
 }
 ${supplyArea ? `
-${feLocalize('TODO', 'Supply value')}=${supplyArea.value}
+${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
 ` : ''}
 ${feLocalize('worldmap.tooltip.type', 'Type')}=${province.type}
 ${feLocalize('worldmap.tooltip.terrain', 'Terrain')}=${province.terrain}
 ${strategicRegion && strategicRegion.navalTerrain ? `
-${feLocalize('TODO', 'Naval terrain')}=${strategicRegion.navalTerrain}
+${feLocalize('worldmap.tooltip.navalterrain', 'Naval terrain')}=${strategicRegion.navalTerrain}
 `: ''
 }
 ${feLocalize('worldmap.tooltip.coastal', 'Coastal')}=${province.coastal}
@@ -487,14 +487,14 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
 ${feLocalize('worldmap.tooltip.state', 'State')}=${state.id}
 ${supplyArea ? `
-${feLocalize('TODO', 'Supply area')}=${supplyArea.id}
+${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${state.owner}
 ${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${state.cores.join(',')}
 ${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${state.manpower}
 ${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
 ${supplyArea ? `
-${feLocalize('TODO', 'Supply value')}=${supplyArea.value}
+${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
 ` : ''}
 ${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${state.provinces.join(',')}
 ${worldMap.getStateWarnings(state, supplyArea).map(v => '|r|' + v).join('\n')}`);
@@ -502,9 +502,9 @@ ${worldMap.getStateWarnings(state, supplyArea).map(v => '|r|' + v).join('\n')}`)
 
     private renderStrategicRegionTooltip(strategicRegion: StrategicRegion, worldMap: FEWorldMap) {
         this.renderTooltip(`
-${feLocalize('TODO', 'Strategic region')}=${strategicRegion.id}
+${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}
 ${strategicRegion.navalTerrain ? `
-${feLocalize('TODO', 'Naval terrain')}=${strategicRegion.navalTerrain}
+${feLocalize('worldmap.tooltip.navalterrain', 'Naval terrain')}=${strategicRegion.navalTerrain}
 `: ''
 }
 ${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${strategicRegion.provinces.join(',')}
@@ -513,9 +513,9 @@ ${worldMap.getStrategicRegionWarnings(strategicRegion).map(v => '|r|' + v).join(
 
     private renderSupplyAreaTooltip(supplyArea: SupplyArea, worldMap: FEWorldMap) {
         this.renderTooltip(`
-${feLocalize('TODO', 'Supply area')}=${supplyArea.id}
-${feLocalize('TODO', 'Supply value')}=${supplyArea.value}
-${feLocalize('TODO', 'States')}=${supplyArea.states.join(',')}
+${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
+${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
+${feLocalize('worldmap.tooltip.states', 'States')}=${supplyArea.states.join(',')}
 ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
     }
 

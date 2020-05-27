@@ -44,7 +44,7 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
-        await this.progressReporter(localize('TODO', 'Loading strategic regions...'));
+        await this.progressReporter(localize('worldmap.progress.loadingstrategicregions', 'Loading strategic regions...'));
         return super.loadImpl(force);
     }
 
@@ -52,7 +52,7 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         const provinceMap = await this.defaultMapLoader.load(false);
         const stateMap = await this.statesLoader.load(false);
 
-        await this.progressReporter(localize('TODO', 'Mapping provinces to strategic regions...'));
+        await this.progressReporter(localize('worldmap.progress.mapprovincestostrategicregions', 'Mapping provinces to strategic regions...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
         const strategicRegions = fileResults.reduce<StrategicRegionNoRegion[]>((p, c) => p.concat(c.result), []);
@@ -98,13 +98,13 @@ async function loadStrategicRegion(file: string, globalWarnings: Warning[]): Pro
         const data = await readFileFromModOrHOI4AsJson<StrategicRegionFile>(file, strategicRegionFileSchema);
         for (const strategicRegion of data.strategic_region) {
             const warnings: string[] = [];
-            const id = strategicRegion.id ? strategicRegion.id : (warnings.push(localize('TODO', "A strategic region in {0} doesn't have id field.", file)), -1);
-            const name = strategicRegion.name ? strategicRegion.name : (warnings.push(localize('TODO', "Strategic region {0} doesn't have name field.", id)), '');
+            const id = strategicRegion.id ? strategicRegion.id : (warnings.push(localize('worldmap.warnings.strategicregionnoid', "A strategic region in \"{0}\" doesn't have id field.", file)), -1);
+            const name = strategicRegion.name ? strategicRegion.name : (warnings.push(localize('worldmap.warnings.strategicregionnoname', "Strategic region {0} doesn't have name field.", id)), '');
             const provinces = strategicRegion.provinces._values.map(v => parseInt(v));
             const navalTerrain = strategicRegion.naval_terrain?._name ?? null;
 
             if (provinces.length === 0) {
-                warnings.push(localize('TODO', "Strategic region {0} in \"{1}\" doesn't have provinces.", id, file));
+                warnings.push(localize('worldmap.warnings.strategicregionnoprovinces', "Strategic region {0} in \"{1}\" doesn't have provinces.", id, file));
             }
 
             globalWarnings.push(...warnings.map<Warning>(warning => ({
@@ -143,7 +143,7 @@ function validateStrategicRegions(strategicRegions: StrategicRegionNoRegion[], t
                         id: strategicRegion.id,
                     }],
                     relatedFiles: [strategicRegion.file],
-                    text: localize('TODO', 'Naval terrain "{0}" is not defined.', terrain),
+                    text: localize('worldmap.warnings.navalterrainnotdefined', 'Naval terrain "{0}" is not defined.', terrain),
                 });
             }
         }
@@ -154,16 +154,16 @@ function sortStrategicRegions(strategicRegions: StrategicRegionNoRegion[], warni
     const { sorted, badId } = sortItems(
         strategicRegions,
         10000,
-        (maxId) => { throw new Error(localize('TODO', 'Max strategic region ID is too large: {0}.', maxId)); },
+        (maxId) => { throw new Error(localize('worldmap.warnings.strategicregionidtoolarge', 'Max strategic region ID is too large: {0}.', maxId)); },
         (newStrategicRegion, existingStrategicRegion, badId) => warnings.push({
                 source: [{ type: 'strategicregion', id: badId }],
                 relatedFiles: [newStrategicRegion.file, existingStrategicRegion.file],
-                text: localize('TODO', "There're more than one strategic regions using ID {0}.", newStrategicRegion.id),
+                text: localize('worldmap.warnings.strategicregionidconflict', "There're more than one strategic regions using ID {0}.", newStrategicRegion.id),
             }),
         (startId, endId) => warnings.push({
                 source: [{ type: 'strategicregion', id: startId }],
                 relatedFiles: [],
-                text: localize('TODO', "Strategic region with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
+                text: localize('worldmap.warnings.strategicregionnotexist', "Strategic region with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
             }),
     );
 
@@ -182,12 +182,12 @@ function calculateBoundingBox(strategicRegionNoRegion: StrategicRegionNoRegion, 
         provinceId => warnings.push({
                 source: [{ type: 'strategicregion', id: strategicRegionNoRegion.id }],
                 relatedFiles: [strategicRegionNoRegion.file],
-                text: localize('TODO', "Province {0} used in strategic region {1} doesn't exist.", provinceId, strategicRegionNoRegion.id),
+                text: localize('worldmap.warnings.provinceinstrategicregionnotexist', "Province {0} used in strategic region {1} doesn't exist.", provinceId, strategicRegionNoRegion.id),
             }),
         () => warnings.push({
                 source: [{ type: 'strategicregion', id: strategicRegionNoRegion.id }],
                 relatedFiles: [strategicRegionNoRegion.file],
-                text: localize('TODO', "Strategic region {0} in doesn't have valid provinces.", strategicRegionNoRegion.id),
+                text: localize('worldmap.warnings.strategicregionnovalidprovinces', "Strategic region {0} doesn't have valid provinces.", strategicRegionNoRegion.id),
             }),
     );
 }
@@ -221,7 +221,7 @@ function validateProvincesInStrategicRegions(
                         { type: 'province', id: p, color: province.color }
                     ],
                     relatedFiles: [strategicRegion.file, strategicRegions[provinceToStrategicRegion[p]]!.file],
-                    text: localize('TODO', 'Province {0} exists in multiple strategic regions: {1}, {2}.', p, provinceToStrategicRegion[p], strategicRegion.id),
+                    text: localize('worldmap.warnings.provinceinmultiplestrategicregions', 'Province {0} exists in multiple strategic regions: {1}, {2}.', p, provinceToStrategicRegion[p], strategicRegion.id),
                 });
             } else {
                 provinceToStrategicRegion[p] = strategicRegion.id;
@@ -238,7 +238,7 @@ function validateProvincesInStrategicRegions(
             warnings.push({
                 source: [{ type: 'province', id: i, color: province.color }],
                 relatedFiles: [],
-                text: localize('TODO', 'Province {0} is not in any strategic region.', i),
+                text: localize('worldmap.warnings.provincenostrategicregion', 'Province {0} is not in any strategic region.', i),
             });
         }
     }
@@ -267,7 +267,7 @@ function validateProvincesInStrategicRegions(
                     { type: 'state', id: i },
                 ],
                 relatedFiles: [state.file],
-                text: localize('TODO', 'In state {0}, province {1} are not belong to same strategic region as other provinces.', i, badProvinces.join(', ')),
+                text: localize('worldmap.warnings.stateinmultiplestrategicregions', 'In state {0}, province {1} are not belong to same strategic region as other provinces.', i, badProvinces.join(', ')),
             });
         }
     }

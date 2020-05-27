@@ -43,7 +43,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<SupplyAreasLoaderResult>> {
-        await this.progressReporter(localize('TODO', 'Loading supply areas...'));
+        await this.progressReporter(localize('worldmap.progress.loadingsupplyareas', 'Loading supply areas...'));
         return super.loadImpl(force);
     }
 
@@ -51,7 +51,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
         const provinceMap = await this.defaultMapLoader.load(false);
         const stateMap = await this.statesLoader.load(false);
 
-        await this.progressReporter(localize('TODO', 'Mapping states to supply areas...'));
+        await this.progressReporter(localize('worldmap.progress.mapstatetosupplyarea', 'Mapping states to supply areas...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
         const SupplyAreas = fileResults.reduce<SupplyAreaNoRegion[]>((p, c) => p.concat(c.result), []);
@@ -96,13 +96,13 @@ async function loadSupplyArea(file: string, globalWarnings: Warning[]): Promise<
         const data = await readFileFromModOrHOI4AsJson<SupplyAreaFile>(file, supplyAreaFileSchema);
         for (const supplyArea of data.supply_area) {
             const warnings: string[] = [];
-            const id = supplyArea.id ? supplyArea.id : (warnings.push(localize('TODO', "A supply area in {0} doesn't have id field.", file)), -1);
-            const name = supplyArea.name ? supplyArea.name : (warnings.push(localize('TODO', "Supply area {0} doesn't have name field.", id)), '');
+            const id = supplyArea.id ? supplyArea.id : (warnings.push(localize('worldmap.warnings.supplyareanoid', "A supply area in \"{0}\" doesn't have id field.", file)), -1);
+            const name = supplyArea.name ? supplyArea.name : (warnings.push(localize('worldmap.warnings.supplyareanoname', "Supply area {0} doesn't have name field.", id)), '');
             const value = supplyArea.value ?? 0;
             const states = supplyArea.states._values.map(v => parseInt(v));
 
             if (states.length === 0) {
-                warnings.push(localize('TODO', "Supply area {0} in \"{1}\" doesn't have states.", id, file));
+                warnings.push(localize('worldmap.warnings.supplyareanostates', "Supply area {0} in \"{1}\" doesn't have states.", id, file));
             }
 
             globalWarnings.push(...warnings.map<Warning>(warning => ({
@@ -132,16 +132,16 @@ function sortSupplyAreas(supplyAreas: SupplyAreaNoRegion[], warnings: Warning[])
     const { sorted, badId } = sortItems(
         supplyAreas,
         10000,
-        (maxId) => { throw new Error(localize('TODO', 'Max supply area ID is too large: {0}.', maxId)); },
+        (maxId) => { throw new Error(localize('worldmap.warnings.supplyareaidtoolarge', 'Max supply area ID is too large: {0}.', maxId)); },
         (newSupplyArea, existingSupplyArea, badId) => warnings.push({
                 source: [{ type: 'supplyarea', id: badId }],
                 relatedFiles: [newSupplyArea.file, existingSupplyArea.file],
-                text: localize('TODO', "There're more than one supply areas using ID {0}.", newSupplyArea.id),
+                text: localize('worldmap.warnings.supplyareaidconflict', "There're more than one supply areas using ID {0}.", newSupplyArea.id),
             }),
         (startId, endId) => warnings.push({
                 source: [{ type: 'supplyarea', id: startId }],
                 relatedFiles: [],
-                text: localize('TODO', "Supply area with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
+                text: localize('worldmap.warnings.supplyareanotexist', "Supply area with id {0} doesn't exist.", startId === endId ? startId : `${startId}-${endId}`),
             }),
     );
 
@@ -160,12 +160,12 @@ function calculateBoundingBox(supplyAreaNoRegion: SupplyAreaNoRegion, states: (S
         stateId => warnings.push({
                 source: [{ type: 'supplyarea', id: supplyAreaNoRegion.id }],
                 relatedFiles: [supplyAreaNoRegion.file],
-                text: localize('TODO', "State {0} used in supply area {1} doesn't exist.", stateId, supplyAreaNoRegion.id),
+                text: localize('worldmap.warnings.stateinsupplyareanotexist', "State {0} used in supply area {1} doesn't exist.", stateId, supplyAreaNoRegion.id),
             }),
         () => warnings.push({
                 source: [{ type: 'supplyarea', id: supplyAreaNoRegion.id }],
                 relatedFiles: [supplyAreaNoRegion.file],
-                text: localize('TODO', "Supply area {0} in doesn't have valid states.", supplyAreaNoRegion.id),
+                text: localize('worldmap.warnings.supplyareanovalidstates', "Supply area {0} doesn't have valid states.", supplyAreaNoRegion.id),
             }),
     );
 }
@@ -198,7 +198,7 @@ function validateStatesInSupplyAreas(
                         { type: 'state', id: s }
                     ],
                     relatedFiles: [supplyArea.file, supplyAreas[stateToSupplyArea[s]]!.file, state.file],
-                    text: localize('TODO', 'State {0} exists in multiple supply areas: {1}, {2}.', s, stateToSupplyArea[s], supplyArea.id),
+                    text: localize('worldmap.warnings.stateinmultiplesupplyareas', 'State {0} exists in multiple supply areas: {1}, {2}.', s, stateToSupplyArea[s], supplyArea.id),
                 });
             } else {
                 stateToSupplyArea[s] = supplyArea.id;
@@ -212,7 +212,7 @@ function validateStatesInSupplyAreas(
             warnings.push({
                 source: [{ type: 'supplyarea', id: i }],
                 relatedFiles: [supplyArea.file],
-                text: localize('TODO', 'States in supply area {0} are not contiguous: {1}, {2}.', i, badStates[0], badStates[1]),
+                text: localize('worldmap.warnings.statesnotcontiguous', 'States in supply area {0} are not contiguous: {1}, {2}.', i, badStates[0], badStates[1]),
             });
         }
     }
@@ -226,7 +226,7 @@ function validateStatesInSupplyAreas(
             warnings.push({
                 source: [{ type: 'state', id: i }],
                 relatedFiles: [state.file],
-                text: localize('TODO', 'State {0} is not in any supply area.', i),
+                text: localize('worldmap.warnings.statenosupplyarea', 'State {0} is not in any supply area.', i),
             });
         }
     }

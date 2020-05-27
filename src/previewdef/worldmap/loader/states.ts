@@ -166,7 +166,7 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
     const { sorted, badId } = sortItems(
         states,
         10000,
-        (maxId) => { throw new Error(localize('TODO', 'Max state id is too large: {0}', maxId)); },
+        (maxId) => { throw new Error(localize('worldmap.warnings.stateidtoolarge', 'Max state id is too large: {0}', maxId)); },
         (newState, existingState, badId) => warnings.push({
                 source: [{ type: 'state', id: badId }],
                 relatedFiles: [newState.file, existingState.file],
