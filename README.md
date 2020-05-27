@@ -6,52 +6,42 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 ## Features
 
+* World map preview
+* Focus tree preview
+* Technology tree preview
+* `.gfx` file preview (sprites used by HOI4 are defined here)
+* `.dds` file preview (images files used by HOI4)
+
+## Steps to start
+
+1. Install and enable this extension in VSCode.
+2. Update setting `hoi4ModUtilities.installPath` to the folder that installed Heart of Iron IV.
+3. Open your mod develop folder.
+4. (*Optional*) Open command palette using `Ctrl+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
+5. Use these entries:
+    * Command palttle (`Ctrl+P`) commands: `Preview World Map` and `Preview HOI4 file`*.
+    * `Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png))* button on right-top tool bar of text editor.
+    * Open a `.dds` file.
+
+\* *`Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png)) button/command is invisible, except on `.gfx`, technology tree or national focus tree files.*
+
+## Demos
+
 ### World map preview
-* Possible view modes: province and state.
-* Copy (if not in mod) and open state file from world map.
-* Show warnings and informations about provinces and states.
-* Various of color sets.
-* Search province or state by ID.
-* Auto reload world map when related file updates.
-* Force reload world map from tool bar.
 
 ![World map preview demo](demo/5.gif)
 
 ### Focus tree preview
 
-* Render focus tree as graph.
-* Navigate to `focus` tag in document by clicking a focus in graph.
-* Show/hide focus branches (available for focuses has `allow_branch` tag).
-* Auto update preview when document updates.
-* Preview focus tree file that contains `shared_focus` tree.
-* Can be dragged to scroll.
-
 ![Focus tree preview demo](demo/1.gif)
 
 ### Technology tree preview
-
-* Render technology tree as GUI defined in `interface\countrytechtreeview.gui` (icons, texts defined in this file will also be rendered).
-* Navigate to related technology tag by clicking technology or subtechnology.
-* Auto update preview when technology file changed.
-* Switch technology folder if a technology tree contains technology from different folder.
-* Can be dragged to scroll.
 
 ![Technology tree preview demo](demo/4.gif)
 
 ### GFX file preview
 
-* Preview all `spritetype` and `corneredTileSpriteType` tags in `.gfx` files.
-* Filter sprites by name.
-* Navigate to related tag in document by clicking a sprite in list.
-* Show image size and path on tooltip.
-
 ![GFX file preview demo](demo/2.gif)
-
-### DDS preview
-
-* Preview `.dds` file (partially support).
-
-![DDS preview demo](demo/3.gif)
 
 ## Extension Settings
 
@@ -64,25 +54,21 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 ## Known Issues
 
 * GUI of focus tree can't be configured like technology tree.
+* Edge lines on world map not alway fit edge of colors.
 
 ## Release Notes
 
-### 0.3.0
+### 0.3.1
 
 ### Added
-* Command
-  * `HOI4 Mod Utilities: Preview World Map` to open world map preview window.
 * World map preview
-  * Possible view modes: province and state.
-  * Copy (if not in mod) and open state file from world map.
-  * Show warnings and informations about provinces and states.
-  * Various of color sets.
-  * Search province or state by ID.
-  * Auto reload world map when related file updates.
-  * Force reload world map from tool bar.
+  * New view modes: strategic region and supply area.
+  * New color sets: supply value.
 
 ### Changed
-* Update UI in preview page to match VSCode style.
+* Refine map loading and auto reload.
+* Changed scale level to show edges and labels for different view modes.
 
 ### Fixed
-* Fixed parsing rules of HOI4 file parser.
+* Fixed bug that can't copy file if parent folder not exist.
+* Fixed bug that sometimes world map not properly reloaded.

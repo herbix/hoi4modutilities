@@ -4,7 +4,22 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.0] - 2020/05/24 - Latest
+## [0.3.1] - 2020/05/28 - Latest
+
+### Added
+* World map preview
+  * New view modes: strategic region and supply area.
+  * New color sets: supply value.
+
+### Changed
+* Refine map loading and auto reload.
+* Changed scale level to show edges and labels for different view modes.
+
+### Fixed
+* Fixed bug that can't copy file if parent folder not exist.
+* Fixed bug that sometimes world map not properly reloaded.
+
+## [0.3.0] - 2020/05/24
 
 ### Added
 * Command
