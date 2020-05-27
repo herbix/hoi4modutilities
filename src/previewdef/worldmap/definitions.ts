@@ -95,7 +95,7 @@ export interface Warning {
     relatedFiles: string[];
 }
 
-export type WarningSource = WarningSourceProvince | WarningSourceIdOnly;
+export type WarningSource = WarningSourceProvince | WarningSourceIdOnly | WarningSourceName;
 
 interface WarningSourceBase {
     type: string;
@@ -110,6 +110,11 @@ interface WarningSourceProvince extends WarningSourceBase {
 interface WarningSourceIdOnly extends WarningSourceBase {
     type: 'state' | 'strategicregion' | 'supplyarea';
     id: number;
+}
+
+interface WarningSourceName extends WarningSourceBase {
+    type: 'statecategory';
+    name: string;
 }
 
 export interface Country {
@@ -135,6 +140,12 @@ export interface SupplyArea extends Region, TokenInFile {
     name: string;
     value: number;
     states: number[];
+}
+
+export interface StateCategory {
+    name: string;
+    color: number;
+    file: string;
 }
 
 export interface Point {

@@ -39,8 +39,8 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         super('map/strategicregions', StrategicRegionLoader, progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
-        return await super.shouldReload() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
+    public async shouldReloadImpl(): Promise<boolean> {
+        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
@@ -83,11 +83,19 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
             warnings,
         };
     }
+
+    public toString() {
+        return `[StrategicRegionsLoader]`;
+    }
 }
 
 class StrategicRegionLoader extends FileLoader<StrategicRegionNoRegion[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<StrategicRegionNoRegion[]> {
         return loadStrategicRegion(this.file, warnings);
+    }
+
+    public toString() {
+        return `[StrategicRegionLoader: ${this.file}]`;
     }
 }
 

@@ -33,6 +33,10 @@ export class TerrainDefinitionLoader extends FileLoader<Terrain[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<Terrain[]> {
         return loadTerrains(this.file);
     }
+
+    public toString() {
+        return `[TerrainDefinitionLoader]`;
+    }
 }
 
 async function loadTerrains(file: string): Promise<Terrain[]> {

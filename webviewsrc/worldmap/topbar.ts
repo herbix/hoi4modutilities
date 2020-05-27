@@ -279,5 +279,5 @@ export class TopBar extends Subscriber {
 }
 
 function warningToString(warning: Warning): string {
-    return `[${warning.source.map(s => `${s.type[0].toUpperCase()}${s.type.substr(1)} ${s.id}`).join(', ')}] ${warning.text}`;
+    return `[${warning.source.map(s => `${s.type[0].toUpperCase()}${s.type.substr(1)} ${'id' in s ? s.id : s.name}`).join(', ')}] ${warning.text}`;
 }

@@ -1,7 +1,6 @@
 import { CustomMap, Attachment, Enum, SchemaDef, HOIPartial } from "../../../hoiformat/schema";
 import { Country, ProgressReporter, Warning } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { hsvToRgb } from "../../../util/common";
 import { error } from "../../../util/debug";
 import { FolderLoader, FileLoader, Loader, LoadResult, mergeInLoadResult, convertColor } from "./common";
 
@@ -54,7 +53,7 @@ export class CountriesLoader extends Loader<Country[]> {
         this.colorsLoader = new ColorsLoader(progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
+    public async shouldReloadImpl(): Promise<boolean> {
         if (await this.countryTagsLoader.shouldReload() || await this.colorsLoader.shouldReload()) {
             return true;
         }
@@ -95,6 +94,10 @@ export class CountriesLoader extends Loader<Country[]> {
             warnings: mergeInLoadResult(allResults, 'warnings'),
         };
     }
+
+    public toString() {
+        return '[CountriesLoader]';
+    }
 }
 
 class CountryLoader extends FileLoader<Country | undefined> {
@@ -104,6 +107,10 @@ class CountryLoader extends FileLoader<Country | undefined> {
 
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<Country | undefined> {
         return loadCountry(this.tag, this.file);
+    }
+
+    public toString() {
+        return `[CountryLoader: ${this.file}]`;
     }
 }
 
@@ -119,11 +126,19 @@ class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
             warnings: mergeInLoadResult(fileResults, 'warnings'),
         });
     }
+
+    public toString() {
+        return `[CountryTagsLoader]`;
+    }
 }
 
 class CountryTagLoader extends FileLoader<Tag[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<Tag[]> {
         return loadCountryTags(this.file);
+    }
+
+    public toString() {
+        return `[CountryTagLoader: ${this.file}]`;
     }
 }
 
@@ -139,6 +154,10 @@ class ColorsLoader extends FileLoader<HOIPartial<ColorsFile>> {
             error(e);
             return Promise.resolve({ _map: {}, _token: undefined });
         }
+    }
+
+    public toString() {
+        return `[Colors]`;
     }
 }
 

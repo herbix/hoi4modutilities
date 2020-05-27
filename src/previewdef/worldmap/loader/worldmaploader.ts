@@ -1,6 +1,6 @@
 import { WorldMapData, ProgressReporter, ProvinceMap } from "../definitions";
 import { CountriesLoader } from "./countries";
-import { Loader, LoadResult, mergeInLoadResult } from "./common";
+import { Loader, LoadResult, mergeInLoadResult, LoaderSession } from "./common";
 import { StatesLoader } from "./states";
 import { DefaultMapLoader } from "./provincemap";
 import { debug } from "../../../util/debug";
@@ -24,18 +24,25 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         this.supplyAreasLoader = new SupplyAreasLoader(this.defaultMapLoader, this.statesLoader, progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
+    public async shouldReloadImpl(): Promise<boolean> {
         return this.shouldReloadValue;
     }
 
     public async loadImpl(force: boolean): Promise<LoadResult<WorldMapData>> {
         this.shouldReloadValue = false;
 
+        const session = LoaderSession.start();
+
         const provinceMap = await this.defaultMapLoader.load(force);
         const stateMap = await this.statesLoader.load(force);
         const countries = await this.countriesLoader.load(force);
         const strategicRegions = await this.strategicRegionsLoader.load(force);
         const supplyAreas = await this.supplyAreasLoader.load(force);
+
+        const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
+        debug('Loader session', loadedLoaders);
+
+        LoaderSession.complete();
 
         const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
@@ -72,5 +79,9 @@ export class WorldMapLoader extends Loader<WorldMapData> {
 
     public shallowForceReload(): void {
         this.shouldReloadValue = true;
+    }
+
+    public toString() {
+        return `[WorldMapLoader]`;
     }
 }

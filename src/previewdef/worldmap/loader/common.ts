@@ -30,6 +30,42 @@ export function convertColor(color: Attachment<Enum> | undefined): number {
     return 0;
 }
 
+export class LoaderSession {
+    private static loaderSessions: LoaderSession[] = [];
+
+    public static start() {
+        const newSession = new LoaderSession();
+        LoaderSession.loaderSessions.push(newSession);
+        return newSession;
+    }
+    
+    public static complete() {
+        return LoaderSession.loaderSessions.pop();
+    }
+
+    public static get current() {
+        return LoaderSession.loaderSessions.length > 0 ? LoaderSession.loaderSessions[LoaderSession.loaderSessions.length - 1] : undefined;
+    }
+
+    private loadedLoader: Set<Loader<unknown>> = new Set();
+    private shouldLoaderReload: Map<Loader<unknown>, boolean> = new Map();
+
+    public isLoaded(loader: Loader<unknown>): boolean {
+        return this.loadedLoader.has(loader);
+    }
+
+    public setLoaded(loader: Loader<unknown>) {
+        this.loadedLoader.add(loader);
+    }
+
+    public setShouldReload(loader: Loader<unknown>) {
+        this.shouldLoaderReload.set(loader, true);
+    }
+
+    public shouldReload(loader: Loader<unknown>): boolean {
+        return this.shouldLoaderReload.get(loader) ?? false;
+    }
+}
 
 export type LoadResult<T> = { result: T, dependencies: string[], warnings: Warning[] };
 export abstract class Loader<T> {
@@ -39,16 +75,30 @@ export abstract class Loader<T> {
     }
 
     async load(force?: boolean): Promise<LoadResult<T>> {
-        if (this.cachedValue === undefined || force || await this.shouldReload()) {
+        if (this.cachedValue === undefined || (!LoaderSession.current?.isLoaded(this) && (force || await this.shouldReload()))) {
+            LoaderSession.current?.setLoaded(this);
             return this.cachedValue = await this.loadImpl(force ?? false);
         }
 
         return this.cachedValue;
     };
 
-    public shouldReload(): Promise<boolean> {
-        return Promise.resolve(false);
+    public async shouldReload(): Promise<boolean> {
+        if (LoaderSession.current?.shouldReload(this)) {
+            return true;
+        }
+
+        const result = await this.shouldReloadImpl();
+        if (result) {
+            LoaderSession.current?.setShouldReload(this);
+        }
+
+        return result;
     };
+
+    protected shouldReloadImpl(): Promise<boolean> {
+        return Promise.resolve(false);
+    }
 
     protected abstract loadImpl(force: boolean): Promise<LoadResult<T>>;
 }
@@ -60,7 +110,7 @@ export abstract class FileLoader<T> extends Loader<T> {
         super(progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
+    public async shouldReloadImpl(): Promise<boolean> {
         return await hoiFileExpiryToken(this.file) !== this.expiryToken;
     }
 
@@ -97,7 +147,7 @@ export abstract class FolderLoader<T, TFile> extends Loader<T> {
         super(progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
+    public async shouldReloadImpl(): Promise<boolean> {
         const files = await listFilesFromModOrHOI4(this.folder);
         if (this.fileCount !== files.length || files.some(f => !(f in this.subLoaders))) {
             return true;

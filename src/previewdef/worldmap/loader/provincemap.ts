@@ -33,8 +33,8 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         this.terrainDefinitionLoader = new TerrainDefinitionLoader(progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
-        if (await super.shouldReload()) {
+    public async shouldReloadImpl(): Promise<boolean> {
+        if (await super.shouldReloadImpl()) {
             return true;
         }
 
@@ -100,11 +100,19 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
 
         return new constructor(file, this.progressReporter);
     }
+
+    public toString() {
+        return `[DefaultMapLoader]`;
+    }
 }
 
 class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
     protected loadFromFile(warnings: Warning[]): Promise<ProvinceDefinition[]> {
         return loadDefinitions(this.file, this.progressReporter, warnings);
+    }
+
+    public toString() {
+        return `[DefinitionsLoader: ${this.file}]`;
     }
 }
 
@@ -112,17 +120,29 @@ class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
     protected loadFromFile(warnings: Warning[]): Promise<ProvinceBmp> {
         return loadProvincesBmp(this.file, this.progressReporter, warnings);
     }
+
+    public toString() {
+        return `[ProvinceBmpLoader: ${this.file}]`;
+    }
 }
 
 class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
     protected loadFromFile(warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
         return loadAdjacencies(this.file, this.progressReporter, warnings);
     }
+
+    public toString() {
+        return `[AdjacenciesLoader: ${this.file}]`;
+    }
 }
 
 class ContinentsLoader extends FileLoader<string[]> {
     protected loadFromFile(): Promise<string[]> {
         return loadContinents(this.file, this.progressReporter);
+    }
+
+    public toString() {
+        return `[ContinentsLoader: ${this.file}]`;
     }
 }
 

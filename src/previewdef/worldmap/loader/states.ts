@@ -1,8 +1,8 @@
-import { State, Province, Warning, WarningSource, ProgressReporter, Region } from "../definitions";
-import { CustomSymbol, Enum, SchemaDef, StringAsSymbol } from "../../../hoiformat/schema";
+import { State, Province, Warning, WarningSource, ProgressReporter, Region, StateCategory } from "../definitions";
+import { CustomSymbol, Enum, SchemaDef, StringAsSymbol, CustomMap, Attachment } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions, mergeRegion } from "./common";
+import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions, mergeRegion, convertColor } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -54,16 +54,39 @@ const stateFileSchema: SchemaDef<StateFile> = {
     },
 };
 
+interface StateCategoryFile {
+    state_categories: CustomMap<StateCategoryDefinition>;
+}
+
+interface StateCategoryDefinition {
+    color: Attachment<Enum>;
+}
+
+const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
+    state_categories: {
+        _innerType: {
+            color: {
+                _innerType: "enum",
+                _type: "attachment",
+            },
+        },
+        _type: "map",
+    },
+};
+
 type StateNoBoundingBox = Omit<State, keyof Region>;
 
 type StateLoaderResult = { states: State[], badStatesCount: number };
 export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
+    private categoriesLoader: StateCategoriesLoader;
+
     constructor(private defaultMapLoader: DefaultMapLoader, progressReporter: ProgressReporter) {
         super('history/states', StateLoader, progressReporter);
+        this.categoriesLoader = new StateCategoriesLoader(progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
-        return await super.shouldReload() || await this.defaultMapLoader.shouldReload();
+    public async shouldReloadImpl(): Promise<boolean> {
+        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.categoriesLoader.shouldReload();
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<StateLoaderResult>> {
@@ -73,10 +96,11 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 
     protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], force: boolean): Promise<LoadResult<StateLoaderResult>> {
         const provinceMap = await this.defaultMapLoader.load(false);
+        const stateCategories = await this.categoriesLoader.load(force);
 
         await this.progressReporter(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
-        const warnings = mergeInLoadResult(fileResults, 'warnings');
+        const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
         const { provinces, width, height } = provinceMap.result;
 
         const states = fileResults.reduce<StateNoBoundingBox[]>((p, c) => p.concat(c.result), []);
@@ -86,7 +110,16 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         const filledStates: State[] = new Array(sortedStates.length);
         for (let i = badStateId + 1; i < sortedStates.length; i++) {
             if (sortedStates[i]) {
-                filledStates[i] = calculateBoundingBox(sortedStates[i], provinces, width, height, warnings);
+                const state = calculateBoundingBox(sortedStates[i], provinces, width, height, warnings);
+                filledStates[i] = state;
+
+                if (!(state.category in stateCategories.result)) {
+                    warnings.push({
+                        source: [{ type: 'state', id: i }],
+                        relatedFiles: [ state.file ],
+                        text: localize('worldmap.warnings.statecategorynotexist', "State category of state {0} is not defined: {1}.", i, state.category),
+                    });
+                }
             }
         }
 
@@ -98,15 +131,71 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
                 states: filledStates,
                 badStatesCount,
             },
-            dependencies: [this.folder + '/*'],
+            dependencies: [this.folder + '/*', ...stateCategories.dependencies],
             warnings,
         };
+    }
+
+    public toString() {
+        return `[StatesLoader]`;
     }
 }
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateNoBoundingBox[]> {
         return loadState(this.file, warnings);
+    }
+
+    public toString() {
+        return `[StateLoader: ${this.file}]`;
+    }
+}
+
+class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, StateCategory[]> {
+    constructor(progressReporter: ProgressReporter) {
+        super('common/state_category', StateCategoryLoader, progressReporter);
+    }
+
+    protected async loadImpl(force: boolean): Promise<LoadResult<Record<string, StateCategory>>> {
+        await this.progressReporter(localize('worldmap.progress.loadstatecategories', 'Loading state categories...'));
+        return super.loadImpl(force);
+    }
+
+    protected async mergeFiles(fileResults: LoadResult<StateCategory[]>[], force: boolean): Promise<LoadResult<Record<string, StateCategory>>> {
+        const warnings = mergeInLoadResult(fileResults, 'warnings');
+        const categories: Record<string, StateCategory> = {};
+
+        fileResults.forEach(result => result.result.forEach(category => {
+            if (category.name in categories) {
+                warnings.push({
+                    source: [{ type: 'statecategory', name: category.name }],
+                    relatedFiles: [category.file, categories[category.name].file],
+                    text: localize('worldmap.warnings.statecategoryconflict', "There're multiple state categories have name \"{0}\".", category.name),
+                });
+            }
+
+            categories[category.name] = category;
+        }));
+    
+        return {
+            result: categories,
+            dependencies: [this.folder + '/*'],
+            warnings,
+        };
+    }
+
+    public toString() {
+        return `[StateCategoriesLoader]`;
+    }
+}
+
+class StateCategoryLoader extends FileLoader<StateCategory[]> {
+    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateCategory[]> {
+        return loadStateCategory(this.file, warnings);
+    }
+
+    public toString() {
+        return `[StateCategoryLoader: ${this.file}]`;
     }
 }
 
@@ -253,5 +342,24 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
                 });
             }
         });
+    }
+}
+
+async function loadStateCategory(file: string, warning: Warning[]): Promise<StateCategory[]> {
+    try {
+        const data = await readFileFromModOrHOI4AsJson<StateCategoryFile>(file, stateCategoryFileSchema);
+        const result: StateCategory[] = [];
+
+        for (const categories of Object.values(data.state_categories._map)) {
+            const name = categories._key;
+            const color = convertColor(categories._value.color);
+
+            result.push({ name, color, file });
+        }
+
+        return result;
+    } catch (e) {
+        error(e);
+        return [];
     }
 }

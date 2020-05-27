@@ -38,8 +38,8 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
         super('map/supplyareas', SupplyAreaLoader, progressReporter);
     }
 
-    public async shouldReload(): Promise<boolean> {
-        return await super.shouldReload() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
+    public async shouldReloadImpl(): Promise<boolean> {
+        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<SupplyAreasLoaderResult>> {
@@ -81,11 +81,19 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
             warnings,
         };
     }
+
+    public toString() {
+        return `[SupplyAreasLoader]`;
+    }
 }
 
 class SupplyAreaLoader extends FileLoader<SupplyAreaNoRegion[]> {
     protected loadFromFile(warnings: Warning[], force: boolean): Promise<SupplyAreaNoRegion[]> {
         return loadSupplyArea(this.file, warnings);
+    }
+
+    public toString() {
+        return `[SupplyAreaLoader: ${this.file}]`;
     }
 }
 
