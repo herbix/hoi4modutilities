@@ -1,8 +1,8 @@
-import { State, Province, Warning, WarningSource, ProgressReporter, Region, StateCategory } from "../definitions";
+import { State, Province, Warning, WarningSource, Region, StateCategory } from "../definitions";
 import { CustomSymbol, Enum, SchemaDef, StringAsSymbol, CustomMap, Attachment } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegions, mergeRegion, convertColor } from "./common";
+import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
@@ -80,9 +80,10 @@ type StateLoaderResult = { states: State[], badStatesCount: number };
 export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
     private categoriesLoader: StateCategoriesLoader;
 
-    constructor(private defaultMapLoader: DefaultMapLoader, progressReporter: ProgressReporter) {
-        super('history/states', StateLoader, progressReporter);
-        this.categoriesLoader = new StateCategoriesLoader(progressReporter);
+    constructor(private defaultMapLoader: DefaultMapLoader) {
+        super('history/states', StateLoader);
+        this.categoriesLoader = new StateCategoriesLoader();
+        this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
@@ -90,7 +91,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<StateLoaderResult>> {
-        await this.progressReporter(localize('worldmap.progress.loadingstates', 'Loading states...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.loadingstates', 'Loading states...'));
         return super.loadImpl(force);
     }
 
@@ -98,7 +99,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         const provinceMap = await this.defaultMapLoader.load(false);
         const stateCategories = await this.categoriesLoader.load(force);
 
-        await this.progressReporter(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
         const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
         const { provinces, width, height } = provinceMap.result;
@@ -142,8 +143,12 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 }
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateNoBoundingBox[]> {
-        return loadState(this.file, warnings);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<StateNoBoundingBox[]>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadState(this.file, warnings),
+            warnings,
+        };
     }
 
     public toString() {
@@ -152,12 +157,12 @@ class StateLoader extends FileLoader<StateNoBoundingBox[]> {
 }
 
 class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, StateCategory[]> {
-    constructor(progressReporter: ProgressReporter) {
-        super('common/state_category', StateCategoryLoader, progressReporter);
+    constructor() {
+        super('common/state_category', StateCategoryLoader);
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<Record<string, StateCategory>>> {
-        await this.progressReporter(localize('worldmap.progress.loadstatecategories', 'Loading state categories...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.loadstatecategories', 'Loading state categories...'));
         return super.loadImpl(force);
     }
 
@@ -190,8 +195,12 @@ class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, 
 }
 
 class StateCategoryLoader extends FileLoader<StateCategory[]> {
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<StateCategory[]> {
-        return loadStateCategory(this.file, warnings);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<StateCategory[]>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadStateCategory(this.file, warnings),
+            warnings,
+        };
     }
 
     public toString() {

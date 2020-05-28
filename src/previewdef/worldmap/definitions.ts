@@ -215,3 +215,5 @@ export interface OpenFileMessage {
 }
 
 export type ProgressReporter = (progress: string) => Promise<void>;
+
+export type MapLoaderExtra = { warnings: Warning[] };

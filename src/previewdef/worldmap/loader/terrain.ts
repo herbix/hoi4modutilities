@@ -1,6 +1,6 @@
 import { CustomMap, Attachment, Enum, SchemaDef } from "../../../hoiformat/schema";
-import { FileLoader, convertColor } from "./common";
-import { Terrain, Warning, ProgressReporter } from "../definitions";
+import { FileLoader, convertColor, LoadResultOD } from "./common";
+import { Terrain } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 
 interface TerrainFile {
@@ -26,12 +26,15 @@ const terrainFileSchema: SchemaDef<TerrainFile> = {
 };
 
 export class TerrainDefinitionLoader extends FileLoader<Terrain[]> {
-    constructor(progressReporter: ProgressReporter) {
-        super('common/terrain/00_terrain.txt', progressReporter);
+    constructor() {
+        super('common/terrain/00_terrain.txt');
     }
 
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<Terrain[]> {
-        return loadTerrains(this.file);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Terrain[]>> {
+        return {
+            result: await loadTerrains(this.file),
+            warnings: [],
+        };
     }
 
     public toString() {

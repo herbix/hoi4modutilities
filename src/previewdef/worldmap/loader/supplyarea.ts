@@ -1,6 +1,6 @@
 import { Enum, SchemaDef } from "../../../hoiformat/schema";
 import { Token } from "../../../hoiformat/hoiparser";
-import { FileLoader, FolderLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion } from "./common";
+import { FileLoader, FolderLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion, LoadResultOD } from "./common";
 import { Warning, SupplyArea, Region, ProgressReporter, State, WarningSource, Province } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { localize } from "../../../util/i18n";
@@ -34,8 +34,8 @@ const supplyAreaFileSchema: SchemaDef<SupplyAreaFile> = {
 
 type SupplyAreasLoaderResult = { supplyAreas: SupplyArea[], badSupplyAreasCount: number };
 export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, SupplyAreaNoRegion[]> {
-    constructor(private defaultMapLoader: DefaultMapLoader, private statesLoader: StatesLoader, progressReporter: ProgressReporter) {
-        super('map/supplyareas', SupplyAreaLoader, progressReporter);
+    constructor(private defaultMapLoader: DefaultMapLoader, private statesLoader: StatesLoader) {
+        super('map/supplyareas', SupplyAreaLoader);
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
@@ -43,7 +43,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<SupplyAreasLoaderResult>> {
-        await this.progressReporter(localize('worldmap.progress.loadingsupplyareas', 'Loading supply areas...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.loadingsupplyareas', 'Loading supply areas...'));
         return super.loadImpl(force);
     }
 
@@ -51,7 +51,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
         const provinceMap = await this.defaultMapLoader.load(false);
         const stateMap = await this.statesLoader.load(false);
 
-        await this.progressReporter(localize('worldmap.progress.mapstatetosupplyarea', 'Mapping states to supply areas...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.mapstatetosupplyarea', 'Mapping states to supply areas...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
         const SupplyAreas = fileResults.reduce<SupplyAreaNoRegion[]>((p, c) => p.concat(c.result), []);
@@ -88,8 +88,12 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
 }
 
 class SupplyAreaLoader extends FileLoader<SupplyAreaNoRegion[]> {
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<SupplyAreaNoRegion[]> {
-        return loadSupplyArea(this.file, warnings);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<SupplyAreaNoRegion[]>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadSupplyArea(this.file, warnings),
+            warnings,
+        };
     }
 
     public toString() {

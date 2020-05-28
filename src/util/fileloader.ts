@@ -11,7 +11,6 @@ import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
 import { getConfiguration } from './vsccommon';
 
-let dlcPaths: string[] | null = null;
 const dlcZipPathsCache = new PromiseCache({
     factory: getDlcZipPaths,
     life: 10 * 60 * 1000,
@@ -222,7 +221,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
 async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
     const dlcPath = path.join(installPath, 'dlc');
     if (!fs.existsSync(dlcPath)) {
-        return dlcPaths = null;
+        return null;
     }
 
     const dlcFolders = await readdir(dlcPath);
@@ -240,7 +239,7 @@ async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
         return null;
     }));
 
-    return dlcPaths = paths.filter((path): path is string => path !== null);
+    return paths.filter((path): path is string => path !== null);
 }
 
 function getDlcZip(path: string): AdmZip {

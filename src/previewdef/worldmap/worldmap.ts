@@ -17,7 +17,8 @@ export class WorldMap {
     private cachedWorldMap: WorldMapData | undefined;
 
     constructor(readonly panel: vscode.WebviewPanel) {
-        this.worldMapLoader = new WorldMapLoader(this.progressReporter);
+        this.worldMapLoader = new WorldMapLoader();
+        this.worldMapLoader.onProgress(this.progressReporter);
     }
 
     public initialize(): void {

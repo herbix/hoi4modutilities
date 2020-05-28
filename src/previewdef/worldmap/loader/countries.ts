@@ -1,8 +1,9 @@
 import { CustomMap, Attachment, Enum, SchemaDef, HOIPartial } from "../../../hoiformat/schema";
-import { Country, ProgressReporter, Warning } from "../definitions";
+import { Country } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
-import { FolderLoader, FileLoader, Loader, LoadResult, mergeInLoadResult, convertColor } from "./common";
+import { FolderLoader, FileLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult, convertColor } from "./common";
+import { localize } from "../../../util/i18n";
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -47,10 +48,12 @@ export class CountriesLoader extends Loader<Country[]> {
     private countryLoaders: Record<string, CountryLoader> = {};
     private colorsLoader: ColorsLoader;
 
-    constructor(progressReporter: ProgressReporter) {
-        super(progressReporter);
-        this.countryTagsLoader = new CountryTagsLoader(progressReporter);
-        this.colorsLoader = new ColorsLoader(progressReporter);
+    constructor() {
+        super();
+        this.countryTagsLoader = new CountryTagsLoader();
+        this.colorsLoader = new ColorsLoader();
+        this.countryTagsLoader.onProgress(e => this.onProgressEmitter.fire(e));
+        this.colorsLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
@@ -62,6 +65,8 @@ export class CountriesLoader extends Loader<Country[]> {
     }
 
     protected async loadImpl(force: boolean): Promise<LoadResult<Country[]>> {
+        this.fireOnProgressEvent(localize('TODO', 'Loading countries...'));
+
         const tagsResult = await this.countryTagsLoader.load(force);
         const countryTags = tagsResult.result;
         const countryResultPromises: Promise<LoadResult<Country | undefined>>[] = [];
@@ -70,7 +75,8 @@ export class CountriesLoader extends Loader<Country[]> {
         for (const tag of countryTags) {
             let countryLoader = this.countryLoaders[tag.tag];
             if (!countryLoader) {
-                countryLoader = new CountryLoader(tag.tag, 'common/' + tag.file, this.progressReporter);
+                countryLoader = new CountryLoader(tag.tag, 'common/' + tag.file);
+                countryLoader.onProgress(e => this.onProgressEmitter.fire(e));
             }
 
             countryResultPromises.push(countryLoader.load(force));
@@ -101,12 +107,12 @@ export class CountriesLoader extends Loader<Country[]> {
 }
 
 class CountryLoader extends FileLoader<Country | undefined> {
-    constructor(private tag: string, file: string, progressReporter: ProgressReporter) {
-        super(file, progressReporter);
+    constructor(private tag: string, file: string) {
+        super(file);
     }
 
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<Country | undefined> {
-        return loadCountry(this.tag, this.file);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Country | undefined>> {
+        return { result: await loadCountry(this.tag, this.file), warnings: [] };
     }
 
     public toString() {
@@ -115,8 +121,8 @@ class CountryLoader extends FileLoader<Country | undefined> {
 }
 
 class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
-    constructor(progressReporter: ProgressReporter) {
-        super('common/country_tags', CountryTagLoader, progressReporter);
+    constructor() {
+        super('common/country_tags', CountryTagLoader);
     }
 
     protected mergeFiles(fileResults: LoadResult<Tag[]>[], force: boolean): Promise<LoadResult<Tag[]>> {
@@ -133,8 +139,8 @@ class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
 }
 
 class CountryTagLoader extends FileLoader<Tag[]> {
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<Tag[]> {
-        return loadCountryTags(this.file);
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Tag[]>> {
+        return { result: await loadCountryTags(this.file), warnings: [] };
     }
 
     public toString() {
@@ -143,16 +149,22 @@ class CountryTagLoader extends FileLoader<Tag[]> {
 }
 
 class ColorsLoader extends FileLoader<HOIPartial<ColorsFile>> {
-    constructor(progressReporter: ProgressReporter) {
-        super('common/countries/colors.txt', progressReporter);
+    constructor() {
+        super('common/countries/colors.txt');
     }
 
-    protected loadFromFile(warnings: Warning[], force: boolean): Promise<HOIPartial<ColorsFile>> {
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<HOIPartial<ColorsFile>>> {
         try {
-            return readFileFromModOrHOI4AsJson<ColorsFile>(this.file, colorsFileSchema);
+            return {
+                result: await readFileFromModOrHOI4AsJson<ColorsFile>(this.file, colorsFileSchema),
+                warnings: [],
+            };
         } catch(e) {
             error(e);
-            return Promise.resolve({ _map: {}, _token: undefined });
+            return {
+                result: { _map: {}, _token: undefined },
+                warnings: [],
+            };
         }
     }
 

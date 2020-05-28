@@ -1,5 +1,5 @@
 import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain, Region } from "../definitions";
-import { FileLoader, mergeInLoadResult, LoadResult, pointEqual, sortItems, mergeRegions } from "./common";
+import { FileLoader, mergeInLoadResult, LoadResult, pointEqual, sortItems, mergeRegions, LoadResultOD } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
@@ -28,9 +28,10 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
     private continentsLoader: ContinentsLoader | undefined;
     private terrainDefinitionLoader: TerrainDefinitionLoader;
 
-    constructor(progressReporter: ProgressReporter) {
-        super('map/default.map', progressReporter);
-        this.terrainDefinitionLoader = new TerrainDefinitionLoader(progressReporter);
+    constructor() {
+        super('map/default.map');
+        this.terrainDefinitionLoader = new TerrainDefinitionLoader();
+        this.terrainDefinitionLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
@@ -47,10 +48,9 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         ].map(v => v?.shouldReload() ?? Promise.resolve(false)))).some(v => v);
     }
 
-    protected async loadFromFile(warnings: Warning[], force: boolean): Promise<LoadResult<ProvinceMap>> {
-        const progressReporter = this.progressReporter;
-
-        const defaultMap = await loadDefaultMap(progressReporter);
+    protected async loadFromFile(force: boolean): Promise<LoadResult<ProvinceMap>> {
+        
+        const defaultMap = await loadDefaultMap(e => this.fireOnProgressEvent(e));
 
         const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(force);
         const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(force);
@@ -60,9 +60,9 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
 
         const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents, terrains ];
 
-        warnings.push(...mergeInLoadResult(subLoaderResults, 'warnings'));
+        const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
 
-        await progressReporter(localize('worldmap.progress.mergeandvalidateprovince', 'Merging and validating provinces...'));
+        await this.fireOnProgressEvent(localize('worldmap.progress.mergeandvalidateprovince', 'Merging and validating provinces...'));
     
         const { provinces, badProvinceId: badProvinceIdForMerge } =
             mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
@@ -92,13 +92,15 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
     private checkAndCreateLoader<T extends FileLoader<any>>(
         loader: T | undefined,
         file: string,
-        constructor: { new(file: string, progressReporter: ProgressReporter): T }
+        constructor: { new(file: string): T }
     ): T {
         if (loader && loader.file === file) {
             return loader;
         }
 
-        return new constructor(file, this.progressReporter);
+        loader = new constructor(file);
+        loader.onProgress(e => this.onProgressEmitter.fire(e));
+        return loader;
     }
 
     public toString() {
@@ -107,8 +109,12 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
 }
 
 class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
-    protected loadFromFile(warnings: Warning[]): Promise<ProvinceDefinition[]> {
-        return loadDefinitions(this.file, this.progressReporter, warnings);
+    protected async loadFromFile(): Promise<LoadResultOD<ProvinceDefinition[]>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadDefinitions(this.file, e => this.fireOnProgressEvent(e), warnings),
+            warnings,
+        };
     }
 
     public toString() {
@@ -117,8 +123,12 @@ class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
 }
 
 class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
-    protected loadFromFile(warnings: Warning[]): Promise<ProvinceBmp> {
-        return loadProvincesBmp(this.file, this.progressReporter, warnings);
+    protected async loadFromFile(): Promise<LoadResultOD<ProvinceBmp>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), warnings),
+            warnings,
+        };
     }
 
     public toString() {
@@ -127,8 +137,12 @@ class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
 }
 
 class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
-    protected loadFromFile(warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
-        return loadAdjacencies(this.file, this.progressReporter, warnings);
+    protected async loadFromFile(): Promise<LoadResultOD<ProvinceEdgeAdjacency[]>> {
+        const warnings: Warning[] = [];
+        return {
+            result: await loadAdjacencies(this.file, e => this.fireOnProgressEvent(e), warnings),
+            warnings,
+        };
     }
 
     public toString() {
@@ -137,8 +151,11 @@ class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
 }
 
 class ContinentsLoader extends FileLoader<string[]> {
-    protected loadFromFile(): Promise<string[]> {
-        return loadContinents(this.file, this.progressReporter);
+    protected async loadFromFile(): Promise<LoadResultOD<string[]>> {
+        return {
+            result: await loadContinents(this.file, e => this.fireOnProgressEvent(e)),
+            warnings: [],
+        };
     }
 
     public toString() {

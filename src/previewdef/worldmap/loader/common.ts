@@ -1,8 +1,16 @@
-import * as path from 'path';
-import { Zone, Point, ProgressReporter, Warning, Region } from "../definitions";
-import { hoiFileExpiryToken, listFilesFromModOrHOI4 } from "../../../util/fileloader";
+import { Zone, Point, Region, MapLoaderExtra } from "../definitions";
 import { Attachment, Enum } from '../../../hoiformat/schema';
 import { hsvToRgb } from '../../../util/common';
+import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader';
+
+export abstract class Loader<T> extends CommonLoader<T, MapLoaderExtra> {}
+export abstract class FileLoader<T> extends CommonFileLoader<T, MapLoaderExtra> {}
+export abstract class FolderLoader<T, F> extends CommonFolderLoader<T, F, MapLoaderExtra, MapLoaderExtra> {}
+
+export const mergeInLoadResult = commonMergeInLoadResult;
+
+export type LoadResult<T> = CommonLoadResult<T, MapLoaderExtra>;
+export type LoadResultOD<T> = CommonLoadResultOD<T, MapLoaderExtra>;
 
 export function pointEqual(a: Point, b: Point): boolean {
     return a.x === b.x && a.y === b.y;
@@ -28,162 +36,6 @@ export function convertColor(color: Attachment<Enum> | undefined): number {
     }
 
     return 0;
-}
-
-export class LoaderSession {
-    private static loaderSessions: LoaderSession[] = [];
-
-    public static start() {
-        const newSession = new LoaderSession();
-        LoaderSession.loaderSessions.push(newSession);
-        return newSession;
-    }
-    
-    public static complete() {
-        return LoaderSession.loaderSessions.pop();
-    }
-
-    public static get current() {
-        return LoaderSession.loaderSessions.length > 0 ? LoaderSession.loaderSessions[LoaderSession.loaderSessions.length - 1] : undefined;
-    }
-
-    private loadedLoader: Set<Loader<unknown>> = new Set();
-    private shouldLoaderReload: Map<Loader<unknown>, boolean> = new Map();
-
-    public isLoaded(loader: Loader<unknown>): boolean {
-        return this.loadedLoader.has(loader);
-    }
-
-    public setLoaded(loader: Loader<unknown>) {
-        this.loadedLoader.add(loader);
-    }
-
-    public setShouldReload(loader: Loader<unknown>) {
-        this.shouldLoaderReload.set(loader, true);
-    }
-
-    public shouldReload(loader: Loader<unknown>): boolean {
-        return this.shouldLoaderReload.get(loader) ?? false;
-    }
-}
-
-export type LoadResult<T> = { result: T, dependencies: string[], warnings: Warning[] };
-export abstract class Loader<T> {
-    private cachedValue: LoadResult<T> | undefined;
-
-    constructor(protected progressReporter: ProgressReporter) {
-    }
-
-    async load(force?: boolean): Promise<LoadResult<T>> {
-        if (this.cachedValue === undefined || (!LoaderSession.current?.isLoaded(this) && (force || await this.shouldReload()))) {
-            LoaderSession.current?.setLoaded(this);
-            return this.cachedValue = await this.loadImpl(force ?? false);
-        }
-
-        return this.cachedValue;
-    };
-
-    public async shouldReload(): Promise<boolean> {
-        if (LoaderSession.current?.shouldReload(this)) {
-            return true;
-        }
-
-        const result = await this.shouldReloadImpl();
-        if (result) {
-            LoaderSession.current?.setShouldReload(this);
-        }
-
-        return result;
-    };
-
-    protected shouldReloadImpl(): Promise<boolean> {
-        return Promise.resolve(false);
-    }
-
-    protected abstract loadImpl(force: boolean): Promise<LoadResult<T>>;
-}
-
-export abstract class FileLoader<T> extends Loader<T> {
-    private expiryToken: string = '';
-
-    constructor(public file: string, progressReporter: ProgressReporter) {
-        super(progressReporter);
-    }
-
-    public async shouldReloadImpl(): Promise<boolean> {
-        return await hoiFileExpiryToken(this.file) !== this.expiryToken;
-    }
-
-    protected async loadImpl(force: boolean): Promise<LoadResult<T>> {
-        const warnings: Warning[] = [];
-        this.expiryToken = await hoiFileExpiryToken(this.file);
-
-        const result = await this.loadFromFile(warnings, force);
-
-        if (typeof result !== 'object' || !('dependencies' in result)) {
-            return {
-                result,
-                dependencies: [this.file],
-                warnings,
-            };
-        } else {
-            result.dependencies.push(this.file);
-            return result;
-        }
-    }
-
-    protected abstract loadFromFile(warnings: Warning[], force: boolean): Promise<T | LoadResult<T>>;
-}
-
-export abstract class FolderLoader<T, TFile> extends Loader<T> {
-    private fileCount: number = 0;
-    private subLoaders: Record<string, FileLoader<TFile>> = {};
-
-    constructor(
-        public folder: string,
-        private subLoaderConstructor: { new (file: string, progressReporter: ProgressReporter): FileLoader<TFile> },
-        progressReporter: ProgressReporter
-    ) {
-        super(progressReporter);
-    }
-
-    public async shouldReloadImpl(): Promise<boolean> {
-        const files = await listFilesFromModOrHOI4(this.folder);
-        if (this.fileCount !== files.length || files.some(f => !(f in this.subLoaders))) {
-            return true;
-        }
-
-        return (await Promise.all(Object.values(this.subLoaders).map(l => l.shouldReload()))).some(v => v);
-    }
-
-    protected async loadImpl(force: boolean): Promise<LoadResult<T>> {
-        const files = await listFilesFromModOrHOI4(this.folder);
-        this.fileCount = files.length;
-
-        const subLoaders = this.subLoaders;
-        const newSubLoaders: Record<string, FileLoader<TFile>> = {};
-        const fileResultPromises: Promise<LoadResult<TFile>>[] = [];
-
-        for (const file of files) {
-            let subLoader = subLoaders[file];
-            if (!subLoader) {
-                subLoader = new this.subLoaderConstructor(path.join(this.folder, file), this.progressReporter);
-            }
-
-            fileResultPromises.push(subLoader.load(force));
-            newSubLoaders[file] = subLoader;
-        }
-
-        this.subLoaders = newSubLoaders;
-
-        return this.mergeFiles(await Promise.all(fileResultPromises), force);
-    }
-
-    protected abstract mergeFiles(fileResults: LoadResult<TFile>[], force: boolean): Promise<LoadResult<T>>;
-}
-
-export function mergeInLoadResult<K extends 'warnings' | 'dependencies'>(loadResults: LoadResult<unknown>[], key: K): LoadResult<unknown>[K] {
-    return loadResults.reduce<LoadResult<unknown>[K]>((p, c) => (p as any).concat(c[key]), []);
 }
 
 export function sortItems<T extends { id: number }>(

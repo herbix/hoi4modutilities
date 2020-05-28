@@ -1,11 +1,12 @@
 import { WorldMapData, ProgressReporter, ProvinceMap } from "../definitions";
 import { CountriesLoader } from "./countries";
-import { Loader, LoadResult, mergeInLoadResult, LoaderSession } from "./common";
+import { Loader, LoadResult, mergeInLoadResult } from "./common";
 import { StatesLoader } from "./states";
 import { DefaultMapLoader } from "./provincemap";
 import { debug } from "../../../util/debug";
 import { StrategicRegionsLoader } from "./strategicregion";
 import { SupplyAreasLoader } from "./supplyarea";
+import { LoaderSession } from "../../../util/loader";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -15,13 +16,22 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     private supplyAreasLoader: SupplyAreasLoader;
     private shouldReloadValue: boolean = false;
 
-    constructor(progressReporter: ProgressReporter) {
-        super(progressReporter);
-        this.defaultMapLoader = new DefaultMapLoader(progressReporter);
-        this.statesLoader = new StatesLoader(this.defaultMapLoader, progressReporter);
-        this.countriesLoader = new CountriesLoader(progressReporter);
-        this.strategicRegionsLoader = new StrategicRegionsLoader(this.defaultMapLoader, this.statesLoader, progressReporter);
-        this.supplyAreasLoader = new SupplyAreasLoader(this.defaultMapLoader, this.statesLoader, progressReporter);
+    constructor() {
+        super();
+        this.defaultMapLoader = new DefaultMapLoader();
+        this.defaultMapLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.statesLoader = new StatesLoader(this.defaultMapLoader);
+        this.statesLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.countriesLoader = new CountriesLoader();
+        this.countriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.strategicRegionsLoader = new StrategicRegionsLoader(this.defaultMapLoader, this.statesLoader);
+        this.strategicRegionsLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.supplyAreasLoader = new SupplyAreasLoader(this.defaultMapLoader, this.statesLoader);
+        this.supplyAreasLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
