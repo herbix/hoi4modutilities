@@ -4,10 +4,11 @@ import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
-import { GridBoxType, HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
+import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html, StyleTable, htmlEscape } from '../../util/html';
 import { PreviewDependency } from '../previewbase';
+import { GridBoxType } from '../../hoiformat/gui';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 

@@ -1,8 +1,9 @@
-import { GridBoxType, HOIPartial, Format } from "../../hoiformat/schema";
+import { HOIPartial } from "../../hoiformat/schema";
 import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions, renderBackground } from "./common";
 import { NumberSize, NumberPosition } from "../common";
 import { Sprite } from "../image/sprite";
 import { StyleTable } from "../html";
+import { GridBoxType, Format } from "../../hoiformat/gui";
 
 export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 

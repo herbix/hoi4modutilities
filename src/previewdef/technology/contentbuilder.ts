@@ -5,7 +5,7 @@ import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
 import { arrayToMap } from '../../util/common';
 import { readFileFromModOrHOI4 } from '../../util/fileloader';
-import { convertNodeFromFileToJson, HOIPartial, ContainerWindowType, GridBoxType, InstantTextBoxType, IconType, Format } from '../../hoiformat/schema';
+import { HOIPartial, convertNodeToJson } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
 import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
@@ -13,6 +13,7 @@ import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { html, StyleTable, htmlEscape } from '../../util/html';
 import { PreviewDependency } from '../previewbase';
+import { GuiFile, guiFileSchema, ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format } from '../../hoiformat/gui';
 
 const techTreeViewName = 'countrytechtreeview';
 
@@ -53,7 +54,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
         const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
         const fileContent = guiFile.toString();
     
-        return convertNodeFromFileToJson(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath))).guitypes;
+        return convertNodeToJson<GuiFile>(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath)), guiFileSchema).guitypes;
     }))).reduce((p, c) => p.concat(c), []);
 
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);

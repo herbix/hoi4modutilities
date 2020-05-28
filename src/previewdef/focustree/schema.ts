@@ -1,5 +1,5 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { convertNodeFromFileToJson, Focus as SFocus, HOIPartial, CustomSymbol } from "../../hoiformat/schema";
+import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
 
 export interface FocusTree {
@@ -21,9 +21,90 @@ export interface Focus {
     token: Token | undefined;
 }
 
+interface FocusTreeDef {
+    id: CustomSymbol;
+    shared_focus: CustomSymbol;
+    focus: FocusDef[];
+    continuous_focus_position: Position;
+}
+
+interface FocusDef {
+    id: CustomSymbol;
+    icon: CustomSymbol;
+    x: number;
+    y: number;
+    prerequisite: FocusOrXORList[];
+    mutually_exclusive: FocusOrXORList[];
+    relative_position_id: CustomSymbol;
+    allow_branch: CustomSymbol[]; /* FIXME not symbol node */
+    _token: Token;
+}
+
+interface FocusOrXORList {
+    focus: CustomSymbol[];
+    XOR: CustomSymbol[];
+}
+
+interface FocusFile {
+    focus_tree: FocusTreeDef[];
+    shared_focus: FocusDef[];
+}
+
+const focusOrXORListSchema: SchemaDef<FocusOrXORList> = {
+    focus: {
+        _innerType: "symbol",
+        _type: 'array',
+    },
+    XOR: {
+        _innerType: "symbol",
+        _type: 'array',
+    },
+};
+
+const focusSchema: SchemaDef<FocusDef> = {
+    id: "symbol",
+    icon: "symbol",
+    x: "number",
+    y: "number",
+    prerequisite: {
+        _innerType: focusOrXORListSchema,
+        _type: 'array',
+    },
+    mutually_exclusive: {
+        _innerType: focusOrXORListSchema,
+        _type: 'array',
+    },
+    relative_position_id: "symbol",
+    allow_branch: {
+        _innerType: "symbol",
+        _type: "array"
+    }
+};
+
+const focusTreeSchema: SchemaDef<FocusTreeDef> = {
+    id: "symbol",
+    shared_focus: "symbol",
+    focus: {
+        _innerType: focusSchema,
+        _type: 'array',
+    },
+    continuous_focus_position: positionSchema,
+};
+
+const focusFileSchema: SchemaDef<FocusFile> = {
+    focus_tree: {
+        _innerType: focusTreeSchema,
+        _type: "array",
+    },
+    shared_focus: {
+        _innerType: focusSchema,
+        _type: "array",
+    },
+};
+
 export function getFocusTree(node: Node): FocusTree[] {
     const focusTrees: FocusTree[] = [];
-    const file = convertNodeFromFileToJson(node);
+    const file = convertNodeToJson<FocusFile>(node, focusFileSchema);
 
     for (const focusTree of file.focus_tree) {
         const focuses = getFocuses(focusTree.focus);
@@ -46,9 +127,9 @@ export function getFocusTree(node: Node): FocusTree[] {
     return focusTrees;
 }
 
-function getFocuses(hoiFocuses: HOIPartial<SFocus>[]): Record<string, Focus> {
+function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
     const focuses: Record<string, Focus> = {};
-    let pendingFocuses: HOIPartial<SFocus>[] = [];
+    let pendingFocuses: HOIPartial<FocusDef>[] = [];
 
     for (const hoiFocus of hoiFocuses) {
         const relativeTo = hoiFocus.relative_position_id?._name;
@@ -108,7 +189,7 @@ function getFocuses(hoiFocuses: HOIPartial<SFocus>[]): Record<string, Focus> {
     return focuses;
 }
 
-function getFocus(hoiFocus: HOIPartial<SFocus>, relativeToFocus: Focus | null): Focus | null {
+function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null): Focus | null {
     const id = hoiFocus.id?._name;
     let x = hoiFocus.x;
     let y = hoiFocus.y;

@@ -1,6 +1,7 @@
-import { InstantTextBoxType, HOIPartial } from "../../hoiformat/schema";
+import { HOIPartial } from "../../hoiformat/schema";
 import { ParentInfo, calculateBBox, RenderCommonOptions, normalizeNumberLike } from "./common";
 import { htmlEscape } from "../html";
+import { InstantTextBoxType } from "../../hoiformat/gui";
 
 export interface RenderInstantTextBoxOptions extends RenderCommonOptions {
 }

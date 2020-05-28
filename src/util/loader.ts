@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';;
-import { hoiFileExpiryToken, listFilesFromModOrHOI4 } from './fileloader';
+import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4AsJson } from './fileloader';
+import { HOIPartial, SchemaDef } from '../hoiformat/schema';
+import { error } from './debug';
 
 export class LoaderSession {
     private static loaderSessions: LoaderSession[] = [];
@@ -39,8 +41,8 @@ export class LoaderSession {
     }
 }
 
-export type LoadResult<T, E> = { result: T, dependencies: string[] } & E;
-export type LoadResultOD<T, E> = Omit<LoadResult<T, E>, 'dependencies'> & Partial<Pick<LoadResult<T, E>, 'dependencies'>> & E;
+export type LoadResult<T, E={}> = { result: T, dependencies: string[] } & E;
+export type LoadResultOD<T, E={}> = Omit<LoadResult<T, E>, 'dependencies'> & Partial<Pick<LoadResult<T, E>, 'dependencies'>> & E;
 export abstract class Loader<T, E = {}> {
     private cachedValue: LoadResult<T, E> | undefined;
     protected onProgressEmitter = new vscode.EventEmitter<string>();
@@ -153,6 +155,27 @@ export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E
     }
 
     protected abstract mergeFiles(fileResults: LoadResult<TFile, EFile>[], force: boolean): Promise<LoadResult<T, E>>;
+}
+
+export abstract class SchemaFileLoader<T, R=HOIPartial<T> | undefined> extends FileLoader<R> {
+    constructor(file: string, private schema: SchemaDef<T>) {
+        super(file);
+    }
+
+    protected async loadFromFile(force: boolean): Promise<LoadResultOD<R>> {
+        let result: HOIPartial<T> | undefined = undefined;
+        try {
+            result = await readFileFromModOrHOI4AsJson<T>(this.file, this.schema);
+        } catch(e) {
+            error(e);
+        }
+
+        return {
+            result: this.postLoad(result),
+        };
+    }
+
+    protected abstract postLoad(fileData: HOIPartial<T> | undefined): R;
 }
 
 export function mergeInLoadResult<K extends string, T extends { [k in K]: any[] }>(loadResults: T[], key: K): T[K] {

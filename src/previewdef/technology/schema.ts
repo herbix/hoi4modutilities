@@ -1,5 +1,5 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { convertNodeFromFileToJson, HOIPartial, Technologies } from "../../hoiformat/schema";
+import { HOIPartial, Position, CustomMap, Enum, CustomSymbol, SchemaDef, positionSchema, convertNodeToJson } from "../../hoiformat/schema";
 
 export interface TechnologyFolder {
     name: string;
@@ -24,8 +24,62 @@ export interface TechnologyTree {
     technologies: Technology[];
 }
 
+type TechnologiesDef = CustomMap<TechnologyDef>;
+
+interface TechnologyDef {
+    enable_equipments: Enum;
+    path: TechnologyPath[];
+    folder: Folder[];
+    start_year: number;
+    xor: Enum;
+    sub_technologies: Enum;
+    _token: Token;
+}
+
+interface TechnologyPath {
+    leads_to_tech: CustomSymbol;
+}
+
+interface Folder {
+    name: CustomSymbol;
+    position: Position;
+}
+
+interface TechnologyFile {
+    technologies: TechnologiesDef;
+}
+
+const technologySchema: SchemaDef<TechnologyDef> = {
+    enable_equipments: "enum",
+    path: {
+        _innerType: {
+            leads_to_tech: "symbol",
+        },
+        _type: "array",
+    },
+    folder: {
+        _innerType: {
+            name: "symbol",
+            position: positionSchema,
+        },
+        _type: "array",
+    },
+    start_year: "number",
+    xor: "enum",
+    sub_technologies: "enum",
+};
+
+const technologiesSchema: SchemaDef<TechnologiesDef> = {
+    _innerType: technologySchema,
+    _type: "map",
+};
+
+const technologyFileSchema: SchemaDef<TechnologyFile> = {
+    technologies: technologiesSchema,
+};
+
 export function getTechnologyTrees(node: Node): TechnologyTree[] {
-    const file = convertNodeFromFileToJson(node);
+    const file = convertNodeToJson<TechnologyFile>(node, technologyFileSchema);
     const allTechnologies = getTechnologies(file.technologies._map);
 
     const result: TechnologyTree[] = [];
@@ -85,7 +139,7 @@ function getTechnologiesByTree(technologiesInOneFolder: Technology[]): Record<st
     return trees;
 }
 
-function getTechnologies(technologies: HOIPartial<Technologies>['_map']): Record<string, Technology> {
+function getTechnologies(technologies: HOIPartial<TechnologiesDef>['_map']): Record<string, Technology> {
     const result: Record<string, Technology> = {};
 
     for (const { _key, _value } of Object.values(technologies)) {

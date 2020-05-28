@@ -1,8 +1,72 @@
-import { Node } from "./hoiparser";
-import { convertNodeFromFileToJson, SpriteType, CorneredTileSpriteType, toNumberLike } from "./schema";
+import { Node, Token } from "./hoiparser";
+import { SchemaDef, convertNodeToJson } from "./schema";
+import { NumberPosition } from "../util/common";
+
+export interface SpriteTypes {
+    spritetype: SpriteType[];
+    corneredtilespritetype: CorneredTileSpriteType[];
+}
+
+export interface SpriteType {
+    name: string;
+    texturefile: string;
+    noofframes: number;
+    _token: Token | undefined;
+}
+
+export interface CorneredTileSpriteType {
+    name: string;
+    texturefile: string;
+    noofframes: number;
+    size: NumberPosition;
+    bordersize: NumberPosition;
+    tilingCenter: boolean;
+    _token: Token | undefined;
+}
+
+interface SpriteFile {
+    spritetypes: SpriteTypes[];
+}
+
+const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteType> = {
+    name: "string",
+    texturefile: "string",
+    noofframes: "number",
+    size: {
+        x: "number",
+        y: "number",
+    },
+    bordersize: {
+        x: "number",
+        y: "number",
+    },
+    tilingCenter: "boolean",
+};
+
+const spriteTypesSchema: SchemaDef<SpriteTypes> = {
+    spritetype: {
+        _innerType: {
+            name: "string",
+            texturefile: "string",
+            noofframes: "number",
+        },
+        _type: "array",
+    },
+    corneredtilespritetype: {
+        _innerType: corneredTileSpriteTypeSchema,
+        _type: "array",
+    }
+};
+
+const spriteFileSchema: SchemaDef<SpriteFile> = {
+    spritetypes: {
+        _innerType: spriteTypesSchema,
+        _type: "array",
+    },
+};
 
 export function getSpriteTypes(node: Node): (SpriteType | CorneredTileSpriteType)[] {
-    const file = convertNodeFromFileToJson(node);
+    const file = convertNodeToJson<SpriteFile>(node, spriteFileSchema);
     const result: (SpriteType | CorneredTileSpriteType)[] = [];
 
     for (const spritetypes of file.spritetypes) {

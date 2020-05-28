@@ -1,8 +1,9 @@
-import { ContainerWindowType, HOIPartial, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/schema";
+import { HOIPartial } from "../../hoiformat/schema";
 import { calculateBBox, normalizeMargin, ParentInfo, RenderCommonOptions, removeHtmlOptions, renderBackground } from "./common";
 import { renderIcon } from "./icon";
 import { renderInstantTextBox } from "./instanttextbox";
 import { renderGridBox } from "./gridbox";
+import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/gui";
 
 interface RenderChildTypeMap {
     containerwindow: HOIPartial<ContainerWindowType>;

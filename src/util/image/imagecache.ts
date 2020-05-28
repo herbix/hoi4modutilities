@@ -4,7 +4,7 @@ import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { readFileFromModOrHOI4, hoiFileExpiryToken } from '../fileloader';
 import { PromiseCache } from '../cache';
 import { ddsToPng } from './converter';
-import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/schema';
+import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/spritetype';
 import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';

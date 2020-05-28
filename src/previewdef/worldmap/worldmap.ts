@@ -5,7 +5,7 @@ import worldmapviewstyles from './worldmapview.css';
 import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
-import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage } from './definitions';
+import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
 import { slice, writeFile, debounceByInput, matchPathEnd, mkdirs } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
@@ -59,44 +59,19 @@ export class WorldMap {
                     await this.sendProvinceMapSummaryToWebview(msg.force);
                     break;
                 case 'requestprovinces':
-                    await this.panel.webview.postMessage({
-                        command: 'provinces',
-                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).provinces, msg.start, msg.end)),
-                        start: msg.start,
-                        end: msg.end,
-                    } as WorldMapMessage);
+                    await this.sendMapData('provinces', msg, (await this.worldMapLoader.getWorldMap()).provinces);
                     break;
                 case 'requeststates':
-                    await this.panel.webview.postMessage({
-                        command: 'states',
-                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).states, msg.start, msg.end)),
-                        start: msg.start,
-                        end: msg.end,
-                    } as WorldMapMessage);
+                    await this.sendMapData('states', msg, (await this.worldMapLoader.getWorldMap()).states);
                     break;
                 case 'requestcountries':
-                    await this.panel.webview.postMessage({
-                        command: 'countries',
-                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).countries, msg.start, msg.end)),
-                        start: msg.start,
-                        end: msg.end,
-                    } as WorldMapMessage);
+                    await this.sendMapData('countries', msg, (await this.worldMapLoader.getWorldMap()).countries);
                     break;
                 case 'requeststrategicregions':
-                    await this.panel.webview.postMessage({
-                        command: 'strategicregions',
-                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).strategicRegions, msg.start, msg.end)),
-                        start: msg.start,
-                        end: msg.end,
-                    } as WorldMapMessage);
+                    await this.sendMapData('strategicregions', msg, (await this.worldMapLoader.getWorldMap()).strategicRegions);
                     break;
                 case 'requestsupplyareas':
-                    await this.panel.webview.postMessage({
-                        command: 'supplyareas',
-                        data: JSON.stringify(slice((await this.worldMapLoader.getWorldMap()).supplyAreas, msg.start, msg.end)),
-                        start: msg.start,
-                        end: msg.end,
-                    } as WorldMapMessage);
+                    await this.sendMapData('supplyareas', msg, (await this.worldMapLoader.getWorldMap()).supplyAreas);
                     break;
                 case 'openfile':
                     await this.openFile(msg.file, msg.type, msg.start, msg.end);
@@ -105,6 +80,15 @@ export class WorldMap {
         } catch (e) {
             error(e);
         }
+    }
+
+    private sendMapData(command: MapItemMessage['command'], msg: RequestMapItemMessage, value: unknown[]) {
+        return this.panel.webview.postMessage({
+            command: command,
+            data: JSON.stringify(slice(value, msg.start, msg.end)),
+            start: msg.start,
+            end: msg.end,
+        } as WorldMapMessage);
     }
 
     private progressReporter: ProgressReporter = async (progress: string) => {

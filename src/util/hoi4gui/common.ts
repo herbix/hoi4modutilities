@@ -1,8 +1,9 @@
-import { NumberLike, Position, Margin, ComplexSize, HOIPartial, Size, Orientation, Background, parseNumberLike } from "../../hoiformat/schema";
+import { NumberLike, Position, HOIPartial, parseNumberLike } from "../../hoiformat/schema";
 import { Sprite } from "../image/imagecache";
 import { NumberSize, NumberPosition } from "../common";
 import { CorneredTileSprite } from "../image/sprite";
 import { StyleTable } from "../html";
+import { Orientation, ComplexSize, Size, Margin, Background } from "../../hoiformat/gui";
 
 export interface ParentInfo {
     size: NumberSize;

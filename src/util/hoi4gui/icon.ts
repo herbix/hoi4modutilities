@@ -1,5 +1,6 @@
-import { HOIPartial, IconType } from "../../hoiformat/schema";
+import { HOIPartial } from "../../hoiformat/schema";
 import { ParentInfo, calculateBBox, renderSprite, RenderCommonOptions } from "./common";
+import { IconType } from "../../hoiformat/gui";
 
 export interface RenderIconOptions extends RenderCommonOptions {
 }
