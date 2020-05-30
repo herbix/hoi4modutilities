@@ -7,9 +7,9 @@ import { DDS } from './util/image/dds';
 import { html, StyleTable, htmlEscape } from './util/html';
 
 export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
-	public async openCustomDocument(uri: vscode.Uri) {
+    public async openCustomDocument(uri: vscode.Uri) {
         // Don't try opening it as text
-		return { uri, dispose: () => { } };
+        return { uri, dispose: () => { } };
     }
 
     public async resolveCustomEditor(document: { uri: vscode.Uri }, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {

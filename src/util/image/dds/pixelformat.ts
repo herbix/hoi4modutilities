@@ -199,21 +199,21 @@ function tail0count(v: number): number {
         return 0;
     }
 
-	let r = 0;
-	while ((v & 1) === 0) {
-		v >>>= 1;
-		r++;
-	}
-	return r;
+    let r = 0;
+    while ((v & 1) === 0) {
+        v >>>= 1;
+        r++;
+    }
+    return r;
 }
 
 function all1Count(v: number): number {
-	v = ((v & 0xAAAAAAAA) >>> 1) + (v & 0x55555555);
-	v = ((v & 0xCCCCCCCC) >>> 2) + (v & 0x33333333);
-	v = ((v & 0xF0F0F0F0) >>> 4) + (v & 0x0F0F0F0F);
-	v = ((v & 0xFF00FF00) >>> 8) + (v & 0x00FF00FF);
-	v = ((v & 0xFFFF0000) >>> 16) + (v & 0x0000FFFF);
-	return v;
+    v = ((v & 0xAAAAAAAA) >>> 1) + (v & 0x55555555);
+    v = ((v & 0xCCCCCCCC) >>> 2) + (v & 0x33333333);
+    v = ((v & 0xF0F0F0F0) >>> 4) + (v & 0x0F0F0F0F);
+    v = ((v & 0xFF00FF00) >>> 8) + (v & 0x00FF00FF);
+    v = ((v & 0xFFFF0000) >>> 16) + (v & 0x0000FFFF);
+    return v;
 }
 
 const formatToChannelCount: Record<ChannelFormat, number> = {

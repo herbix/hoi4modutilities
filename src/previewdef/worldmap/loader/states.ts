@@ -14,11 +14,11 @@ interface StateFile {
 }
 
 interface StateDefinition {
-	id: number;
-	name: string;
-	manpower: number;
-	state_category: StringAsSymbol;
-	history: StateHistory;
+    id: number;
+    name: string;
+    manpower: number;
+    state_category: StringAsSymbol;
+    history: StateHistory;
     provinces: Enum;
     impassable: boolean;
     _token: Token;

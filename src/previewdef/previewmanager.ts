@@ -71,14 +71,14 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         return this.showPreviewImpl(uri);
     }
 
-	private onCloseTextDocument(document: vscode.TextDocument): void {
+    private onCloseTextDocument(document: vscode.TextDocument): void {
         const key = document.uri.toString();
         this._previews[key]?.panel.dispose();
         debug(`dispose panel ${key} because text document closed`);
         this.updatePreviewItemsInSubscription(document.uri);
     }
     
-	private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
+    private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
         const document = e.document;
         const key = document.uri.toString();
         const preview = this._previews[key];
@@ -141,12 +141,12 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             return previewProvider.onPreview(document);
         }
 
-		const filename = path.basename(uri.path);
-		panel = panel ?? vscode.window.createWebviewPanel(
+        const filename = path.basename(uri.path);
+        panel = panel ?? vscode.window.createWebviewPanel(
             WebviewType.Preview,
             localize('preview.viewtitle', "HOI4: {0}", filename),
-			vscode.ViewColumn.Beside,
-			{
+            vscode.ViewColumn.Beside,
+            {
                 enableScripts: true
             }
         );
