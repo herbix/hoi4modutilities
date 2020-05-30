@@ -1,3 +1,5 @@
+import { enableDropdowns } from './dropdown';
+
 export const vscode = acquireVsCodeApi();
 
 export function setState(obj: Record<string, any>): void {
@@ -114,4 +116,6 @@ window.addEventListener('load', function() {
             });
         }
     })();
+
+    enableDropdowns();
 });

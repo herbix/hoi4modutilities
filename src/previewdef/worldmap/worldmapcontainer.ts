@@ -55,7 +55,7 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
         }
 
         this.worldMap = new WorldMap(panel);
-        await this.worldMap.initialize();
+        this.worldMap.initialize();
     }
 
     private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {

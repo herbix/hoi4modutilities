@@ -24,7 +24,6 @@ export class WorldMap {
 
     public initialize(): void {
         const webview = this.panel.webview;
-        webview.html = localize('loading', 'Loading...');
         webview.html = this.renderWorldMap();
         webview.onDidReceiveMessage((msg) => this.onMessage(msg));
     }

@@ -61,9 +61,7 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         ${preparedScripts.map(v => v[0]).join('')}
         ${preparedStyles.map(v => v[0]).join('')}
     </head>
-    <body>${body.replace(/(<\w+(?:\s+\w+\s*=\s*".*?")*?\s+class\s*=\s*")(.*?)("(?:\s+\w+\s*=\s*".*?")*?\s*\/?>)/gs, (substr, g1, g2, g3) => {
-        return g1 + g2.replace(/\s+/g, ' ').trim() + g3;
-    })}</body>
+    <body>${body.replace(/\s\s+/g, ' ')}</body>
 </html>
 `;
 }

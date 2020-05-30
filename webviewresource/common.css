@@ -8,6 +8,9 @@ select {
     appearance: none;
     -webkit-appearance: none;
     padding: 0 20px 0 5px;
+    font-size: var(--vscode-font-size);
+    font-family: var(--vscode-font-family);
+    font-weight: var(--vscode-font-weight);
 }
 
 .select-container {
@@ -49,4 +52,30 @@ input[type=text] {
 
 input[type=checkbox] {
     cursor: pointer;
+}
+
+ul.select-dropdown {
+    position: fixed;
+    cursor: pointer;
+    background: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    border: 1px solid var(--vscode-focusBorder);
+    font-size: var(--vscode-font-size);
+    font-family: var(--vscode-font-family);
+    font-weight: var(--vscode-font-weight);
+    list-style-type: none;
+    box-sizing: border-box;
+    padding: 0 0 1px 0;
+    margin: 0;
+    z-index: 100;
+}
+
+ul.select-dropdown li {
+    padding-left: 4px;
+    padding-bottom: 1px;
+}
+
+ul.select-dropdown li:hover, ul.select-dropdown li:focus {
+    outline: none;
+    background: var(--vscode-list-focusBackground);
 }
