@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { renderGfxFile } from './contentbuilder';
 import { PreviewProviderDef } from '../previewmanager';
-import { PreviewBase, emptyPreviewDependency, PreviewDependency } from '../previewbase';
+import { PreviewBase } from '../previewbase';
 
 function canPreviewGfx(document: vscode.TextDocument) {
     const uri = document.uri;
@@ -11,10 +11,6 @@ function canPreviewGfx(document: vscode.TextDocument) {
 class GfxPreview extends PreviewBase {
     protected getContent(document: vscode.TextDocument): Promise<string> {
         return renderGfxFile(document.getText(), document.uri, this.panel.webview);
-    }
-
-    public getDependencies(document: vscode.TextDocument): Promise<PreviewDependency> {
-        return Promise.resolve(emptyPreviewDependency);
     }
 }
 

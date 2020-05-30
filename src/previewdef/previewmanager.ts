@@ -7,7 +7,7 @@ import { Commands, WebviewType, ContextName } from '../constants';
 import { technologyPreviewDef } from './technology';
 import { arrayToMap, matchPathEnd, debounceByInput } from '../util/common';
 import { debug, error } from '../util/debug';
-import { PreviewBase, PreviewDependency } from './previewbase';
+import { PreviewBase } from './previewbase';
 import { contextContainer } from '../context';
 import { getDocumentByUri } from '../util/vsccommon';
 import { worldMapPreviewDef } from './worldmap';
@@ -187,10 +187,9 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         return undefined;
     }
 
-    private addPreviewToSubscription(previewItem: PreviewBase, dependency: PreviewDependency): void {
+    private addPreviewToSubscription(previewItem: PreviewBase, dependency: string[]): void {
         const matchStrings = Object.values(dependency)
-            .map((dl: string[]) => dl.map(d => d.split('/').filter(v => v)))
-            .reduce<string[][]>((p, c) => p.concat(c), []);
+            .map(d => d.split('/').filter(v => v));
 
         for (const matchString of matchStrings) {
             const subscriptions = this._updateSubscriptions.get(matchString);

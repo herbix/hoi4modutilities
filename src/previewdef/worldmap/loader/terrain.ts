@@ -30,7 +30,7 @@ export class TerrainDefinitionLoader extends FileLoader<Terrain[]> {
         super('common/terrain/00_terrain.txt');
     }
 
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Terrain[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<Terrain[]>> {
         return {
             result: await loadTerrains(this.file),
             warnings: [],

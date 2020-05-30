@@ -6,6 +6,7 @@ import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { TerrainDefinitionLoader } from "./terrain";
 import { arrayToMap } from "../../../util/common";
 import { localize } from "../../../util/i18n";
+import { LoaderSession } from "../../../util/loader";
 
 interface DefaultMap {
     definitions: string;
@@ -34,8 +35,8 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         this.terrainDefinitionLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
-    public async shouldReloadImpl(): Promise<boolean> {
-        if (await super.shouldReloadImpl()) {
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        if (await super.shouldReloadImpl(session)) {
             return true;
         }
 
@@ -45,18 +46,18 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
             this.adjacenciesLoader,
             this.continentsLoader,
             this.terrainDefinitionLoader
-        ].map(v => v?.shouldReload() ?? Promise.resolve(false)))).some(v => v);
+        ].map(v => v?.shouldReload(session) ?? Promise.resolve(false)))).some(v => v);
     }
 
-    protected async loadFromFile(force: boolean): Promise<LoadResult<ProvinceMap>> {
+    protected async loadFromFile(session: LoaderSession): Promise<LoadResult<ProvinceMap>> {
         
         const defaultMap = await loadDefaultMap(e => this.fireOnProgressEvent(e));
 
-        const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(force);
-        const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(force);
-        const adjacencies = await (this.adjacenciesLoader = this.checkAndCreateLoader(this.adjacenciesLoader, 'map/' + defaultMap.adjacencies, AdjacenciesLoader)).load(force);
-        const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(force);    
-        const terrains = await this.terrainDefinitionLoader.load(force);
+        const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(session);
+        const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(session);
+        const adjacencies = await (this.adjacenciesLoader = this.checkAndCreateLoader(this.adjacenciesLoader, 'map/' + defaultMap.adjacencies, AdjacenciesLoader)).load(session);
+        const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(session);
+        const terrains = await this.terrainDefinitionLoader.load(session);
 
         const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents, terrains ];
 

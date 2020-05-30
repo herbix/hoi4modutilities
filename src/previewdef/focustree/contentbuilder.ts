@@ -1,24 +1,30 @@
 import * as vscode from 'vscode';
-import { getFocusTree, FocusTree, Focus } from './schema';
-import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { FocusTree, Focus } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html, StyleTable, htmlEscape } from '../../util/html';
-import { PreviewDependency } from '../previewbase';
 import { GridBoxType } from '../../hoiformat/gui';
+import { FocusTreeLoader } from './loader';
+import { LoaderSession } from '../../util/loader';
+import { debug } from '../../util/debug';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
-export async function renderFocusTreeFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview, dependencies: PreviewDependency): Promise<string> {
+export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const styleTable = new StyleTable();
     let baseContent = '';
     try {
-        const focustrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
+        const session = new LoaderSession(false);
+        const loadResult = await loader.load(session);
+        const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
+        debug('Loader session focus tree', loadedLoaders);
+
+        const focustrees = loadResult.result.focusTrees;
         if (focustrees.length > 0) {
-            baseContent = await renderFocusTree(focustrees[0], styleTable, dependencies.gfx);
+            baseContent = await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles);
         } else {
             baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }

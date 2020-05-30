@@ -10,6 +10,7 @@ import { slice, writeFile, debounceByInput, matchPathEnd, mkdirs } from '../../u
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
+import { LoaderSession } from '../../util/loader';
 
 export class WorldMap {
     private worldMapLoader: WorldMapLoader;
@@ -103,7 +104,7 @@ export class WorldMap {
         try {
             this.worldMapLoader.shallowForceReload();
             const oldCachedWorldMap = this.cachedWorldMap;
-            const { result: worldMap, dependencies } = await this.worldMapLoader.load(force);
+            const { result: worldMap, dependencies } = await this.worldMapLoader.load(new LoaderSession(force));
             this.worldMapDependencies = dependencies;
             this.cachedWorldMap = worldMap;
 

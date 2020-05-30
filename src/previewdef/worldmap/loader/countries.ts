@@ -4,6 +4,7 @@ import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { FolderLoader, FileLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult, convertColor } from "./common";
 import { localize } from "../../../util/i18n";
+import { LoaderSession } from "../../../util/loader";
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -56,18 +57,18 @@ export class CountriesLoader extends Loader<Country[]> {
         this.colorsLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
-    public async shouldReloadImpl(): Promise<boolean> {
-        if (await this.countryTagsLoader.shouldReload() || await this.colorsLoader.shouldReload()) {
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        if (await this.countryTagsLoader.shouldReload(session) || await this.colorsLoader.shouldReload(session)) {
             return true;
         }
 
-        return (await Promise.all(Object.values(this.countryLoaders).map(l => l.shouldReload()))).some(v => v);
+        return (await Promise.all(Object.values(this.countryLoaders).map(l => l.shouldReload(session)))).some(v => v);
     }
 
-    protected async loadImpl(force: boolean): Promise<LoadResult<Country[]>> {
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<Country[]>> {
         this.fireOnProgressEvent(localize('TODO', 'Loading countries...'));
 
-        const tagsResult = await this.countryTagsLoader.load(force);
+        const tagsResult = await this.countryTagsLoader.load(session);
         const countryTags = tagsResult.result;
         const countryResultPromises: Promise<LoadResult<Country | undefined>>[] = [];
         const newCountryLoaders: Record<string, CountryLoader> = {};
@@ -79,14 +80,14 @@ export class CountriesLoader extends Loader<Country[]> {
                 countryLoader.onProgress(e => this.onProgressEmitter.fire(e));
             }
 
-            countryResultPromises.push(countryLoader.load(force));
+            countryResultPromises.push(countryLoader.load(session));
             newCountryLoaders[tag.tag] = countryLoader;
         }
 
         this.countryLoaders = newCountryLoaders;
 
         const countriesResult = await Promise.all(countryResultPromises);
-        const colorsFileResult = await this.colorsLoader.load(force);
+        const colorsFileResult = await this.colorsLoader.load(session);
 
         const countries = countriesResult.map(r => r.result).filter((c): c is Country => c !== undefined);
 
@@ -111,7 +112,7 @@ class CountryLoader extends FileLoader<Country | undefined> {
         super(file);
     }
 
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Country | undefined>> {
+    protected async loadFromFile(): Promise<LoadResultOD<Country | undefined>> {
         return { result: await loadCountry(this.tag, this.file), warnings: [] };
     }
 
@@ -125,7 +126,7 @@ class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
         super('common/country_tags', CountryTagLoader);
     }
 
-    protected mergeFiles(fileResults: LoadResult<Tag[]>[], force: boolean): Promise<LoadResult<Tag[]>> {
+    protected mergeFiles(fileResults: LoadResult<Tag[]>[]): Promise<LoadResult<Tag[]>> {
         return Promise.resolve<LoadResult<Tag[]>>({
             result: fileResults.map(r => r.result).reduce<Tag[]>((p, c) => p.concat(c), []),
             dependencies: [this.folder + '/*'],
@@ -139,7 +140,7 @@ class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
 }
 
 class CountryTagLoader extends FileLoader<Tag[]> {
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<Tag[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<Tag[]>> {
         return { result: await loadCountryTags(this.file), warnings: [] };
     }
 
@@ -153,7 +154,7 @@ class ColorsLoader extends FileLoader<HOIPartial<ColorsFile>> {
         super('common/countries/colors.txt');
     }
 
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<HOIPartial<ColorsFile>>> {
+    protected async loadFromFile(): Promise<LoadResultOD<HOIPartial<ColorsFile>>> {
         try {
             return {
                 result: await readFileFromModOrHOI4AsJson<ColorsFile>(this.file, colorsFileSchema),

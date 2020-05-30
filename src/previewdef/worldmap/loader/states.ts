@@ -7,6 +7,7 @@ import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
 import { localize } from "../../../util/i18n";
+import { LoaderSession } from "../../../util/loader";
 
 interface StateFile {
     state: StateDefinition[];
@@ -86,18 +87,18 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
-    public async shouldReloadImpl(): Promise<boolean> {
-        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.categoriesLoader.shouldReload();
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session) || await this.categoriesLoader.shouldReload(session);
     }
 
-    protected async loadImpl(force: boolean): Promise<LoadResult<StateLoaderResult>> {
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
         await this.fireOnProgressEvent(localize('worldmap.progress.loadingstates', 'Loading states...'));
-        return super.loadImpl(force);
+        return super.loadImpl(session);
     }
 
-    protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], force: boolean): Promise<LoadResult<StateLoaderResult>> {
-        const provinceMap = await this.defaultMapLoader.load(false);
-        const stateCategories = await this.categoriesLoader.load(force);
+    protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
+        const provinceMap = await this.defaultMapLoader.load(session);
+        const stateCategories = await this.categoriesLoader.load(session);
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
@@ -143,7 +144,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 }
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<StateNoBoundingBox[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<StateNoBoundingBox[]>> {
         const warnings: Warning[] = [];
         return {
             result: await loadState(this.file, warnings),
@@ -161,12 +162,12 @@ class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, 
         super('common/state_category', StateCategoryLoader);
     }
 
-    protected async loadImpl(force: boolean): Promise<LoadResult<Record<string, StateCategory>>> {
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<Record<string, StateCategory>>> {
         await this.fireOnProgressEvent(localize('worldmap.progress.loadstatecategories', 'Loading state categories...'));
-        return super.loadImpl(force);
+        return super.loadImpl(session);
     }
 
-    protected async mergeFiles(fileResults: LoadResult<StateCategory[]>[], force: boolean): Promise<LoadResult<Record<string, StateCategory>>> {
+    protected async mergeFiles(fileResults: LoadResult<StateCategory[]>[]): Promise<LoadResult<Record<string, StateCategory>>> {
         const warnings = mergeInLoadResult(fileResults, 'warnings');
         const categories: Record<string, StateCategory> = {};
 
@@ -195,7 +196,7 @@ class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, 
 }
 
 class StateCategoryLoader extends FileLoader<StateCategory[]> {
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<StateCategory[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<StateCategory[]>> {
         const warnings: Warning[] = [];
         return {
             result: await loadStateCategory(this.file, warnings),

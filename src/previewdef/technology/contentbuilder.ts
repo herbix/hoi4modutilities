@@ -1,32 +1,37 @@
 import * as vscode from 'vscode';
-import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { localize } from '../../util/i18n';
-import { Technology, getTechnologyTrees, TechnologyTree, TechnologyFolder } from './schema';
+import { Technology, TechnologyTree, TechnologyFolder } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap } from '../../util/common';
-import { readFileFromModOrHOI4 } from '../../util/fileloader';
-import { HOIPartial, convertNodeToJson } from '../../hoiformat/schema';
+import { arrayToMap, distinct } from '../../util/common';
+import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
 import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { html, StyleTable, htmlEscape } from '../../util/html';
-import { PreviewDependency } from '../previewbase';
-import { GuiFile, guiFileSchema, ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format } from '../../hoiformat/gui';
+import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format } from '../../hoiformat/gui';
+import { TechnologyTreeLoader, TechnologyTreeLoaderResult } from './loader';
+import { LoaderSession } from '../../util/loader';
+import { debug } from '../../util/debug';
 
 const techTreeViewName = 'countrytechtreeview';
 
-export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview, dependencies: PreviewDependency): Promise<string> {
+export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     let baseContent = '';
     const styleTable = new StyleTable();
     try {
-        const technologyTrees = getTechnologyTrees(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', uri.toString())));
-        const folders = technologyTrees.map(tt => tt.folder).filter((v, i, a) => i === a.indexOf(v));
+        const session = new LoaderSession(false);
+        const loadResult = await loader.load(session);
+        const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
+        debug('Loader session tech tree', loadedLoaders);
+
+        const technologyTrees = loadResult.result.technologyTrees;
+        const folders = distinct(technologyTrees.map(tt => tt.folder));
         if (folders.length < 1) {
             baseContent = localize('techtree.notechtree', 'No technology tree.');
         } else {
-            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, dependencies);
+            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
         }
 
     } catch (e) {
@@ -48,14 +53,9 @@ export async function renderTechnologyFile(fileContent: string, uri: vscode.Uri,
     );
 }
 
-async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, dependencies: PreviewDependency): Promise<string> {
-    const guiFiles = dependencies.gui;
-    const guiTypes = (await Promise.all(guiFiles.map(async (guiFilePath) => {
-        const [guiFile, realPath] = await readFileFromModOrHOI4(guiFilePath);
-        const fileContent = guiFile.toString();
-    
-        return convertNodeToJson<GuiFile>(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', realPath)), guiFileSchema).guitypes;
-    }))).reduce((p, c) => p.concat(c), []);
+async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, loadResult: TechnologyTreeLoaderResult): Promise<string> {
+    const guiFiles = loadResult.guiFiles.map(f => f.file);
+    const guiTypes = loadResult.guiFiles.map(f => f.data.guitypes).reduce((p, c) => p.concat(c), []);
 
     const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
     const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
@@ -63,7 +63,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
         throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
     }
 
-    const gfxFiles = dependencies.gfx;
+    const gfxFiles = loadResult.gfxFiles;
     const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
 
     return `

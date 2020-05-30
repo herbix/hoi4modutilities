@@ -8,6 +8,7 @@ import { localize } from "../../../util/i18n";
 import { StatesLoader } from "./states";
 import { arrayToMap } from "../../../util/common";
 import { Token } from "../../../hoiformat/hoiparser";
+import { LoaderSession } from "../../../util/loader";
 
 interface StrategicRegionFile {
     strategic_region: StrategicRegionDefinition[];
@@ -39,18 +40,18 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         super('map/strategicregions', StrategicRegionLoader);
     }
 
-    public async shouldReloadImpl(): Promise<boolean> {
-        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session) || await this.statesLoader.shouldReload(session);
     }
 
-    protected async loadImpl(force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<StrategicRegionsLoaderResult>> {
         await this.fireOnProgressEvent(localize('worldmap.progress.loadingstrategicregions', 'Loading strategic regions...'));
-        return super.loadImpl(force);
+        return super.loadImpl(session);
     }
 
-    protected async mergeFiles(fileResults: LoadResult<StrategicRegionNoRegion[]>[], force: boolean): Promise<LoadResult<StrategicRegionsLoaderResult>> {
-        const provinceMap = await this.defaultMapLoader.load(false);
-        const stateMap = await this.statesLoader.load(false);
+    protected async mergeFiles(fileResults: LoadResult<StrategicRegionNoRegion[]>[], session: LoaderSession): Promise<LoadResult<StrategicRegionsLoaderResult>> {
+        const provinceMap = await this.defaultMapLoader.load(session);
+        const stateMap = await this.statesLoader.load(session);
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostrategicregions', 'Mapping provinces to strategic regions...'));
 
@@ -90,7 +91,7 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
 }
 
 class StrategicRegionLoader extends FileLoader<StrategicRegionNoRegion[]> {
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<StrategicRegionNoRegion[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<StrategicRegionNoRegion[]>> {
         const warnings: Warning[] = [];
         return {
             result: await loadStrategicRegion(this.file, warnings),

@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import { renderFocusTreeFile } from './contentbuilder';
 import { matchPathEnd } from '../../util/common';
-import { PreviewBase, PreviewDependency } from '../previewbase';
+import { PreviewBase } from '../previewbase';
 import { PreviewProviderDef } from '../previewmanager';
+import { FocusTreeLoader } from './loader';
+import { getRelativePathInWorkspace } from '../../util/vsccommon';
 
 function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
@@ -14,22 +16,20 @@ function canPreviewFocusTree(document: vscode.TextDocument) {
     return /(focus_tree|shared_focus)\s*=\s*{/.test(text);
 }
 
-const focusesGFX = 'interface/goals.gfx';
 class FocusTreePreview extends PreviewBase {
-    protected getContent(document: vscode.TextDocument, dependencies: PreviewDependency): Promise<string> {
-        return renderFocusTreeFile(document.getText(), document.uri, this.panel.webview, dependencies);
+    private focusTreeLoader: FocusTreeLoader;
+    private content: string | undefined;
+
+    constructor(uri: vscode.Uri, panel: vscode.WebviewPanel) {
+        super(uri, panel);
+        this.focusTreeLoader = new FocusTreeLoader(getRelativePathInWorkspace(this.uri), () => Promise.resolve(this.content ?? ''));
+        this.focusTreeLoader.onLoadDone(r => this.updateDependencies(r.dependencies));
     }
 
-    public getInitialDependencies(): PreviewDependency {
-        return {
-            gfx: [focusesGFX],
-            gui: [],
-        };
-    }
-
-    public async getDependencies(document: vscode.TextDocument): Promise<PreviewDependency> {
-        const result = await super.getDependencies(document);
-        result.gui.length = 0;
+    protected async getContent(document: vscode.TextDocument): Promise<string> {
+        this.content = document.getText();
+        const result = await renderFocusTreeFile(this.focusTreeLoader, document.uri, this.panel.webview);
+        this.content = undefined;
         return result;
     }
 }

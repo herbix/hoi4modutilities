@@ -7,6 +7,7 @@ import { localize } from "../../../util/i18n";
 import { error } from "../../../util/debug";
 import { DefaultMapLoader } from "./provincemap";
 import { StatesLoader } from "./states";
+import { LoaderSession } from "../../../util/loader";
 
 interface SupplyAreaFile {
     supply_area: SupplyAreaDefinition[];
@@ -38,18 +39,18 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
         super('map/supplyareas', SupplyAreaLoader);
     }
 
-    public async shouldReloadImpl(): Promise<boolean> {
-        return await super.shouldReloadImpl() || await this.defaultMapLoader.shouldReload() || await this.statesLoader.shouldReload();
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session) || await this.statesLoader.shouldReload(session);
     }
 
-    protected async loadImpl(force: boolean): Promise<LoadResult<SupplyAreasLoaderResult>> {
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<SupplyAreasLoaderResult>> {
         await this.fireOnProgressEvent(localize('worldmap.progress.loadingsupplyareas', 'Loading supply areas...'));
-        return super.loadImpl(force);
+        return super.loadImpl(session);
     }
 
-    protected async mergeFiles(fileResults: LoadResult<SupplyAreaNoRegion[]>[], force: boolean): Promise<LoadResult<SupplyAreasLoaderResult>> {
-        const provinceMap = await this.defaultMapLoader.load(false);
-        const stateMap = await this.statesLoader.load(false);
+    protected async mergeFiles(fileResults: LoadResult<SupplyAreaNoRegion[]>[], session: LoaderSession): Promise<LoadResult<SupplyAreasLoaderResult>> {
+        const provinceMap = await this.defaultMapLoader.load(session);
+        const stateMap = await this.statesLoader.load(session);
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapstatetosupplyarea', 'Mapping states to supply areas...'));
 
@@ -88,7 +89,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
 }
 
 class SupplyAreaLoader extends FileLoader<SupplyAreaNoRegion[]> {
-    protected async loadFromFile(force: boolean): Promise<LoadResultOD<SupplyAreaNoRegion[]>> {
+    protected async loadFromFile(): Promise<LoadResultOD<SupplyAreaNoRegion[]>> {
         const warnings: Warning[] = [];
         return {
             result: await loadSupplyArea(this.file, warnings),

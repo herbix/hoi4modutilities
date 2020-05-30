@@ -38,21 +38,17 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         return this.shouldReloadValue;
     }
 
-    public async loadImpl(force: boolean): Promise<LoadResult<WorldMapData>> {
+    public async loadImpl(session: LoaderSession): Promise<LoadResult<WorldMapData>> {
         this.shouldReloadValue = false;
 
-        const session = LoaderSession.start();
-
-        const provinceMap = await this.defaultMapLoader.load(force);
-        const stateMap = await this.statesLoader.load(force);
-        const countries = await this.countriesLoader.load(force);
-        const strategicRegions = await this.strategicRegionsLoader.load(force);
-        const supplyAreas = await this.supplyAreasLoader.load(force);
+        const provinceMap = await this.defaultMapLoader.load(session);
+        const stateMap = await this.statesLoader.load(session);
+        const countries = await this.countriesLoader.load(session);
+        const strategicRegions = await this.strategicRegionsLoader.load(session);
+        const supplyAreas = await this.supplyAreasLoader.load(session);
 
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
-
-        LoaderSession.complete();
 
         const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
@@ -84,7 +80,8 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     }
 
     public getWorldMap(force?: boolean): Promise<WorldMapData> {
-        return this.load(force).then(r => r.result);
+        const session = new LoaderSession(force ?? false);
+        return this.load(session).then(r => r.result);
     }
 
     public shallowForceReload(): void {
