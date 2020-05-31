@@ -79,3 +79,50 @@ ul.select-dropdown li:hover, ul.select-dropdown li:focus {
     outline: none;
     background: var(--vscode-list-focusBackground);
 }
+
+input[type=checkbox].hidden {
+    display: block;
+    width: 0;
+    max-width: 0;
+    height: 0;
+    max-height: 0;
+    overflow: hidden;
+    margin: 0;
+}
+
+label.hidden {
+    display: none;
+}
+
+div.checkbox-container-out {
+    display: inline-block;
+}
+
+div.checkbox-container {
+    display: flex;
+    cursor: pointer;
+}
+
+div.checkbox-container:focus {
+    outline: none;
+}
+
+div.checkbox-container:focus > div.checkbox {
+    border-color: var(--vscode-focusBorder);
+}
+
+div.checkbox {
+    box-sizing: border-box;
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background: var(--vscode-checkbox-background);
+    color: transparent;
+    border: 1px solid var(--vscode-checkbox-border);
+    margin-right: 4px;
+    border-radius: 3px;
+}
+
+input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox {
+    color: var(--vscode-checkbox-foreground);
+}

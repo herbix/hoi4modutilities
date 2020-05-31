@@ -40,6 +40,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
             'focustree.js',
         ],
         [
+            'codicon.css',
             'common.css',
             styleTable,
         ],
@@ -154,7 +155,10 @@ function renderAllowBranchOptions(option: string, index: number, styleTable: Sty
     `)}">
         <input type="checkbox" checked="true" id="inbranch_${option}" class="inbranch-checkbox"/>
         <label for="inbranch_${option}">${option}</label>
-        <a class="gotofocus-button ${styleTable.style('displayInline', () => `display:inline;`)}" focus="focus_${option}" href="javascript:;">Goto</a>
+        <a class="gotofocus-button
+            ${styleTable.style('displayInline', () => `display:inline;`)}
+            ${styleTable.style('gotofocus', () => `text-decoration: none; vertical-align: top;` )}"
+            focus="focus_${option}" href="javascript:;">Goto</a>
     </div>`;
 }
 

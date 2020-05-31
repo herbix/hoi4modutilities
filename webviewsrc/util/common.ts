@@ -1,4 +1,5 @@
 import { enableDropdowns } from './dropdown';
+import { enableCheckboxes } from './checkbox';
 
 export const vscode = acquireVsCodeApi();
 
@@ -118,4 +119,5 @@ window.addEventListener('load', function() {
     })();
 
     enableDropdowns();
+    enableCheckboxes();
 });

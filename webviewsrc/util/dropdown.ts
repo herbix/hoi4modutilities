@@ -32,7 +32,7 @@ class Dropdown extends Subscriber {
             }
         }));
         this.subscriptions.push(asEvent(this.select, 'keydown')(e => {
-            if (e.key === 'Enter') {
+            if (e.code === 'Enter') {
                 e.preventDefault();
                 if (this.closeDropdown) {
                     this.closeDropdown();
@@ -78,11 +78,11 @@ class Dropdown extends Subscriber {
             });
 
             asEvent(item, 'keydown')((e) => {
-                if (e.key === 'ArrowDown' && index < items.length - 1) {
+                if (e.code === 'ArrowDown' && index < items.length - 1) {
                     items[index + 1].focus();
-                } else if (e.key === 'ArrowUp' && index > 0) {
+                } else if (e.code === 'ArrowUp' && index > 0) {
                     items[index - 1].focus();
-                } else if (e.key === 'Enter') {
+                } else if (e.code === 'Enter') {
                     updateValue();
                 }
             });
@@ -120,7 +120,7 @@ class Dropdown extends Subscriber {
         }));
 
         dropdownSubscriptions.push(asEvent(window, 'keydown')((e) => {
-            if (e.key === 'Escape') {
+            if (e.code === 'Escape') {
                 select.focus();
                 this.closeDropdown?.apply(this);
             }
