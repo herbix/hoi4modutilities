@@ -1,5 +1,5 @@
 import { State, Province, Warning, WarningSource, Region, StateCategory } from "../definitions";
-import { CustomSymbol, Enum, SchemaDef, StringAsSymbol, CustomMap, Attachment } from "../../../hoiformat/schema";
+import { CustomSymbol, Enum, SchemaDef, StringAsSymbol, CustomMap, DetailValue } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
@@ -60,7 +60,7 @@ interface StateCategoryFile {
 }
 
 interface StateCategoryDefinition {
-    color: Attachment<Enum>;
+    color: DetailValue<Enum>;
 }
 
 const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
@@ -68,7 +68,7 @@ const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
         _innerType: {
             color: {
                 _innerType: "enum",
-                _type: "attachment",
+                _type: "detailvalue",
             },
         },
         _type: "map",

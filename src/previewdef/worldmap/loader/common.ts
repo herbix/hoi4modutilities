@@ -1,5 +1,5 @@
 import { Zone, Point, Region, MapLoaderExtra } from "../definitions";
-import { Attachment, Enum } from '../../../hoiformat/schema';
+import { DetailValue, Enum } from '../../../hoiformat/schema';
 import { hsvToRgb } from '../../../util/common';
 import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader';
 
@@ -16,7 +16,7 @@ export function pointEqual(a: Point, b: Point): boolean {
     return a.x === b.x && a.y === b.y;
 }
 
-export function convertColor(color: Attachment<Enum> | undefined): number {
+export function convertColor(color: DetailValue<Enum> | undefined): number {
     if (!color) {
         return 0;
     }

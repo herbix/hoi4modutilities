@@ -1,4 +1,4 @@
-import { CustomMap, Attachment, Enum, SchemaDef, HOIPartial } from "../../../hoiformat/schema";
+import { CustomMap, DetailValue, Enum, SchemaDef, HOIPartial } from "../../../hoiformat/schema";
 import { Country } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
@@ -10,14 +10,14 @@ interface CountryTagsFile extends CustomMap<string> {
 }
 
 interface CountryFile {
-    color: Attachment<Enum>;
+    color: DetailValue<Enum>;
 }
 
 interface ColorsFile extends CustomMap<ColorForCountry> {
 }
 
 interface ColorForCountry {
-    color: Attachment<Enum>;
+    color: DetailValue<Enum>;
 }
 
 const countryTagsFileSchema: SchemaDef<CountryTagsFile> = {
@@ -28,7 +28,7 @@ const countryTagsFileSchema: SchemaDef<CountryTagsFile> = {
 const countryFileSchema: SchemaDef<CountryFile> = {
     color: {
         _innerType: "enum",
-        _type: "attachment",
+        _type: "detailvalue",
     },
 };
 
@@ -36,7 +36,7 @@ const colorsFileSchema: SchemaDef<ColorsFile> = {
     _innerType: {
         color: {
             _innerType: "enum",
-            _type: "attachment",
+            _type: "detailvalue",
         },
     },
     _type: "map",

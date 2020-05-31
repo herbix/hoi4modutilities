@@ -1,17 +1,34 @@
 import { Node, Token } from "./hoiparser";
-import { SchemaDef, convertNodeToJson } from "./schema";
+import { SchemaDef, convertNodeToJson, DetailValue } from "./schema";
 import { NumberPosition } from "../util/common";
 
-export interface SpriteTypes {
-    spritetype: SpriteType[];
-    corneredtilespritetype: CorneredTileSpriteType[];
+interface SpriteTypes {
+    spritetype: SpriteTypeDef[];
+    corneredtilespritetype: CorneredTileSpriteTypeDef[];
+}
+
+interface SpriteTypeDef {
+    name: DetailValue<string>;
+    texturefile: string;
+    noofframes: number;
+    _token: Token | undefined;
+}
+
+interface CorneredTileSpriteTypeDef {
+    name: DetailValue<string>;
+    texturefile: string;
+    noofframes: number;
+    size: NumberPosition;
+    bordersize: NumberPosition;
+    tilingCenter: boolean;
+    _token: Token | undefined;
 }
 
 export interface SpriteType {
     name: string;
     texturefile: string;
     noofframes: number;
-    _token: Token | undefined;
+    token: Token | undefined;
 }
 
 export interface CorneredTileSpriteType {
@@ -21,15 +38,18 @@ export interface CorneredTileSpriteType {
     size: NumberPosition;
     bordersize: NumberPosition;
     tilingCenter: boolean;
-    _token: Token | undefined;
+    token: Token | undefined;
 }
 
 interface SpriteFile {
     spritetypes: SpriteTypes[];
 }
 
-const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteType> = {
-    name: "string",
+const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteTypeDef> = {
+    name: {
+        _innerType: "string",
+        _type: "detailvalue",
+    },
     texturefile: "string",
     noofframes: "number",
     size: {
@@ -46,7 +66,10 @@ const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteType> = {
 const spriteTypesSchema: SchemaDef<SpriteTypes> = {
     spritetype: {
         _innerType: {
-            name: "string",
+            name: {
+                _innerType: "string",
+                _type: "detailvalue",
+            },
             texturefile: "string",
             noofframes: "number",
         },
@@ -71,20 +94,20 @@ export function getSpriteTypes(node: Node): (SpriteType | CorneredTileSpriteType
 
     for (const spritetypes of file.spritetypes) {
         for (const sprite of spritetypes.spritetype) {
-            const name = sprite.name;
+            const name = sprite.name?._value;
             const texturefile = sprite.texturefile;
             if (name && texturefile) {
                 result.push({
                     name,
                     texturefile,
                     noofframes: sprite.noofframes ?? 1,
-                    _token: sprite._token,
+                    token: sprite.name!._startToken,
                 });
             }
         }
         
         for (const sprite of spritetypes.corneredtilespritetype) {
-            const name = sprite.name;
+            const name = sprite.name?._value;
             const texturefile = sprite.texturefile;
             if (name && texturefile) {
                 result.push({
@@ -100,7 +123,7 @@ export function getSpriteTypes(node: Node): (SpriteType | CorneredTileSpriteType
                         y: sprite.bordersize?.y ?? 0,
                     },
                     tilingCenter: sprite.tilingCenter ?? false,
-                    _token: sprite._token,
+                    token: sprite.name!._startToken,
                 });
             }
         }

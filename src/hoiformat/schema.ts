@@ -32,8 +32,15 @@ export interface NumberLike extends TokenObject {
     _unit: NumberUnit | undefined;
 }
 
-export interface Attachment<T> {
+export interface DetailValue<T> extends TokenObject {
     _attachment: string | undefined;
+    _attachmentToken: Token | undefined;
+    _startToken: Token | undefined;
+    _endToken: Token | undefined;
+    _value: T;
+}
+
+export interface ValueToken<T> {
     _value: T;
 }
 
@@ -43,12 +50,12 @@ export type HOIPartial<T> =
     T extends Enum ? T :
     T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
-    T extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> | undefined :
+    T extends DetailValue<infer T1> ? DetailValue<HOIPartial<T1>> | undefined :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
     { [K in keyof T]:
         T[K] extends Enum ? T[K] :
         T[K] extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
-        T[K] extends Attachment<infer T1> ? Attachment<HOIPartial<T1>> | undefined :
+        T[K] extends DetailValue<infer T1> ? DetailValue<HOIPartial<T1>> | undefined :
         T[K] extends (infer T1)[] ? HOIPartial<T1>[] :
         K extends ('_token' | '_index') ? T[K] | undefined :
         HOIPartial<T[K]> | undefined; };
@@ -63,7 +70,7 @@ export type SchemaDef<T> =
     T extends NumberLike ? 'numberlike' :
     T extends Enum ? 'enum' :
     T extends CustomMap<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'map'; } :
-    T extends Attachment<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'attachment'; } :
+    T extends DetailValue<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'detailvalue'; } :
     T extends (infer B)[] ? { _innerType: SchemaDef<B>; _type: 'array'; } :
     { [K in Exclude<keyof T, '_token' | '_index'>]: SchemaDef<T[K]>; };
 
@@ -176,9 +183,13 @@ function convertMap<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<
     return result;
 }
 
-function convertAttachment<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<string, NodeValue> = {}): HOIPartial<Attachment<T>> {
+function convertDetailValue<T>(node: Node, innerSchema: SchemaDef<T>, constants: Record<string, NodeValue> = {}): HOIPartial<DetailValue<T>> {
     return {
         _attachment: node.valueAttachment?.name,
+        _attachmentToken: node.valueAttachmentToken ?? undefined,
+        _startToken: node.valueStartToken ?? undefined,
+        _endToken: node.valueEndToken ?? undefined,
+        _token: node.nameToken ?? undefined,
         _value: convertNodeToJson(node, innerSchema, constants),
     };
 }
@@ -293,8 +304,8 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
             result = convertMap(node, schema._innerType, constants) as HOIPartial<T>;
         } else if (type === 'array') {
             throw new Error("Array can't be here.");
-        } else if (type === 'attachment') {
-            result = convertAttachment(node, schema._innerType, constants) as HOIPartial<T>;
+        } else if (type === 'detailvalue') {
+            result = convertDetailValue(node, schema._innerType, constants) as HOIPartial<T>;
         } else {
             result = convertObject(node, schema, constants);
         }

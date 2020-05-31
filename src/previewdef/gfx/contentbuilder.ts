@@ -71,8 +71,8 @@ async function renderSpriteType(spriteType: SpriteType, styleTable: StyleTable):
                 cursor: pointer;
             `)}
         "
-        start="${spriteType._token?.start}"
-        end="${spriteType._token?.end}"
+        start="${spriteType.token?.start}"
+        end="${spriteType.token?.end}"
         title="${spriteType.name}${image ? ` (${
             image.width / spriteType.noofframes}x${image.height}x${spriteType.noofframes})` : ''
             }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}">

@@ -1,4 +1,4 @@
-import { CustomMap, Attachment, Enum, SchemaDef } from "../../../hoiformat/schema";
+import { CustomMap, DetailValue, Enum, SchemaDef } from "../../../hoiformat/schema";
 import { FileLoader, convertColor, LoadResultOD } from "./common";
 import { Terrain } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
@@ -8,7 +8,7 @@ interface TerrainFile {
 }
 
 interface TerrainCategory {
-    color: Attachment<Enum>;
+    color: DetailValue<Enum>;
     naval_terrain: boolean;
 }
 
@@ -17,7 +17,7 @@ const terrainFileSchema: SchemaDef<TerrainFile> = {
         _innerType: {
             color: {
                 _innerType: "enum",
-                _type: "attachment",
+                _type: "detailvalue",
             },
             naval_terrain: "boolean",
         },
