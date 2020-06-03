@@ -1,6 +1,7 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
 import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
+import { flatten, chain } from 'lodash';
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
@@ -169,20 +170,20 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
         hasChangedInAllowBranch = false;
         for (const key in focuses) {
             const focus = focuses[key];
-            const allPrerequisites = focus.prerequisite.reduce((p, v) => p.concat(v), []).filter(p => p in focuses);
+            const allPrerequisites = flatten(focus.prerequisite).filter(p => p in focuses);
             if (allPrerequisites.length === 0) {
                 continue;
             }
 
-            allPrerequisites
-                .map(p => focuses[p].inAllowBranch)
-                .reduce((p, c) => p.concat(c), [])
+            chain(allPrerequisites)
+                .flatMap(p  => focuses[p].inAllowBranch)
                 .forEach(ab => {
                     if (!focus.inAllowBranch.includes(ab)) {
                         focus.inAllowBranch.push(ab);
                         hasChangedInAllowBranch = true;
                     }
-                });
+                })
+                .value();
         }
     }
 
@@ -201,10 +202,11 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null)
     x += (relativeToFocus ? relativeToFocus.x : 0);
     y += (relativeToFocus ? relativeToFocus.y : 0);
 
-    const exclusive = hoiFocus.mutually_exclusive
-        .reduce((p, c) => p.concat(c.focus).concat(c.XOR), [] as (CustomSymbol | undefined)[])
+    const exclusive = chain(hoiFocus.mutually_exclusive)
+        .flatMap(f => f.focus.concat(f.XOR))
         .filter((s): s is CustomSymbol => s !== undefined)
-        .map(s => s._name);
+        .map('_name')
+        .value();
     const prerequisite = hoiFocus.prerequisite
         .map(p => p.focus.concat(p.XOR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
     const icon = hoiFocus.icon?._name;
@@ -224,8 +226,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null)
 }
 
 function getAllowBranchOptions(focuses: Record<string, Focus>): string[] {
-    return Object.values(focuses)
-        .map(f => f.inAllowBranch)
-        .reduce((p, c) => p.concat(c), [])
-        .filter((v, i, a) => a.indexOf(v) === i);
+    return chain(focuses)
+        .flatMap(f => f.inAllowBranch)
+        .uniq()
+        .value();
 }

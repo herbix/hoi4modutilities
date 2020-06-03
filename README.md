@@ -2,8 +2,6 @@
 
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
 
-**Please set extension setting `hoi4ModUtilities.installPath` to correct HOI4 install path (and reload VSCode if possible) before using any preview features below. Or they won't be properly rendered.**
-
 ## Features
 
 * World map preview
@@ -11,6 +9,8 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 * Technology tree preview
 * `.gfx` file preview (sprites used by HOI4 are defined here)
 * `.dds` file preview (images files used by HOI4)
+
+For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](https://github.com/herbix/hoi4modutilities/wiki).
 
 ## Steps to start
 
@@ -58,17 +58,11 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 ## Release Notes
 
-### 0.3.1
-
-### Added
-* World map preview
-  * New view modes: strategic region and supply area.
-  * New color sets: supply value.
+### 0.3.2
 
 ### Changed
-* Refine map loading and auto reload.
-* Changed scale level to show edges and labels for different view modes.
+* Align style of checkbox and combobox with VSCode.
+* Click item in GFX file preview will navigate to name of sprite instead of type.
 
 ### Fixed
-* Fixed bug that can't copy file if parent folder not exist.
-* Fixed bug that sometimes world map not properly reloaded.
+* Performance issue when opening world map preview.

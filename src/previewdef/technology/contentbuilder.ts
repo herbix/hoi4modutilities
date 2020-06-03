@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { localize } from '../../util/i18n';
 import { Technology, TechnologyTree, TechnologyFolder } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap, distinct } from '../../util/common';
+import { arrayToMap } from '../../util/common';
 import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
@@ -14,6 +14,7 @@ import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format 
 import { TechnologyTreeLoader, TechnologyTreeLoaderResult } from './loader';
 import { LoaderSession } from '../../util/loader';
 import { debug } from '../../util/debug';
+import { flatMap, sumBy, min, flatten, chain, uniq } from 'lodash';
 
 const techTreeViewName = 'countrytechtreeview';
 
@@ -27,7 +28,7 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
         debug('Loader session tech tree', loadedLoaders);
 
         const technologyTrees = loadResult.result.technologyTrees;
-        const folders = distinct(technologyTrees.map(tt => tt.folder));
+        const folders = uniq(technologyTrees.map(tt => tt.folder));
         if (folders.length < 1) {
             baseContent = localize('techtree.notechtree', 'No technology tree.');
         } else {
@@ -55,9 +56,9 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, loadResult: TechnologyTreeLoaderResult): Promise<string> {
     const guiFiles = loadResult.guiFiles.map(f => f.file);
-    const guiTypes = loadResult.guiFiles.map(f => f.data.guitypes).reduce((p, c) => p.concat(c), []);
+    const guiTypes = flatMap(loadResult.guiFiles, f => f.data.guitypes);
 
-    const containerWindowTypes = guiTypes.reduce((p, c) => p.concat(c.containerwindowtype), [] as HOIPartial<ContainerWindowType>[]);
+    const containerWindowTypes = flatMap(guiTypes, t => t.containerwindowtype);
     const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
     if (!techTreeView) {
         throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
@@ -227,17 +228,17 @@ async function renderTechnologyTreeGridBox(
         };
     });
 
-    const technologyXorJointsItemsArray = technologyXorJoints.map(([t, _, tgs]) =>
+    const technologyXorJointsItemsArray = flatMap(technologyXorJoints, ([t, _, tgs]) =>
         tgs.map<GridBoxItem>((tl, i) => ({
             id: xorJointKey + t.id + i,
-            gridX: Math.round(tl.reduce((p, c) => p + c.folders[folder].x, 0) / tl.length),
-            gridY: Math.min(...tl.map(t1 => t1.folders[folder].y)) - 1,
+            gridX: Math.round(sumBy(tl, t => t.folders[folder].x) / tl.length),
+            gridY: (min(tl.map(t1 => t1.folders[folder].y)) ?? 0) - 1,
             isJoint: true,
             connections: tl.map<GridBoxConnection>(c => {
                 return { target: c.id, style: "1px solid red", targetType: "child" };
             }),
         }))
-    ).reduce((p, c) => p.concat(c), []);
+    );
 
     return await renderGridBox(gridboxType, parentInfo, {
         ...commonOptions,
@@ -279,7 +280,7 @@ function findXorGroups(treeMap: Record<string, Technology>, technology: Technolo
         }
 
         const groups = xorTechs.map(tech => xorGroupMap[tech.id]).filter((v, i, a) => v !== undefined && i === a.indexOf(v));
-        const bigGroup = groups.reduce((p, c) => p.concat(c), []).concat([ xorChild ]);
+        const bigGroup = flatten(groups).concat([ xorChild ]);
         bigGroup.forEach(tech => xorGroupMap[tech.id] = bigGroup);
     }
 
@@ -462,8 +463,8 @@ async function renderLineItem(
     const centerName: string | undefined = centerNameTable[centerNameCode];
 
     const directionalItems = [ item.up, item.down, item.right, item.left ];
-    const inSet = directionalItems.reduce<string[]>((p, c) => c === undefined ? p : p.concat(Object.keys(c.in)), []).filter((v, i, a) => i === a.indexOf(v));
-    const outSet = directionalItems.reduce<string[]>((p, c) => c === undefined ? p : p.concat(Object.keys(c.out)), []).filter((v, i, a) => i === a.indexOf(v));
+    const inSet = chain(directionalItems).compact().flatMap(c => Object.keys(c.in)).uniq().value();
+    const outSet = chain(directionalItems).compact().flatMap(c => Object.keys(c.out)).uniq().value();
     let sameInOut = false;
 
     if (inSet.length === outSet.length) {

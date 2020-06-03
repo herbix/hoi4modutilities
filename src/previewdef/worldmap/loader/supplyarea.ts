@@ -8,6 +8,7 @@ import { error } from "../../../util/debug";
 import { DefaultMapLoader } from "./provincemap";
 import { StatesLoader } from "./states";
 import { LoaderSession } from "../../../util/loader";
+import { flatMap } from "lodash";
 
 interface SupplyAreaFile {
     supply_area: SupplyAreaDefinition[];
@@ -55,7 +56,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
         await this.fireOnProgressEvent(localize('worldmap.progress.mapstatetosupplyarea', 'Mapping states to supply areas...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
-        const SupplyAreas = fileResults.reduce<SupplyAreaNoRegion[]>((p, c) => p.concat(c.result), []);
+        const SupplyAreas = flatMap(fileResults, c => c.result);
 
         const { width, provinces } = provinceMap.result;
 

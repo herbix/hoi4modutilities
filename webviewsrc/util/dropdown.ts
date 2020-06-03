@@ -54,15 +54,21 @@ class Dropdown extends Subscriber {
         list.style.width = bbox.width + 'px';
         
         document.body.appendChild(list);
+        select.classList.add('dropdown-opened');
 
         const items: HTMLLIElement[] = [];
     
         for (let i = 0; i < options.length; i++) {
             const option = options[i] as HTMLOptionElement;
+            if (option.hidden) {
+                continue;
+            }
+
             const item = document.createElement('li');
             const index = i;
             item.textContent = option.textContent;
             item.tabIndex = -1;
+            item.setAttribute('role', 'option');
 
             const updateValue = () => {
                 select.value = option.value;
@@ -79,10 +85,13 @@ class Dropdown extends Subscriber {
 
             asEvent(item, 'keydown')((e) => {
                 if (e.code === 'ArrowDown' && index < items.length - 1) {
+                    e.preventDefault();
                     items[index + 1].focus();
                 } else if (e.code === 'ArrowUp' && index > 0) {
+                    e.preventDefault();
                     items[index - 1].focus();
                 } else if (e.code === 'Enter') {
+                    e.preventDefault();
                     updateValue();
                 }
             });
@@ -98,6 +107,7 @@ class Dropdown extends Subscriber {
 
         const dropdownSubscriptions: Disposable[] = [];
         this.closeDropdown = () => {
+            select.classList.remove('dropdown-opened');
             list.remove();
             dropdownSubscriptions.forEach(d => d.dispose());
             this.closeDropdown = undefined;

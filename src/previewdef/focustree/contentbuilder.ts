@@ -10,6 +10,7 @@ import { GridBoxType } from '../../hoiformat/gui';
 import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader';
 import { debug } from '../../util/debug';
+import { minBy } from 'lodash';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -56,7 +57,7 @@ const optionHeight = 20;
 
 async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
     const focuses = Object.values(focustree.focuses);
-    const minX = focuses.reduce((p, c) => p > c.x ? c.x : p, 0);
+    const minX = minBy(focuses, 'x')?.x ?? 0;
     const leftPadding = leftPaddingBase - minX * xGridSize;
     const topPadding = focustree.allowBranchOptions.length * optionHeight + topPaddingBase;
 

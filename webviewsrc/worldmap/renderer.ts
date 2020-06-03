@@ -1,4 +1,4 @@
-import { Province, Point, State, Zone, Terrain, StrategicRegion, Region, SupplyArea } from "../../src/previewdef/worldmap/definitions";
+import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
@@ -6,6 +6,7 @@ import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
 import { asEvent, Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
 import { feLocalize } from "../util/i18n";
+import { chain, max, padStart } from "lodash";
 
 const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> = {
     province: { edge: 2, labels: 3 },
@@ -385,7 +386,7 @@ ${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategi
 ${stateObject ? `
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${stateObject.owner}
 ${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${stateObject.cores.join(',')}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${stateObject.manpower}` : ''
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(stateObject.manpower)}` : ''
 }
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
@@ -447,10 +448,11 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         const toProvinces = (supplyArea: SupplyArea | undefined) => {
             return supplyArea ?
                 {
-                    provinces: supplyArea.states
+                    provinces: chain(supplyArea.states)
                         .map(stateId => worldMap.getStateById(stateId)?.provinces)
                         .filter((v): v is number[] => !!v)
-                        .reduce((p, c) => p.concat(c), [])
+                        .flatten()
+                        .value()
                 } :
                 undefined;
         };
@@ -491,7 +493,7 @@ ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${state.owner}
 ${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${state.cores.join(',')}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${state.manpower}
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(state.manpower)}
 ${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
@@ -560,7 +562,7 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
         const linePadding = 3;
 
         backCanvasContext.font = `${fontSize}px sans-serif`;
-        const width = text.map(t => backCanvasContext.measureText(t).width).reduce((p, c) => p > c ? p : c, 0);
+        const width = max(text.map(t => backCanvasContext.measureText(t).width)) ?? 0;
         const height = fontSize * text.length + linePadding * (text.length - 1);
 
         if (cursorX + toolTipOffsetX + width + 2 * marginX > this.canvasWidth) {
@@ -606,14 +608,8 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
     }
 }
 
-const toColorDict = '0123456789ABCDEF';
 function toColor(colorNum: number) {
-    let colorString = '#';
-    for (let i = 20; i >= 0; i -= 4) {
-        colorString += toColorDict[(colorNum >> i) & 0xF];
-    }
-
-    return colorString;
+    return '#' + padStart(colorNum.toString(16), 6, '0');
 }
 
 function findNearestPoints(start: Point | undefined, end: Point | undefined, a: Province, b: Province | undefined): [Point, Point] {
@@ -840,4 +836,8 @@ function isCriticalPoint(path: Point[], index: number): boolean {
 
 function defaultColor(province: Province) {
     return province.type === 'land' ? 0 : 0x1010B0;
+}
+
+function toCommaDivideNumber(value: number): string {
+    return value.toString(10).replace(/(?<!^)(\d{3})(?=(?:\d{3})*$)/g, ',$1');
 }

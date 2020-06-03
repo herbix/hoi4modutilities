@@ -4,6 +4,7 @@ import { NumberSize, NumberPosition } from "../common";
 import { Sprite } from "../image/sprite";
 import { StyleTable } from "../html";
 import { GridBoxType, Format } from "../../hoiformat/gui";
+import { map, flatMap } from "lodash";
 
 export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 
@@ -317,8 +318,8 @@ async function renderControlConnections(
     }
 
     return (await Promise.all(
-        Object.values(controlMatrix).map(m => 
-            Object.values(m).map(async (item) => {
+        flatMap(controlMatrix, m => 
+            map(m, async (item) => {
                 const children = onRenderLineBox ? await onRenderLineBox(item, childrenParentInfo) : '';
                 const position = getLeftUpPosition(item.x, item.y, format, slotSize, size);
                 return `<div
@@ -335,7 +336,7 @@ async function renderControlConnections(
                         ${children}
                     </div>`;
             })
-        ).reduce((p, c) => p.concat(c), [])
+        )
     )).join('');
 }
 

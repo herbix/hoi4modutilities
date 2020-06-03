@@ -89,10 +89,6 @@ export function slice<T>(array: T[] | undefined, start: number, end: number): T[
     }
 }
 
-export function distinct<T>(array: T[]): T[] {
-    return array.filter((v, i, a) => i === a.indexOf(v));
-}
-
 export function getLastModified(path: string): number {
     const stat = fs.lstatSync(path);
     return stat.mtimeMs;

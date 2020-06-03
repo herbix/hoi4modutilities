@@ -2,6 +2,7 @@ import { Zone, Point, Region, MapLoaderExtra } from "../definitions";
 import { DetailValue, Enum } from '../../../hoiformat/schema';
 import { hsvToRgb } from '../../../util/common';
 import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader';
+import { maxBy } from "lodash";
 
 export abstract class Loader<T> extends CommonLoader<T, MapLoaderExtra> {}
 export abstract class FileLoader<T> extends CommonFileLoader<T, MapLoaderExtra> {}
@@ -47,7 +48,7 @@ export function sortItems<T extends { id: number }>(
     reassignMinusOneId: boolean = true,
     badId: number = -1,
 ): { sorted: T[], badId: number } {
-    const maxId = items.reduce((p, c) => c.id > p ? c.id : p, 0);
+    const maxId = maxBy(items, 'id')?.id ?? 0;
     if (maxId > validMaxId) {
         onMaxIdTooLarge(maxId);
     }

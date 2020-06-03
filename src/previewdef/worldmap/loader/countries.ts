@@ -5,6 +5,7 @@ import { error } from "../../../util/debug";
 import { FolderLoader, FileLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult, convertColor } from "./common";
 import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader";
+import { flatMap } from "lodash";
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -128,7 +129,7 @@ class CountryTagsLoader extends FolderLoader<Tag[], Tag[]> {
 
     protected mergeFiles(fileResults: LoadResult<Tag[]>[]): Promise<LoadResult<Tag[]>> {
         return Promise.resolve<LoadResult<Tag[]>>({
-            result: fileResults.map(r => r.result).reduce<Tag[]>((p, c) => p.concat(c), []),
+            result: flatMap(fileResults, r => r.result),
             dependencies: [this.folder + '/*'],
             warnings: mergeInLoadResult(fileResults, 'warnings'),
         });

@@ -4,8 +4,8 @@ import { GuiFile, guiFileSchema } from "../../hoiformat/gui";
 import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
-import { distinct } from "../../util/common";
 import { error as debugError } from "../../util/debug";
+import { flatMap, chain } from "lodash";
 
 export interface TechnologyTreeLoaderResult {
     technologyTrees: TechnologyTree[];
@@ -48,10 +48,10 @@ export class TechnologyTreeLoader extends ContentLoader<TechnologyTreeLoaderResu
         return {
             result: {
                 technologyTrees,
-                gfxFiles: distinct([...gfxDependencies, ...guiDepFiles.map(r => r.result.gfxFiles).reduce((p, c) => p.concat(c), [])]),
-                guiFiles: distinct(guiDepFiles.map(r => r.result.guiFiles).reduce((p, c) => p.concat(c), []))
+                gfxFiles: chain(gfxDependencies).concat(flatMap(guiDepFiles, r => r.result.gfxFiles)).uniq().value(),
+                guiFiles: chain(guiDepFiles).flatMap(r => r.result.guiFiles).uniq().value(),
             },
-            dependencies: distinct([this.file, ...gfxDependencies, ...mergeInLoadResult(guiDepFiles, 'dependencies')]),
+            dependencies: chain([this.file]).concat(gfxDependencies, mergeInLoadResult(guiDepFiles, 'dependencies')).uniq().value(),
         };
     }
 
@@ -85,10 +85,10 @@ export class GuiFileLoader extends ContentLoader<GuiFileLoaderResult> {
 
         return {
             result: {
-                gfxFiles: distinct([...gfxDependencies, ...guiDepFiles.map(r => r.result.gfxFiles).reduce((p, c) => p.concat(c), [])]),
-                guiFiles: distinct([{ file: this.file, data: guiFile }, ...guiDepFiles.map(r => r.result.guiFiles).reduce((p, c) => p.concat(c), [])])
+                gfxFiles: chain(gfxDependencies).concat(flatMap(guiDepFiles, r => r.result.gfxFiles)).uniq().value(),
+                guiFiles: chain(guiDepFiles).flatMap(r => r.result.guiFiles).concat({ file: this.file, data: guiFile }).uniq().value(),
             },
-            dependencies: distinct([this.file, ...gfxDependencies, ...mergeInLoadResult(guiDepFiles, 'dependencies')]),
+            dependencies: chain([this.file]).concat(gfxDependencies, mergeInLoadResult(guiDepFiles, 'dependencies')).uniq().value(),
         };
     }
 

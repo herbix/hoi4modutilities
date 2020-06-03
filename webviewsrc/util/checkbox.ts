@@ -38,6 +38,8 @@ class Checkbox extends Subscriber {
         checkboxContainer.classList.add('checkbox-container');
         checkboxContainerOut.appendChild(checkboxContainer);
         checkboxContainer.tabIndex = 0;
+        checkboxContainer.setAttribute('role', 'checkbox');
+        checkboxContainer.setAttribute('aria-checked', this.input.checked.toString());
 
         const checkbox = document.createElement('div');
         checkbox.classList.add('checkbox');
@@ -53,20 +55,31 @@ class Checkbox extends Subscriber {
         this.input.tabIndex = -1;
         this.input.after(checkboxContainerOut);
 
+        this.subscriptions.push({
+            dispose: () => {
+                checkboxContainerOut.remove();
+            }
+        });
+
         this.addEventHandlersForCheckBox(checkboxContainer, checkbox);
     }
 
     private addEventHandlersForCheckBox(checkboxContainer: HTMLDivElement, checkbox: HTMLDivElement) {
-        this.subscriptions.push(asEvent(checkboxContainer, 'click')(() => {
+        const toggleValue = () => {
             this.input.checked = !this.input.checked;
+            checkboxContainer.setAttribute('aria-checked', this.input.checked.toString());
             this.input.dispatchEvent(new Event('change'));
+        };
+
+        this.subscriptions.push(asEvent(checkboxContainer, 'click')((e) => {
+            e.preventDefault();
+            toggleValue();
         }));
 
         this.subscriptions.push(asEvent(checkboxContainer, 'keydown')((e) => {
             if (e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
-                this.input.checked = !this.input.checked;
-                this.input.dispatchEvent(new Event('change'));
+                toggleValue();
             }
         }));
     }

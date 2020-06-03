@@ -39,8 +39,9 @@ select, input[type=text], textarea {
     border: 1px solid var(--vscode-settings-textInputBorder);
 }
 
-select:focus, input[type=text]:focus, textarea:focus {
+select:focus, select.dropdown-opened, input[type=text]:focus, textarea:focus {
     outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
 }
 
 input[type=text] {
@@ -59,7 +60,9 @@ ul.select-dropdown {
     cursor: pointer;
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
-    border: 1px solid var(--vscode-focusBorder);
+    border: none;
+    outline: 1px solid var(--vscode-focusBorder);
+    outline-offset: -1px;
     font-size: var(--vscode-font-size);
     font-family: var(--vscode-font-family);
     font-weight: var(--vscode-font-weight);
@@ -71,7 +74,7 @@ ul.select-dropdown {
 }
 
 ul.select-dropdown li {
-    padding-left: 4px;
+    padding-left: 5px;
     padding-bottom: 1px;
 }
 

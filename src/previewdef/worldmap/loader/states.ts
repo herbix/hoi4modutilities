@@ -8,6 +8,7 @@ import { arrayToMap } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
 import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader";
+import { flatMap } from "lodash";
 
 interface StateFile {
     state: StateDefinition[];
@@ -105,7 +106,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
         const { provinces, width, height } = provinceMap.result;
 
-        const states = fileResults.reduce<StateNoBoundingBox[]>((p, c) => p.concat(c.result), []);
+        const states = flatMap(fileResults, c => c.result);
 
         const { sortedStates, badStateId } = sortStates(states, warnings);
 

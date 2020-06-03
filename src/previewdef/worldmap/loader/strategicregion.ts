@@ -9,6 +9,7 @@ import { StatesLoader } from "./states";
 import { arrayToMap } from "../../../util/common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { LoaderSession } from "../../../util/loader";
+import { flatMap } from "lodash";
 
 interface StrategicRegionFile {
     strategic_region: StrategicRegionDefinition[];
@@ -56,7 +57,7 @@ export class StrategicRegionsLoader extends FolderLoader<StrategicRegionsLoaderR
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostrategicregions', 'Mapping provinces to strategic regions...'));
 
         const warnings = mergeInLoadResult(fileResults, 'warnings');
-        const strategicRegions = fileResults.reduce<StrategicRegionNoRegion[]>((p, c) => p.concat(c.result), []);
+        const strategicRegions = flatMap(fileResults, c => c.result);
 
         const { width, provinces, terrains } = provinceMap.result;
         validateStrategicRegions(strategicRegions, terrains, warnings);
