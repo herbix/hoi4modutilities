@@ -13,15 +13,15 @@ export function enableCheckboxes() {
     }
 }
 
-class Checkbox extends Subscriber {
-    constructor(readonly input: HTMLInputElement) {
+export class Checkbox extends Subscriber {
+    constructor(readonly input: HTMLInputElement, private text?: string) {
         super();
         this.init();
     }
 
     private init() {
         const id = this.input.id;
-        let text = '';
+        let text = this.text ?? '';
         if (id) {
             const label = document.querySelector('label[for=' + JSON.stringify(id) + ']') as HTMLLabelElement;
             if (label) {

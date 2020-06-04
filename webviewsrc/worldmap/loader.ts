@@ -27,7 +27,7 @@ interface FEWorldMapClassExtra {
 
     getProvinceByPosition(x: number, y: number): Province | undefined;
 
-    getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[];
+    getProvinceWarnings(province?: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[];
     getStateWarnings(state: State, supplyArea?: SupplyArea): string[];
     getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[];
     getSupplyAreaWarnings(supplyArea: SupplyArea): string[];
@@ -361,10 +361,10 @@ class FEWorldMapClass implements FEWorldMap {
         }
     }
 
-    public getProvinceWarnings(province: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[] {
+    public getProvinceWarnings(province?: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[] {
         return this.warnings
             .filter(v => v.source.some(s =>
-                (s.type === 'province' && (s.id === province.id || s.color === province.color)) || 
+                (province && s.type === 'province' && (s.id === province.id || s.color === province.color)) || 
                 (state && s.type === 'state' && s.id === state.id) ||
                 (strategicRegion && s.type === 'strategicregion' && s.id === strategicRegion.id) ||
                 (supplyArea && s.type === 'supplyarea' && s.id === supplyArea.id)

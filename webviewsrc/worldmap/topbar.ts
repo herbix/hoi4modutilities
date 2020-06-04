@@ -4,8 +4,9 @@ import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/common";
 import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
 import { feLocalize } from "../util/i18n";
+import { DivDropdown } from "../util/dropdown";
 
-export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea';
+export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' |
     'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue';
 
@@ -22,6 +23,7 @@ export class TopBar extends Subscriber {
     public selectedStrategicRegionId: Observable<number | undefined>;
     public hoverSupplyAreaId: Observable<number | undefined>;
     public selectedSupplyAreaId: Observable<number | undefined>;
+    public warningFilter: DivDropdown;
 
     public warningsVisible: boolean = false;
 
@@ -31,6 +33,8 @@ export class TopBar extends Subscriber {
 
     constructor(canvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, state: any) {
         super();
+
+        this.subscriptions.push(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
 
         this.viewMode = new Observable<ViewMode>(state.viewMode ?? 'province');
         this.colorSet = new Observable<ColorSet>(state.colorSet ?? 'provinceid');
@@ -42,6 +46,11 @@ export class TopBar extends Subscriber {
         this.selectedStrategicRegionId = new Observable<number | undefined>(state.selectedStrategicRegionId ?? undefined);
         this.hoverSupplyAreaId = new Observable<number | undefined>(undefined);
         this.selectedSupplyAreaId = new Observable<number | undefined>(state.selectedSupplyAreaId ?? undefined);
+        if (state.warningFilter) {
+            this.warningFilter.setValue(state.warningFilter);
+        } else {
+            this.warningFilter.setAllValue();
+        }
 
         this.viewModeElement = document.getElementById('viewmode') as HTMLSelectElement;
         this.colorSetElement = document.getElementById('colorset') as HTMLSelectElement;
@@ -52,7 +61,7 @@ export class TopBar extends Subscriber {
     }
 
     private onViewModeChange() {
-        document.querySelectorAll('#colorset > option').forEach(v => {
+        document.querySelectorAll('#colorset > option[viewmode]').forEach(v => {
             (v as HTMLOptionElement).hidden = true;
         });
     
@@ -63,13 +72,27 @@ export class TopBar extends Subscriber {
                 colorSetHidden = false;
             }
         });
+        
+        document.querySelectorAll('#colorset > option:not([viewmode])').forEach(v => {
+            if ((v as HTMLOptionElement).value === this.colorSet.value) {
+                colorSetHidden = false;
+            }
+        });
 
-        document.querySelectorAll('button').forEach(v => {
+        document.querySelectorAll('button[viewmode]').forEach(v => {
             (v as HTMLButtonElement).style.display = 'none';
         });
 
         document.querySelectorAll('button[viewmode~="' + this.viewMode.value + '"]').forEach(v => {
             (v as HTMLButtonElement).style.display = 'inline-block';
+        });
+
+        document.querySelectorAll('.group[viewmode]').forEach(v => {
+            (v as HTMLDivElement).style.display = 'none';
+        });
+
+        document.querySelectorAll('.group[viewmode~="' + this.viewMode.value + '"]').forEach(v => {
+            (v as HTMLDivElement).style.display = 'inline-block';
         });
     
         if (colorSetHidden) {
@@ -258,22 +281,29 @@ export class TopBar extends Subscriber {
         if (!worldMap) {
             worldMap = this.loader.worldMap;
         }
+
+        let placeholder = '';
         switch (this.viewMode.value) {
             case 'province':
-                this.searchBox.placeholder = worldMap.provincesCount > 1 ? `1-${worldMap.provincesCount - 1}` : '';
+                placeholder = worldMap.provincesCount > 1 ? `1-${worldMap.provincesCount - 1}` : '';
                 break;
             case 'state':
-                this.searchBox.placeholder = worldMap.statesCount > 1 ? `1-${worldMap.statesCount - 1}` : '';
+                placeholder = worldMap.statesCount > 1 ? `1-${worldMap.statesCount - 1}` : '';
                 break;
             case 'strategicregion':
-                this.searchBox.placeholder = worldMap.strategicRegionsCount > 1 ? `1-${worldMap.strategicRegionsCount - 1}` : '';
+                placeholder = worldMap.strategicRegionsCount > 1 ? `1-${worldMap.strategicRegionsCount - 1}` : '';
                 break;
             case 'supplyarea':
-                this.searchBox.placeholder = worldMap.supplyAreasCount > 1 ? `1-${worldMap.supplyAreasCount - 1}` : '';
+                placeholder = worldMap.supplyAreasCount > 1 ? `1-${worldMap.supplyAreasCount - 1}` : '';
                 break;
             default:
-                this.searchBox.placeholder = '';
                 break;
+        }
+
+        if (placeholder) {
+            this.searchBox.placeholder = feLocalize('worldmap.topbar.search.placeholder', 'Range: {0}', placeholder);
+        } else {
+            this.searchBox.placeholder = '';
         }
     }
 }

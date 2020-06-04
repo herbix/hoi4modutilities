@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Changed
 * Align style of checkbox and combobox with VSCode.
 * Click item in GFX file preview will navigate to name of sprite instead of type.
+* Placeholder of search box in world map.
 
 ### Fixed
 * Performance issue when opening world map preview.

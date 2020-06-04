@@ -13,9 +13,11 @@ const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> 
     state: { edge: 1, labels: 1 },
     strategicregion: { edge: 0.25, labels: 0.25 },
     supplyarea: { edge: 0.5, labels: 1 },
+    warnings: { edge: 2, labels: 3 },
 };
 
 interface RenderContext {
+    topBar: TopBar;
     provinceToState: Record<number, number | undefined>;
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
@@ -63,6 +65,7 @@ export class Renderer extends Subscriber {
         this.subscriptions.push(topBar.selectedStrategicRegionId.onChange(this.renderCanvas));
         this.subscriptions.push(topBar.hoverSupplyAreaId.onChange(this.renderCanvas));
         this.subscriptions.push(topBar.selectedSupplyAreaId.onChange(this.renderCanvas));
+        this.subscriptions.push(topBar.warningFilter.onChange(this.renderCanvas));
     }
 
     public renderCanvas = () => {
@@ -83,6 +86,7 @@ export class Renderer extends Subscriber {
         const viewMode = this.topBar.viewMode.value;
         switch (viewMode) {
             case 'province':
+            case 'warnings':
                 this.renderProvinceHoverSelection(this.loader.worldMap);
                 break;
             case 'state':
@@ -120,6 +124,7 @@ export class Renderer extends Subscriber {
             canvasHeight: this.canvasHeight,
             viewMode: this.topBar.viewMode.value,
             colorSet: this.topBar.colorSet.value,
+            warningFilter: this.topBar.warningFilter.selectedValues,
             ...this.viewPoint.toJson(),
         };
 
@@ -137,6 +142,7 @@ export class Renderer extends Subscriber {
         mapCanvasContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
 
         const renderContext: RenderContext = {
+            topBar: this.topBar,
             provinceToState: worldMap.getProvinceToStateMap(),
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
@@ -189,7 +195,7 @@ export class Renderer extends Subscriber {
         context.font = '10px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        if (viewMode === 'province') {
+        if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
                 const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
@@ -663,7 +669,8 @@ function getColorByColorSet(
 ): number {
     const { provinceToState,
         provinceToStrategicRegion,
-        stateToSupplyArea } = renderContext;
+        stateToSupplyArea,
+        topBar } = renderContext;
     switch (colorSet) {
         case 'provincetype':
             return (province.type === 'land' ? 0x007F00 : province.type === 'lake' ? 0x00FFFF : 0x00007F) | (province.coastal ? 0x7F0000 : 0);
@@ -699,12 +706,19 @@ function getColorByColorSet(
         case 'warnings':
             {
                 const isLand = province.type === 'land';
+                const viewMode = topBar.viewMode.value;
+                const warningFilter = topBar.warningFilter.selectedValues;
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
                 const strategicRegion = worldMap.getStrategicRegionById(provinceToStrategicRegion[province.id]);
                 const supplyAreaId = stateId ? stateToSupplyArea[stateId] : undefined;
                 const supplyArea = worldMap.getSupplyAreaById(supplyAreaId);
-                return worldMap.getProvinceWarnings(province, state, strategicRegion, supplyArea).length > 0 ?
+                return worldMap.getProvinceWarnings(
+                        viewMode !== "warnings" || warningFilter.includes('province') ? province : undefined,
+                        viewMode !== "warnings" || warningFilter.includes('state') ? state : undefined,
+                        viewMode !== "warnings" || warningFilter.includes('strategicregion') ? strategicRegion : undefined,
+                        viewMode !== "warnings" || warningFilter.includes('supplyarea') ? supplyArea : undefined
+                    ).length > 0 ?
                     (isLand ? 0xE02020 : 0xC00000) :
                     (isLand ? 0x7FFF7F : 0x20E020);
             }

@@ -8,6 +8,7 @@
                     <option value="state">%worldmap.topbar.viewmode.state|State%</option>
                     <option value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</option>
                     <option value="supplyarea">%worldmap.topbar.viewmode.supplyarea|Supply Area%</option>
+                    <option value="warnings">%TODO|Warnings%</option>
                 </select>
             </div>
         </div>
@@ -27,7 +28,7 @@
                     <option viewmode="province state strategicregion supplyarea" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
                     <option viewmode="province state strategicregion supplyarea" value="victorypoint">%worldmap.topbar.colorset.vicotrypoint|Victory Points%</option>
                     <option viewmode="province state strategicregion supplyarea" value="supplyvalue">%worldmap.topbar.colorset.supplyvalue|Supply Value%</option>
-                    <option viewmode="province state strategicregion supplyarea" value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
+                    <option value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
                 </select>
             </div>
         </div>
@@ -35,29 +36,42 @@
         <div class="group">
             <label for="searchbox">%worldmap.topbar.search|Search: %</label>
             <input id="searchbox" type="text"/>
-            <button id="search" title="%worldmap.topbar.search.title|Search%" viewmode="province state strategicregion supplyarea">
+            <button id="search" title="%worldmap.topbar.search.title|Search%">
                 <i class="codicon codicon-search"></i>
             </button>
         </div>
 
         <div class="group">
-            <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%" viewmode="province state strategicregion supplyarea">
+            <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%">
                 <i class="codicon codicon-refresh"></i>
             </button>
         </div>
         <div class="group">
-            <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%" viewmode="province state strategicregion supplyarea">
+            <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%">
                 <i class="codicon codicon-warning"></i>
             </button>
         </div>
 
-        <div class="group">
-            <button id="open" title="%worldmap.topbar.open.title|Open in Workspace%" viewmode="state strategicregion supplyarea">
+        <div class="group" viewmode="state strategicregion supplyarea">
+            <button id="open" title="%worldmap.topbar.open.title|Open in Workspace%">
                 <i class="codicon codicon-link-external"></i>
             </button>
             <!--<button title="Edit">
                 <i class="codicon codicon-edit"></i>
             </button>-->
+        </div>
+
+        <div class="group" viewmode="warnings">
+            <label for="warningfilter">%TODO|Warning filter: %</label>
+            <div class="select-container">
+                <div id="warningfilter" class="select multiple-select" tabindex="0" role="combobox">
+                    <span class="value"></span>
+                    <div class="option" value="province">%worldmap.topbar.viewmode.province|Province%</div>
+                    <div class="option" value="state">%worldmap.topbar.viewmode.state|State%</div>
+                    <div class="option" value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</div>
+                    <div class="option" value="supplyarea">%worldmap.topbar.viewmode.supplyarea|Supply Area%</div>
+                </div>
+            </div>
         </div>
     </div>
     <canvas id="main-canvas"></canvas>

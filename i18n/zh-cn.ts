@@ -89,6 +89,7 @@ export = {
     "worldmap.topbar.open.title": "在工作区内打开",
     "worldmap.topbar.refresh.title": "刷新",
     "worldmap.topbar.search": "搜索：",
+    'worldmap.topbar.search.placeholder': '范围：{0}',
     "worldmap.topbar.search.title": "搜索",
     "worldmap.topbar.viewmode": "预览模式：",
     "worldmap.topbar.viewmode.province": "地块",

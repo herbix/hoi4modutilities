@@ -86,6 +86,7 @@ export const __table = {
     "worldmap.topbar.open.title": "Open in Workspace",
     "worldmap.topbar.refresh.title": "Refresh",
     "worldmap.topbar.search": "Search: ",
+    'worldmap.topbar.search.placeholder': 'Range: {0}',
     "worldmap.topbar.search.title": "Search",
     "worldmap.topbar.viewmode": "View mode: ",
     "worldmap.topbar.viewmode.province": "Province",

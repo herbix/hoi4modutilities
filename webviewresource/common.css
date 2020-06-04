@@ -1,10 +1,29 @@
-select {
+select, div.select {
     height: 20px;
     box-sizing: border-box;
     cursor: pointer;
 }
 
-.select-container > select {
+div.select {
+    display: inline-block;
+    vertical-align: middle;
+    position: relative;
+    min-width: 120px;
+}
+
+div.select > div.option {
+    left: 5px;
+    top: 0;
+    display: block;
+    height: 0;
+    opacity: 0;
+}
+
+div.select.multiple-select > div.option {
+    margin-right: 20px;
+}
+
+.select-container > select, .select-container > div.select {
     appearance: none;
     -webkit-appearance: none;
     padding: 0 20px 0 5px;
@@ -33,13 +52,13 @@ select {
     pointer-events: none;
 }
 
-select, input[type=text], textarea {
+select, input[type=text], textarea, div.select {
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-settings-textInputBorder);
 }
 
-select:focus, select.dropdown-opened, input[type=text]:focus, textarea:focus {
+select:focus, select.dropdown-opened, input[type=text]:focus, textarea:focus, div.select:focus, div.select.dropdown-opened {
     outline: 1px solid var(--vscode-focusBorder);
     outline-offset: -1px;
 }
@@ -53,6 +72,10 @@ input[type=text] {
 
 input[type=checkbox] {
     cursor: pointer;
+}
+
+input::placeholder {
+    color: var(--vscode-input-placeholderForeground);
 }
 
 ul.select-dropdown {
@@ -71,6 +94,8 @@ ul.select-dropdown {
     padding: 0 0 1px 0;
     margin: 0;
     z-index: 100;
+    max-height: 300px;
+    overflow-y: auto;
 }
 
 ul.select-dropdown li {
@@ -126,6 +151,14 @@ div.checkbox {
     border-radius: 3px;
 }
 
-input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox {
+ul.select-dropdown div.checkbox {
+    margin-top: 1px;
+}
+
+ul.select-dropdown div.checkbox-container-out {
+    vertical-align: top;
+}
+
+input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.checkbox.checked {
     color: var(--vscode-checkbox-foreground);
 }

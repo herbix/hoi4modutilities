@@ -21,6 +21,9 @@ asEvent(window, 'load')(function() {
     topBar.colorSet.onChange(setStateForKey('colorSet'));
     topBar.selectedProvinceId.onChange(setStateForKey('selectedProvinceId'));
     topBar.selectedStateId.onChange(setStateForKey('selectedStateId'));
+    topBar.selectedStrategicRegionId.onChange(setStateForKey('selectedStrategicRegionId'));
+    topBar.selectedSupplyAreaId.onChange(setStateForKey('selectedSupplyAreaId'));
+    topBar.warningFilter.onChange(setStateForKey('warningFilter'));
 });
 
 function setStateForKey<T>(key: string): (newValue: T) => void {
