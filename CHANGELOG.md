@@ -4,7 +4,21 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.1] - 2020/05/28 - Latest
+## [0.3.2] - 2020/06/06 - Latest
+
+### Added
+* View mode `warnings` in world map.
+* Warning filter in world map.
+
+### Changed
+* Align style of checkbox and combobox with VSCode.
+* Click item in GFX file preview will navigate to name of sprite instead of type.
+* Placeholder of search box in world map.
+
+### Fixed
+* Performance issue when opening world map preview.
+
+## [0.3.1] - 2020/05/28
 
 ### Added
 * World map preview
