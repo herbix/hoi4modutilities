@@ -39,7 +39,7 @@ export function updateSelectedModFileStatus(modFile: string | undefined, error: 
             modName.show();
         } else {
             modName.command = Commands.SelectModFile;
-            modName.text = "$(file-code) " + localize('modfile.nomodfile', '(No mod definition)');
+            modName.text = "$(file-code) " + localize('modfile.nomodfile', '(No mod descriptor)');
             modName.tooltip = localize('modfile.clicktoselect', 'Click to select a mod file...');
             modName.show();
         }

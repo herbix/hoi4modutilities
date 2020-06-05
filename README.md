@@ -19,7 +19,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 3. Open your mod develop folder.
 4. (*Optional*) Open command palette using `Ctrl+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
 5. Use these entries:
-    * Command palttle (`Ctrl+P`) commands: `Preview World Map` and `Preview HOI4 file`*.
+    * Command palette (`Ctrl+Shift+P`) commands: `Preview World Map` and `Preview HOI4 file`*.
     * `Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png))* button on right-top tool bar of text editor.
     * Open a `.dds` file.
 
@@ -47,9 +47,9 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 |Setting|Type|Description|
 |-------|----------|--------|
-|`hoi4ModUtilities.installPath`|`string`|Hearts of Iron IV install path. Without this all icons will be invisible.|
+|`hoi4ModUtilities.installPath`|`string`|Hearts of Iron IV install path. Without this, most features are broken.|
 |`hoi4ModUtilities.loadDlcContents`|`boolean`|Whether to load DLC images when previewing files. Enabling this will use more memory (All DLCs are around 600MB).|
-|`hoi4ModUtilities.modFile`|`string`|Path to the working .mod file. This file is used to read replace_path. If not specified, will use first .mod file in first folder of the workspace.|
+|`hoi4ModUtilities.modFile`|`string`|Path to the working `.mod` file. This file is used to read replace_path. If not specified, will use first `.mod` file in first folder of the workspace.|
 
 ## Known Issues
 
@@ -60,9 +60,14 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ### 0.3.2
 
+### Added
+* View mode `warnings` in world map.
+* Warning filter in world map.
+
 ### Changed
 * Align style of checkbox and combobox with VSCode.
 * Click item in GFX file preview will navigate to name of sprite instead of type.
+* Placeholder of search box in world map.
 
 ### Fixed
 * Performance issue when opening world map preview.

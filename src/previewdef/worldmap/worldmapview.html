@@ -33,12 +33,25 @@
             </div>
         </div>
 
-        <div class="group">
+        <div class="group" viewmode="province state strategicregion supplyarea">
             <label for="searchbox">%worldmap.topbar.search|Search: %</label>
             <input id="searchbox" type="text"/>
             <button id="search" title="%worldmap.topbar.search.title|Search%">
                 <i class="codicon codicon-search"></i>
             </button>
+        </div>
+
+        <div class="group" viewmode="warnings">
+            <label for="warningfilter">%TODO|Warning filter: %</label>
+            <div class="select-container">
+                <div id="warningfilter" class="select multiple-select" tabindex="0" role="combobox">
+                    <span class="value"></span>
+                    <div class="option" value="province">%worldmap.topbar.viewmode.province|Province%</div>
+                    <div class="option" value="state">%worldmap.topbar.viewmode.state|State%</div>
+                    <div class="option" value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</div>
+                    <div class="option" value="supplyarea">%worldmap.topbar.viewmode.supplyarea|Supply Area%</div>
+                </div>
+            </div>
         </div>
 
         <div class="group">
@@ -59,19 +72,6 @@
             <!--<button title="Edit">
                 <i class="codicon codicon-edit"></i>
             </button>-->
-        </div>
-
-        <div class="group" viewmode="warnings">
-            <label for="warningfilter">%TODO|Warning filter: %</label>
-            <div class="select-container">
-                <div id="warningfilter" class="select multiple-select" tabindex="0" role="combobox">
-                    <span class="value"></span>
-                    <div class="option" value="province">%worldmap.topbar.viewmode.province|Province%</div>
-                    <div class="option" value="state">%worldmap.topbar.viewmode.state|State%</div>
-                    <div class="option" value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</div>
-                    <div class="option" value="supplyarea">%worldmap.topbar.viewmode.supplyarea|Supply Area%</div>
-                </div>
-            </div>
         </div>
     </div>
     <canvas id="main-canvas"></canvas>

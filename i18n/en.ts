@@ -12,7 +12,7 @@ export const __table = {
     "modfile.filenotexist": "Mod file not exist: {0}",
     "modfile.globalsetting": "Global setting",
     "modfile.infolder": "In folder {0}",
-    "modfile.nomodfile": "(No mod definition)",
+    "modfile.nomodfile": "(No mod descriptor)",
     "modfile.select": "Browse a .mod file...",
     "modfile.selectworkingmod": "Select working mod",
     "modfile.type": "Mod file",

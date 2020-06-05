@@ -12,7 +12,7 @@ export = {
     "modfile.filenotexist": "模组文件不存在：{0}",
     "modfile.globalsetting": "全局设置",
     "modfile.infolder": "{0}目录中",
-    "modfile.nomodfile": "（没有模组定义）",
+    "modfile.nomodfile": "（没有模组文件）",
     "modfile.select": "浏览模组文件……",
     "modfile.selectworkingmod": "选择工作模组",
     "modfile.type": "模组文件",

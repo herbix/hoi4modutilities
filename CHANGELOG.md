@@ -4,7 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.2] - 2020/05/31 - Latest
+## [0.3.2] - 2020/06/06 - Latest
+
+### Added
+* View mode `warnings` in world map.
+* Warning filter in world map.
 
 ### Changed
 * Align style of checkbox and combobox with VSCode.
