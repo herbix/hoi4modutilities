@@ -67,7 +67,7 @@ export class CountriesLoader extends Loader<Country[]> {
     }
 
     protected async loadImpl(session: LoaderSession): Promise<LoadResult<Country[]>> {
-        this.fireOnProgressEvent(localize('TODO', 'Loading countries...'));
+        this.fireOnProgressEvent(localize('worldmap.progress.loadingcountries', 'Loading countries...'));
 
         const tagsResult = await this.countryTagsLoader.load(session);
         const countryTags = tagsResult.result;

@@ -210,9 +210,9 @@ export class DivDropdown extends Subscriber {
     private updateSelectedValue(options: Option[]) {
         const selectedOptions = options.filter(o => o.selected);
         const valueSpan = this.select.querySelector('span.value') as HTMLSpanElement;
-        valueSpan.textContent = selectedOptions.length === 0 ? feLocalize('TODO', '(No selection)') :
-            selectedOptions.length === options.length ? feLocalize('TODO', '(All)') :
-            selectedOptions.length > 1 ? feLocalize('TODO', '{0} (+{1})', selectedOptions[0].text, selectedOptions.length - 1) :
+        valueSpan.textContent = selectedOptions.length === 0 ? feLocalize('combobox.noselection', '(No selection)') :
+            selectedOptions.length === options.length ? feLocalize('combobox.all', '(All)') :
+            selectedOptions.length > 1 ? feLocalize('combobox.multiple', '{0} (+{1})', selectedOptions[0].text, selectedOptions.length - 1) :
             selectedOptions[0].text;
     }
 }
