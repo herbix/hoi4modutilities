@@ -1,11 +1,13 @@
-
+import { __table } from './en';
 /*eslint sort-keys: "warn"*/
-export = {
+const zhTable: typeof __table = {
     "combobox.all": "（全部）",
     "combobox.multiple": "{0}（+{1}）",
     "combobox.noselection": "（无选择）",
     "error": "错误",
+    "focustree.allowbranch": "允许分支：",
     "focustree.nofocustree": "没有国策树。",
+    "focustree.search": "搜索：",
     "gfx.filter": "筛选器：",
     "gfx.imagenotfound": "没有找到图像",
     "infile": "在文件 {0} 中：\n",
@@ -156,3 +158,5 @@ export = {
     "worldmap.warnings.terrainnotdefined": "地形\"{0}\"不存在。",
     "worldmap.warnings.xcrossing": "地块有十字交叉边界，位于：({0}，{1})。"
 };
+
+export = zhTable;

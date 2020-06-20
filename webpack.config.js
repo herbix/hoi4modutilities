@@ -93,7 +93,7 @@ const webviewJsConfig = {
   plugins: [
     new CopyWebpackPlugin([
       {
-        from: 'webviewresource/**/*',
+        from: 'resource/**/*',
         to: path.resolve(__dirname, 'static'),
         flatten: true
       },

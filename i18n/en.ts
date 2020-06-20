@@ -1,11 +1,13 @@
 // Hack tsc
 /*eslint sort-keys: "warn"*/
-export const __table = {
+const internalTable = {
     "combobox.all": "(All)",
     "combobox.multiple": "{0} (+{1})",
     "combobox.noselection": "(No selection)",
     "error": "Error",
+    "focustree.allowbranch": "Allow branch: ",
     "focustree.nofocustree": "No focus tree.",
+    "focustree.search": "Search: ",
     "gfx.filter": "Filter: ",
     "gfx.imagenotfound": "Image not found",
     "infile": "In file {0}:\n",
@@ -153,6 +155,12 @@ export const __table = {
     "worldmap.warnings.terrainnotdefined": "Terrain \"{0}\" is not defined.",
     "worldmap.warnings.xcrossing": "Map invalid X crossing at: ({0}, {1})."
 };
+
+export const __table = Object.assign(internalTable, {
+    "worldmap.openfiletype.state": "state",
+    "worldmap.openfiletype.strategicregion": "strategic region",
+    "worldmap.openfiletype.supplyarea": "supply area",
+});
 
 // Real export
 module.exports = __table;

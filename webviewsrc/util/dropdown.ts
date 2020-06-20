@@ -104,7 +104,7 @@ export class DivDropdown extends Subscriber {
         this.init();
     }
 
-    public setValue(value: string | string[]) {
+    public setSelection(value: string | string[]) {
         if (typeof value === 'string') {
             this.selectedValues = [value];
         } else {
@@ -117,7 +117,7 @@ export class DivDropdown extends Subscriber {
         this.updateSelectedValue(options);
     }
 
-    public setAllValue() {
+    public selectAll() {
         const options = this.getOptions();
         const values: string[] = [];
         options.forEach(option => {

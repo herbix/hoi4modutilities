@@ -47,9 +47,9 @@ export class TopBar extends Subscriber {
         this.hoverSupplyAreaId = new Observable<number | undefined>(undefined);
         this.selectedSupplyAreaId = new Observable<number | undefined>(state.selectedSupplyAreaId ?? undefined);
         if (state.warningFilter) {
-            this.warningFilter.setValue(state.warningFilter);
+            this.warningFilter.setSelection(state.warningFilter);
         } else {
-            this.warningFilter.setAllValue();
+            this.warningFilter.selectAll();
         }
 
         this.viewModeElement = document.getElementById('viewmode') as HTMLSelectElement;

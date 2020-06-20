@@ -58,16 +58,15 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Release Notes
 
-### 0.3.2
+### 0.3.3
 
 ### Added
-* View mode `warnings` in world map.
-* Warning filter in world map.
+* Focus tree
+  * Zoom focus tree using wheel.
+  * Search item in focus tree by ID.
 
 ### Changed
-* Align style of checkbox and combobox with VSCode.
-* Click item in GFX file preview will navigate to name of sprite instead of type.
-* Placeholder of search box in world map.
+* Change allow branches from checkboxes to multi-selection combobox.
 
 ### Fixed
-* Performance issue when opening world map preview.
+* Update missing Chinese localization.

@@ -20,7 +20,15 @@ div.select > div.option {
 }
 
 div.select.multiple-select > div.option {
-    margin-right: 20px;
+    margin-right: 30px;
+}
+
+div.select > span.value {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .select-container > select, .select-container > div.select {

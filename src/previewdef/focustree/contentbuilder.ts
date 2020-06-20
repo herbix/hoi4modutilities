@@ -53,13 +53,12 @@ const leftPaddingBase = 50;
 const topPaddingBase = 50;
 const xGridSize = 96;
 const yGridSize = 130;
-const optionHeight = 20;
 
 async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
     const focuses = Object.values(focustree.focuses);
     const minX = minBy(focuses, 'x')?.x ?? 0;
     const leftPadding = leftPaddingBase - minX * xGridSize;
-    const topPadding = focustree.allowBranchOptions.length * optionHeight + topPaddingBase;
+    const topPadding = topPaddingBase;
 
     const gridBox: HOIPartial<GridBoxType> = {
         position: { x: toNumberLike(leftPadding), y: toNumberLike(topPadding) },
@@ -76,28 +75,30 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             left:0;
             top:0;
         `)}"></div>` +
-        focustree.allowBranchOptions.map((option, index) => renderAllowBranchOptions(option, index, styleTable)).join('') +
-        await renderGridBox(gridBox, {
-            size: { width: 0, height: 0 },
-            orientation: 'upper_left'
-        }, {
-            styleTable,
-            items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
-            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
-            cornerPosition: 0.5,
-        }) +
-        (focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
-        `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
-            position: absolute;
-            width: 770px;
-            height: 380px;
-            left: ${focustree.continuousFocusPositionX}px;
-            top: ${focustree.continuousFocusPositionY}px;
-            margin: 20px;
-            background: rgba(128, 128, 128, 0.2);
-            text-align: center;
-            pointer-events: none;
-        `)}">Continuous focuses</div>` : '')
+        `<div id="focustreecontent" class="${styleTable.oneTimeStyle('focustreecontent', () => `top:40px;left:-20px;position:relative`)}">
+            ${await renderGridBox(gridBox, {
+                size: { width: 0, height: 0 },
+                orientation: 'upper_left'
+            }, {
+                styleTable,
+                items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
+                onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
+                cornerPosition: 0.5,
+            })}
+            ${(focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
+            `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
+                position: absolute;
+                width: 770px;
+                height: 380px;
+                left: ${focustree.continuousFocusPositionX}px;
+                top: ${focustree.continuousFocusPositionY}px;
+                margin: 20px;
+                background: rgba(128, 128, 128, 0.2);
+                text-align: center;
+                pointer-events: none;
+            `)}">Continuous focuses</div>` : '')}
+        </div>` +
+        renderToolBar(focustree, styleTable)
     );
 }
 
@@ -139,27 +140,45 @@ function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
     return {
         id: focus.id,
         htmlId: 'focus_' + focus.id,
-        classNames,
+        classNames: classNames + ' focus',
         gridX: focus.x,
         gridY: focus.y,
         connections,
     };
 }
 
+function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
+    const searchbox = `    
+        <label for="searchbox" class="${styleTable.style('searchboxLabel', () => `margin-right:5px`)}">${localize('focustree.search', 'Search: ')}</label>
+        <input
+            class="${styleTable.style('searchbox', () => `margin-right:10px`)}"
+            id="searchbox"
+            type="text"
+        />`;
 
-function renderAllowBranchOptions(option: string, index: number, styleTable: StyleTable): string {
-    return `<div class="${styleTable.oneTimeStyle('allowBranchOptions', () => `
+    const allowbranch = focusTree.allowBranchOptions.length === 0 ? '' : `
+        <label for="allowbranch" class="${styleTable.style('allowbranchLabel', () => `margin-right:5px`)}">${localize('focustree.allowbranch', 'Allow branch: ')}</label>
+        <div class="select-container">
+            <div id="allowbranch" class="select multiple-select" tabindex="0" role="combobox">
+                <span class="value"></span>
+                ${focusTree.allowBranchOptions.map(option => `<div class="option" value="inbranch_${option}">${option}</div>`).join('')}
+            </div>
+        </div>`;
+
+    return `<div
+    class="${styleTable.style('toolbar', () => `
         position: fixed;
-        left: ${leftPaddingBase}px;
-        top: ${10 + index * optionHeight}px;
-        z-index: 100;
+        padding-top: 10px;
+        padding-left: 20px;
+        width: 100%;
+        height: 30px;
+        top: 0;
+        left: 0;
+        background: var(--vscode-editor-background);
+        border-bottom: 1px solid var(--vscode-panel-border);
     `)}">
-        <input type="checkbox" checked="true" id="inbranch_${option}" class="inbranch-checkbox"/>
-        <label for="inbranch_${option}">${option}</label>
-        <a class="gotofocus-button
-            ${styleTable.style('displayInline', () => `display:inline;`)}
-            ${styleTable.style('gotofocus', () => `text-decoration: none; vertical-align: top;` )}"
-            focus="focus_${option}" href="javascript:;">Goto</a>
+        ${searchbox}
+        ${allowbranch}
     </div>`;
 }
 
