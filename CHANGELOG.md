@@ -4,7 +4,20 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.2] - 2020/06/06 - Latest
+## [0.3.3] - 2020/06/21 - Latest
+
+### Added
+* Focus tree
+  * Zoom focus tree using wheel.
+  * Search item in focus tree by ID.
+
+### Changed
+* Change allow branches from checkboxes to multi-selection combobox.
+
+### Fixed
+* Update missing Chinese localization.
+
+## [0.3.2] - 2020/06/06
 
 ### Added
 * View mode `warnings` in world map.
