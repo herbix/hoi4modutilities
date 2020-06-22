@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { matchPathEnd } from '../../util/common';
+import { matchPathEnd } from '../../util/nodecommon';
 import { PreviewProviderDef } from '../previewmanager';
 import { WorldMapContainer } from "./worldmapcontainer";
 

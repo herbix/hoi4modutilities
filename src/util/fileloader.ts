@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, readdirfiles } from './common';
+import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, readdirfiles } from './nodecommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';

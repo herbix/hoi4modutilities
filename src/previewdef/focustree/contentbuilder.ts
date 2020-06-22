@@ -193,7 +193,8 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
         border-bottom: 1px solid var(--vscode-panel-border);
     `)}">
         ${searchbox}
-        ${allowbranch}
+        ${/*allowbranch*/''}
+        ${conditions}
     </div>`;
 }
 

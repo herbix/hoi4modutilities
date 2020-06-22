@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { renderTechnologyFile } from './contentbuilder';
-import { matchPathEnd } from '../../util/common';
+import { matchPathEnd } from '../../util/nodecommon';
 import { PreviewProviderDef } from '../previewmanager';
 import { PreviewBase } from '../previewbase';
 import { TechnologyTreeLoader } from './loader';

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { renderFocusTreeFile } from './contentbuilder';
-import { matchPathEnd } from '../../util/common';
+import { matchPathEnd } from '../../util/nodecommon';
 import { PreviewBase } from '../previewbase';
 import { PreviewProviderDef } from '../previewmanager';
 import { FocusTreeLoader } from './loader';

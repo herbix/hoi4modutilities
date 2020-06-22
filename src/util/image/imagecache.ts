@@ -9,7 +9,7 @@ import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
-import { getLastModifiedAsync } from '../common';
+import { getLastModifiedAsync } from '../nodecommon';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
