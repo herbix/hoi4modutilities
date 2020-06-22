@@ -60,11 +60,7 @@ export function extractConditionFolder(
             continue;
         }
 
-        if (tryMoveScope(child, scopeStack)) {
-            items.push(extractConditionFolder(child.value, scopeStack));
-            scopeStack.pop();
-
-        } else if (childName === 'and' || childName === 'hidden_trigger' || childName === 'custom_trigger_tooltip') {
+        if (childName === 'and' || childName === 'hidden_trigger' || childName === 'custom_trigger_tooltip') {
             items.push(extractConditionFolder(child.value, scopeStack));
 
         } else if (childName === 'or') {
@@ -118,6 +114,10 @@ export function extractConditionFolder(
                     items.push(extractConditionFolder(child.value, scopeStack, 'count', ['amount'], amount.value));
                 }
             }
+
+        } else if (tryMoveScope(child, scopeStack)) {
+            items.push(extractConditionFolder(child.value, scopeStack));
+            scopeStack.pop();
 
         } else {
             items.push({
@@ -181,7 +181,7 @@ function tryMoveScope(node: Node, scopeStack: Scope[]): boolean {
         return false;
     }
 
-    const nodeName = node.name.trim().toLowerCase();
+    let nodeName = node.name.trim();
     if (nodeName.match(/^[A-Z]{3}$/)) {
         scopeStack.push({
             scopeName: nodeName,
@@ -198,6 +198,7 @@ function tryMoveScope(node: Node, scopeStack: Scope[]): boolean {
         return true;
     }
 
+    nodeName = nodeName.toLowerCase();
     const currentScope = scopeStack[scopeStack.length - 1];
     if (nodeName === 'this') {
         scopeStack.push(currentScope);

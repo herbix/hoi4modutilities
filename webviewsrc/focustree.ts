@@ -72,7 +72,7 @@ async function buildContent() {
     const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focustree, allowBranchOptionsValue, focusPosition)).filter((v): v is GridBoxItem => !!v);
     
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
-    const leftPadding = gridbox.position.x._value - minX * (window as any).xGridSize;
+    const leftPadding = gridbox.position.x._value - Math.min(minX * (window as any).xGridSize, 0);
 
     const focusTreeContent = await renderGridBox({ ...gridbox, position: {...gridbox.position, x: toNumberLike(leftPadding)} }, {
         size: { width: 0, height: 0 },

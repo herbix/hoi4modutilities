@@ -35,7 +35,7 @@ export const scopeDefs = arrayToMap([
     scopeDef("random_navy_leader", false, true, 'country', 'leader'),
     scopeDef("every_navy_leader", false, true, 'country', 'leader'),
     scopeDef("global_every_army_leader", false, true, '*', 'leader'),
-    scopeDef("OVERLORD", true, true, 'country', 'country'),
+    scopeDef("overlord", true, true, 'country', 'country'),
     // scoepDef("TAG"),
     scopeDef("any_country", true, false, '*', 'country'),
     scopeDef("any_country_with_original_tag", true, false, '*', 'country'),
