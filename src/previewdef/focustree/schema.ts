@@ -1,16 +1,18 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
 import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
-import { flatten, chain } from 'lodash';
-import { ConditionValue, extractConditionValue, ConditionItem } from "../../hoiformat/condition";
+import { flatten, chain, isEqual } from 'lodash';
+import { extractConditionValue, ConditionItem, ConditionComplexExpr } from "../../hoiformat/condition";
 import { countryScope } from "../../hoiformat/scope";
+import { useConditionInFocus } from "../../util/featureflags";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
     allowBranchOptions: string[];
+    conditionExprs: ConditionItem[];
+    isSharedFocues: boolean;
     continuousFocusPositionX?: number;
     continuousFocusPositionY?: number;
-    conditionExprs: ConditionItem[];
 }
 
 export interface Focus {
@@ -22,20 +24,22 @@ export interface Focus {
     exclusive: string[];
     hasAllowBranch: boolean;
     inAllowBranch: string[];
-    allowBranch: ConditionValue | undefined;
+    allowBranch: ConditionComplexExpr | undefined;
+    relativePositionId: string | undefined;
     offset: Offset[];
     token: Token | undefined;
+    file: string;
 }
 
 interface Offset {
     x: number;
     y: number;
-    trigger: ConditionValue | undefined;
+    trigger: ConditionComplexExpr | undefined;
 }
 
 interface FocusTreeDef {
     id: CustomSymbol;
-    shared_focus: CustomSymbol;
+    shared_focus: CustomSymbol[];
     focus: FocusDef[];
     continuous_focus_position: Position;
 }
@@ -45,8 +49,8 @@ interface FocusDef {
     icon: CustomSymbol;
     x: number;
     y: number;
-    prerequisite: FocusOrXORList[];
-    mutually_exclusive: FocusOrXORList[];
+    prerequisite: FocusOrORList[];
+    mutually_exclusive: FocusOrORList[];
     relative_position_id: CustomSymbol;
     allow_branch: Raw; /* FIXME not symbol node */
     offset: OffsetDef[];
@@ -59,9 +63,9 @@ interface OffsetDef {
     trigger: Raw;
 }
 
-interface FocusOrXORList {
+interface FocusOrORList {
     focus: CustomSymbol[];
-    XOR: CustomSymbol[];
+    OR: CustomSymbol[];
 }
 
 interface FocusFile {
@@ -69,12 +73,12 @@ interface FocusFile {
     shared_focus: FocusDef[];
 }
 
-const focusOrXORListSchema: SchemaDef<FocusOrXORList> = {
+const focusOrORListSchema: SchemaDef<FocusOrORList> = {
     focus: {
         _innerType: "symbol",
         _type: 'array',
     },
-    XOR: {
+    OR: {
         _innerType: "symbol",
         _type: 'array',
     },
@@ -86,11 +90,11 @@ const focusSchema: SchemaDef<FocusDef> = {
     x: "number",
     y: "number",
     prerequisite: {
-        _innerType: focusOrXORListSchema,
+        _innerType: focusOrORListSchema,
         _type: 'array',
     },
     mutually_exclusive: {
-        _innerType: focusOrXORListSchema,
+        _innerType: focusOrORListSchema,
         _type: 'array',
     },
     relative_position_id: "symbol",
@@ -107,7 +111,10 @@ const focusSchema: SchemaDef<FocusDef> = {
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
     id: "symbol",
-    shared_focus: "symbol",
+    shared_focus: {
+        _innerType: "symbol",
+        _type: "array",
+    },
     focus: {
         _innerType: focusSchema,
         _type: 'array',
@@ -126,36 +133,48 @@ const focusFileSchema: SchemaDef<FocusFile> = {
     },
 };
 
-export function getFocusTree(node: Node): FocusTree[] {
+export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath: string): FocusTree[] {
     const focusTrees: FocusTree[] = [];
     const file = convertNodeToJson<FocusFile>(node, focusFileSchema);
 
     for (const focusTree of file.focus_tree) {
         const conditionExprs: ConditionItem[] = [];
-        const focuses = getFocuses(focusTree.focus, conditionExprs);
+        const focuses = getFocuses(focusTree.focus, conditionExprs, filePath);
+        
+        if (useConditionInFocus) {
+            for (const sharedFocus of focusTree.shared_focus) {
+                if (!sharedFocus) {
+                    continue;
+                }
+                addSharedFocus(focuses, sharedFocusTrees, sharedFocus._name, conditionExprs);
+            }
+        }
+
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
             continuousFocusPositionX: normalizeNumberLike(focusTree.continuous_focus_position?.x, 0) ?? 50,
             continuousFocusPositionY: normalizeNumberLike(focusTree.continuous_focus_position?.y, 0) ?? 1000,
             conditionExprs,
+            isSharedFocues: false,
         });
     }
 
     if (file.shared_focus.length > 0) {
         const conditionExprs: ConditionItem[] = [];
-        const focuses = getFocuses(file.shared_focus, conditionExprs);
+        const focuses = getFocuses(file.shared_focus, conditionExprs, filePath);
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
             conditionExprs,
+            isSharedFocues: true,
         });
     }
 
     return focusTrees;
 }
 
-function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: ConditionItem[]): Record<string, Focus> {
+function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: ConditionItem[], filePath: string): Record<string, Focus> {
     const focuses: Record<string, Focus> = {};
     let pendingFocuses: HOIPartial<FocusDef>[] = [];
 
@@ -166,7 +185,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
             continue;
         }
 
-        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo] : null, conditionExprs);
+        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo] : null, conditionExprs, filePath);
         if (focus !== null) {
             focuses[focus.id] = focus;
         }
@@ -183,7 +202,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
                 continue;
             }
 
-            const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null, conditionExprs);
+            const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null, conditionExprs, filePath);
             if (focus !== null) {
                 focuses[focus.id] = focus;
                 pendingFocusesChanged = true;
@@ -217,7 +236,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
     return focuses;
 }
 
-function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null, conditionExprs: ConditionItem[]): Focus | null {
+function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null, conditionExprs: ConditionItem[], filePath: string): Focus | null {
     const id = hoiFocus.id?._name;
     let x = hoiFocus.x;
     let y = hoiFocus.y;
@@ -226,23 +245,20 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
         return null;
     }
 
-    x += (relativeToFocus ? relativeToFocus.x : 0);
-    y += (relativeToFocus ? relativeToFocus.y : 0);
-
     const exclusive = chain(hoiFocus.mutually_exclusive)
-        .flatMap(f => f.focus.concat(f.XOR))
+        .flatMap(f => f.focus.concat(f.OR))
         .filter((s): s is CustomSymbol => s !== undefined)
         .map('_name')
         .value();
     const prerequisite = hoiFocus.prerequisite
-        .map(p => p.focus.concat(p.XOR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
+        .map(p => p.focus.concat(p.OR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
     const icon = hoiFocus.icon?._name;
     const hasAllowBranch = hoiFocus.allow_branch !== undefined;
-    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._rawValue, countryScope, conditionExprs) : undefined;
+    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._rawValue, countryScope, conditionExprs).condition : undefined;
     const offset: Offset[] = hoiFocus.offset.map(o => ({
         x: o.x ?? 0,
         y: o.y ?? 0,
-        trigger: o.trigger ? extractConditionValue(o.trigger._rawValue, countryScope, conditionExprs) : { condition: false, exprs: [] },
+        trigger: o.trigger ? extractConditionValue(o.trigger._rawValue, countryScope, conditionExprs).condition : false,
     }));
 
     return {
@@ -250,6 +266,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
         icon,
         x,
         y,
+        relativePositionId: relativeToFocus?.id,
         prerequisite,
         exclusive,
         hasAllowBranch,
@@ -257,12 +274,77 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
         allowBranch: allowBranchCondition,
         offset,
         token: hoiFocus._token,
+        file: filePath,
     };
+}
+
+function addSharedFocus(focuses: Record<string, Focus>, sharedFocusTrees: FocusTree[], sharedFocusId: string, conditionExprs: ConditionItem[]) {
+    const sharedFocusTree = sharedFocusTrees.find(sft => sharedFocusId in sft.focuses);
+    if (!sharedFocusTree) {
+        return;
+    }
+
+    const sharedFocuses = sharedFocusTree.focuses;
+
+    focuses[sharedFocusId] = sharedFocuses[sharedFocusId];
+    updateConditionExprsByFocus(sharedFocuses[sharedFocusId], conditionExprs);
+
+    let hasChanged = true;
+    while (hasChanged) {
+        hasChanged = false;
+        for (const key in sharedFocuses) {
+            if (key in focuses) {
+                continue;
+            }
+
+            const focus = sharedFocuses[key];
+            const allPrerequisites = flatten(focus.prerequisite).filter(p => p in sharedFocuses);
+            if (allPrerequisites.length === 0) {
+                continue;
+            }
+
+            if (allPrerequisites.every(p => p in focuses)) {
+                focuses[key] = focus;
+                updateConditionExprsByFocus(focus, conditionExprs);
+                hasChanged = true;
+            }
+        }
+    }
+}
+
+function updateConditionExprsByFocus(focus: Focus, conditionExprs: ConditionItem[]) {
+    if (focus.allowBranch) {
+        updateConditionExprs(focus.allowBranch, conditionExprs);
+    }
+
+    for (const offset of focus.offset) {
+        if (offset.trigger) {
+            updateConditionExprs(offset.trigger, conditionExprs);
+        }
+    }
+}
+
+function updateConditionExprs(expr: ConditionComplexExpr, conditionExprs: ConditionItem[]) {
+    if (typeof expr === 'boolean') {
+        return;
+    }
+
+    if (!('items' in expr)) {
+        if (!conditionExprs.some(e => isEqual(expr, e))) {
+            conditionExprs.push(expr);
+        }
+        return;
+    }
+
+    for (const item of expr.items) {
+        updateConditionExprs(item, conditionExprs);
+    }
 }
 
 function getAllowBranchOptions(focuses: Record<string, Focus>): string[] {
     return chain(focuses)
-        .flatMap(f => f.inAllowBranch)
+        .filter(f => f.hasAllowBranch && f.allowBranch !== true)
+        .map(f => f.id)
         .uniq()
         .value();
 }

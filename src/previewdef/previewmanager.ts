@@ -230,6 +230,9 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         (uri: vscode.Uri): void => {
             const document = getDocumentByUri(uri);
             for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.fsPath)) {
+                if (uri.toString() === otherPreview.uri.toString()) {
+                    continue;
+                }
                 const otherDocument = getDocumentByUri(otherPreview.uri);
                 if (otherDocument) {
                     otherPreview.onDocumentChange(otherDocument, document);

@@ -6,9 +6,14 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+### Changed
+* Focus tree
+  * Change allow branches to condition, offset will also be calculated.
+
 ### Fixed
 * Position of continuous focuses.
 * Position of focus icons and titles in focus tree.
+* An issue that preview will refresh twice.
 
 ## [0.3.3] - 2020/06/21 - Latest
 

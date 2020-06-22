@@ -2,22 +2,23 @@ import * as vscode from 'vscode';
 import { FocusTree, Focus } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
-import { arrayToMap } from '../../util/common';
+import { randomString } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
-import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { html, htmlEscape } from '../../util/html';
 import { GridBoxType } from '../../hoiformat/gui';
 import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader';
 import { debug } from '../../util/debug';
-import { minBy } from 'lodash';
 import { StyleTable } from '../../util/styletable';
+import { useConditionInFocus } from '../../util/featureflags';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
 export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const styleTable = new StyleTable();
     let baseContent = '';
+    const jsCodes: string[] = [];
+    const styleNonce = randomString(32);
     try {
         const session = new LoaderSession(false);
         const loadResult = await loader.load(session);
@@ -26,7 +27,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
 
         const focustrees = loadResult.result.focusTrees;
         if (focustrees.length > 0) {
-            baseContent = await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles);
+            baseContent = await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
         } else {
             baseContent = localize('focustree.nofocustree', 'No focus tree.');
         }
@@ -39,12 +40,14 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         baseContent,
         [
             { content: `window.previewedFileUri = "${uri.toString()}";` },
+            ...jsCodes.map(c => ({ content: c })),
             'focustree.js',
         ],
         [
             'codicon.css',
             'common.css',
             styleTable,
+            { nonce: styleNonce },
         ],
     );
 }
@@ -54,10 +57,9 @@ const topPaddingBase = 50;
 const xGridSize = 96;
 const yGridSize = 130;
 
-async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
+async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[], jsCodes: string[], styleNonce: string, file: string): Promise<string> {
     const focuses = Object.values(focustree.focuses);
-    const minX = minBy(focuses, 'x')?.x ?? 0;
-    const leftPadding = leftPaddingBase - minX * xGridSize;
+    const leftPadding = leftPaddingBase;
     const topPadding = topPaddingBase;
 
     const gridBox: HOIPartial<GridBoxType> = {
@@ -67,15 +69,16 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
         slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
     } as HOIPartial<GridBoxType>;
 
-    const focusTreeContent = await renderGridBox(gridBox, {
-            size: { width: 0, height: 0 },
-            orientation: 'upper_left'
-        }, {
-            styleTable,
-            items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
-            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
-            cornerPosition: 0.5,
-        });
+    const renderedFocus: Record<string, string> = {};
+    await Promise.all(focuses.map(async (focus) =>
+        renderedFocus[focus.id] = (await renderFocus(focus, styleTable, gfxFiles, file)).replace(/\s\s+/g, ' ')));
+
+    jsCodes.push('window.focustree = ' + JSON.stringify(focustree));
+    jsCodes.push('window.renderedFocus = ' + JSON.stringify(renderedFocus));
+    jsCodes.push('window.gridBox = ' + JSON.stringify(gridBox));
+    jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
+    jsCodes.push('window.useConditionInFocus = ' + useConditionInFocus);
+    jsCodes.push('window.xGridSize = ' + xGridSize);
 
     const continuousFocusContent = focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
         `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
@@ -99,56 +102,11 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             top:0;
         `)}"></div>` +
         `<div id="focustreecontent" class="${styleTable.oneTimeStyle('focustreecontent', () => `top:40px;left:-20px;position:relative`)}">
-            ${focusTreeContent}
+            <div id="focustreeplaceholder"></div>
             ${continuousFocusContent}
         </div>` +
         renderToolBar(focustree, styleTable)
     );
-}
-
-function focusToGridItem(focus: Focus, focustree: FocusTree): GridBoxItem {
-    const classNames = focus.inAllowBranch.map(v => 'inbranch_' + v).join(' ');
-    const connections: GridBoxConnection[] = [];
-    
-    for (const prerequisites of focus.prerequisite) {
-        let style: string;
-        if (prerequisites.length > 1) {
-            style = "1px dashed #88aaff";
-        } else {
-            style = "1px solid #88aaff";
-        }
-
-        prerequisites.forEach(p => {
-            const fp = focustree.focuses[p];
-            const classNames2 = fp?.inAllowBranch.map(v => 'inbranch_' + v).join(' ') ?? '';
-            connections.push({
-                target: p,
-                targetType: 'parent',
-                style: style,
-                classNames: classNames + ' ' + classNames2,
-            });
-        });
-    }
-
-    focus.exclusive.forEach(e => {
-        const fe = focustree.focuses[e];
-        const classNames2 = fe?.inAllowBranch.map(v => 'inbranch_' + v).join(' ') ?? '';
-        connections.push({
-            target: e,
-            targetType: 'related',
-            style: "1px solid red",
-            classNames: classNames + ' ' + classNames2,
-        });
-    });
-
-    return {
-        id: focus.id,
-        htmlId: 'focus_' + focus.id,
-        classNames: classNames + ' focus',
-        gridX: focus.x,
-        gridY: focus.y,
-        connections,
-    };
 }
 
 function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
@@ -193,12 +151,11 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
         border-bottom: 1px solid var(--vscode-panel-border);
     `)}">
         ${searchbox}
-        ${/*allowbranch*/''}
-        ${conditions}
+        ${useConditionInFocus ? conditions : allowbranch}
     </div>`;
 }
 
-async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
+async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[], file: string): Promise<string> {
     const icon = focus.icon ? await getFocusIcon(focus.icon, gfxFiles) : null;
 
     return `<div
@@ -220,7 +177,8 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     "
     start="${focus.token?.start}"
     end="${focus.token?.end}"
-    title="${focus.id}\n(${focus.x}, ${focus.y})">
+    ${file === focus.file ? '' : `file="${focus.file}"`}
+    title="${focus.id}\n({{position}})">
         <span
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;

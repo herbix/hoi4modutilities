@@ -90,3 +90,13 @@ export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO
 
     return result;
 }
+
+export function randomString(length: number, charset: string | undefined = undefined): string {
+    var result = '';
+    var characters = charset ?? 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var charactersLength = characters.length;
+    for (let i = 0; i < length; i++ ) {
+       result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    }
+    return result;
+}

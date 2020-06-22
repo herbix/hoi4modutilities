@@ -54,10 +54,14 @@ export abstract class PreviewBase {
                     return;
                 }
 
-                vscode.window.showTextDocument(this.uri, {
-                    selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
-                    viewColumn: vscode.ViewColumn.One
-                });
+                if (msg.file === undefined) {
+                    vscode.window.showTextDocument(this.uri, {
+                        selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
+                        viewColumn: vscode.ViewColumn.One
+                    });
+                } else {
+                    vscode.window.showWarningMessage(localize('TODO', 'This item belong to other file: "{0}".', msg.file));
+                }
             }
         });
         

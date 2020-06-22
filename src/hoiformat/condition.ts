@@ -4,6 +4,7 @@ import { Scope, scopeDefs } from "./scope";
 import { isEqual } from "lodash";
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';
+export type ConditionComplexExpr = ConditionFolder | ConditionItem | boolean;
 
 export interface ConditionItem {
     scopeName: string;
@@ -16,7 +17,7 @@ export interface ConditionFolder {
 }
 
 export interface ConditionValue {
-    condition: ConditionFolder | ConditionItem | boolean;
+    condition: ConditionComplexExpr;
     exprs: ConditionItem[];
 }
 
@@ -115,7 +116,7 @@ export function extractConditionFolder(nodeValue: NodeValue, scopeStack: Scope[]
     return { type, items };
 }
 
-export function applyCondition(condition: ConditionValue['condition'], trueExprs: ConditionItem[]): boolean {
+export function applyCondition(condition: ConditionComplexExpr, trueExprs: ConditionItem[]): boolean {
     if (typeof condition === 'boolean') {
         return condition;
     }
@@ -128,10 +129,10 @@ export function applyCondition(condition: ConditionValue['condition'], trueExprs
     let resultIs: boolean;
     let otherwise: boolean;
     switch (condition.type) {
-        case 'and':   ifSubConditionIs = false; resultIs = false; otherwise = true;
-        case 'or':    ifSubConditionIs = true;  resultIs = true;  otherwise = false;
-        case 'andnot':ifSubConditionIs = false; resultIs = true;  otherwise = false;
-        case 'ornot': ifSubConditionIs = true;  resultIs = false; otherwise = true;
+        case 'and':   ifSubConditionIs = false; resultIs = false; otherwise = true; break;
+        case 'or':    ifSubConditionIs = true;  resultIs = true;  otherwise = false; break;
+        case 'andnot':ifSubConditionIs = false; resultIs = true;  otherwise = false; break;
+        case 'ornot': ifSubConditionIs = true;  resultIs = false; otherwise = true; break;
     }
 
     for (const item of condition.items) {
@@ -309,7 +310,7 @@ function simplifyCondition(condition: ConditionFolder | ConditionItem): Conditio
     };
 }
 
-function extractConditionalExprs(condition: ConditionValue['condition'], result: ConditionItem[] = []): ConditionItem[] {
+function extractConditionalExprs(condition: ConditionComplexExpr, result: ConditionItem[] = []): ConditionItem[] {
     if (typeof condition === 'boolean') {
         return result;
     }

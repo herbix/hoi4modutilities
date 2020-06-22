@@ -40,11 +40,28 @@ export function copyArray<T>(src: T[], dst: T[], offsetSrc: number, offsetDst: n
     }
 }
 
-function navigateText(start: number | undefined, end: number | undefined): void {
+export function subscribeNavigators() {
+    const navigators = document.getElementsByClassName("navigator");
+    for (let i = 0; i < navigators.length; i++) {
+        const navigator = navigators[i] as HTMLDivElement;
+        navigator.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const startStr = this.attributes.getNamedItem('start')?.value;
+            const endStr = this.attributes.getNamedItem('end')?.value;
+            const file = this.attributes.getNamedItem('file')?.value;
+            const start = !startStr || startStr === 'undefined' ? undefined : parseInt(startStr);
+            const end = !endStr ? undefined : parseInt(endStr);
+            navigateText(start, end, file);
+        });
+    }
+}
+
+function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
     vscode.postMessage({
         command: 'navigate',
-        start: start,
-        end: end
+        start,
+        end,
+        file,
     });
 };
 
@@ -102,21 +119,7 @@ window.addEventListener('load', function() {
         });
     })();
 
-    // Subscribe navigator
-    (function() {
-        const navigators = document.getElementsByClassName("navigator");
-        for (let i = 0; i < navigators.length; i++) {
-            const navigator = navigators[i] as HTMLDivElement;
-            navigator.addEventListener('click', function(e) {
-                e.stopPropagation();
-                const startStr = this.attributes.getNamedItem('start')?.value;
-                const endStr = this.attributes.getNamedItem('end')?.value;
-                const start = !startStr || startStr === 'undefined' ? undefined : parseInt(startStr);
-                const end = !endStr ? undefined : parseInt(endStr);
-                navigateText(start, end);
-            });
-        }
-    })();
+    subscribeNavigators();
 
     enableDropdowns();
     enableCheckboxes();

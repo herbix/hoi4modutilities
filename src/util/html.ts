@@ -2,12 +2,17 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { contextContainer } from '../context';
 import { StyleTable } from './styletable';
+import { randomString } from './common';
 
 export interface DynamicScript {
     content: string;
 }
 
-export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: (string | StyleTable | DynamicScript)[]): string {
+export interface NonceOnly {
+    nonce: string;
+}
+
+export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: (string | StyleTable | DynamicScript | NonceOnly)[]): string {
     const preparedScripts = scripts.map<[string, string]>(script => {
         if (typeof script === 'string') {
             const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + script)));
@@ -33,10 +38,17 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
                     `'nonce-${nonce}'`
                 ];
             } else if (typeof style === 'object') {
-                return [
-                    `<style nonce="${nonce}">${style.content}</style>`,
-                    `'nonce-${nonce}'`,
-                ];
+                if ('nonce' in style) {
+                    return [
+                        '',
+                        `'nonce-${style.nonce}'`,
+                    ];
+                } else {
+                    return [
+                        `<style nonce="${nonce}">${style.content}</style>`,
+                        `'nonce-${nonce}'`,
+                    ];
+                }
             } else {
                 const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + style)));
                 return [
@@ -66,16 +78,6 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
 </html>
 `;
 }
-
-export function randomString(length: number, charset: string | undefined = undefined): string {
-    var result = '';
-    var characters = charset ?? 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var charactersLength = characters.length;
-    for (let i = 0; i < length; i++ ) {
-       result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    }
-    return result;
- }
 
 export function htmlEscape(unsafe: string): string {
     return unsafe
