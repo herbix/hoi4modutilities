@@ -1,11 +1,12 @@
 import { __table } from './en';
 /*eslint sort-keys: "warn"*/
-const zhTable: typeof __table = {
+const zhTable: Partial<typeof __table> = {
     "combobox.all": "（全部）",
     "combobox.multiple": "{0}（+{1}）",
     "combobox.noselection": "（无选择）",
     "error": "错误",
     "focustree.allowbranch": "允许分支：",
+    "focustree.conditions": "条件：",
     "focustree.nofocustree": "没有国策树。",
     "focustree.search": "搜索：",
     "gfx.filter": "筛选器：",
@@ -24,7 +25,10 @@ const zhTable: typeof __table = {
     "modfile.workspacesetting": "工作区设置",
     "preview.cantfinddoc": "无法找到打开的文档：{0}。",
     "preview.cantpreviewfile": "无法预览此文件。\n可以预览的类型：{0}。",
+    "preview.failedtoopen": "无法打开文件 “{0}”：{1}。",
+    "preview.mustopenafolder": "要打开文件“{0}”，必须先打开文件夹。",
     "preview.noactivedoc": "没有打开的文档。",
+    "preview.selectafolder": "选择复制“{0}”的目标文件夹",
     "preview.viewtitle": "预览：{0}",
     "techtree.cantfindtechfolderin": "在{1}里找不到科技树目录{0}。",
     "techtree.cantfindtechitemin": "在{1}里找不到containerwindowtype \"{0}\"。",

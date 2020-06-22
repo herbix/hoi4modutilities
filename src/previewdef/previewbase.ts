@@ -3,6 +3,9 @@ import { localize } from '../util/i18n';
 import { error, debug } from '../util/debug';
 import { getDocumentByUri } from '../util/vsccommon';
 import { isEqual } from 'lodash';
+import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
+import path = require('path');
+import { mkdirs, writeFile } from '../util/nodecommon';
 
 export abstract class PreviewBase {
     private cachedDependencies: string[] | undefined = undefined;
@@ -60,7 +63,7 @@ export abstract class PreviewBase {
                         viewColumn: vscode.ViewColumn.One
                     });
                 } else {
-                    vscode.window.showWarningMessage(localize('TODO', 'This item belong to other file: "{0}".', msg.file));
+                    this.openOrCopyFile(msg.file, msg.start, msg.end);
                 }
             }
         });
@@ -77,6 +80,50 @@ export abstract class PreviewBase {
         }
 
         this.cachedDependencies = dependencies;
+    }
+    
+    protected async openOrCopyFile(file: string, start: number | undefined, end: number | undefined): Promise<void> {
+        const filePathInMod = await getFilePathFromMod(file);
+        if (filePathInMod !== undefined) {
+            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
+                ?? await vscode.workspace.openTextDocument(filePathInMod);
+            await vscode.window.showTextDocument(document, {
+                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
+                viewColumn: vscode.ViewColumn.One,
+            });
+            return;
+        }
+        
+        if (!vscode.workspace.workspaceFolders?.length) {
+            await vscode.window.showErrorMessage(localize('preview.mustopenafolder', 'Must open a folder before opening "{0}".', file));
+            return;
+        }
+
+        let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        if (vscode.workspace.workspaceFolders.length >= 1) {
+            const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('preview.selectafolder', 'Select a folder to copy "{0}"', file) });
+            if (!folder) {
+                return;
+            }
+
+            targetFolder = folder.uri.fsPath;
+        }
+
+        try {
+            const [buffer] = await readFileFromModOrHOI4(file);
+            const targetPath = path.join(targetFolder, file);
+            await mkdirs(path.dirname(targetPath));
+            await writeFile(targetPath, buffer);
+
+            const document = await vscode.workspace.openTextDocument(targetPath);
+            await vscode.window.showTextDocument(document, {
+                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
+                viewColumn: vscode.ViewColumn.One,
+            });
+
+        } catch (e) {
+            await vscode.window.showErrorMessage(localize('preview.failedtoopen', 'Failed to open file "{0}": {1}.', file, e.toString()));
+        }
     }
 
     protected abstract getContent(document: vscode.TextDocument): Promise<string>;

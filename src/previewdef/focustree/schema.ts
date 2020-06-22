@@ -137,6 +137,19 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
     const focusTrees: FocusTree[] = [];
     const file = convertNodeToJson<FocusFile>(node, focusFileSchema);
 
+    if (file.shared_focus.length > 0) {
+        const conditionExprs: ConditionItem[] = [];
+        const focuses = getFocuses(file.shared_focus, conditionExprs, filePath);
+        const sharedFocusTree = {
+            focuses,
+            allowBranchOptions: getAllowBranchOptions(focuses),
+            conditionExprs,
+            isSharedFocues: true,
+        };
+        focusTrees.push(sharedFocusTree);
+        sharedFocusTrees = [sharedFocusTree, ...sharedFocusTrees];
+    }
+
     for (const focusTree of file.focus_tree) {
         const conditionExprs: ConditionItem[] = [];
         const focuses = getFocuses(focusTree.focus, conditionExprs, filePath);
@@ -157,17 +170,6 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
             continuousFocusPositionY: normalizeNumberLike(focusTree.continuous_focus_position?.y, 0) ?? 1000,
             conditionExprs,
             isSharedFocues: false,
-        });
-    }
-
-    if (file.shared_focus.length > 0) {
-        const conditionExprs: ConditionItem[] = [];
-        const focuses = getFocuses(file.shared_focus, conditionExprs, filePath);
-        focusTrees.push({
-            focuses,
-            allowBranchOptions: getAllowBranchOptions(focuses),
-            conditionExprs,
-            isSharedFocues: true,
         });
     }
 

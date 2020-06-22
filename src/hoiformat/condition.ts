@@ -1,10 +1,10 @@
 import { Node, NodeValue } from "./hoiparser";
 import { nodeToString } from "./tostring";
-import { Scope, scopeDefs } from "./scope";
+import { Scope, scopeDefs, countryScope } from "./scope";
 import { isEqual } from "lodash";
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';
-export type ConditionComplexExpr = ConditionFolder | ConditionItem | boolean;
+export type ConditionComplexExpr = ConditionFolder | ConditionAmountFolder | ConditionItem | boolean;
 
 export interface ConditionItem {
     scopeName: string;
@@ -13,7 +13,13 @@ export interface ConditionItem {
 
 export interface ConditionFolder {
     type: ConditionFolderType;
-    items: (ConditionItem | ConditionFolder)[];
+    items: ConditionComplexExpr[];
+}
+
+export interface ConditionAmountFolder {
+    type: 'count';
+    amount: number;
+    items: ConditionComplexExpr[];
 }
 
 export interface ConditionValue {
@@ -30,12 +36,18 @@ export function extractConditionValue(nodeValue: NodeValue, scope: Scope, exprs:
     };
 }
 
-export function extractConditionFolder(nodeValue: NodeValue, scopeStack: Scope[], type: ConditionFolderType = 'and', excludedKeys: string[] | undefined = undefined): ConditionFolder {
+export function extractConditionFolder(
+    nodeValue: NodeValue,
+    scopeStack: Scope[],
+    type: ConditionFolderType | 'count' = 'and',
+    excludedKeys: string[] | undefined = undefined,
+    amount: number = 0
+): ConditionFolder | ConditionAmountFolder {
     if (!Array.isArray(nodeValue)) {
-        return { type, items: [] };
+        return type === 'count' ? { type, amount, items: [] } : { type, items: [] };
     }
 
-    const items: (ConditionItem | ConditionFolder)[] = [];
+    const items: ConditionComplexExpr[] = [];
     const currentScope = scopeStack[scopeStack.length - 1];
     let ifItem: ConditionFolder | undefined = undefined;
 
@@ -93,6 +105,19 @@ export function extractConditionFolder(nodeValue: NodeValue, scopeStack: Scope[]
                 handleElse(child, ifItem, scopeStack);
                 keepIfItem = false;
             }
+        
+        } else if (childName === 'always') {
+            if (typeof child.value === 'object' && child.value && 'name' in child.value) {
+                items.push(child.value.name.toLowerCase() === 'yes');
+            }
+        
+        } else if (childName === 'count_triggers') {
+            if (Array.isArray(child.value)) {
+                const amount = child.value.find(v => v.name === 'amount');
+                if (amount && typeof amount.value === 'number') {
+                    items.push(extractConditionFolder(child.value, scopeStack, 'count', ['amount'], amount.value));
+                }
+            }
 
         } else {
             items.push({
@@ -113,6 +138,9 @@ export function extractConditionFolder(nodeValue: NodeValue, scopeStack: Scope[]
         items.push(ifItem);
     }
 
+    if (type === 'count') {
+        return { type, amount, items };
+    }
     return { type, items };
 }
 
@@ -123,6 +151,10 @@ export function applyCondition(condition: ConditionComplexExpr, trueExprs: Condi
 
     if (!('items' in condition)) {
         return trueExprs.some(e => isEqual(condition, e));
+    }
+
+    if (condition.type === 'count') {
+        return condition.items.filter(item => applyCondition(item, trueExprs)).length >= condition.amount;
     }
 
     let ifSubConditionIs: boolean;
@@ -224,7 +256,7 @@ function handleElseIf(elseIfNode: Node, ifItem: ConditionFolder, scopeStack: Sco
     const elseiflimit = elseIfNode.value.find(v => v.name === 'limit');
     if (elseiflimit) {
         const lastItemItems = (ifItem.items[ifItem.items.length - 1] as ConditionFolder).items;
-        const newItem: (ConditionItem | ConditionFolder)[] = [
+        const newItem: ConditionComplexExpr[] = [
             ...lastItemItems.slice(0, lastItemItems.length - 2),
             {
                 ...(lastItemItems[lastItemItems.length - 2] as ConditionFolder),
@@ -243,7 +275,7 @@ function handleElseIf(elseIfNode: Node, ifItem: ConditionFolder, scopeStack: Sco
 function handleElse(elseNode: Node, ifItem: ConditionFolder, scopeStack: Scope[]) {
     if (Array.isArray(elseNode.value)) {
         const lastItemItems = (ifItem.items[ifItem.items.length - 1] as ConditionFolder).items;
-        const newItem: (ConditionItem | ConditionFolder)[] = [
+        const newItem: ConditionComplexExpr[] = [
             ...lastItemItems.slice(0, ifItem.items.length - 2),
             {
                 ...(lastItemItems[ifItem.items.length - 2] as ConditionFolder),
@@ -258,8 +290,8 @@ function handleElse(elseNode: Node, ifItem: ConditionFolder, scopeStack: Scope[]
     }
 }
 
-function simplifyCondition(condition: ConditionFolder | ConditionItem): ConditionFolder | ConditionItem | boolean {
-    if (!('items' in condition)) {
+function simplifyCondition(condition: ConditionComplexExpr): ConditionComplexExpr {
+    if (typeof condition === 'boolean' || !('items' in condition)) {
         return condition;
     }
 
@@ -267,18 +299,30 @@ function simplifyCondition(condition: ConditionFolder | ConditionItem): Conditio
         return condition.type === 'and' || condition.type === 'ornot';
     }
 
-    if ((condition.type === 'and' || condition.type === 'or') && condition.items.length === 1) {
-        return simplifyCondition(condition.items[0]);
+    if (condition.type === 'count') {
+        if (condition.amount <= 0) {
+            return true;
+        } else if (condition.amount > condition.items.length) {
+            return false;
+        } else if (condition.amount === condition.items.length) {
+            return simplifyCondition({ type: 'and', items: condition.items });
+        }
     }
 
-    if (condition.type === 'andnot' && condition.items.length === 1) {
-        return simplifyCondition({ type: 'ornot', items: condition.items });
-    }
+    if (condition.items.length === 1) {
+        if (condition.type === 'and' || condition.type === 'or') {
+            return simplifyCondition(condition.items[0]);
+        }
 
-    if (condition.type === 'ornot' && condition.items.length === 1) {
-        const child = condition.items[0];
-        if ('items' in child && (child.type === 'andnot' || child.type === 'ornot')) {
-            return simplifyCondition({ type: child.type === 'andnot' ? 'and' : 'or', items: child.items });
+        if (condition.type === 'andnot') {
+            return simplifyCondition({ type: 'ornot', items: condition.items });
+        }
+
+        if (condition.type === 'ornot') {
+            const child = condition.items[0];
+            if (typeof child === 'object' && 'items' in child && (child.type === 'andnot' || child.type === 'ornot')) {
+                return simplifyCondition({ type: child.type === 'andnot' ? 'and' : 'or', items: child.items });
+            }
         }
     }
 
@@ -305,7 +349,7 @@ function simplifyCondition(condition: ConditionFolder | ConditionItem): Conditio
     }
 
     return {
-        type: condition.type,
+        ...condition,
         items: simplifiedItems,
     };
 }

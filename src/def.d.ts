@@ -4,6 +4,7 @@ declare module 'vscode' {
             readonly installPath: string;
             readonly loadDlcContents: boolean;
             readonly modFile: string;
+            readonly featureFlags: string[];
         };
     }
 }

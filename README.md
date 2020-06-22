@@ -50,6 +50,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 |`hoi4ModUtilities.installPath`|`string`|Hearts of Iron IV install path. Without this, most features are broken.|
 |`hoi4ModUtilities.loadDlcContents`|`boolean`|Whether to load DLC images when previewing files. Enabling this will use more memory (All DLCs are around 600MB).|
 |`hoi4ModUtilities.modFile`|`string`|Path to the working `.mod` file. This file is used to read replace_path. If not specified, will use first `.mod` file in first folder of the workspace.|
+|`hoi4ModUtilities.featureFlags`|`array` of `string`|Feature flags are used to disable or enable features. Reloading is required after changing this. Please refer to [Wiki](https://github.com/herbix/hoi4modutilities/wiki/Feature-flags) on Github for details.|
 
 ## Known Issues
 
@@ -58,15 +59,17 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Release Notes
 
-### 0.3.3
+### [0.3.4]
 
 ### Added
 * Focus tree
-  * Zoom focus tree using wheel.
-  * Search item in focus tree by ID.
+  * Focus can reference shared focuses now.
 
 ### Changed
-* Change allow branches from checkboxes to multi-selection combobox.
+* Focus tree
+  * Change allow branches to condition, offset will also be calculated. This can be disabled by specifying feature flag `!useConditionInFocus`.
 
 ### Fixed
-* Update missing Chinese localization.
+* Position of continuous focuses.
+* Position of focus icons and titles in focus tree.
+* An issue that preview will refresh twice.

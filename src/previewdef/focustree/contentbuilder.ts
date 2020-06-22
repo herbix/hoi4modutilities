@@ -128,7 +128,7 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
         </div>`;
 
     const conditions = focusTree.conditionExprs.length === 0 ? '' : `
-        <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('TODO', 'Conditions: ')}</label>
+        <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('focustree.conditions', 'Conditions: ')}</label>
         <div class="select-container">
             <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
                 <span class="value"></span>

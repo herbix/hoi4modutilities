@@ -214,7 +214,9 @@ export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
         let content: string | undefined = undefined;
         let errorValue: any = undefined;
         try {
-            content = this.contentProvider === undefined ? (await readFileFromModOrHOI4(this.file))[0].toString() : await this.contentProvider();
+            content = this.contentProvider === undefined ?
+                (await readFileFromModOrHOI4(this.file))[0].toString('utf-8').replace(/^\uFEFF/, '') :
+                await this.contentProvider();
         } catch(e) {
             error(e);
             errorValue = e;

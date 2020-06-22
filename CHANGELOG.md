@@ -4,18 +4,22 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.3.4] - 2020/06/23 - Latest
+
+### Added
+* Focus tree
+  * Focus can reference shared focuses now.
 
 ### Changed
 * Focus tree
-  * Change allow branches to condition, offset will also be calculated.
+  * Change allow branches to condition, offset will also be calculated. This can be disabled by specifying feature flag `!useConditionInFocus`.
 
 ### Fixed
 * Position of continuous focuses.
 * Position of focus icons and titles in focus tree.
 * An issue that preview will refresh twice.
 
-## [0.3.3] - 2020/06/21 - Latest
+## [0.3.3] - 2020/06/21
 
 ### Added
 * Focus tree

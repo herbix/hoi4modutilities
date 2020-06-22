@@ -134,6 +134,7 @@ export class WorldMap {
     }
 
     private async openFile(file: string, type: 'state' | 'strategicregion' | 'supplyarea', start: number | undefined, end: number | undefined): Promise<void> {
+        // TODO duplicate with previewbase.ts
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
             const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
