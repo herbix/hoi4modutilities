@@ -4,7 +4,8 @@ import { ddsToPng } from './util/image/converter';
 import { PNG } from 'pngjs';
 import { localize } from './util/i18n';
 import { DDS } from './util/image/dds';
-import { html, StyleTable, htmlEscape } from './util/html';
+import { html, htmlEscape } from './util/html';
+import { StyleTable } from './util/styletable';
 
 export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
     public async openCustomDocument(uri: vscode.Uri) {

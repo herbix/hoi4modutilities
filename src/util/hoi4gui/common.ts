@@ -2,7 +2,7 @@ import { NumberLike, Position, HOIPartial, parseNumberLike } from "../../hoiform
 import { Sprite } from "../image/imagecache";
 import { NumberSize, NumberPosition } from "../common";
 import { CorneredTileSprite } from "../image/sprite";
-import { StyleTable } from "../html";
+import { StyleTable } from '../styletable';
 import { Orientation, ComplexSize, Size, Margin, Background } from "../../hoiformat/gui";
 
 export interface ParentInfo {

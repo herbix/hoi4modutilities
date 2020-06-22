@@ -5,7 +5,7 @@ import { renderInstantTextBox } from "./instanttextbox";
 import { renderGridBox } from "./gridbox";
 import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/gui";
 
-interface RenderChildTypeMap {
+export interface RenderChildTypeMap {
     containerwindow: HOIPartial<ContainerWindowType>;
     gridbox: HOIPartial<GridBoxType>;
     icon: HOIPartial<IconType>;

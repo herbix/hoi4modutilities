@@ -4,6 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Fixed
+* Position of continuous focuses.
+* Position of focus icons and titles in focus tree.
+
 ## [0.3.3] - 2020/06/21 - Latest
 
 ### Added

@@ -35,20 +35,22 @@ export interface NumberLike extends TokenObject {
 export interface DetailValue<T> extends TokenObject {
     _attachment: string | undefined;
     _attachmentToken: Token | undefined;
+    _operator: string | undefined;
+    _operatorToken: Token | undefined;
     _startToken: Token | undefined;
     _endToken: Token | undefined;
     _value: T;
 }
 
-export interface ValueToken<T> {
-    _value: T;
+export interface Raw extends TokenObject {
+    _rawValue: NodeValue;
 }
 
 export type NumberUnit = '%' | '%%';
 
 export type HOIPartial<T> =
     T extends Enum ? T :
-    T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean ? T | undefined :
+    T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean | Raw ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
     T extends DetailValue<infer T1> ? DetailValue<HOIPartial<T1>> | undefined :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
@@ -69,6 +71,7 @@ export type SchemaDef<T> =
     T extends number ? 'number' :
     T extends NumberLike ? 'numberlike' :
     T extends Enum ? 'enum' :
+    T extends Raw ? 'raw' :
     T extends CustomMap<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'map'; } :
     T extends DetailValue<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'detailvalue'; } :
     T extends (infer B)[] ? { _innerType: SchemaDef<B>; _type: 'array'; } :
@@ -89,7 +92,7 @@ export const positionSchema: SchemaDef<Position> = {
 //#endregion
 
 //#region Functions
-function forEachNodeValue(node: Node, callback: (n: Node, index: number) => void): void {
+export function forEachNodeValue(node: Node, callback: (n: Node, index: number) => void): void {
     if (!Array.isArray(node.value)) {
         return;
     }
@@ -187,6 +190,8 @@ function convertDetailValue<T>(node: Node, innerSchema: SchemaDef<T>, constants:
     return {
         _attachment: node.valueAttachment?.name,
         _attachmentToken: node.valueAttachmentToken ?? undefined,
+        _operator: node.operator ?? undefined,
+        _operatorToken: node.operatorToken ?? undefined,
         _startToken: node.valueStartToken ?? undefined,
         _endToken: node.valueEndToken ?? undefined,
         _token: node.nameToken ?? undefined,
@@ -293,6 +298,9 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
                 break;
             case 'enum':
                 result = convertEnum(node) as HOIPartial<T>;
+                break;
+            case 'raw':
+                result = { _rawValue: node.value } as HOIPartial<T>;
                 break;
             default:
                 throw new Error('Unknown schema ' + schema);

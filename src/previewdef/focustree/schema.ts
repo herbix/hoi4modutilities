@@ -1,13 +1,16 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema } from "../../hoiformat/schema";
+import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
 import { flatten, chain } from 'lodash';
+import { ConditionValue, extractConditionValue, ConditionItem } from "../../hoiformat/condition";
+import { countryScope } from "../../hoiformat/scope";
 
 export interface FocusTree {
     focuses: Record<string, Focus>;
     allowBranchOptions: string[];
     continuousFocusPositionX?: number;
     continuousFocusPositionY?: number;
+    conditionExprs: ConditionItem[];
 }
 
 export interface Focus {
@@ -19,7 +22,15 @@ export interface Focus {
     exclusive: string[];
     hasAllowBranch: boolean;
     inAllowBranch: string[];
+    allowBranch: ConditionValue | undefined;
+    offset: Offset[];
     token: Token | undefined;
+}
+
+interface Offset {
+    x: number;
+    y: number;
+    trigger: ConditionValue | undefined;
 }
 
 interface FocusTreeDef {
@@ -37,8 +48,15 @@ interface FocusDef {
     prerequisite: FocusOrXORList[];
     mutually_exclusive: FocusOrXORList[];
     relative_position_id: CustomSymbol;
-    allow_branch: CustomSymbol[]; /* FIXME not symbol node */
+    allow_branch: Raw; /* FIXME not symbol node */
+    offset: OffsetDef[];
     _token: Token;
+}
+
+interface OffsetDef {
+    x: number;
+    y: number;
+    trigger: Raw;
 }
 
 interface FocusOrXORList {
@@ -76,9 +94,14 @@ const focusSchema: SchemaDef<FocusDef> = {
         _type: 'array',
     },
     relative_position_id: "symbol",
-    allow_branch: {
-        _innerType: "symbol",
-        _type: "array"
+    allow_branch: 'raw',
+    offset: {
+        _innerType: {
+            x: "number",
+            y: "number",
+            trigger: "raw",
+        },
+        _type: 'array',
     }
 };
 
@@ -108,27 +131,31 @@ export function getFocusTree(node: Node): FocusTree[] {
     const file = convertNodeToJson<FocusFile>(node, focusFileSchema);
 
     for (const focusTree of file.focus_tree) {
-        const focuses = getFocuses(focusTree.focus);
+        const conditionExprs: ConditionItem[] = [];
+        const focuses = getFocuses(focusTree.focus, conditionExprs);
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
             continuousFocusPositionX: normalizeNumberLike(focusTree.continuous_focus_position?.x, 0) ?? 50,
             continuousFocusPositionY: normalizeNumberLike(focusTree.continuous_focus_position?.y, 0) ?? 1000,
+            conditionExprs,
         });
     }
 
     if (file.shared_focus.length > 0) {
-        const focuses = getFocuses(file.shared_focus);
+        const conditionExprs: ConditionItem[] = [];
+        const focuses = getFocuses(file.shared_focus, conditionExprs);
         focusTrees.push({
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
+            conditionExprs,
         });
     }
 
     return focusTrees;
 }
 
-function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
+function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: ConditionItem[]): Record<string, Focus> {
     const focuses: Record<string, Focus> = {};
     let pendingFocuses: HOIPartial<FocusDef>[] = [];
 
@@ -139,7 +166,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
             continue;
         }
 
-        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo] : null);
+        const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo] : null, conditionExprs);
         if (focus !== null) {
             focuses[focus.id] = focus;
         }
@@ -156,7 +183,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
                 continue;
             }
 
-            const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null);
+            const focus = getFocus(hoiFocus, relativeTo ? focuses[relativeTo]: null, conditionExprs);
             if (focus !== null) {
                 focuses[focus.id] = focus;
                 pendingFocusesChanged = true;
@@ -190,7 +217,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[]): Record<string, Focus> {
     return focuses;
 }
 
-function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null): Focus | null {
+function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null, conditionExprs: ConditionItem[]): Focus | null {
     const id = hoiFocus.id?._name;
     let x = hoiFocus.x;
     let y = hoiFocus.y;
@@ -210,7 +237,13 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null)
     const prerequisite = hoiFocus.prerequisite
         .map(p => p.focus.concat(p.XOR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
     const icon = hoiFocus.icon?._name;
-    const hasAllowBranch = hoiFocus.allow_branch.length > 0;
+    const hasAllowBranch = hoiFocus.allow_branch !== undefined;
+    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._rawValue, countryScope, conditionExprs) : undefined;
+    const offset: Offset[] = hoiFocus.offset.map(o => ({
+        x: o.x ?? 0,
+        y: o.y ?? 0,
+        trigger: o.trigger ? extractConditionValue(o.trigger._rawValue, countryScope, conditionExprs) : { condition: false, exprs: [] },
+    }));
 
     return {
         id,
@@ -221,6 +254,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null)
         exclusive,
         hasAllowBranch,
         inAllowBranch: hasAllowBranch ? [id] : [],
+        allowBranch: allowBranchCondition,
+        offset,
         token: hoiFocus._token,
     };
 }

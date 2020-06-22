@@ -2,7 +2,7 @@ import { HOIPartial } from "../../hoiformat/schema";
 import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions, renderBackground } from "./common";
 import { NumberSize, NumberPosition } from "../common";
 import { Sprite } from "../image/sprite";
-import { StyleTable } from "../html";
+import { StyleTable } from '../styletable';
 import { GridBoxType, Format } from "../../hoiformat/gui";
 import { map, flatMap } from "lodash";
 

@@ -5,12 +5,13 @@ import { localize } from '../../util/i18n';
 import { arrayToMap } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
-import { html, StyleTable, htmlEscape } from '../../util/html';
+import { html, htmlEscape } from '../../util/html';
 import { GridBoxType } from '../../hoiformat/gui';
 import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader';
 import { debug } from '../../util/debug';
 import { minBy } from 'lodash';
+import { StyleTable } from '../../util/styletable';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -48,7 +49,6 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
     );
 }
 
-
 const leftPaddingBase = 50;
 const topPaddingBase = 50;
 const xGridSize = 96;
@@ -67,6 +67,29 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
         slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
     } as HOIPartial<GridBoxType>;
 
+    const focusTreeContent = await renderGridBox(gridBox, {
+            size: { width: 0, height: 0 },
+            orientation: 'upper_left'
+        }, {
+            styleTable,
+            items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
+            onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
+            cornerPosition: 0.5,
+        });
+
+    const continuousFocusContent = focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
+        `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
+            position: absolute;
+            width: 770px;
+            height: 380px;
+            left: ${(focustree.continuousFocusPositionX ?? 0) - 59}px;
+            top: ${(focustree.continuousFocusPositionY ?? 0) + 7}px;
+            margin: 20px;
+            background: rgba(128, 128, 128, 0.2);
+            text-align: center;
+            pointer-events: none;
+        `)}">Continuous focuses</div>` : '';
+
     return (
         `<div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
@@ -76,27 +99,8 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             top:0;
         `)}"></div>` +
         `<div id="focustreecontent" class="${styleTable.oneTimeStyle('focustreecontent', () => `top:40px;left:-20px;position:relative`)}">
-            ${await renderGridBox(gridBox, {
-                size: { width: 0, height: 0 },
-                orientation: 'upper_left'
-            }, {
-                styleTable,
-                items: arrayToMap(focuses.map(focus => focusToGridItem(focus, focustree)), 'id'),
-                onRenderItem: item => renderFocus(focustree.focuses[item.id], styleTable, gfxFiles),
-                cornerPosition: 0.5,
-            })}
-            ${(focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
-            `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
-                position: absolute;
-                width: 770px;
-                height: 380px;
-                left: ${focustree.continuousFocusPositionX}px;
-                top: ${focustree.continuousFocusPositionY}px;
-                margin: 20px;
-                background: rgba(128, 128, 128, 0.2);
-                text-align: center;
-                pointer-events: none;
-            `)}">Continuous focuses</div>` : '')}
+            ${focusTreeContent}
+            ${continuousFocusContent}
         </div>` +
         renderToolBar(focustree, styleTable)
     );
@@ -165,6 +169,17 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
             </div>
         </div>`;
 
+    const conditions = focusTree.conditionExprs.length === 0 ? '' : `
+        <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('TODO', 'Conditions: ')}</label>
+        <div class="select-container">
+            <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
+                <span class="value"></span>
+                ${focusTree.conditionExprs.map(option =>
+                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
+                ).join('')}
+            </div>
+        </div>`;
+
     return `<div
     class="${styleTable.style('toolbar', () => `
         position: fixed;
@@ -193,7 +208,8 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
             background-size: ${icon ? icon.width: 0}px;
         `)}
         ${styleTable.style('focus-common', () => `
-            background-position: center;
+            background-position-x: center;
+            background-position-y: calc(50% - 18px);
             background-repeat: no-repeat;
             width: 100%;
             height: 100%;
@@ -207,6 +223,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         <span
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;
+            margin-top: 85px;
             text-align: center;
             display: inline-block;
         `)}">${focus.id}

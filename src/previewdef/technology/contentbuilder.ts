@@ -9,12 +9,13 @@ import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
 import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
-import { html, StyleTable, htmlEscape } from '../../util/html';
+import { html, htmlEscape } from '../../util/html';
 import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format } from '../../hoiformat/gui';
 import { TechnologyTreeLoader, TechnologyTreeLoaderResult } from './loader';
 import { LoaderSession } from '../../util/loader';
 import { debug } from '../../util/debug';
 import { flatMap, sumBy, min, flatten, chain, uniq } from 'lodash';
+import { StyleTable } from '../../util/styletable';
 
 const techTreeViewName = 'countrytechtreeview';
 
@@ -488,7 +489,7 @@ async function renderLineItem(
                         return await renderIcon({
                             ...child,
                             spritetype: `GFX_techtree_line_${childName}_${sameInOut ? 'dot_' : ''}states`,
-                            frame: 2
+                            frame: 2,
                         } as HOIPartial<IconType>, parent, commonOptions);
                     } else {
                         return '';

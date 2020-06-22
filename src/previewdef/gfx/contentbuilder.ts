@@ -4,7 +4,8 @@ import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { SpriteType } from '../../hoiformat/spritetype';
-import { html, StyleTable, htmlEscape } from '../../util/html';
+import { html, htmlEscape } from '../../util/html';
+import { StyleTable } from '../../util/styletable';
 
 export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const styleTable = new StyleTable();

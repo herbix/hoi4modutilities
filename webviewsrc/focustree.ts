@@ -65,6 +65,11 @@ window.addEventListener('load', function() {
             oldSelection = selection;
         });
     }
+    
+    const conditionsElement = document.getElementById('conditions') as HTMLDivElement | null;
+    if (conditionsElement) {
+        const conditions = new DivDropdown(conditionsElement, true);
+    }
 
     const searchbox = document.getElementById('searchbox') as HTMLInputElement;
     let currentNavigatedIndex = 0;
