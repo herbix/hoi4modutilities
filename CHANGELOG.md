@@ -4,6 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Changed
+* Update parser.
+  * Strings without quote will be treated as string now.
+  * Variables can be parsed now. The default value will be used.
+
 ## [0.3.4] - 2020/06/23 - Latest
 
 ### Added

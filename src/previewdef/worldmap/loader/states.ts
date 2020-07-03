@@ -1,5 +1,5 @@
 import { State, Province, Warning, WarningSource, Region, StateCategory } from "../definitions";
-import { CustomSymbol, Enum, SchemaDef, StringAsSymbol, CustomMap, DetailValue } from "../../../hoiformat/schema";
+import { Enum, SchemaDef, CustomMap, DetailValue } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
@@ -18,7 +18,7 @@ interface StateDefinition {
     id: number;
     name: string;
     manpower: number;
-    state_category: StringAsSymbol;
+    state_category: string;
     history: StateHistory;
     provinces: Enum;
     impassable: boolean;
@@ -26,9 +26,9 @@ interface StateDefinition {
 }
 
 interface StateHistory {
-    owner: CustomSymbol;
+    owner: string;
     victory_points: Enum[];
-    add_core_of: CustomSymbol[];
+    add_core_of: string[];
 }
 
 const stateFileSchema: SchemaDef<StateFile> = {
@@ -37,15 +37,15 @@ const stateFileSchema: SchemaDef<StateFile> = {
             id: "number",
             name: "string",
             manpower: "number",
-            state_category: "stringassymbol",
+            state_category: "string",
             history: {
-                owner: "symbol",
+                owner: "string",
                 victory_points: {
                     _innerType: "enum",
                     _type: "array",
                 },
                 add_core_of: {
-                    _innerType: "symbol",
+                    _innerType: "string",
                     _type: "array",
                 },
             },
@@ -220,10 +220,10 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
             const id = state.id ? state.id : (warnings.push(localize('worldmap.warnings.statenoid', "A state in {0} doesn't have id field.", stateFile)), -1);
             const name = state.name ? state.name : (warnings.push(localize('worldmap.warnings.statenoname', "The state doesn't have name field.")), '');
             const manpower = state.manpower ?? 0;
-            const category = state.state_category?._name ? state.state_category._name : (warnings.push(localize('worldmap.warnings.statenocategory', "The state doesn't have category field.")), '');
-            const owner = state.history?.owner?._name;
+            const category = state.state_category ? state.state_category : (warnings.push(localize('worldmap.warnings.statenocategory', "The state doesn't have category field.")), '');
+            const owner = state.history?.owner;
             const provinces = state.provinces._values.map(v => parseInt(v));
-            const cores = state.history?.add_core_of.map(v => v?._name).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
+            const cores = state.history?.add_core_of.map(v => v).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
             const impassable = state.impassable ?? false;
             const victoryPointsArray = state.history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
             const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);

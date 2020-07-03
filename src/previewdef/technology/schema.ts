@@ -1,5 +1,5 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, Position, CustomMap, Enum, CustomSymbol, SchemaDef, positionSchema, convertNodeToJson } from "../../hoiformat/schema";
+import { HOIPartial, Position, CustomMap, Enum, SchemaDef, positionSchema, convertNodeToJson } from "../../hoiformat/schema";
 
 export interface TechnologyFolder {
     name: string;
@@ -37,11 +37,11 @@ interface TechnologyDef {
 }
 
 interface TechnologyPath {
-    leads_to_tech: CustomSymbol;
+    leads_to_tech: string;
 }
 
 interface Folder {
-    name: CustomSymbol;
+    name: string;
     position: Position;
 }
 
@@ -53,13 +53,13 @@ const technologySchema: SchemaDef<TechnologyDef> = {
     enable_equipments: "enum",
     path: {
         _innerType: {
-            leads_to_tech: "symbol",
+            leads_to_tech: "string",
         },
         _type: "array",
     },
     folder: {
         _innerType: {
-            name: "symbol",
+            name: "string",
             position: positionSchema,
         },
         _type: "array",
@@ -147,7 +147,7 @@ function getTechnologies(technologies: HOIPartial<TechnologiesDef>['_map']): Rec
         const technology = _value;
         const token = technology._token;
         const startYear = technology.start_year ?? 0;
-        const leadsToTechs = technology.path.map(p => p.leads_to_tech?._name).filter((p): p is string => p !== undefined);
+        const leadsToTechs = technology.path.map(p => p.leads_to_tech).filter((p): p is string => p !== undefined);
         const xor = technology.xor._values;
         const enableEquipments = technology.enable_equipments._values.length > 0;
         const folders: Record<string, TechnologyFolder> = {};
@@ -156,7 +156,7 @@ function getTechnologies(technologies: HOIPartial<TechnologiesDef>['_map']): Rec
             const x = folder.position?.x?._value ?? 0;
             const y = folder.position?.y?._value ?? 0;
 
-            const folderName = folder.name?._name;
+            const folderName = folder.name;
             if (folderName) {
                 folders[folderName] = { name: folderName, x, y };
             }

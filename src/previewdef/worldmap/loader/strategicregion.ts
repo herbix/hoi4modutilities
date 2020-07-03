@@ -1,7 +1,7 @@
-import { Enum, CustomSymbol, SchemaDef } from "../../../hoiformat/schema";
-import { StrategicRegion, ProgressReporter, Warning, Province, WarningSource, State, Terrain, Region } from "../definitions";
+import { Enum, SchemaDef } from "../../../hoiformat/schema";
+import { StrategicRegion, Warning, Province, WarningSource, State, Terrain, Region } from "../definitions";
 import { DefaultMapLoader } from "./provincemap";
-import { FolderLoader, FileLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegions, mergeRegion, LoadResultOD } from "./common";
+import { FolderLoader, FileLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion, LoadResultOD } from "./common";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { localize } from "../../../util/i18n";
@@ -19,7 +19,7 @@ interface StrategicRegionDefinition {
     id: number;
     name: string;
     provinces: Enum;
-    naval_terrain: CustomSymbol;
+    naval_terrain: string;
     _token: Token;
 }
 
@@ -29,7 +29,7 @@ const strategicRegionFileSchema: SchemaDef<StrategicRegionFile> = {
             id: "number",
             name: "string",
             provinces: "enum",
-            naval_terrain: "symbol",
+            naval_terrain: "string",
         },
         _type: "array",
     },
@@ -115,7 +115,7 @@ async function loadStrategicRegion(file: string, globalWarnings: Warning[]): Pro
             const id = strategicRegion.id ? strategicRegion.id : (warnings.push(localize('worldmap.warnings.strategicregionnoid', "A strategic region in \"{0}\" doesn't have id field.", file)), -1);
             const name = strategicRegion.name ? strategicRegion.name : (warnings.push(localize('worldmap.warnings.strategicregionnoname', "Strategic region {0} doesn't have name field.", id)), '');
             const provinces = strategicRegion.provinces._values.map(v => parseInt(v));
-            const navalTerrain = strategicRegion.naval_terrain?._name ?? null;
+            const navalTerrain = strategicRegion.naval_terrain ?? null;
 
             if (provinces.length === 0) {
                 warnings.push(localize('worldmap.warnings.strategicregionnoprovinces', "Strategic region {0} in \"{1}\" doesn't have provinces.", id, file));

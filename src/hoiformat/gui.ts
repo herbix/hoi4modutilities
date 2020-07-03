@@ -1,4 +1,4 @@
-import { NumberLike, SchemaDef, positionSchema, Position, StringAsSymbolIgnoreCase } from "./schema";
+import { NumberLike, SchemaDef, positionSchema, Position, StringIgnoreCase } from "./schema";
 
 export interface Size {
     width: NumberLike;
@@ -16,8 +16,8 @@ export interface Margin {
     bottom: NumberLike;
 }
 
-export type Format = StringAsSymbolIgnoreCase<'left' | 'right' | 'up' | 'down' | 'center'>;
-export type Orientation = StringAsSymbolIgnoreCase<
+export type Format = StringIgnoreCase<'left' | 'right' | 'up' | 'down' | 'center'>;
+export type Orientation = StringIgnoreCase<
     'upper_left' | 'upper_right' |
     'lower_left' | 'lower_right' |
     'center_up' | 'center_down' | 'center_left' | 'center_right' | 'center_middle' | 'center' |
@@ -115,17 +115,17 @@ const backgroundSchema: SchemaDef<Background> = {
 
 const gridBoxTypeSchema: SchemaDef<GridBoxType> = {
     name: "string",
-    orientation: "stringassymbolignorecase",
+    orientation: "stringignorecase",
     position: positionSchema,
     size: sizeSchema,
     slotsize: sizeSchema,
     background: backgroundSchema,
-    format: "stringassymbolignorecase",
+    format: "stringignorecase",
 };
 
 const iconTypeSchema: SchemaDef<IconType> = {
     name: "string",
-    orientation: "stringassymbolignorecase",
+    orientation: "stringignorecase",
     position: positionSchema,
     centerposition: 'boolean',
     spritetype: "string",
@@ -135,20 +135,20 @@ const iconTypeSchema: SchemaDef<IconType> = {
 
 const instantTextBoxTypeSchema: SchemaDef<InstantTextBoxType> = {
     name: "string",
-    orientation: "stringassymbolignorecase",
+    orientation: "stringignorecase",
     position: positionSchema,
     bordersize: positionSchema,
     maxwidth: "numberlike",
     maxheight: "numberlike",
-    format: "stringassymbolignorecase",
+    format: "stringignorecase",
     font: "string",
     text: "string",
 };
 
 const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {
     name: "string",
-    orientation: "stringassymbolignorecase",
-    origo: "stringassymbolignorecase",
+    orientation: "stringignorecase",
+    origo: "stringignorecase",
     position: positionSchema,
     size: complexSizeSchema,
     margin: marginSchema,

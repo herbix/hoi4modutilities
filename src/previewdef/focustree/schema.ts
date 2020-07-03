@@ -1,5 +1,5 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, CustomSymbol, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
+import { HOIPartial, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
 import { flatten, chain, isEqual } from 'lodash';
 import { extractConditionValue, ConditionItem, ConditionComplexExpr } from "../../hoiformat/condition";
@@ -38,20 +38,20 @@ interface Offset {
 }
 
 interface FocusTreeDef {
-    id: CustomSymbol;
-    shared_focus: CustomSymbol[];
+    id: string;
+    shared_focus: string[];
     focus: FocusDef[];
     continuous_focus_position: Position;
 }
 
 interface FocusDef {
-    id: CustomSymbol;
-    icon: CustomSymbol;
+    id: string;
+    icon: string;
     x: number;
     y: number;
     prerequisite: FocusOrORList[];
     mutually_exclusive: FocusOrORList[];
-    relative_position_id: CustomSymbol;
+    relative_position_id: string;
     allow_branch: Raw; /* FIXME not symbol node */
     offset: OffsetDef[];
     _token: Token;
@@ -64,8 +64,8 @@ interface OffsetDef {
 }
 
 interface FocusOrORList {
-    focus: CustomSymbol[];
-    OR: CustomSymbol[];
+    focus: string[];
+    OR: string[];
 }
 
 interface FocusFile {
@@ -75,18 +75,18 @@ interface FocusFile {
 
 const focusOrORListSchema: SchemaDef<FocusOrORList> = {
     focus: {
-        _innerType: "symbol",
+        _innerType: "string",
         _type: 'array',
     },
     OR: {
-        _innerType: "symbol",
+        _innerType: "string",
         _type: 'array',
     },
 };
 
 const focusSchema: SchemaDef<FocusDef> = {
-    id: "symbol",
-    icon: "symbol",
+    id: "string",
+    icon: "string",
     x: "number",
     y: "number",
     prerequisite: {
@@ -97,7 +97,7 @@ const focusSchema: SchemaDef<FocusDef> = {
         _innerType: focusOrORListSchema,
         _type: 'array',
     },
-    relative_position_id: "symbol",
+    relative_position_id: "string",
     allow_branch: 'raw',
     offset: {
         _innerType: {
@@ -110,9 +110,9 @@ const focusSchema: SchemaDef<FocusDef> = {
 };
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
-    id: "symbol",
+    id: "string",
     shared_focus: {
-        _innerType: "symbol",
+        _innerType: "string",
         _type: "array",
     },
     focus: {
@@ -159,7 +159,7 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
                 if (!sharedFocus) {
                     continue;
                 }
-                addSharedFocus(focuses, sharedFocusTrees, sharedFocus._name, conditionExprs);
+                addSharedFocus(focuses, sharedFocusTrees, sharedFocus, conditionExprs);
             }
         }
 
@@ -181,7 +181,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
     let pendingFocuses: HOIPartial<FocusDef>[] = [];
 
     for (const hoiFocus of hoiFocuses) {
-        const relativeTo = hoiFocus.relative_position_id?._name;
+        const relativeTo = hoiFocus.relative_position_id;
         if (relativeTo !== undefined && !(relativeTo in focuses)) {
             pendingFocuses.push(hoiFocus);
             continue;
@@ -198,7 +198,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
         const newPendingFocus = [];
         pendingFocusesChanged = false;
         for (const hoiFocus of pendingFocuses) {
-            const relativeTo = hoiFocus.relative_position_id?._name;
+            const relativeTo = hoiFocus.relative_position_id;
             if (relativeTo !== undefined && !(relativeTo in focuses)) {
                 newPendingFocus.push(hoiFocus);
                 continue;
@@ -239,7 +239,7 @@ function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: Conditio
 }
 
 function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null, conditionExprs: ConditionItem[], filePath: string): Focus | null {
-    const id = hoiFocus.id?._name;
+    const id = hoiFocus.id;
     let x = hoiFocus.x;
     let y = hoiFocus.y;
 
@@ -249,12 +249,12 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
 
     const exclusive = chain(hoiFocus.mutually_exclusive)
         .flatMap(f => f.focus.concat(f.OR))
-        .filter((s): s is CustomSymbol => s !== undefined)
+        .filter((s): s is string => s !== undefined)
         .map('_name')
         .value();
     const prerequisite = hoiFocus.prerequisite
-        .map(p => p.focus.concat(p.OR).filter((s): s is CustomSymbol => s !== undefined).map(s => s._name));
-    const icon = hoiFocus.icon?._name;
+        .map(p => p.focus.concat(p.OR).filter((s): s is string => s !== undefined));
+    const icon = hoiFocus.icon;
     const hasAllowBranch = hoiFocus.allow_branch !== undefined;
     const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._rawValue, countryScope, conditionExprs).condition : undefined;
     const offset: Offset[] = hoiFocus.offset.map(o => ({

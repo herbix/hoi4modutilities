@@ -1,6 +1,6 @@
 import { Node, NodeValue } from "./hoiparser";
 import { nodeToString } from "./tostring";
-import { Scope, scopeDefs, countryScope } from "./scope";
+import { Scope, scopeDefs } from "./scope";
 import { isEqual } from "lodash";
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';

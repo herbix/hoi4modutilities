@@ -13,16 +13,7 @@ export interface Enum extends TokenObject {
     _values: string[];
 }
 
-export interface CustomSymbol extends TokenObject {
-    _name: string;
-}
-
-export interface StringAsSymbol extends TokenObject {
-    _stringAsSymbol: true;
-    _name: string;
-}
-
-export interface StringAsSymbolIgnoreCase<T extends string> extends TokenObject {
+export interface StringIgnoreCase<T extends string> extends TokenObject {
     _stringAsSymbolIgnoreCase: true;
     _name: T;
 }
@@ -50,7 +41,7 @@ export type NumberUnit = '%' | '%%';
 
 export type HOIPartial<T> =
     T extends Enum ? T :
-    T extends undefined | string | number | CustomSymbol | StringAsSymbol | StringAsSymbolIgnoreCase<string> | NumberLike | boolean | Raw ? T | undefined :
+    T extends undefined | string | number | StringIgnoreCase<string> | NumberLike | boolean | Raw ? T | undefined :
     T extends CustomMap<infer T1> ? CustomMap<HOIPartial<T1>> :
     T extends DetailValue<infer T1> ? DetailValue<HOIPartial<T1>> | undefined :
     T extends (infer T1)[] ? HOIPartial<HOIPartial<T1>>[] :
@@ -64,9 +55,7 @@ export type HOIPartial<T> =
 
 export type SchemaDef<T> =
     T extends boolean ? 'boolean' :
-    T extends StringAsSymbol ? 'stringassymbol' :
-    T extends StringAsSymbolIgnoreCase<string> ? 'stringassymbolignorecase' :
-    T extends CustomSymbol ? 'symbol' :
+    T extends StringIgnoreCase<string> ? 'stringignorecase' :
     T extends string ? 'string' :
     T extends number ? 'number' :
     T extends NumberLike ? 'numberlike' :
@@ -116,10 +105,20 @@ function applyConstantsToNode(node: Node, constants: Record<string, NodeValue>):
 }
 
 function convertString(node: Node): HOIPartial<string> {
+    if (isSymbolNode(node.value)) {
+        const variable = tryParseVariable(node.value.name, false);
+        if (variable !== undefined) {
+            return variable;
+        }
+        return node.value.name;
+    }
     return typeof node.value === 'string' ? node.value : undefined;
 }
 
 function convertNumber(node: Node): HOIPartial<number> {
+    if (isSymbolNode(node.value)) {
+        return tryParseVariable(node.value.name, true);
+    }
     return typeof node.value === 'number' ? node.value : undefined;
 }
 
@@ -137,16 +136,7 @@ function convertNumberLike(node: Node): HOIPartial<NumberLike> {
     }
 }
 
-function convertSymbol(node: Node): HOIPartial<CustomSymbol> {
-    return isSymbolNode(node.value) ? { _name: node.value.name, _token: undefined } : undefined;
-}
-
-function convertStringAsSymbol(node: Node): HOIPartial<StringAsSymbol> {
-    return isSymbolNode(node.value) ? { _name: node.value.name, _stringAsSymbol: true, _token: undefined } :
-        typeof node.value === 'string' ? { _name: node.value, _stringAsSymbol: true, _token: undefined } : undefined;
-}
-
-function convertStringAsSymbolIgnoreCase(node: Node): HOIPartial<StringAsSymbolIgnoreCase<string>> {
+function convertStringIgnoreCase(node: Node): HOIPartial<StringIgnoreCase<string>> {
     return isSymbolNode(node.value) ? { _name: node.value.name.toLowerCase(), _stringAsSymbolIgnoreCase: true, _token: undefined } :
         typeof node.value === 'string' ? { _name: node.value.toLowerCase(), _stringAsSymbolIgnoreCase: true, _token: undefined } : undefined;
 }
@@ -268,6 +258,28 @@ function convertObject<T>(node: Node, schemaDef: SchemaDef<T>, constants: Record
     return result as HOIPartial<T>;
 }
 
+function tryParseVariable(str: string, isNumber: true): number | undefined;
+function tryParseVariable(str: string, isNumber: false): string | undefined;
+function tryParseVariable(str: string, isNumber: boolean): number | string | undefined {
+    const regex = /^(?:(?<prefix>\w+):)?(?<scope>(?:\w+\.)*)?(?<var>\w+)(?:@(?<target>(?:\w+\.)*\w+))?(?:\?(?<default>\d+))?$/;
+    const match = regex.exec(str);
+    if (!match) {
+        return undefined;
+    }
+
+    if (isNumber) {
+        if (match.groups?.default) {
+            return parseFloat(match.groups.default);
+        }
+        return 0;
+    } else {
+        if (match.groups?.prefix) {
+            return str;
+        }
+        return undefined;
+    }
+}
+
 export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, constants: Record<string, NodeValue> = {}): HOIPartial<T> {
     const schema = schemaDef as any;
     let result: HOIPartial<T>;
@@ -284,14 +296,8 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
             case 'numberlike':
                 result = convertNumberLike(node) as HOIPartial<T>;
                 break;
-            case 'symbol':
-                result = convertSymbol(node) as HOIPartial<T>;
-                break;
-            case 'stringassymbol':
-                result = convertStringAsSymbol(node) as HOIPartial<T>;
-                break;
-            case 'stringassymbolignorecase':
-                result = convertStringAsSymbolIgnoreCase(node) as HOIPartial<T>;
+            case 'stringignorecase':
+                result = convertStringIgnoreCase(node) as HOIPartial<T>;
                 break;
             case 'boolean':
                 result = convertBoolean(node) as HOIPartial<T>;
@@ -350,7 +356,7 @@ export function parseNumberLike(value: string): NumberLike | undefined {
     };
 }
 
-export function toStringAsSymbolIgnoreCase<T extends string>(value: T): StringAsSymbolIgnoreCase<T> {
+export function toStringAsSymbolIgnoreCase<T extends string>(value: T): StringIgnoreCase<T> {
     return {
         _name: value,
         _stringAsSymbolIgnoreCase: true,
