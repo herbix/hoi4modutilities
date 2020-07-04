@@ -250,7 +250,6 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
     const exclusive = chain(hoiFocus.mutually_exclusive)
         .flatMap(f => f.focus.concat(f.OR))
         .filter((s): s is string => s !== undefined)
-        .map('_name')
         .value();
     const prerequisite = hoiFocus.prerequisite
         .map(p => p.focus.concat(p.OR).filter((s): s is string => s !== undefined));
