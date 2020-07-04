@@ -80,6 +80,9 @@ export const positionSchema: SchemaDef<Position> = {
 };
 //#endregion
 
+export const variableRegex = /^(?:(?<prefix>\w+):)?(?<scope>(?:\w+\.)*)?(?<var>\w+)(?:@(?<target>(?:\w+\.)*\w+))?(?:\?(?<default>\d+))?$/;
+export const variableRegexForScope = /^(?:(?<prefix>\w+):)(?<scope>(?:\w+\.)*)?(?<var>\w+)(?:@(?<target>(?:\w+\.)*\w+))?$/;
+
 //#region Functions
 export function forEachNodeValue(node: Node, callback: (n: Node, index: number) => void): void {
     if (!Array.isArray(node.value)) {
@@ -261,8 +264,7 @@ function convertObject<T>(node: Node, schemaDef: SchemaDef<T>, constants: Record
 function tryParseVariable(str: string, isNumber: true): number | undefined;
 function tryParseVariable(str: string, isNumber: false): string | undefined;
 function tryParseVariable(str: string, isNumber: boolean): number | string | undefined {
-    const regex = /^(?:(?<prefix>\w+):)?(?<scope>(?:\w+\.)*)?(?<var>\w+)(?:@(?<target>(?:\w+\.)*\w+))?(?:\?(?<default>\d+))?$/;
-    const match = regex.exec(str);
+    const match = variableRegex.exec(str);
     if (!match) {
         return undefined;
     }

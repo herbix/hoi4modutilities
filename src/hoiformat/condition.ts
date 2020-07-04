@@ -1,6 +1,6 @@
 import { Node, NodeValue } from "./hoiparser";
 import { nodeToString } from "./tostring";
-import { Scope, scopeDefs } from "./scope";
+import { Scope, tryMoveScope } from "./scope";
 import { isEqual } from "lodash";
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';
@@ -60,8 +60,11 @@ export function extractConditionFolder(
             continue;
         }
 
-        if (childName === 'and' || childName === 'hidden_trigger' || childName === 'custom_trigger_tooltip') {
+        if (childName === 'and' || childName === 'hidden_trigger') {
             items.push(extractConditionFolder(child.value, scopeStack));
+
+        } else if (childName === 'custom_trigger_tooltip') {
+            items.push(extractConditionFolder(child.value, scopeStack, 'and', ['tooltip']));
 
         } else if (childName === 'or') {
             items.push(extractConditionFolder(child.value, scopeStack, 'or'));
@@ -101,12 +104,14 @@ export function extractConditionFolder(
                 handleElse(child, ifItem, scopeStack);
                 keepIfItem = false;
             }
-        
+
         } else if (childName === 'always') {
             if (typeof child.value === 'object' && child.value && 'name' in child.value) {
                 items.push(child.value.name.toLowerCase() === 'yes');
+            } else if (typeof child.value === 'string') {
+                items.push(child.value.toLowerCase() === 'yes');
             }
-        
+
         } else if (childName === 'count_triggers') {
             if (Array.isArray(child.value)) {
                 const amount = child.value.find(v => v.name === 'amount');
@@ -115,7 +120,7 @@ export function extractConditionFolder(
                 }
             }
 
-        } else if (tryMoveScope(child, scopeStack)) {
+        } else if (tryMoveScope(child, scopeStack, 'condition')) {
             items.push(extractConditionFolder(child.value, scopeStack));
             scopeStack.pop();
 
@@ -176,67 +181,6 @@ export function applyCondition(condition: ConditionComplexExpr, trueExprs: Condi
     return otherwise;
 }
 
-function tryMoveScope(node: Node, scopeStack: Scope[]): boolean {
-    if (!node.name) {
-        return false;
-    }
-
-    let nodeName = node.name.trim();
-    if (nodeName.match(/^[A-Z]{3}$/)) {
-        scopeStack.push({
-            scopeName: nodeName,
-            scopeType: 'country',
-        });
-        return true;
-    }
-
-    if (nodeName.match(/^[0-9]+$/)) {
-        scopeStack.push({
-            scopeName: nodeName,
-            scopeType: 'state',
-        });
-        return true;
-    }
-
-    nodeName = nodeName.toLowerCase();
-    const currentScope = scopeStack[scopeStack.length - 1];
-    if (nodeName === 'this') {
-        scopeStack.push(currentScope);
-        return true;
-    }
-
-    if (nodeName === 'root') {
-        scopeStack.push(scopeStack[0]);
-        return true;
-    }
-
-    if (nodeName.match(/^prev(?:\.prev)*$/)) {
-        const count = nodeName.split('.').length;
-        const scope = scopeStack[Math.max(0, scopeStack.length - 1 - count)];
-        scopeStack.push(scope);
-        return true;
-    }
-
-    const scopeDef = scopeDefs[nodeName];
-    if (scopeDef && scopeDef.condition) {
-        if (scopeDef.from === '*') {
-            scopeStack.push({
-                scopeName: scopeDef.name,
-                scopeType: scopeDef.to,
-            });
-            return true;
-        } else if (scopeDef.from === currentScope.scopeType) {
-            scopeStack.push({
-                scopeName: currentScope.scopeName + '.' + scopeDef.name,
-                scopeType: scopeDef.to,
-            });
-            return true;
-        }
-    }
-
-    return false;
-}
-
 function handleIf(ifNode: Node, limit: Node, scopeStack: Scope[]): ConditionFolder {
     return {
         type: 'or',
@@ -291,43 +235,13 @@ function handleElse(elseNode: Node, ifItem: ConditionFolder, scopeStack: Scope[]
     }
 }
 
-function simplifyCondition(condition: ConditionComplexExpr): ConditionComplexExpr {
+export function simplifyCondition(condition: ConditionComplexExpr): ConditionComplexExpr {
     if (typeof condition === 'boolean' || !('items' in condition)) {
         return condition;
     }
 
-    if (condition.items.length === 0) {
-        return condition.type === 'and' || condition.type === 'ornot';
-    }
-
-    if (condition.type === 'count') {
-        if (condition.amount <= 0) {
-            return true;
-        } else if (condition.amount > condition.items.length) {
-            return false;
-        } else if (condition.amount === condition.items.length) {
-            return simplifyCondition({ type: 'and', items: condition.items });
-        }
-    }
-
-    if (condition.items.length === 1) {
-        if (condition.type === 'and' || condition.type === 'or') {
-            return simplifyCondition(condition.items[0]);
-        }
-
-        if (condition.type === 'andnot') {
-            return simplifyCondition({ type: 'ornot', items: condition.items });
-        }
-
-        if (condition.type === 'ornot') {
-            const child = condition.items[0];
-            if (typeof child === 'object' && 'items' in child && (child.type === 'andnot' || child.type === 'ornot')) {
-                return simplifyCondition({ type: child.type === 'andnot' ? 'and' : 'or', items: child.items });
-            }
-        }
-    }
-
     const simplifiedItems: ConditionFolder['items'] = [];
+    let amount = condition.type === 'count' ? condition.amount : 0;
     for (const item of condition.items) {
         const simplified = simplifyCondition(item);
         if (typeof simplified === 'boolean') {
@@ -336,6 +250,8 @@ function simplifyCondition(condition: ConditionComplexExpr): ConditionComplexExp
                     return true;
                 } else if (condition.type === 'ornot') {
                     return false;
+                } else if (condition.type === 'count') {
+                    amount--;
                 }
             } else {
                 if (condition.type === 'and') {
@@ -347,6 +263,45 @@ function simplifyCondition(condition: ConditionComplexExpr): ConditionComplexExp
         } else {
             simplifiedItems.push(simplified);
         }
+    }
+
+    if (simplifiedItems.length === 0) {
+        return condition.type === 'and' || condition.type === 'ornot';
+    }
+
+    if (condition.type === 'count') {
+        if (amount <= 0) {
+            return true;
+        } else if (amount > simplifiedItems.length) {
+            return false;
+        } else if (amount === simplifiedItems.length) {
+            return simplifyCondition({ type: 'and', items: simplifiedItems });
+        }
+    }
+
+    if (simplifiedItems.length === 1) {
+        if (condition.type === 'and' || condition.type === 'or') {
+            return simplifiedItems[0];
+        }
+
+        if (condition.type === 'andnot') {
+            return simplifyCondition({ type: 'ornot', items: simplifiedItems });
+        }
+
+        if (condition.type === 'ornot') {
+            const child = simplifiedItems[0];
+            if (typeof child === 'object' && 'items' in child && (child.type === 'andnot' || child.type === 'ornot')) {
+                return simplifyCondition({ type: child.type === 'andnot' ? 'and' : 'or', items: child.items });
+            }
+        }
+    }
+
+    if (condition.type === 'count') {
+        return {
+            ...condition,
+            amount,
+            items: simplifiedItems,
+        };
     }
 
     return {

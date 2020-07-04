@@ -1,4 +1,6 @@
 import { arrayToMap } from "../util/common";
+import { Node } from "./hoiparser";
+import { variableRegexForScope } from "./schema";
 
 export type ScopeType = 'country' | 'state' | 'leader' | 'operative' | 'unknown';
 
@@ -16,6 +18,97 @@ export interface ScopeDef {
 }
 
 export const countryScope: Scope = { scopeName: '', scopeType: 'country' };
+
+export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' | 'effect'): boolean {
+    if (!node.name) {
+        return false;
+    }
+
+    let nodeName = node.name.trim();
+    if (nodeName.match(/^[A-Z]{3}$/)) {
+        scopeStack.push({
+            scopeName: nodeName,
+            scopeType: 'country',
+        });
+        return true;
+    }
+
+    if (nodeName.match(/^[0-9]+$/)) {
+        scopeStack.push({
+            scopeName: nodeName,
+            scopeType: 'state',
+        });
+        return true;
+    }
+
+    nodeName = nodeName.toLowerCase();
+    const currentScope = scopeStack[scopeStack.length - 1];
+    if (nodeName === 'this') {
+        scopeStack.push(currentScope);
+        return true;
+    }
+
+    if (nodeName === 'root') {
+        scopeStack.push(scopeStack[0]);
+        return true;
+    }
+
+    if (nodeName.match(/^prev(?:\.prev)*$/)) {
+        const count = nodeName.split('.').length;
+        const scope = scopeStack[Math.max(0, scopeStack.length - 1 - count)];
+        scopeStack.push(scope);
+        return true;
+    }
+
+    if (nodeName.match(/^from(?:\.from)*$/)) {
+        scopeStack.push({
+            scopeName: nodeName,
+            scopeType: 'unknown',
+        });
+        return true;
+    }
+
+    const variableMatch = variableRegexForScope.exec(node.name.trim());
+    if (variableMatch) {
+        let global = false;
+        const prefix = variableMatch.groups?.prefix.toLowerCase();
+        if (prefix === 'global_event_target') {
+            global = true;
+        } else if (prefix === 'var') {
+            const scope = variableMatch.groups?.scope;
+            if (scope) {
+                const scopeLowerCase = scope.toLowerCase();
+                global = !!(scope.match(/^(?:[A-Z]{3}|\d+)(?:$|\.)/) ||
+                    scopeLowerCase.match(/^(?:global)(?:$|\.)/));
+            }
+        }
+        
+        scopeStack.push({
+            scopeName: global ? '{' + nodeName + '}' : currentScope.scopeName + '.{' + nodeName + '}',
+            scopeType: 'unknown',
+        });
+        return true;
+    }
+
+    const scopeDef = scopeDefs[nodeName];
+    if (scopeDef && ((type === 'condition' && scopeDef.condition) || (type === 'effect' && scopeDef.effect))) {
+        if (scopeDef.from === '*') {
+            scopeStack.push({
+                scopeName: scopeDef.name,
+                scopeType: scopeDef.to,
+            });
+            return true;
+        } else if (scopeDef.from === currentScope.scopeType || currentScope.scopeType === 'unknown') {
+            scopeStack.push({
+                scopeName: currentScope.scopeName + '.' + scopeDef.name,
+                scopeType: scopeDef.to,
+            });
+            return true;
+        }
+    }
+
+    return false;
+}
 
 function scopeDef(name: string, condition: boolean, effect: boolean, from: ScopeType | '*', to: ScopeType): ScopeDef {
     return { name, condition, effect, from, to };
