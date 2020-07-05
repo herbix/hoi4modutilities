@@ -12,6 +12,7 @@ import { PreviewBase } from './previewbase';
 import { contextContainer } from '../context';
 import { getDocumentByUri } from '../util/vsccommon';
 import { worldMapPreviewDef } from './worldmap';
+import { eventPreviewDef } from './event';
 
 export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
 
@@ -30,7 +31,7 @@ interface PreviewProviderDefAlternative {
 export class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewBase> = {};
 
-    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef, worldMapPreviewDef ];
+    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef, worldMapPreviewDef, eventPreviewDef ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = arrayToMap(this._previewProviders, 'type');
 
     private _updateSubscriptions: Map<string[], PreviewBase[]> = new Map();

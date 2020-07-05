@@ -255,11 +255,11 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, relativeToFocus: Focus | null,
         .map(p => p.focus.concat(p.OR).filter((s): s is string => s !== undefined));
     const icon = hoiFocus.icon;
     const hasAllowBranch = hoiFocus.allow_branch !== undefined;
-    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._rawValue, countryScope, conditionExprs).condition : undefined;
+    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._raw.value, countryScope, conditionExprs).condition : undefined;
     const offset: Offset[] = hoiFocus.offset.map(o => ({
         x: o.x ?? 0,
         y: o.y ?? 0,
-        trigger: o.trigger ? extractConditionValue(o.trigger._rawValue, countryScope, conditionExprs).condition : false,
+        trigger: o.trigger ? extractConditionValue(o.trigger._raw.value, countryScope, conditionExprs).condition : false,
     }));
 
     return {

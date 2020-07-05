@@ -29,8 +29,8 @@ export interface EffectValue {
     effect: EffectComplexExpr;
 }
 
-export function extractEffectValue(nodeValue: NodeValue, scope: Scope): EffectValue {
-    const effect = simplifyEffect(extractEffectByCondition(nodeValue, [scope]));
+export function extractEffectValue(nodeValue: NodeValue, scope: Scope, excludedKeys: string[] | undefined = undefined): EffectValue {
+    const effect = simplifyEffect(extractEffectByCondition(nodeValue, [scope], true, [], excludedKeys));
     return {
         effect,
     };

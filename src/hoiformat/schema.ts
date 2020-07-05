@@ -34,7 +34,7 @@ export interface DetailValue<T> extends TokenObject {
 }
 
 export interface Raw extends TokenObject {
-    _rawValue: NodeValue;
+    _raw: Node;
 }
 
 export type NumberUnit = '%' | '%%';
@@ -92,7 +92,7 @@ export function forEachNodeValue(node: Node, callback: (n: Node, index: number) 
     node.value.forEach(callback);
 }
 
-function isSymbolNode(value: NodeValue): value is SymbolNode {
+export function isSymbolNode(value: NodeValue): value is SymbolNode {
     return typeof value === 'object' && value !== null && 'name' in value;
 }
 
@@ -308,7 +308,7 @@ export function convertNodeToJson<T>(node: Node, schemaDef: SchemaDef<T>, consta
                 result = convertEnum(node) as HOIPartial<T>;
                 break;
             case 'raw':
-                result = { _rawValue: node.value } as HOIPartial<T>;
+                result = { _raw: node } as HOIPartial<T>;
                 break;
             default:
                 throw new Error('Unknown schema ' + schema);
