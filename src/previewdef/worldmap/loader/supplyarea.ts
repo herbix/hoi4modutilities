@@ -7,7 +7,7 @@ import { localize } from "../../../util/i18n";
 import { error } from "../../../util/debug";
 import { DefaultMapLoader } from "./provincemap";
 import { StatesLoader } from "./states";
-import { LoaderSession } from "../../../util/loader";
+import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 
 interface SupplyAreaFile {

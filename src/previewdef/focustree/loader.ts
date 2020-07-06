@@ -1,4 +1,4 @@
-import { ContentLoader, LoadResultOD, Dependency, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader";
+import { ContentLoader, LoadResultOD, Dependency, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
 import { FocusTree, getFocusTree } from "./schema";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
@@ -46,7 +46,13 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
                 focusTrees,
                 gfxFiles: uniq([...gfxDependencies, focusesGFX]),
             },
-            dependencies: uniq([this.file, focusesGFX, ...gfxDependencies, ...focusTreeDependencies]),
+            dependencies: uniq([
+                this.file,
+                focusesGFX,
+                ...gfxDependencies,
+                ...focusTreeDependencies,
+                ...mergeInLoadResult(focusTreeDepFiles, 'dependencies')
+            ]),
         };
     }
 

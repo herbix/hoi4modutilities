@@ -6,7 +6,7 @@ import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { TerrainDefinitionLoader } from "./terrain";
 import { arrayToMap } from "../../../util/common";
 import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader";
+import { LoaderSession } from "../../../util/loader/loader";
 
 interface DefaultMap {
     definitions: string;

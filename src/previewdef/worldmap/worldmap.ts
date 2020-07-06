@@ -11,7 +11,7 @@ import { slice, debounceByInput } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
-import { LoaderSession } from '../../util/loader';
+import { LoaderSession } from '../../util/loader/loader';
 
 export class WorldMap {
     private worldMapLoader: WorldMapLoader;

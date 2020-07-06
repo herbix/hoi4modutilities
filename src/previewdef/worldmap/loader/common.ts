@@ -1,7 +1,7 @@
 import { Zone, Point, Region, MapLoaderExtra } from "../definitions";
 import { DetailValue, Enum } from '../../../hoiformat/schema';
 import { hsvToRgb } from '../../../util/common';
-import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader';
+import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader/loader';
 import { maxBy } from "lodash";
 
 export abstract class Loader<T> extends CommonLoader<T, MapLoaderExtra> {}

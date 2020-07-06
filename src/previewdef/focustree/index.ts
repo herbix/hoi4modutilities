@@ -9,11 +9,11 @@ import { getRelativePathInWorkspace } from '../../util/vsccommon';
 function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
     if (matchPathEnd(uri.fsPath, ['common', 'national_focus', '*'])) {
-        return true;
+        return 0;
     }
 
     const text = document.getText();
-    return /(focus_tree|shared_focus)\s*=\s*{/.test(text);
+    return /(focus_tree|shared_focus)\s*=\s*{/.exec(text)?.index;
 }
 
 class FocusTreePreview extends PreviewBase {

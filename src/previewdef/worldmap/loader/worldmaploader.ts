@@ -6,7 +6,7 @@ import { DefaultMapLoader } from "./provincemap";
 import { debug } from "../../../util/debug";
 import { StrategicRegionsLoader } from "./strategicregion";
 import { SupplyAreasLoader } from "./supplyarea";
-import { LoaderSession } from "../../../util/loader";
+import { LoaderSession } from "../../../util/loader/loader";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;

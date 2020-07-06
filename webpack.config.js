@@ -63,6 +63,7 @@ const webviewJsConfig = {
     gfx: './webviewsrc/gfx.ts',
     techtree: './webviewsrc/techtree.ts',
     worldmap: './webviewsrc/worldmap/index.ts',
+    eventtree: './webviewsrc/eventtree.ts',
   },
   
   output: {

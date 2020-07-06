@@ -7,7 +7,7 @@ import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoif
 import { html, htmlEscape } from '../../util/html';
 import { GridBoxType } from '../../hoiformat/gui';
 import { FocusTreeLoader } from './loader';
-import { LoaderSession } from '../../util/loader';
+import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable } from '../../util/styletable';
 import { useConditionInFocus } from '../../util/featureflags';

@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';;
-import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from './fileloader';
-import { error } from './debug';
+import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
+import { error } from '../debug';
 
 export class LoaderSession {
     private loadedLoader: Set<Loader<unknown, unknown>> = new Set();
@@ -189,6 +189,7 @@ export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E
 export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
     private expiryToken: string = '';
     protected loaderDependencies = new LoaderDependencies();
+    protected readDependency = true;
 
     constructor(public file: string, private contentProvider?: () => Promise<string>) {
         super();
@@ -222,7 +223,7 @@ export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
             errorValue = e;
         }
 
-        const dependenciesFromText = content ? getDependenciesFromText(content) : [];
+        const dependenciesFromText = this.readDependency && content ? getDependenciesFromText(content) : [];
         const result = await this.postLoad(content, dependenciesFromText, errorValue, session);
 
         return {
@@ -272,7 +273,7 @@ function getDependenciesFromText(text: string): Dependency[] {
     while (match) {
         const type = match.groups?.type;
         const ext = match.groups?.ext!;
-        if (type && (type === ext || ext === 'txt')) {   
+        if (type && (type === ext || ext === 'txt' || ext === 'yml')) {   
             const path = match.groups?.path!;
             const pathValue = path.trim().replace(/\/\/+|\\+/g, '/');
 

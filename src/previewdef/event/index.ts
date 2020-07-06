@@ -9,11 +9,11 @@ import { getRelativePathInWorkspace } from '../../util/vsccommon';
 function canPreviewEvent(document: vscode.TextDocument) {
     const uri = document.uri;
     if (matchPathEnd(uri.fsPath, ['events', '*'])) {
-        return true;
+        return 0;
     }
 
     const text = document.getText();
-    return /(country_event|news_event|unit_leader_event|state_event|operative_leader_event)\s*=\s*{/.test(text);
+    return /(country_event|news_event|unit_leader_event|state_event|operative_leader_event)\s*=\s*{/.exec(text)?.index;
 }
 
 const eventsGFX = 'interface/eventpictures.gfx';

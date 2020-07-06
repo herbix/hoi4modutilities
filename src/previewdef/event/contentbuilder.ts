@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
 import { EventsLoader, EventsLoaderResult } from './loader';
-import { LoaderSession } from '../../util/loader';
+import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable } from '../../util/styletable';
 import { HOIEvent } from './schema';
-import { flatten } from 'lodash';
+import { flatten, repeat } from 'lodash';
 import { arrayToMap } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
@@ -31,6 +31,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
         baseContent,
         [
             { content: `window.previewedFileUri = "${uri.toString()}";` },
+            'eventtree.js',
         ],
         [
             styleTable
@@ -56,7 +57,8 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
     const graph = eventsToGraph(eventIdToEvent, eventsLoaderResult.mainNamespaces);
-    const gridBoxItems = graphToGridBoxItems(graph);
+    const idToScopeMap: Record<string, string> = {};
+    const gridBoxItems = graphToGridBoxItems(graph, idToScopeMap, eventsLoaderResult.localizationDict);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -66,19 +68,34 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         items: arrayToMap(gridBoxItems, 'id'),
         onRenderItem: async (item) => {
             const eventId = item.id.substr(0, item.id.indexOf(':'));
-            return `<div
+            const event = eventIdToEvent[eventId];
+            const content = `${idToScopeMap[item.id]}\n${eventId}\n${event ? (eventsLoaderResult.localizationDict[event.title] ?? event.title) : '[N/A]'}`;
+            return `<div><div
                 class="${styleTable.style('event-item', () => `
                     text-align: center;
-                    padding-top: 55px;`)}"
-                title='${JSON.stringify(eventIdToEvent[eventId], undefined, 2)}'
+                    padding-top: 10px;
+                    overflow: hidden;
+                    text-overflow: ellipsis;`)}"
+                title='${htmlEscape(content.trim())}'
             >
-                ${eventId}
-            </div>`;
+                ${content.replace(/\n/g, '<br/>')}
+            </div></div>`;
         },
         cornerPosition: 0.5,
     });
 
-    return renderedGridBox;
+    return `
+        <div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            left:0;
+            top:0;
+        `)}"></div>
+        <div>
+            ${renderedGridBox}
+        </div>
+    `;
 
     /*
     return `<div class="${styleTable.style('content', () => 'font-family: Consolas, monospace;')}">
@@ -170,24 +187,39 @@ function eventToNode(
     return eventNode;
 }
 
-function graphToGridBoxItems(graph: EventNode[]): GridBoxItem[] {
+function graphToGridBoxItems(graph: EventNode[], idToScopeMap: Record<string, string>, localizationDict: Record<string, string>): GridBoxItem[] {
     const result: GridBoxItem[] = [];
     let xOffset = 0;
     for (const eventNode of graph) {
-        const [_, width] = eventNodeToGridBoxItems(eventNode, result, xOffset, 0);
+        const scopeContext: ScopeContext = {
+            fromStack: [],
+            currentScopeName: 'EVENT_TARGET',
+        };
+        const [id, width] = eventNodeToGridBoxItems(eventNode, result, xOffset, 0, idToScopeMap, scopeContext, localizationDict);
+        idToScopeMap[id] = '\n\n' + scopeContext.currentScopeName;
         xOffset += width;
     }
 
     return result;
 }
 
-function eventNodeToGridBoxItems(node: EventNode | string, items: GridBoxItem[], xOffset: number, yOffset: number): [string, number] {
+function eventNodeToGridBoxItems(
+    node: EventNode | string,
+    items: GridBoxItem[],
+    xOffset: number,
+    yOffset: number,
+    idToScopeMap: Record<string, string>,
+    scopeContext: ScopeContext,
+    localizationDict: Record<string, string>,
+): [string, number] {
     let width = 0;
     const childIds: string[] = [];
     if (typeof node === 'object') {
         for (const child of node.children) {
             const toNode = child.toNode;
-            const [id, childWidth] = eventNodeToGridBoxItems(toNode, items, xOffset + width, yOffset + 1);
+            const nextScopeContext = nextScope(scopeContext, child.toScope);
+            const [id, childWidth] = eventNodeToGridBoxItems(toNode, items, xOffset + width, yOffset + 1, idToScopeMap, nextScopeContext, localizationDict);
+            idToScopeMap[id] = (localizationDict[child.optionName] ?? child.optionName) + '\n\n' + nextScopeContext.currentScopeName;
             width += childWidth;
             childIds.push(id);
         }
@@ -196,7 +228,7 @@ function eventNodeToGridBoxItems(node: EventNode | string, items: GridBoxItem[],
     const id = (typeof node === 'object' ? node.event.id : node) + ':' + items.length;
     items.push({
         id,
-        gridX: xOffset + Math.max(0, Math.floor(width / 2) - 1),
+        gridX: xOffset + Math.max(0, Math.floor((width - 1) / 2)),
         gridY: yOffset,
         connections: childIds.map<GridBoxConnection>(id => ({
             target: id,
@@ -206,4 +238,30 @@ function eventNodeToGridBoxItems(node: EventNode | string, items: GridBoxItem[],
     });
 
     return [id, Math.max(1, width)];
+}
+
+interface ScopeContext {
+    fromStack: string[];
+    currentScopeName: string;
+}
+
+function nextScope(scopeContext: ScopeContext, toScope: string): ScopeContext {
+    let currentScopeName: string;
+    if (toScope.match(/^from(?:\.from)*$/)) {
+        const fromCount = toScope.split('.').length;
+        const fromIndex = scopeContext.fromStack.length - fromCount;
+        if (fromIndex < 0) {
+            currentScopeName = (scopeContext.fromStack.length > 0 ? scopeContext.fromStack[0] : scopeContext.currentScopeName) +
+                repeat('.FROM', -fromIndex);
+        } else {
+            currentScopeName = scopeContext.fromStack[fromIndex];
+        }
+    } else {
+        currentScopeName = toScope.replace(/\{event_target\}/g, scopeContext.currentScopeName);
+    }
+
+    return {
+        fromStack: [ ...scopeContext.fromStack, scopeContext.currentScopeName ],
+        currentScopeName,
+    };
 }

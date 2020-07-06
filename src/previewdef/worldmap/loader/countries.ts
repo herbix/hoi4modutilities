@@ -4,7 +4,7 @@ import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { FolderLoader, FileLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult, convertColor } from "./common";
 import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader";
+import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 
 interface CountryTagsFile extends CustomMap<string> {

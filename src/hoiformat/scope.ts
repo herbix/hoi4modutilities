@@ -72,7 +72,7 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
     if (variableMatch) {
         let global = false;
         const prefix = variableMatch.groups?.prefix.toLowerCase();
-        if (prefix === 'global_event_target') {
+        if (prefix === 'global_event_target' || prefix === 'event_target') {
             global = true;
         } else if (prefix === 'var') {
             const scope = variableMatch.groups?.scope;

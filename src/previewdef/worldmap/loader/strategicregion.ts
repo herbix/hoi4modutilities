@@ -8,7 +8,7 @@ import { localize } from "../../../util/i18n";
 import { StatesLoader } from "./states";
 import { arrayToMap } from "../../../util/common";
 import { Token } from "../../../hoiformat/hoiparser";
-import { LoaderSession } from "../../../util/loader";
+import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 
 interface StrategicRegionFile {

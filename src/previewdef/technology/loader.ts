@@ -1,7 +1,7 @@
 import { TechnologyTree, getTechnologyTrees } from "./schema";
 import { HOIPartial, convertNodeToJson } from "../../hoiformat/schema";
 import { GuiFile, guiFileSchema } from "../../hoiformat/gui";
-import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader";
+import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { error as debugError } from "../../util/debug";
@@ -51,7 +51,7 @@ export class TechnologyTreeLoader extends ContentLoader<TechnologyTreeLoaderResu
                 gfxFiles: chain(gfxDependencies).concat(flatMap(guiDepFiles, r => r.result.gfxFiles)).uniq().value(),
                 guiFiles: chain(guiDepFiles).flatMap(r => r.result.guiFiles).uniq().value(),
             },
-            dependencies: chain([this.file]).concat(gfxDependencies, mergeInLoadResult(guiDepFiles, 'dependencies')).uniq().value(),
+            dependencies: chain([this.file]).concat(gfxDependencies, guiDependencies, mergeInLoadResult(guiDepFiles, 'dependencies')).uniq().value(),
         };
     }
 

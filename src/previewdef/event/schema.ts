@@ -12,6 +12,7 @@ export type HOIEventType = 'country' | 'state' | 'unit_leader' | 'news' | 'opera
 export interface HOIEvent {
     type: HOIEventType;
     id: string;
+    title: string;
     namespace: string;
     picture: string;
     immediate: HOIEventOption;
@@ -40,6 +41,7 @@ interface EventFile {
 
 interface EventDef {
     id: string;
+    title: string;
     picture: string;
     is_triggered_only: boolean;
     option: Raw[];
@@ -62,6 +64,7 @@ const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
 
 const eventDefSchema: SchemaDef<EventDef> = {
     id: "string",
+    title: "string",
     picture: "string",
     is_triggered_only: "boolean",
     option: {
@@ -152,18 +155,20 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     }
 
     const id = eventDef.id;
+    const title = eventDef.title ?? (id + '.t');
     const namespace = id.split('.')[0];
     const picture = eventDef.picture ?? '';
 
     const scopeType = eventTypeToScopeType(type);
-    const scope: Scope = { scopeName: `{event_${scopeType}}`, scopeType };
+    const scope: Scope = { scopeName: `{event_target}`, scopeType };
 
     const immediate = convertOption(eventDef.immediate, scope);
     const options = eventDef.option.map(o => convertOption(o, scope));
 
     return {
-        type: type,
+        type,
         id,
+        title,
         namespace,
         picture,
         file,

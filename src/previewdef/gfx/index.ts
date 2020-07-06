@@ -5,7 +5,7 @@ import { PreviewBase } from '../previewbase';
 
 function canPreviewGfx(document: vscode.TextDocument) {
     const uri = document.uri;
-    return uri.path.endsWith('.gfx');
+    return uri.path.endsWith('.gfx') ? 0 : undefined;
 }
 
 class GfxPreview extends PreviewBase {

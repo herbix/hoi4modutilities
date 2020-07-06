@@ -9,11 +9,11 @@ import { getRelativePathInWorkspace } from '../../util/vsccommon';
 function canPreviewTechnology(document: vscode.TextDocument) {
     const uri = document.uri;
     if (matchPathEnd(uri.fsPath, ['common', 'technologies', '*'])) {
-        return true;
+        return 0;
     }
 
     const text = document.getText();
-    return /(technologies)\s*=\s*{/.test(text);
+    return /(technologies)\s*=\s*{/.exec(text)?.index;
 }
 
 class TechnologyTreePreview extends PreviewBase {

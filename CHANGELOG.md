@@ -11,6 +11,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
   * Strings without quote will be treated as string now.
   * Variables can be parsed now. The default value will be used.
 
+### Fixed
+* An issue that preview button shows incorrect type of preview.
+
 ## [0.3.4] - 2020/06/23 - Latest
 
 ### Added
