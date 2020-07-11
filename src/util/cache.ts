@@ -1,5 +1,3 @@
-import { debug } from "./debug";
-
 export interface CacheOptions<V> {
     factory(key: string): V;
     expireWhenChange?(key: string, cachedValue: V): any;

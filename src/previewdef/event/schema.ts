@@ -2,6 +2,7 @@ import { Node } from "../../hoiformat/hoiparser";
 import { Raw, SchemaDef, convertNodeToJson, HOIPartial, isSymbolNode } from "../../hoiformat/schema";
 import { extractEffectValue, EffectItem, EffectComplexExpr } from "../../hoiformat/effect";
 import { Scope, ScopeType } from "../../hoiformat/scope";
+import { uniqBy } from "lodash";
 
 export interface HOIEvents {
     eventItemsByNamespace: Record<string, HOIEvent[]>;
@@ -190,10 +191,11 @@ function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption
     const childEvents = childEventItems
         .map(item => ({ scopeName: item.scopeName, eventName: getEventId(item.node) }))
         .filter((e): e is ChildEvent => e.eventName !== undefined);
+    const uniqueChildEvents = uniqBy(childEvents, e => e.eventName + '@' + e.scopeName);
 
     return {
         name,
-        childEvents,
+        childEvents: uniqueChildEvents,
     };
 }
 

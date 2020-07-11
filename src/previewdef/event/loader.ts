@@ -32,7 +32,7 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         const events = getEvents(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), this.file);
         const mergedEvents = mergeEvents(events, ...eventsDepFiles.map(f => f.result.events));
         
-        const localizationDependencies = dependencies.filter(d => d.type === 'localization' && d.path.endsWith('.yml')).map(d => d.path);
+        const localizationDependencies = dependencies.filter(d => d.type.match(/^locali[sz]ation$/) && d.path.endsWith('.yml')).map(d => d.path);
         const localizationDepFiles = (await Promise.all(localizationDependencies.map(async (dep) => {
             try {
                 const localizationDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, YamlLoader), YamlLoader);
