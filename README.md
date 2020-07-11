@@ -59,17 +59,14 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Release Notes
 
-### [0.3.4]
-
-### Added
-* Focus tree
-  * Focus can reference shared focuses now.
+### [0.3.5]
 
 ### Changed
-* Focus tree
-  * Change allow branches to condition, offset will also be calculated. This can be disabled by specifying feature flag `!useConditionInFocus`.
+* Update parser.
+  * Strings without quote will be treated as string now.
+  * Variables can be parsed now. The default value will be used.
+* Focus tree preview will show warnings for invalid code.
 
 ### Fixed
-* Position of continuous focuses.
-* Position of focus icons and titles in focus tree.
-* An issue that preview will refresh twice.
+* An issue that preview button shows incorrect type of preview.
+* An issue that in some case focus tree preview shows nothing.

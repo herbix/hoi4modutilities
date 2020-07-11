@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.3.5] - 2020/07/11 - Latest
 
 ### Changed
 * Update parser.
@@ -16,7 +16,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * An issue that preview button shows incorrect type of preview.
 * An issue that in some case focus tree preview shows nothing.
 
-## [0.3.4] - 2020/06/23 - Latest
+## [0.3.4] - 2020/06/23
 
 ### Added
 * Focus tree
