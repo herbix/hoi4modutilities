@@ -1,7 +1,7 @@
 import { Enum, SchemaDef } from "../../../hoiformat/schema";
 import { Token } from "../../../hoiformat/hoiparser";
 import { FileLoader, FolderLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion, LoadResultOD } from "./common";
-import { Warning, SupplyArea, Region, ProgressReporter, State, WarningSource, Province } from "../definitions";
+import { WorldMapWarning, SupplyArea, Region, ProgressReporter, State, WorldMapWarningSource, Province } from "../definitions";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { localize } from "../../../util/i18n";
 import { error } from "../../../util/debug";
@@ -91,7 +91,7 @@ export class SupplyAreasLoader extends FolderLoader<SupplyAreasLoaderResult, Sup
 
 class SupplyAreaLoader extends FileLoader<SupplyAreaNoRegion[]> {
     protected async loadFromFile(): Promise<LoadResultOD<SupplyAreaNoRegion[]>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadSupplyArea(this.file, warnings),
             warnings,
@@ -104,7 +104,7 @@ class SupplyAreaLoader extends FileLoader<SupplyAreaNoRegion[]> {
 }
 
 type SupplyAreaNoRegion = Omit<SupplyArea, keyof Region>;
-async function loadSupplyArea(file: string, globalWarnings: Warning[]): Promise<SupplyAreaNoRegion[]> {
+async function loadSupplyArea(file: string, globalWarnings: WorldMapWarning[]): Promise<SupplyAreaNoRegion[]> {
     const result: SupplyAreaNoRegion[] = [];
     try {
         const data = await readFileFromModOrHOI4AsJson<SupplyAreaFile>(file, supplyAreaFileSchema);
@@ -119,7 +119,7 @@ async function loadSupplyArea(file: string, globalWarnings: Warning[]): Promise<
                 warnings.push(localize('worldmap.warnings.supplyareanostates', "Supply area {0} in \"{1}\" doesn't have states.", id, file));
             }
 
-            globalWarnings.push(...warnings.map<Warning>(warning => ({
+            globalWarnings.push(...warnings.map<WorldMapWarning>(warning => ({
                 source: [{ type: 'supplyarea', id }],
                 relatedFiles: [file],
                 text: warning,
@@ -142,7 +142,7 @@ async function loadSupplyArea(file: string, globalWarnings: Warning[]): Promise<
     return result;
 }
 
-function sortSupplyAreas(supplyAreas: SupplyAreaNoRegion[], warnings: Warning[]): { sortedSupplyAreas: SupplyAreaNoRegion[], badSupplyAreaId: number } {
+function sortSupplyAreas(supplyAreas: SupplyAreaNoRegion[], warnings: WorldMapWarning[]): { sortedSupplyAreas: SupplyAreaNoRegion[], badSupplyAreaId: number } {
     const { sorted, badId } = sortItems(
         supplyAreas,
         10000,
@@ -165,7 +165,7 @@ function sortSupplyAreas(supplyAreas: SupplyAreaNoRegion[], warnings: Warning[])
     };
 }
 
-function calculateBoundingBox(supplyAreaNoRegion: SupplyAreaNoRegion, states: (State | undefined | null)[], width: number, warnings: Warning[]): SupplyArea {
+function calculateBoundingBox(supplyAreaNoRegion: SupplyAreaNoRegion, states: (State | undefined | null)[], width: number, warnings: WorldMapWarning[]): SupplyArea {
     return mergeRegion(
         supplyAreaNoRegion,
         'states',
@@ -189,7 +189,7 @@ function validateStatesInSupplyAreas(
     supplyAreas: (SupplyArea | undefined | null)[],
     provinces: (Province | undefined | null)[],
     badSupplyAreasCount: number,
-    warnings: Warning[]
+    warnings: WorldMapWarning[]
 ) {
     const stateToSupplyArea: Record<number, number> = {};
 
@@ -208,7 +208,7 @@ function validateStatesInSupplyAreas(
 
                 warnings.push({
                     source: [
-                        ...[supplyArea.id, stateToSupplyArea[s]].map<WarningSource>(id => ({ type: 'supplyarea', id })),
+                        ...[supplyArea.id, stateToSupplyArea[s]].map<WorldMapWarningSource>(id => ({ type: 'supplyarea', id })),
                         { type: 'state', id: s }
                     ],
                     relatedFiles: [supplyArea.file, supplyAreas[stateToSupplyArea[s]]!.file, state.file],

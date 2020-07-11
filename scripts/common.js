@@ -1,5 +1,5 @@
 const path = require('path');
-const common = require("../out/src/util/common");
+const common = require("../out/src/util/nodecommon");
 
 async function recursiveFindAll(input, result = []) {
     const files = await common.readdir(input);

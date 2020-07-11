@@ -10,6 +10,11 @@ export interface NumberPosition {
     y: number;
 }
 
+export interface Warning<T> {
+    text: string;
+    source: T;
+}
+
 export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
     T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never;
 export function arrayToMap<T, K extends keyof T, V>(items: T[], key: K, valueSelector: (value: T) => V):

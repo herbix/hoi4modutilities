@@ -1,4 +1,4 @@
-import { State, Province, Warning, WarningSource, Region, StateCategory } from "../definitions";
+import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory } from "../definitions";
 import { Enum, SchemaDef, CustomMap, DetailValue } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
@@ -146,7 +146,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
     protected async loadFromFile(): Promise<LoadResultOD<StateNoBoundingBox[]>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadState(this.file, warnings),
             warnings,
@@ -198,7 +198,7 @@ class StateCategoriesLoader extends FolderLoader<Record<string, StateCategory>, 
 
 class StateCategoryLoader extends FileLoader<StateCategory[]> {
     protected async loadFromFile(): Promise<LoadResultOD<StateCategory[]>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadStateCategory(this.file, warnings),
             warnings,
@@ -210,7 +210,7 @@ class StateCategoryLoader extends FileLoader<StateCategory[]> {
     }
 }
 
-async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<StateNoBoundingBox[]> {
+async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): Promise<StateNoBoundingBox[]> {
     try {
         const data = await readFileFromModOrHOI4AsJson<StateFile>(stateFile, stateFileSchema);
         const result: StateNoBoundingBox[] = [];
@@ -242,7 +242,7 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
                 }
             }
 
-            globalWarnings.push(...warnings.map<Warning>(warning => ({
+            globalWarnings.push(...warnings.map<WorldMapWarning>(warning => ({
                 source: [{ type: 'state', id }],
                 relatedFiles: [stateFile],
                 text: warning,
@@ -262,7 +262,7 @@ async function loadState(stateFile: string, globalWarnings: Warning[]): Promise<
     }
 }
 
-function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sortedStates: StateNoBoundingBox[], badStateId: number } {
+function sortStates(states: StateNoBoundingBox[], warnings: WorldMapWarning[]): { sortedStates: StateNoBoundingBox[], badStateId: number } {
     const { sorted, badId } = sortItems(
         states,
         10000,
@@ -285,7 +285,7 @@ function sortStates(states: StateNoBoundingBox[], warnings: Warning[]): { sorted
     };
 }
 
-function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces: (Province | undefined | null)[], width: number, height: number, warnings: Warning[]): State {
+function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces: (Province | undefined | null)[], width: number, height: number, warnings: WorldMapWarning[]): State {
     const state = mergeRegion(
         noBoundingBoxState,
         'provinces',
@@ -314,7 +314,7 @@ function calculateBoundingBox(noBoundingBoxState: StateNoBoundingBox, provinces:
     return state;
 }
 
-function validateProvinceInState(provinces: (Province | undefined | null)[], states: (State | undefined | null)[], badStatesCount: number, warnings: Warning[]) {
+function validateProvinceInState(provinces: (Province | undefined | null)[], states: (State | undefined | null)[], badStatesCount: number, warnings: WorldMapWarning[]) {
     const provinceToState: Record<number, number> = {};
 
     for (let i = badStatesCount; i < states.length; i++) {
@@ -332,7 +332,7 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
 
                 warnings.push({
                     source: [
-                        ...[state.id, provinceToState[p]].map<WarningSource>(id => ({ type: 'state', id })),
+                        ...[state.id, provinceToState[p]].map<WorldMapWarningSource>(id => ({ type: 'state', id })),
                         { type: 'province', id: p, color: province.color }
                     ],
                     relatedFiles: [state.file, states[provinceToState[p]]!.file],
@@ -356,7 +356,7 @@ function validateProvinceInState(provinces: (Province | undefined | null)[], sta
     }
 }
 
-async function loadStateCategory(file: string, warning: Warning[]): Promise<StateCategory[]> {
+async function loadStateCategory(file: string, warning: WorldMapWarning[]): Promise<StateCategory[]> {
     try {
         const data = await readFileFromModOrHOI4AsJson<StateCategoryFile>(file, stateCategoryFileSchema);
         const result: StateCategory[] = [];

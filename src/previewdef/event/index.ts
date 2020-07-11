@@ -5,8 +5,13 @@ import { PreviewBase } from '../previewbase';
 import { PreviewProviderDef } from '../previewmanager';
 import { EventsLoader } from './loader';
 import { getRelativePathInWorkspace } from '../../util/vsccommon';
+import { eventTreePreview } from '../../util/featureflags';
 
 function canPreviewEvent(document: vscode.TextDocument) {
+    if (!eventTreePreview) {
+        return undefined;
+    }
+
     const uri = document.uri;
     if (matchPathEnd(uri.fsPath, ['events', '*'])) {
         return 0;

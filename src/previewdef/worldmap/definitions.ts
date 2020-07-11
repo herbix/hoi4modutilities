@@ -1,4 +1,5 @@
 import { Token } from "../../hoiformat/hoiparser";
+import { Warning } from "../../util/common";
 
 export interface WorldMapData {
     width: number;
@@ -19,7 +20,7 @@ export interface WorldMapData {
     badSupplyAreasCount: number;
     continents: string[];
     terrains: Terrain[];
-    warnings: Warning[];
+    warnings: WorldMapWarning[];
 }
 
 export interface ProvinceBmp {
@@ -89,13 +90,11 @@ export interface State extends Region, TokenInFile {
     victoryPoints: Record<number, number | undefined>;
 }
 
-export interface Warning {
-    text: string;
-    source: WarningSource[];
+export interface WorldMapWarning extends Warning<WorldMapWarningSource[]> {
     relatedFiles: string[];
 }
 
-export type WarningSource = WarningSourceProvince | WarningSourceIdOnly | WarningSourceName;
+export type WorldMapWarningSource = WarningSourceProvince | WarningSourceIdOnly | WarningSourceName;
 
 interface WarningSourceBase {
     type: string;
@@ -216,4 +215,4 @@ export interface OpenFileMessage {
 
 export type ProgressReporter = (progress: string) => Promise<void>;
 
-export type MapLoaderExtra = { warnings: Warning[] };
+export type MapLoaderExtra = { warnings: WorldMapWarning[] };

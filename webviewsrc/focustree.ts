@@ -88,15 +88,25 @@ async function buildContent() {
     subscribeNavigators();
 }
 
-function getFocusPosition(focus: Focus, positionByFocusId: Record<string, NumberPosition>, focustree: FocusTree): NumberPosition {
+function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<string, NumberPosition>, focusTree: FocusTree, focusStack: Focus[] = []): NumberPosition {
+    if (focus === undefined) {
+        return { x: 0, y: 0 };
+    }
+
     const cached = positionByFocusId[focus.id];
     if (cached) {
         return cached;
     }
 
+    if (focusStack.includes(focus)) {
+        return { x: 0, y: 0 };
+    }
+
     let position: NumberPosition = { x: focus.x, y: focus.y };
     if (focus.relativePositionId !== undefined) {
-        const relativeFocusPosition = getFocusPosition(focustree.focuses[focus.relativePositionId], positionByFocusId, focustree);
+        focusStack.push(focus);
+        const relativeFocusPosition = getFocusPosition(focusTree.focuses[focus.relativePositionId], positionByFocusId, focusTree, focusStack);
+        focusStack.pop();
         position.x += relativeFocusPosition.x;
         position.y += relativeFocusPosition.y;
     }
@@ -291,4 +301,15 @@ window.addEventListener('load', async function() {
     {
         passive: false
     });
+
+    // Toggle warnings
+    const showWarnings = document.getElementById('show-warnings') as HTMLButtonElement;
+    if (showWarnings) {
+        const warnings = document.getElementById('warnings-container') as HTMLDivElement;
+        showWarnings.addEventListener('click', () => {
+            const visible = warnings.style.display === 'block';
+            document.body.style.overflow = visible ? '' : 'hidden';
+            warnings.style.display = visible ? 'none' : 'block';
+        });
+    }
 });

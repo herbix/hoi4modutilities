@@ -2,7 +2,7 @@ import { Observable, asEvent, Subscriber } from "../util/event";
 import { Loader, FEWorldMap } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/common";
-import { WorldMapMessage, Warning } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapMessage, WorldMapWarning } from "../../src/previewdef/worldmap/definitions";
 import { feLocalize } from "../util/i18n";
 import { DivDropdown } from "../util/dropdown";
 
@@ -308,6 +308,6 @@ export class TopBar extends Subscriber {
     }
 }
 
-function warningToString(warning: Warning): string {
+function warningToString(warning: WorldMapWarning): string {
     return `[${warning.source.map(s => `${s.type[0].toUpperCase()}${s.type.substr(1)} ${'id' in s ? s.id : s.name}`).join(', ')}] ${warning.text}`;
 }

@@ -1,4 +1,4 @@
-import { ProvinceMap, Province, ProvinceEdge, Warning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain, Region } from "../definitions";
+import { ProvinceMap, Province, ProvinceEdge, WorldMapWarning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, ProvinceGraph, Zone, ProvinceEdgeGraph, Point, Terrain, Region } from "../definitions";
 import { FileLoader, mergeInLoadResult, LoadResult, pointEqual, sortItems, mergeRegions, LoadResultOD } from "./common";
 import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
@@ -111,7 +111,7 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
 
 class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
     protected async loadFromFile(): Promise<LoadResultOD<ProvinceDefinition[]>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadDefinitions(this.file, e => this.fireOnProgressEvent(e), warnings),
             warnings,
@@ -125,7 +125,7 @@ class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
 
 class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
     protected async loadFromFile(): Promise<LoadResultOD<ProvinceBmp>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), warnings),
             warnings,
@@ -139,7 +139,7 @@ class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
 
 class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
     protected async loadFromFile(): Promise<LoadResultOD<ProvinceEdgeAdjacency[]>> {
-        const warnings: Warning[] = [];
+        const warnings: WorldMapWarning[] = [];
         return {
             result: await loadAdjacencies(this.file, e => this.fireOnProgressEvent(e), warnings),
             warnings,
@@ -177,7 +177,7 @@ async function loadDefaultMap(progressReporter: ProgressReporter): Promise<Defau
     return defaultMap as DefaultMap;
 }
 
-async function loadDefinitions(definitionsFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceDefinition[]> {
+async function loadDefinitions(definitionsFile: string, progressReporter: ProgressReporter, warnings: WorldMapWarning[]): Promise<ProvinceDefinition[]> {
     await progressReporter(localize('worldmap.progress.loadingprovincedef', 'Loading province definitions...'));
 
     const [definitionsBuffer] = await readFileFromModOrHOI4(definitionsFile);
@@ -186,7 +186,7 @@ async function loadDefinitions(definitionsFile: string, progressReporter: Progre
     return definition.map(row => convertRowToProvince(row, warnings));
 }
 
-async function loadProvincesBmp(provincesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceBmp> {
+async function loadProvincesBmp(provincesFile: string, progressReporter: ProgressReporter, warnings: WorldMapWarning[]): Promise<ProvinceBmp> {
     await progressReporter(localize('worldmap.progress.loadingprovincebmp', 'Loading province bmp...',));
 
     const [provinceMapImageBuffer] = await readFileFromModOrHOI4(provincesFile);
@@ -215,7 +215,7 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
     };
 }
 
-async function loadAdjacencies(adjacenciesFile: string, progressReporter: ProgressReporter, warnings: Warning[]): Promise<ProvinceEdgeAdjacency[]> {
+async function loadAdjacencies(adjacenciesFile: string, progressReporter: ProgressReporter, warnings: WorldMapWarning[]): Promise<ProvinceEdgeAdjacency[]> {
     await progressReporter(localize('worldmap.progress.loadingadjacencies', 'Loading adjecencies...'));
 
     const [adjecenciesBuffer] = await readFileFromModOrHOI4(adjacenciesFile);
@@ -229,7 +229,7 @@ async function loadContinents(continentFile: string, progressReporter: ProgressR
     return ['', ...(await readFileFromModOrHOI4AsJson<{ continents: Enum }>(continentFile, { continents: 'enum' })).continents._values];
 }
 
-function convertRowToProvince(row: string[], warnings: Warning[]): ProvinceDefinition {
+function convertRowToProvince(row: string[], warnings: WorldMapWarning[]): ProvinceDefinition {
     const r = parseInt(row[1]);
     const g = parseInt(row[2]);
     const b = parseInt(row[3]);
@@ -286,7 +286,7 @@ function fillProvinceZones<T extends ColorContainer>(
     width: number,
     height: number,
     file: string,
-    warnings: Warning[],
+    warnings: WorldMapWarning[],
 ): (T & ProvinceZoneDef)[] {
     const blockStack: Zone[] = [];
     const blockSize = 256;
@@ -347,7 +347,7 @@ function fillProvinceZones<T extends ColorContainer>(
     return provinces as (T & ProvinceZoneDef)[];
 }
 
-function sortProvinces(provinces: Province[], badProvinceId: number, relatedFiles: string[], warnings: Warning[]): { sortedProvinces: (Province | undefined)[], badProvinceId: number } {
+function sortProvinces(provinces: Province[], badProvinceId: number, relatedFiles: string[], warnings: WorldMapWarning[]): { sortedProvinces: (Province | undefined)[], badProvinceId: number } {
     const { sorted, badId } = sortItems(
         provinces,
         200000,
@@ -527,7 +527,7 @@ function concatEdges(edges: [Point, Point][]): Point[][] {
     return result;
 }
 
-function convertRowToAdjacencies(adjacency: string[], warnings: Warning[]): ProvinceEdgeAdjacency | undefined {
+function convertRowToAdjacencies(adjacency: string[], warnings: WorldMapWarning[]): ProvinceEdgeAdjacency | undefined {
     const from = parseInt(adjacency[0]);
     const to = parseInt(adjacency[1]);
     const type = adjacency[2];
@@ -561,7 +561,7 @@ function mergeProvinceDefinitions(
     provinceDefinitions: ProvinceDefinition[],
     { provinces, colorToProvince }: ProvinceBmp,
     relatedFiles: string[],
-    warnings: Warning[]
+    warnings: WorldMapWarning[]
 ): { provinces: Province[], badProvinceId: number } {
     const result: Province[] = [];
     const colorToProvinceId: Record<number, number> = {};
@@ -640,7 +640,7 @@ function mergeProvinceDefinitions(
     return { provinces: result, badProvinceId: badId };
 }
 
-function validateProvinceContinents(provinces: Province[], continents: string[], relatedFiles: string[], warnings: Warning[]) {
+function validateProvinceContinents(provinces: Province[], continents: string[], relatedFiles: string[], warnings: WorldMapWarning[]) {
     for (const province of provinces) {
         const continent = province.continent;
         if (continent >= continents.length || continent < 0) {
@@ -668,7 +668,7 @@ function validateProvinceContinents(provinces: Province[], continents: string[],
     }
 }
 
-function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], relatedFiles: string[], warnings: Warning[]) {
+function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], relatedFiles: string[], warnings: WorldMapWarning[]) {
     const terrainMap = arrayToMap(terrains, 'name');
     for (const province of provinces) {
         const terrain = province.terrain;
@@ -687,7 +687,7 @@ function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], re
     }
 }
 
-function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: ProvinceEdgeAdjacency[], height: number, relatedFiles: string[], warnings: Warning[]) {
+function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: ProvinceEdgeAdjacency[], height: number, relatedFiles: string[], warnings: WorldMapWarning[]) {
     for (const { row, from, to, through, start: saveStart, stop: saveStop, rule, type } of adjacencies) {
 
         if (!provinces[from] || !provinces[to]) {
@@ -728,7 +728,7 @@ function fillAdjacencyEdges(provinces: (Province | undefined)[], adjacencies: Pr
     }
 }
 
-function validateProvince(colorByPosition: number[], width: number, height: number, file: string, warnings: Warning[]) {
+function validateProvince(colorByPosition: number[], width: number, height: number, file: string, warnings: WorldMapWarning[]) {
     const i = new Array(4);
     for (let y = 1, y0 = width, index = width; y < height; y++, y0 += width) {
         for (let x = 0; x < width; x++, index++) {

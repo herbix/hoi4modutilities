@@ -1,5 +1,5 @@
 const { recursiveFindAll } = require("./common");
-const common = require("../out/src/util/common");
+const common = require("../out/src/util/nodecommon");
 const readline = require('readline');
 
 var rl = readline.createInterface({

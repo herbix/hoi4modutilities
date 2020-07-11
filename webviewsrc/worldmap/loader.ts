@@ -2,7 +2,7 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { vscode, copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
-import { Warning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -197,7 +197,7 @@ class FEWorldMapClass implements FEWorldMap {
     width!: number;
     height!: number;
     countries!: Country[];
-    warnings!: Warning[];
+    warnings!: WorldMapWarning[];
     provincesCount!: number;
     statesCount!: number;
     countriesCount!: number;

@@ -170,3 +170,57 @@ ul.select-dropdown div.checkbox-container-out {
 input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.checkbox.checked {
     color: var(--vscode-checkbox-foreground);
 }
+
+.toolbar-outer {
+    position: fixed;
+    padding-top: 10px;
+    padding-left: 20px;
+    width: 100%;
+    top: 0;
+    left: 0;
+    background: var(--vscode-editor-background);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    overflow: auto hidden;
+}
+
+.toolbar {
+    display: flex;
+}
+
+.toolbar > * {
+    flex-shrink: 0;
+}
+
+button {
+    background: transparent;
+    border: none;
+    color: inherit;
+    padding: 0;
+    cursor: pointer;
+    height: 20px;
+    width: 20px;
+    display: inline-block;
+    text-align: center;
+    transition: transform 0.05s;
+}
+
+button:focus {
+    outline: none;
+}
+
+button:active {
+    transform: scale(1.2720);
+}
+
+button > .codicon {
+    vertical-align: middle;
+}
+
+button[disabled] {
+    color: rgba(127, 127, 127, 0.7);
+    cursor: unset;
+}
+
+button[disabled]:active {
+    transform: none;
+}

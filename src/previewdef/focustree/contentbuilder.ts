@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FocusTree, Focus } from './schema';
+import { FocusTree, Focus, FocusWarning } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
 import { randomString } from '../../util/common';
@@ -105,8 +105,38 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             <div id="focustreeplaceholder"></div>
             ${continuousFocusContent}
         </div>` +
+        renderWarningContainer(focustree.warnings, styleTable) +
         renderToolBar(focustree, styleTable)
     );
+}
+
+function renderWarningContainer(warnings: FocusWarning[], styleTable: StyleTable) {
+    styleTable.style('warnings', () => 'outline: none;', ':focus');
+    return warnings.length === 0 ? '' : `
+    <div id="warnings-container" class="${styleTable.style('warnings-container', () => `
+        height: 100vh;
+        width: 100vw;
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding-top: 40px;
+        background: var(--vscode-editor-background);
+        box-sizing: border-box;
+        display: none;
+    `)}">
+        <textarea id="warnings" readonly wrap="off" class="${styleTable.style('warnings', () => `
+            height: 100%;
+            width: 100%;
+            font-family: 'Consolas', monospace;
+            resize: none;
+            background: var(--vscode-editor-background);
+            padding: 10px;
+            border-top: none;
+            border-left: none;
+            border-bottom: none;
+            box-sizing: border-box;
+        `)}">${warnings.map(w => `[${w.source}] ${w.text}`).join('\n')}</textarea>
+    </div>`;
 }
 
 function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
@@ -120,7 +150,7 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
 
     const allowbranch = focusTree.allowBranchOptions.length === 0 ? '' : `
         <label for="allowbranch" class="${styleTable.style('allowbranchLabel', () => `margin-right:5px`)}">${localize('focustree.allowbranch', 'Allow branch: ')}</label>
-        <div class="select-container">
+        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <div id="allowbranch" class="select multiple-select" tabindex="0" role="combobox">
                 <span class="value"></span>
                 ${focusTree.allowBranchOptions.map(option => `<div class="option" value="inbranch_${option}">${option}</div>`).join('')}
@@ -129,7 +159,7 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
 
     const conditions = focusTree.conditionExprs.length === 0 ? '' : `
         <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('focustree.conditions', 'Conditions: ')}</label>
-        <div class="select-container">
+        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
                 <span class="value"></span>
                 ${focusTree.conditionExprs.map(option =>
@@ -137,21 +167,18 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
                 ).join('')}
             </div>
         </div>`;
+    
+    const warningsButton = focusTree.warnings.length === 0 ? '' : `
+        <button id="show-warnings" title="${localize('focustree.warnings', 'Toggle warnings')}">
+            <i class="codicon codicon-warning"></i>
+        </button>`;
 
-    return `<div
-    class="${styleTable.style('toolbar', () => `
-        position: fixed;
-        padding-top: 10px;
-        padding-left: 20px;
-        width: 100%;
-        height: 30px;
-        top: 0;
-        left: 0;
-        background: var(--vscode-editor-background);
-        border-bottom: 1px solid var(--vscode-panel-border);
-    `)}">
-        ${searchbox}
-        ${useConditionInFocus ? conditions : allowbranch}
+    return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
+        <div class="toolbar">
+            ${searchbox}
+            ${useConditionInFocus ? conditions : allowbranch}
+            ${warningsButton}
+        </div>
     </div>`;
 }
 
