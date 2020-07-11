@@ -4,7 +4,19 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.4] - 2020/06/23 - Latest
+## [0.3.5] - 2020/07/11 - Latest
+
+### Changed
+* Update parser.
+  * Strings without quote will be treated as string now.
+  * Variables can be parsed now. The default value will be used.
+* Focus tree preview will show warnings for invalid code.
+
+### Fixed
+* An issue that preview button shows incorrect type of preview.
+* An issue that in some case focus tree preview shows nothing.
+
+## [0.3.4] - 2020/06/23
 
 ### Added
 * Focus tree

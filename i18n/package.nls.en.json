@@ -1,0 +1,16 @@
+{
+    "hoi4modutilities.category": "HOI4 Mod Utilities",
+    "hoi4modutilities.dds.editorName": "Preview DDS",
+    "hoi4modutilities.displayName": "HOI4 Mod Utilities",
+    "hoi4modutilities.featureFlags.title": "Feature Flags",
+    "hoi4modutilities.featureFlags.desc": "Feature flags are used to disable or enable features. Reloading is required after changing this. Please refer to Wiki on Github for details.",
+    "hoi4modutilities.installPath.title": "Install Path",
+    "hoi4modutilities.installPath.desc": "Hearts of Iron IV install path.",
+    "hoi4modutilities.loadDlcContents.title": "Load DLC Contents",
+    "hoi4modutilities.loadDlcContents.desc": "Whether to load DLC images when previewing files. Enabling this will use more memory.",
+    "hoi4modutilities.modFile.title": "Working Mod File",
+    "hoi4modutilities.modFile.desc": "Path to the working .mod file. This file is used to read replace_path. If not specified, will use first .mod file in first folder of the workspace.",
+    "hoi4modutilities.preview.title": "Preview HOI4 file",
+    "hoi4modutilities.previewworld.title": "Preview world map",
+    "hoi4modutilities.selectmodfile.title": "Select Mod File"
+}
