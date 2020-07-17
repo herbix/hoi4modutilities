@@ -2,14 +2,20 @@ import { error } from "./debug";
 import { __table } from '../../i18n/en';
 
 const config = JSON.parse(process.env.VSCODE_NLS_CONFIG || '{}');
-const locale = config.locale ?? 'en';
+const locale: string = config.locale ?? 'en';
+const splitLocale = locale.split('-');
 
-let table: Record<string, string> = {};
+const table: Record<string, string> = tryLoadTable(locale) ??
+    (splitLocale.length > 1 ? tryLoadTable(splitLocale[0]) : undefined) ??
+    {};
 
-try {
-    table = require('../../i18n/' + locale + '.ts');
-} catch(e) {
-    error(e);
+function tryLoadTable(locale: string): Record<string, string> | undefined {
+    try {
+        return require('../../i18n/' + locale + '.ts');
+    } catch(e) {
+        error(e);
+    }
+    return undefined;
 }
 
 export function localize(key: keyof typeof __table | 'TODO', message: string, ...args: any[]): string {

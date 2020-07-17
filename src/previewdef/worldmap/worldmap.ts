@@ -12,6 +12,7 @@ import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
+import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
 
 export class WorldMap {
     private worldMapLoader: WorldMapLoader;
@@ -52,7 +53,7 @@ export class WorldMap {
         );
     }
 
-    private async onMessage(msg: WorldMapMessage): Promise<void> {
+    private async onMessage(msg: WorldMapMessage | TelemetryMessage): Promise<void> {
         try {
             debug('worldmap message ' + JSON.stringify(msg));
             switch (msg.command) {
@@ -76,6 +77,9 @@ export class WorldMap {
                     break;
                 case 'openfile':
                     await this.openFile(msg.file, msg.type, msg.start, msg.end);
+                    break;
+                case 'telemetry':
+                    await sendByMessage(msg);
                     break;
             }
         } catch (e) {

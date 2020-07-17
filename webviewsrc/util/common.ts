@@ -1,7 +1,7 @@
 import { enableDropdowns } from './dropdown';
 import { enableCheckboxes } from './checkbox';
-
-export const vscode = acquireVsCodeApi();
+import { vscode } from './vscode';
+import { sendException } from './telemetry';
 
 export function setState(obj: Record<string, any>): void {
     const state = getState();
@@ -54,6 +54,28 @@ export function subscribeNavigators() {
             navigateText(start, end, file);
         });
     }
+}
+
+export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Parameters<T>) => ReturnType<T> | undefined {
+    return function(this: any, ...args) {
+        try {
+            const result = func.apply(this, args);
+            if (result instanceof Promise) {
+                return result.catch(e => {
+                    console.error(e);
+                    sendException(e);
+                }) as ReturnType<T>;
+            }
+
+            return result;
+
+        } catch (e) {
+            console.error(e);
+            sendException(e);
+        }
+
+        return undefined;
+    };
 }
 
 function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {

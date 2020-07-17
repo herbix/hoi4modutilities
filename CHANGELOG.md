@@ -4,6 +4,14 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Changed
+* Add telemetry to record usage and exceptions to provide better experience. It can be disabled with VSCode telemetry settings.
+
+### Fixed
+* Localization now can fallback to lang code when country code not present. For example, `en-us` will fallback to `en`.
+
 ## [0.3.5] - 2020/07/11 - Latest
 
 ### Changed

@@ -3,6 +3,7 @@ import { Commands, WebviewType } from '../../constants';
 import { WorldMap } from './worldmap';
 import { contextContainer } from '../../context';
 import { localize } from '../../util/i18n';
+import { sendEvent } from '../../util/telemetry';
 
 export class WorldMapContainer implements vscode.WebviewPanelSerializer {
     private worldMap: WorldMap | undefined = undefined;
@@ -17,6 +18,7 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
     }
 
     public openPreview(): Promise<void> {
+        sendEvent('preview.show.worldmap');
         return this.openWorldMapView();
     }
     

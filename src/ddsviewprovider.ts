@@ -6,6 +6,7 @@ import { localize } from './util/i18n';
 import { DDS } from './util/image/dds';
 import { html, htmlEscape } from './util/html';
 import { StyleTable } from './util/styletable';
+import { sendEvent } from './util/telemetry';
 
 export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
     public async openCustomDocument(uri: vscode.Uri) {
@@ -15,6 +16,7 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
 
     public async resolveCustomEditor(document: { uri: vscode.Uri }, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         try {
+            sendEvent('preview.dds');
             const buffer = await Promise.race([
                 new Promise<Buffer>((resolve, reject) => fs.readFile(document.uri.fsPath, (error, data) => error ? reject(error) : resolve(data))),
                 new Promise<null>(resolve => token.onCancellationRequested(resolve)),

@@ -1,4 +1,4 @@
-import { setState, getState, scrollToState } from "./util/common";
+import { setState, getState, scrollToState, tryRun } from "./util/common";
 
 function folderChange(folder: string) {
     const elements = document.getElementsByClassName('techfolder');
@@ -10,7 +10,7 @@ function folderChange(folder: string) {
     }
 }
 
-window.addEventListener('load', function() {
+window.addEventListener('load', tryRun(function() {
     const element = document.getElementById('folderSelector') as HTMLSelectElement;
     const folder = getState().folder || element.value;
     element.value = folder;
@@ -20,4 +20,4 @@ window.addEventListener('load', function() {
     element.addEventListener('change', function() {
         folderChange(this.value);
     });
-});
+}));

@@ -14,6 +14,7 @@ import { getDocumentByUri } from '../util/vsccommon';
 import { worldMapPreviewDef } from './worldmap';
 import { eventPreviewDef } from './event';
 import { minBy, chain } from 'lodash';
+import { sendEvent } from '../util/telemetry';
 
 export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
 
@@ -142,6 +143,10 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
 
         if ('onPreview' in previewProvider) {
             return previewProvider.onPreview(document);
+        }
+
+        if (!panel) {
+            sendEvent('preview.show.' + previewProvider.type);
         }
 
         const filename = path.basename(uri.path);

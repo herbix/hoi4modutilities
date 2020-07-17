@@ -1,7 +1,7 @@
 import { Observable, asEvent, Subscriber } from "../util/event";
 import { Loader, FEWorldMap } from "./loader";
 import { ViewPoint } from "./viewpoint";
-import { vscode } from "../util/common";
+import { vscode } from "../util/vscode";
 import { WorldMapMessage, WorldMapWarning } from "../../src/previewdef/worldmap/definitions";
 import { feLocalize } from "../util/i18n";
 import { DivDropdown } from "../util/dropdown";

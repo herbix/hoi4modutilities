@@ -4,8 +4,9 @@ import { error, debug } from '../util/debug';
 import { getDocumentByUri } from '../util/vsccommon';
 import { isEqual } from 'lodash';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
-import path = require('path');
+import * as path from 'path';
 import { mkdirs, writeFile } from '../util/nodecommon';
+import { sendByMessage } from '../util/telemetry';
 
 export abstract class PreviewBase {
     private cachedDependencies: string[] | undefined = undefined;
@@ -65,6 +66,8 @@ export abstract class PreviewBase {
                 } else {
                     this.openOrCopyFile(msg.file, msg.start, msg.end);
                 }
+            } else if (msg.command === 'telemetry') {
+                sendByMessage(msg);
             }
         });
         

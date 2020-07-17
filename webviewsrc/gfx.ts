@@ -1,4 +1,4 @@
-import { setState, getState } from "./util/common";
+import { setState, getState, tryRun } from "./util/common";
 
 function filterChange(text: string) {
     text = text.toLowerCase();
@@ -11,7 +11,7 @@ function filterChange(text: string) {
     }
 }
 
-window.addEventListener('load', function() {
+window.addEventListener('load', tryRun(function() {
     const filter = getState().filter || '';
     const element = document.getElementById('filter') as HTMLInputElement;
     element.value = filter;
@@ -26,4 +26,4 @@ window.addEventListener('load', function() {
     element.addEventListener('keyup', changeFunc);
     element.addEventListener('paste', changeFunc);
     element.addEventListener('cut', changeFunc);
-});
+}));

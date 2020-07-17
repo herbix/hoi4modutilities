@@ -18,3 +18,6 @@ declare module '*.css' {
     const _default: string;
     export default _default;
 }
+
+declare const VERSION: string;
+declare const EXTENSION_ID: string;

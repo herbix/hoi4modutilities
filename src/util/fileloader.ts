@@ -10,6 +10,7 @@ import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
 import { getConfiguration } from './vsccommon';
+import { UserError } from './common';
 
 const dlcZipPathsCache = new PromiseCache({
     factory: getDlcZipPaths,
@@ -134,7 +135,7 @@ export async function readFileFromPath(realPath: string, relativePath?: string):
                 return [await new Promise<Buffer>(resolve => entry.getDataAsync(resolve)), realPath];
             }
 
-            throw new Error("Can't find file " + relativePath);
+            throw new UserError("Can't find file " + relativePath);
         }
     }
 
@@ -145,7 +146,7 @@ export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buff
     const realPath = await getFilePathFromModOrHOI4(relativePath);
 
     if (!realPath) {
-        throw new Error("Can't find file " + relativePath);
+        throw new UserError("Can't find file " + relativePath);
     }
 
     return await readFileFromPath(realPath, relativePath);

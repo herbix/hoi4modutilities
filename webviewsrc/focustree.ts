@@ -1,4 +1,4 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState } from "./util/common";
+import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBox, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridbox";
@@ -177,7 +177,7 @@ function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsV
     };
 }
 
-window.addEventListener('load', async function() {
+window.addEventListener('load', tryRun(async function() {
     await buildContent();
     scrollToState();
 
@@ -312,4 +312,4 @@ window.addEventListener('load', async function() {
             warnings.style.display = visible ? 'none' : 'block';
         });
     }
-});
+}));

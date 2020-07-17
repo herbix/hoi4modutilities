@@ -1,3 +1,5 @@
+import { sendException } from "./telemetry";
+
 export type Disposable = { dispose(): void };
 export type IEvent<T> = (callback: (param: T) => void) => Disposable;
 export type IEventWithThis<T, TThis> = (callback: (this: TThis, param: T) => void) => Disposable;
@@ -22,6 +24,7 @@ export class EventEmitter<T> {
                 h(param);
             } catch (e) {
                 console.error(e);
+                sendException(e);
             }
         });
     }

@@ -10,6 +10,7 @@ import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
 import { getLastModifiedAsync } from '../nodecommon';
+import { UserError } from '../common';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -90,7 +91,9 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
     try {
         readFileResult = await readFileFromModOrHOI4(relativePath);
     } catch(e) {
-        error("Failed to get image " + relativePath);
+        if (!(e instanceof UserError)) {
+            error("Failed to get image " + relativePath);
+        }
         error(e);
 
         if (relativePath.length <= 4 || relativePath.endsWith('.dds')) {
@@ -122,7 +125,9 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         return new Image(pngBuffer, png.width, png.height, realPath);
 
     } catch (e) {
-        error("Failed to get image " + relativePath);
+        if (!(e instanceof UserError)) {
+            error("Failed to get image " + relativePath);
+        }
         error(e);
         return undefined;
     }

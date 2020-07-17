@@ -1,8 +1,9 @@
 import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, Country, Point } from "./definitions";
-import { vscode, copyArray } from "../util/common";
+import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
 import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
+import { vscode } from "../util/vscode";
 
 interface ExtraMapData {
     provincesCount: number;

@@ -4,6 +4,7 @@
 
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const webpack = require('webpack');
 
 /**@type {import('webpack').Configuration}*/
 const mainConfig = {
@@ -50,7 +51,11 @@ const mainConfig = {
         to: __dirname,
         flatten: true
       }
-    ])
+    ]),
+    new webpack.DefinePlugin({
+      EXTENSION_ID: JSON.stringify(require("./package.json").name),
+      VERSION: JSON.stringify(require("./package.json").version),
+    }),
   ]
 };
 

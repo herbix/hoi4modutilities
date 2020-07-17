@@ -105,3 +105,10 @@ export function randomString(length: number, charset: string | undefined = undef
     }
     return result;
 }
+
+export class UserError extends Error {
+    constructor (message: string) {
+      super(message);
+      this.name = 'UserError';
+    }
+}
