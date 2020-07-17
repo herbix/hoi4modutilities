@@ -59,14 +59,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Release Notes
 
-### [0.3.5]
+### [0.3.6]
 
 ### Changed
-* Update parser.
-  * Strings without quote will be treated as string now.
-  * Variables can be parsed now. The default value will be used.
-* Focus tree preview will show warnings for invalid code.
+* Add telemetry to record usage and exceptions to provide better experience. It can be disabled with VSCode telemetry settings.
 
 ### Fixed
-* An issue that preview button shows incorrect type of preview.
-* An issue that in some case focus tree preview shows nothing.
+* Localization now can fallback to lang code when country code not present. For example, `en-us` will fallback to `en`.
