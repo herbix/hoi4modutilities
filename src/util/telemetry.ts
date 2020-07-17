@@ -1,7 +1,6 @@
 import TelemetryReporter from 'vscode-extension-telemetry';
 
 let telemetryReporter: TelemetryReporter | undefined = undefined;
-let userId: string = '';
 
 export interface TelemetryMessage {
     command: 'telemetry';
@@ -9,11 +8,10 @@ export interface TelemetryMessage {
     args: any[];
 }
 
-export function registerTelemetryReporter(theUserId: string) {
+export function registerTelemetryReporter() {
     const isDev = process.env.NODE_ENV !== 'production';
     if (!isDev) {
         telemetryReporter = new TelemetryReporter(EXTENSION_ID, VERSION, '41a5f5b6-f4f0-4707-96ba-c895a2dabf17');
-        userId = theUserId;
     }
 
     return {
@@ -24,16 +22,16 @@ export function registerTelemetryReporter(theUserId: string) {
     };
 }
 
-export const sendEvent: TelemetryReporter['sendTelemetryEvent'] = (eventName, properties = {}, mesurements) => {
-    telemetryReporter?.sendTelemetryEvent(eventName, { ...properties, user: userId }, mesurements);
+export const sendEvent: TelemetryReporter['sendTelemetryEvent'] = (eventName, properties, mesurements) => {
+    telemetryReporter?.sendTelemetryEvent(eventName, properties, mesurements);
 };
 
-export const sendError: TelemetryReporter['sendTelemetryErrorEvent'] = (eventName, properties = {}, mesurements, errorProps) => {
-    telemetryReporter?.sendTelemetryErrorEvent(eventName, { ...properties, user: userId }, mesurements, errorProps);
+export const sendError: TelemetryReporter['sendTelemetryErrorEvent'] = (eventName, properties, mesurements, errorProps) => {
+    telemetryReporter?.sendTelemetryErrorEvent(eventName, properties, mesurements, errorProps);
 };
 
-export const sendException: TelemetryReporter['sendTelemetryException'] = (error, properties = {}, mesurements) => {
-    telemetryReporter?.sendTelemetryException(error, { ...properties, user: userId }, mesurements);
+export const sendException: TelemetryReporter['sendTelemetryException'] = (error, properties, mesurements) => {
+    telemetryReporter?.sendTelemetryException(error, properties, mesurements);
 };
 
 export function sendByMessage(message: TelemetryMessage) {

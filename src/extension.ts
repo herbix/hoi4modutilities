@@ -6,16 +6,12 @@ import { registerModFile } from './util/modfile';
 import { worldMap } from './previewdef/worldmap';
 import { ViewType, ContextName } from './constants';
 import { registerTelemetryReporter, sendEvent } from './util/telemetry';
-import { randomString } from './util/common';
 
 export function activate(context: vscode.ExtensionContext) {
-    const userId = context.globalState.get<string>('userid') ?? randomString(32);
-
     // Must register this first because other component may use it.
     context.subscriptions.push(registerContextContainer(context));
-    context.subscriptions.push(registerTelemetryReporter(userId));
+    context.subscriptions.push(registerTelemetryReporter());
 
-    context.globalState.update('userid', userId);
     sendEvent('extension.activate');
 
     context.subscriptions.push(previewManager.register());
