@@ -116,7 +116,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             if (requestUri === undefined) {
                 vscode.window.showErrorMessage(localize('preview.noactivedoc', "No active document."));
             } else {
-                vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}.", requestUri?.fsPath));
+                vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}.", requestUri?.toString()));
             }
             panel?.dispose();
             debug(`dispose panel ${requestUri} because document not opened`);
@@ -220,10 +220,10 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         }
     }
 
-    private getPreviewItemsNeedsUpdate(path: string): PreviewBase[] {
+    private getPreviewItemsNeedsUpdate(uri: string): PreviewBase[] {
         const result: PreviewBase[] = [];
         for (const [ matchString, previewItems ] of this._updateSubscriptions.entries()) {
-            if (matchPathEnd(path, matchString)) {
+            if (matchPathEnd(uri, matchString)) {
                 result.push(...previewItems);
             }
         }
@@ -234,7 +234,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
     private updatePreviewItemsInSubscription = debounceByInput(
         (uri: vscode.Uri): void => {
             const document = getDocumentByUri(uri);
-            for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.fsPath)) {
+            for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.toString())) {
                 if (uri.toString() === otherPreview.uri.toString()) {
                     continue;
                 }
@@ -244,7 +244,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
                 }
             }
         },
-        uri => uri.fsPath,
+        uri => uri.toString(),
         1000,
         { trailing: true });
 

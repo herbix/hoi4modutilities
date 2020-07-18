@@ -1,3 +1,5 @@
+import { UserError } from '../util/common';
+
 export type NodeValue = string | number | Node[] | SymbolNode | null;
 
 export interface Node {
@@ -87,7 +89,7 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
         const posString = line === -1 ?
             ` at (${lineLengthSums.length}, ${lineLengthSums.length > 1 ? lineLengthSums[lineLengthSums.length - 1] - lineLengthSums[lineLengthSums.length - 2] + 1 : lineLengthSums[lineLengthSums.length - 1] + 1})` :
             ` at (${line + 1}, ${column + 1})`;
-        throw new Error(errorMessagePrefix + message + `${posString}: ` + (input + "(EOF)").substring(calculatePos, Math.min(calculatePos + 30, input.length + 5)));
+        throw new UserError(errorMessagePrefix + message + `${posString}: ` + (input + "(EOF)").substring(calculatePos, Math.min(calculatePos + 30, input.length + 5)));
     }
     
     return {

@@ -3,13 +3,13 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readFile, readdir, lstat, readdirfiles } from './nodecommon';
+import { getLastModified, getLastModifiedAsync, readdirfiles, isFile, isDirectory } from './nodecommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
-import { getConfiguration } from './vsccommon';
+import { getConfiguration, isFileScheme } from './vsccommon';
 import { UserError } from './common';
 
 const dlcZipPathsCache = new PromiseCache({
@@ -33,12 +33,12 @@ export async function getFilePathFromMod(relativePath: string): Promise<string |
     // Find in opened workspace folders
     if (vscode.workspace.workspaceFolders) {
         for (const folder of vscode.workspace.workspaceFolders) {
-            if (folder.uri.scheme !== 'file') {
+            if (!isFileScheme(folder.uri)) {
                 continue;
             }
 
             const findPath = path.join(folder.uri.fsPath, relativePath);
-            if (fs.existsSync(findPath)) {
+            if (await isFile(findPath)) {
                 absolutePath = findPath;
                 break;
             }
@@ -46,7 +46,7 @@ export async function getFilePathFromMod(relativePath: string): Promise<string |
         
         if (absolutePath !== undefined) {
             // Opened document
-            const document = vscode.workspace.textDocuments.find(d => isSamePath(d.uri.fsPath, absolutePath!));
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, absolutePath!));
             if (document) {
                 const openedPath = 'opened?' + document.uri.fsPath;
                 return openedPath;
@@ -76,7 +76,7 @@ export async function getFilePathFromModOrHOI4(relativePath: string): Promise<st
     const installPath: string = conf.installPath;
     if (!absolutePath) {
         const findPath = path.join(installPath, relativePath);
-        if (fs.existsSync(findPath)) {
+        if (await isFile(findPath)) {
             absolutePath = findPath;
         }
     }
@@ -121,7 +121,7 @@ export async function readFileFromPath(realPath: string, relativePath?: string):
         const split = realPath.split('?');
         if (split[0] === 'opened') {
             const absolutePath = split[1];
-            const document = vscode.workspace.textDocuments.find(d => isSamePath(d.uri.fsPath, absolutePath));
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, absolutePath));
             if (document) {
                 return [Buffer.from(document.getText()), absolutePath];
             }
@@ -139,7 +139,7 @@ export async function readFileFromPath(realPath: string, relativePath?: string):
         }
     }
 
-    return [ await readFile(realPath), realPath ];
+    return [ await fs.promises.readFile(realPath), realPath ];
 }
 
 export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, string]> {
@@ -164,12 +164,12 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
     // Find in opened workspace folders
     if (vscode.workspace.workspaceFolders) {
         for (const folder of vscode.workspace.workspaceFolders) {
-            if (folder.uri.scheme !== 'file') {
+            if (!isFileScheme(folder.uri)) {
                 continue;
             }
 
             const findPath = path.join(folder.uri.fsPath, relativePath);
-            if (fs.existsSync(findPath)) {
+            if (await isDirectory(findPath)) {
                 try {
                     result.push(...await readdirfiles(findPath));
                 } catch(e) {}
@@ -191,7 +191,7 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
     const installPath: string = conf.installPath;
     {
         const findPath = path.join(installPath, relativePath);
-        if (fs.existsSync(findPath)) {
+        if (await isDirectory(findPath)) {
             try {
                 result.push(...await readdirfiles(findPath));
             } catch(e) {}
@@ -221,16 +221,15 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
 
 async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
     const dlcPath = path.join(installPath, 'dlc');
-    if (!fs.existsSync(dlcPath)) {
+    if (!await isDirectory(dlcPath)) {
         return null;
     }
 
-    const dlcFolders = await readdir(dlcPath);
+    const dlcFolders = await fs.promises.readdir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
         const dlcZipFolder = path.join(dlcPath, dlcFolder);
-        const stats = await lstat(dlcZipFolder);
-        if (stats.isDirectory()) {
-            const files = await readdir(dlcZipFolder);
+        if (isDirectory(dlcZipFolder)) {
+            const files = await fs.promises.readdir(dlcZipFolder);
             const zipFile = files.find(file => file.endsWith('.zip'));
             if (zipFile) {
                 return path.join(dlcZipFolder, zipFile);
@@ -271,6 +270,10 @@ async function getReplacePaths(): Promise<string[] | undefined> {
     if (modFile === "") {
         if (vscode.workspace.workspaceFolders) {
             for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+                if (!isFileScheme(workspaceFolder.uri)) {
+                    continue;
+                }
+
                 const workspaceFolderPath = workspaceFolder.uri.fsPath;
                 const mods = await workspaceModFilesCache.get(workspaceFolderPath);
                 if (mods.length > 0) {
@@ -282,7 +285,7 @@ async function getReplacePaths(): Promise<string[] | undefined> {
     }
 
     try {
-        if (fs.existsSync(modFile)) {
+        if (await isFile(modFile)) {
             const result = await replacePathsCache.get(modFile);
             updateSelectedModFileStatus(modFile);
             return result;
@@ -296,7 +299,7 @@ async function getReplacePaths(): Promise<string[] | undefined> {
 }
 
 async function getReplacePathsFromModFile(absolutePath: string): Promise<string[]> {
-    const content = (await readFile(absolutePath)).toString();
+    const content = (await fs.promises.readFile(absolutePath)).toString();
     const node = parseHoi4File(content, localize('infile', 'In file {0}:\n', absolutePath));
     const modFile = convertNodeToJson<ModFile>(node, modFileSchema);
     return modFile.replace_path.filter((v): v is string => typeof v === 'string');

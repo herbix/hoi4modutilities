@@ -7,6 +7,7 @@ import { DDS } from './util/image/dds';
 import { html, htmlEscape } from './util/html';
 import { StyleTable } from './util/styletable';
 import { sendEvent } from './util/telemetry';
+import { ensureFileScheme } from './util/vsccommon';
 
 export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
     public async openCustomDocument(uri: vscode.Uri) {
@@ -17,8 +18,10 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
     public async resolveCustomEditor(document: { uri: vscode.Uri }, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         try {
             sendEvent('preview.dds');
+            ensureFileScheme(document.uri);
+
             const buffer = await Promise.race([
-                new Promise<Buffer>((resolve, reject) => fs.readFile(document.uri.fsPath, (error, data) => error ? reject(error) : resolve(data))),
+                fs.promises.readFile(document.uri.fsPath),
                 new Promise<null>(resolve => token.onCancellationRequested(resolve)),
             ]);
 

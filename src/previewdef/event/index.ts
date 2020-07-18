@@ -13,7 +13,7 @@ function canPreviewEvent(document: vscode.TextDocument) {
     }
 
     const uri = document.uri;
-    if (matchPathEnd(uri.fsPath, ['events', '*'])) {
+    if (matchPathEnd(uri.toString(), ['events', '*'])) {
         return 0;
     }
 

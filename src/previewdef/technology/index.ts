@@ -8,7 +8,7 @@ import { getRelativePathInWorkspace } from '../../util/vsccommon';
 
 function canPreviewTechnology(document: vscode.TextDocument) {
     const uri = document.uri;
-    if (matchPathEnd(uri.fsPath, ['common', 'technologies', '*'])) {
+    if (matchPathEnd(uri.toString(), ['common', 'technologies', '*'])) {
         return 0;
     }
 

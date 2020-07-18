@@ -13,6 +13,7 @@ import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
+import { isFileScheme } from '../../util/vsccommon';
 
 export class WorldMap {
     private worldMapLoader: WorldMapLoader;
@@ -36,11 +37,11 @@ export class WorldMap {
                 return;
             }
 
-            if (this.worldMapDependencies.some(d => matchPathEnd(uri.fsPath, d.split('/')))) {
+            if (this.worldMapDependencies.some(d => matchPathEnd(uri.toString(), d.split('/')))) {
                 this.sendProvinceMapSummaryToWebview(false);
             }
         },
-        uri => uri.fsPath,
+        uri => uri.toString(),
         1000,
         { trailing: true });
 
@@ -141,7 +142,7 @@ export class WorldMap {
         // TODO duplicate with previewbase.ts
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && d.uri.fsPath === filePathInMod.replace('opened?', ''))
                 ?? await vscode.workspace.openTextDocument(filePathInMod);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
@@ -156,17 +157,23 @@ export class WorldMap {
             return;
         }
 
-        let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        let targetFolderUri = vscode.workspace.workspaceFolders[0].uri;
         if (vscode.workspace.workspaceFolders.length >= 1) {
             const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('worldmap.selectafolder', 'Select a folder to copy {0} file', typeName) });
             if (!folder) {
                 return;
             }
 
-            targetFolder = folder.uri.fsPath;
+            targetFolderUri = folder.uri;
+        }
+        
+        if (!isFileScheme(targetFolderUri)) {
+            await vscode.window.showErrorMessage(localize('preview.selectedfoldernotondisk', 'Selected target folder is not on disk: "{0}".', targetFolderUri.toString()));
+            return;
         }
 
         try {
+            const targetFolder = targetFolderUri.fsPath;
             const [buffer] = await readFileFromModOrHOI4(file);
             const targetPath = path.join(targetFolder, file);
             await mkdirs(path.dirname(targetPath));

@@ -7,7 +7,7 @@ export const worldMap = new WorldMapContainer();
 
 function canPreviewWorldmap(document: vscode.TextDocument) {
     const uri = document.uri;
-    return matchPathEnd(uri.fsPath, ['map', 'default.map']) ? 0 : undefined;
+    return matchPathEnd(uri.toString(), ['map', 'default.map']) ? 0 : undefined;
 }
 
 function onPreviewWorldmap(document: vscode.TextDocument): Promise<void> {

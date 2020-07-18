@@ -2,10 +2,9 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigurationKey, Commands } from '../constants';
-import { readdir } from './nodecommon';
 import { PromiseCache } from './cache';
 import { localize } from './i18n';
-import { getConfiguration } from './vsccommon';
+import { getConfiguration, isFileScheme } from './vsccommon';
 
 export const modFileStatusContainer: { current: vscode.StatusBarItem | null } = {
     current: null,
@@ -79,6 +78,10 @@ async function selectModFile(): Promise<void> {
     workspaceModFilesCache.clear();
     if (vscode.workspace.workspaceFolders) {
         for (const workspaceFolder of vscode.workspace.workspaceFolders) {
+            if (!isFileScheme(workspaceFolder.uri)) {
+                continue;
+            }
+
             const workspaceFolderPath = workspaceFolder.uri.fsPath;
             const mods = await workspaceModFilesCache.get(workspaceFolderPath);
             if (selected === '' && mods.length > 0) {
@@ -116,12 +119,16 @@ async function selectModFile(): Promise<void> {
         if (selectResult.selectModFile) {
             const result = await vscode.window.showOpenDialog({ filters: { [localize('modfile.type', 'Mod file')]: ['mod'] } });
             if (result) {
-                modPath = result[0].fsPath;
+                if (isFileScheme(result[0])) {
+                    modPath = result[0].fsPath;
+                } else {
+                    vscode.window.showErrorMessage(localize('modfile.selectedfilenotondisk', 'Selected file is not on disk: {0}.', result[0].toString()));
+                }
             } else {
                 return;
             }
         }
-        
+
         if (modPath === modFileInspect?.globalValue) {
             conf.update('modFile', undefined, vscode.ConfigurationTarget.Workspace);
         } else {
@@ -133,6 +140,6 @@ async function selectModFile(): Promise<void> {
 }
 
 async function getWorkspaceModFiles(absolutePath: string): Promise<string[]> {
-    const items = await readdir(absolutePath);
+    const items = await fs.promises.readdir(absolutePath);
     return items.filter(i => i.endsWith('.mod')).map(i => path.join(absolutePath, i));
 }

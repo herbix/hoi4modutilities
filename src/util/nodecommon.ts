@@ -2,6 +2,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export function matchPathEnd(pathname: string, segments: string[]): boolean {
+    pathname = pathname.replace(/\/|\\/g, path.sep);
+
     for (let i = segments.length - 1; i >= 0; i--) {
         const name = path.basename(pathname);
         pathname = path.dirname(pathname);
@@ -19,30 +21,18 @@ export function matchPathEnd(pathname: string, segments: string[]): boolean {
 }
 
 export function getLastModified(path: string): number {
-    const stat = fs.lstatSync(path);
+    const stat = fs.statSync(path);
     return stat.mtimeMs;
 }
 
 export function getLastModifiedAsync(path: string): Promise<number> {
-    return lstat(path).then(s => s.mtimeMs);
-}
-
-export function readFile(path: string): Promise<Buffer> {
-    return fsFuncWrapper(fs.readFile, path);
-}
-
-export function readdir(path: string): Promise<string[]> {
-    return fsFuncWrapper(fs.readdir, path);
+    return fs.promises.stat(path).then(s => s.mtimeMs);
 }
 
 export async function readdirfiles(dir: string): Promise<string[]> {
     const fileNames = await fsFuncWrapper<string[]>(fs.readdir, dir);
-    const stat = await Promise.all(fileNames.map<Promise<[string, fs.Stats]>>(f => Promise.all([f, lstat(path.join(dir, f))])));
+    const stat = await Promise.all(fileNames.map<Promise<[string, fs.Stats]>>(f => Promise.all([f, fs.promises.stat(path.join(dir, f))])));
     return stat.filter(s => s[1].isFile()).map(s => s[0]);
-}
-
-export function lstat(path: string): Promise<fs.Stats> {
-    return fsFuncWrapper(fs.lstat, path);
 }
 
 export function writeFile(path: string, buffer: Buffer): Promise<void> {
@@ -51,6 +41,14 @@ export function writeFile(path: string, buffer: Buffer): Promise<void> {
 
 export function mkdirs(path: string): Promise<string> {
     return fsFuncWrapperWithOption<string, { recursive: true; }>(fs.mkdir, path, { recursive: true });
+}
+
+export async function isFile(path: string): Promise<boolean> {
+    return fs.existsSync(path) && (await fs.promises.stat(path)).isFile();
+}
+
+export async function isDirectory(path: string): Promise<boolean> {
+    return fs.existsSync(path) && (await fs.promises.stat(path)).isDirectory();
 }
 
 function fsFuncWrapper<T>(func: (path: fs.PathLike, cb: (err: NodeJS.ErrnoException | null, result: T) => void) => void, path: fs.PathLike): Promise<T> {

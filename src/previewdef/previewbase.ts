@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { localize } from '../util/i18n';
 import { error, debug } from '../util/debug';
-import { getDocumentByUri } from '../util/vsccommon';
+import { getDocumentByUri, isFileScheme } from '../util/vsccommon';
 import { isEqual } from 'lodash';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
 import * as path from 'path';
@@ -79,7 +79,7 @@ export abstract class PreviewBase {
     protected updateDependencies(dependencies: string[]): void {
         if (this.cachedDependencies === undefined || !isEqual(this.cachedDependencies, dependencies)) {
             this.dependencyChangedEmitter.fire(dependencies);
-            debug("dependencies: ", this.uri.fsPath, JSON.stringify(dependencies));
+            debug("dependencies: ", this.uri.toString(), JSON.stringify(dependencies));
         }
 
         this.cachedDependencies = dependencies;
@@ -88,7 +88,7 @@ export abstract class PreviewBase {
     protected async openOrCopyFile(file: string, start: number | undefined, end: number | undefined): Promise<void> {
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const document = vscode.workspace.textDocuments.find(d => d.uri.fsPath === filePathInMod.replace('opened?', ''))
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && d.uri.fsPath === filePathInMod.replace('opened?', ''))
                 ?? await vscode.workspace.openTextDocument(filePathInMod);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
@@ -102,17 +102,23 @@ export abstract class PreviewBase {
             return;
         }
 
-        let targetFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        let targetFolderUri = vscode.workspace.workspaceFolders[0].uri;
         if (vscode.workspace.workspaceFolders.length >= 1) {
             const folder = await vscode.window.showWorkspaceFolderPick({ placeHolder: localize('preview.selectafolder', 'Select a folder to copy "{0}"', file) });
             if (!folder) {
                 return;
             }
 
-            targetFolder = folder.uri.fsPath;
+            targetFolderUri = folder.uri;
+        }
+
+        if (!isFileScheme(targetFolderUri)) {
+            await vscode.window.showErrorMessage(localize('preview.selectedfoldernotondisk', 'Selected target folder is not on disk: "{0}".', targetFolderUri.toString()));
+            return;
         }
 
         try {
+            const targetFolder = targetFolderUri.fsPath;
             const [buffer] = await readFileFromModOrHOI4(file);
             const targetPath = path.join(targetFolder, file);
             await mkdirs(path.dirname(targetPath));
