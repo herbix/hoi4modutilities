@@ -16,18 +16,25 @@ import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
 import { isFileScheme } from '../../util/vsccommon';
 
 export class WorldMap {
+    public panel: vscode.WebviewPanel | undefined;
+
     private worldMapLoader: WorldMapLoader;
     private worldMapDependencies: string[] | undefined;
     private cachedWorldMap: WorldMapData | undefined;
 
-    constructor(readonly panel: vscode.WebviewPanel) {
+    constructor(panel: vscode.WebviewPanel) {
+        this.panel = panel;
         this.worldMapLoader = new WorldMapLoader();
         this.worldMapLoader.onProgress(this.progressReporter);
     }
 
     public initialize(): void {
+        if (!this.panel) {
+            return;
+        }
+
         const webview = this.panel.webview;
-        webview.html = this.renderWorldMap();
+        webview.html = this.renderWorldMap(webview);
         webview.onDidReceiveMessage((msg) => this.onMessage(msg));
     }
 
@@ -44,10 +51,14 @@ export class WorldMap {
         uri => uri.toString(),
         1000,
         { trailing: true });
+    
+    public dispose() {
+        this.panel = undefined;
+    }
 
-    private renderWorldMap(): string {
+    private renderWorldMap(webview: vscode.Webview): string {
         return html(
-            this.panel.webview,
+            webview,
             localizeText(worldmapview),
             [{ content: i18nTableAsScript() }, 'worldmap.js'],
             ['common.css', 'codicon.css', { content: worldmapviewstyles }]
@@ -89,7 +100,7 @@ export class WorldMap {
     }
 
     private sendMapData(command: MapItemMessage['command'], msg: RequestMapItemMessage, value: unknown[]) {
-        return this.panel.webview.postMessage({
+        return this.postMessageToWebview({
             command: command,
             data: JSON.stringify(slice(value, msg.start, msg.end)),
             start: msg.start,
@@ -99,7 +110,7 @@ export class WorldMap {
 
     private progressReporter: ProgressReporter = async (progress: string) => {
         debug('Progress:', progress);
-        await this.panel.webview.postMessage({
+        await this.postMessageToWebview({
             command: 'progress',
             data: progress,
         } as WorldMapMessage);
@@ -125,13 +136,15 @@ export class WorldMap {
                 strategicRegions: [],
                 supplyAreas: [],
             };
-            await this.panel.webview.postMessage({
+
+            await this.postMessageToWebview({
                 command: 'provincemapsummary',
                 data: summary,
             } as WorldMapMessage);
         } catch (e) {
             error(e);
-            await this.panel.webview.postMessage({
+
+            await this.postMessageToWebview({
                 command: 'error',
                 data: localize('worldmap.failedtoload', 'Failed to load world map: {0}.', e.toString()),
             } as WorldMapMessage);
@@ -234,7 +247,7 @@ export class WorldMap {
         await this.progressReporter(localize('worldmap.progress.applying', 'Applying changes...'));
 
         for (const message of changeMessages) {
-            await this.panel.webview.postMessage(message);
+            await this.postMessageToWebview(message);
         }
 
         await this.progressReporter('');
@@ -286,5 +299,13 @@ export class WorldMap {
         }
 
         return true;
+    }
+
+    private async postMessageToWebview(message: WorldMapMessage) {
+        if (!this.panel) {
+            return false;
+        }
+
+        return await this.panel.webview.postMessage(message);
     }
 }

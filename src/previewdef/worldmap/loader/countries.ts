@@ -181,7 +181,7 @@ async function loadCountryTags(countryTagsFile: string): Promise<Tag[]> {
         const result: { tag: string, file: string }[] = [];
 
         for (const tag of Object.values(data._map)) {
-            if (!tag._value) {
+            if (!tag._value || tag._key === 'dynamic_tags') {
                 continue;
             }
             result.push({

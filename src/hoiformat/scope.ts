@@ -25,7 +25,7 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
     }
 
     let nodeName = node.name.trim();
-    if (nodeName.match(/^[A-Z]{3}$/)) {
+    if (nodeName.match(/^[A-Z][A-Z0-9]{2}$/)) {
         scopeStack.push({
             scopeName: nodeName,
             scopeType: 'country',
@@ -78,7 +78,7 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
             const scope = variableMatch.groups?.scope;
             if (scope) {
                 const scopeLowerCase = scope.toLowerCase();
-                global = !!(scope.match(/^(?:[A-Z]{3}|\d+)(?:$|\.)/) ||
+                global = !!(scope.match(/^(?:[A-Z][A-Z0-9]{2}|\d+)(?:$|\.)/) ||
                     scopeLowerCase.match(/^(?:global)(?:$|\.)/));
             }
         }

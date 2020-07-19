@@ -15,10 +15,8 @@ import { useConditionInFocus } from '../../util/featureflags';
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
 export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
-    const styleTable = new StyleTable();
-    let baseContent = '';
-    const jsCodes: string[] = [];
-    const styleNonce = randomString(32);
+    const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
+
     try {
         const session = new LoaderSession(false);
         const loadResult = await loader.load(session);
@@ -26,30 +24,33 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         debug('Loader session focus tree', loadedLoaders);
 
         const focustrees = loadResult.result.focusTrees;
-        if (focustrees.length > 0) {
-            baseContent = await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
-        } else {
-            baseContent = localize('focustree.nofocustree', 'No focus tree.');
-        }
-    } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
-    }
+        const styleTable = new StyleTable();
+        const jsCodes: string[] = [];
+        const styleNonce = randomString(32);
+        const baseContent = focustrees.length > 0 ?
+            await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file) :
+            localize('focustree.nofocustree', 'No focus tree.');
 
-    return html(
-        webview,
-        baseContent,
-        [
-            { content: `window.previewedFileUri = "${uri.toString()}";` },
-            ...jsCodes.map(c => ({ content: c })),
-            'focustree.js',
-        ],
-        [
-            'codicon.css',
-            'common.css',
-            styleTable,
-            { nonce: styleNonce },
-        ],
-    );
+        return html(
+            webview,
+            baseContent,
+            [
+                setPreviewFileUriScript,
+                ...jsCodes.map(c => ({ content: c })),
+                'focustree.js',
+            ],
+            [
+                'codicon.css',
+                'common.css',
+                styleTable,
+                { nonce: styleNonce },
+            ],
+        );
+
+    } catch (e) {
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+    }
 }
 
 const leftPaddingBase = 50;

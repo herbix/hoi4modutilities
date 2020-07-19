@@ -20,7 +20,7 @@ import { StyleTable } from '../../util/styletable';
 const techTreeViewName = 'countrytechtreeview';
 
 export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
-    let baseContent = '';
+    const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
     const styleTable = new StyleTable();
     try {
         const session = new LoaderSession(false);
@@ -30,29 +30,28 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
 
         const technologyTrees = loadResult.result.technologyTrees;
         const folders = uniq(technologyTrees.map(tt => tt.folder));
-        if (folders.length < 1) {
-            baseContent = localize('techtree.notechtree', 'No technology tree.');
-        } else {
-            baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
-        }
+        const baseContent = folders.length === 0 ?
+            localize('techtree.notechtree', 'No technology tree.') :
+            await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
+
+        return html(
+            webview,
+            baseContent,
+            [
+                setPreviewFileUriScript,
+                'techtree.js',
+            ],
+            [
+                'common.css',
+                'codicon.css',
+                styleTable,
+            ],
+        );
 
     } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
-
-    return html(
-        webview,
-        baseContent,
-        [
-            { content: `window.previewedFileUri = "${uri.toString()}";` },
-            'techtree.js',
-        ],
-        [
-            'common.css',
-            'codicon.css',
-            styleTable,
-        ],
-    );
 }
 
 async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, loadResult: TechnologyTreeLoaderResult): Promise<string> {

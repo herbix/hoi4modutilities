@@ -28,7 +28,7 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
 
     private async openWorldMapView(panel?: vscode.WebviewPanel): Promise<void> {
         if (this.worldMap) {
-            this.worldMap.panel.reveal();
+            this.worldMap.panel?.reveal();
             panel?.dispose();
             return;
         }
@@ -45,6 +45,7 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
 
         panel.onDidDispose(() => {
             if (this.worldMap?.panel === panel) {
+                this.worldMap?.dispose();
                 this.worldMap = undefined;
             }
         });
