@@ -51,7 +51,7 @@ export class WorldMap {
         uri => uri.toString(),
         1000,
         { trailing: true });
-    
+
     public dispose() {
         this.panel = undefined;
     }
@@ -120,7 +120,8 @@ export class WorldMap {
         try {
             this.worldMapLoader.shallowForceReload();
             const oldCachedWorldMap = this.cachedWorldMap;
-            const { result: worldMap, dependencies } = await this.worldMapLoader.load(new LoaderSession(force));
+            const loaderSession = new LoaderSession(force, () => this.panel === undefined);
+            const { result: worldMap, dependencies } = await this.worldMapLoader.load(loaderSession);
             this.worldMapDependencies = dependencies;
             this.cachedWorldMap = worldMap;
 

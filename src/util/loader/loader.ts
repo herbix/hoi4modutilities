@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';;
 import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
 import { error } from '../debug';
+import { UserError } from '../common';
 
 export class LoaderSession {
     private loadedLoader: Set<Loader<unknown, unknown>> = new Set();
@@ -9,7 +10,7 @@ export class LoaderSession {
     private cachedLoader: Record<string, Loader<unknown, unknown>> = {};
     public loadingLoader: Loader<unknown, unknown>[] = [];
 
-    constructor(public force: boolean) {
+    constructor(public force: boolean, private cancelled?: () => boolean) {
     }
 
     public isLoaded(loader: Loader<unknown, unknown>): boolean {
@@ -43,6 +44,12 @@ export class LoaderSession {
         clone.loadingLoader = [ ...this.loadingLoader ];
         Object.setPrototypeOf(clone, Object.getPrototypeOf(this));
         return clone;
+    }
+
+    public throwIfCancelled(): void {
+        if (this.cancelled?.call(this)) {
+            throw new UserError('Load session cancelled.');
+        }
     }
 }
 

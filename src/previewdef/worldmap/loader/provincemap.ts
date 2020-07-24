@@ -52,12 +52,22 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
     protected async loadFromFile(session: LoaderSession): Promise<LoadResult<ProvinceMap>> {
         
         const defaultMap = await loadDefaultMap(e => this.fireOnProgressEvent(e));
+        session.throwIfCancelled();
 
         const provinceDefinitions = await (this.definitionsLoader = this.checkAndCreateLoader(this.definitionsLoader, 'map/' + defaultMap.definitions, DefinitionsLoader)).load(session);
+        session.throwIfCancelled();
+
         const provinceBmp = await (this.provinceBmpLoader = this.checkAndCreateLoader(this.provinceBmpLoader, 'map/' + defaultMap.provinces, ProvinceBmpLoader)).load(session);
+        session.throwIfCancelled();
+
         const adjacencies = await (this.adjacenciesLoader = this.checkAndCreateLoader(this.adjacenciesLoader, 'map/' + defaultMap.adjacencies, AdjacenciesLoader)).load(session);
+        session.throwIfCancelled();
+
         const continents = await (this.continentsLoader = this.checkAndCreateLoader(this.continentsLoader, 'map/' + defaultMap.continent, ContinentsLoader)).load(session);
+        session.throwIfCancelled();
+
         const terrains = await this.terrainDefinitionLoader.load(session);
+        session.throwIfCancelled();
 
         const subLoaderResults = [ provinceDefinitions, provinceBmp, adjacencies, continents, terrains ];
 

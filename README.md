@@ -59,10 +59,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Release Notes
 
-### [0.3.6]
-
-### Changed
-* Add telemetry to record usage and exceptions to provide better experience. It can be disabled with VSCode telemetry settings.
+### [0.3.7]
 
 ### Fixed
-* Localization now can fallback to lang code when country code not present. For example, `en-us` will fallback to `en`.
+* Add check before all usage of fsPath to make sure error message popup.
+* An issue that D01 not treated as country scope.
+* An issue that `dynamic_tags` is treated as a country in country tags files.
+* An issue that world map still loading even preview page closed.

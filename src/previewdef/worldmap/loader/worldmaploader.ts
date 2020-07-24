@@ -42,10 +42,19 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         this.shouldReloadValue = false;
 
         const provinceMap = await this.defaultMapLoader.load(session);
+        session.throwIfCancelled();
+
         const stateMap = await this.statesLoader.load(session);
+        session.throwIfCancelled();
+
         const countries = await this.countriesLoader.load(session);
+        session.throwIfCancelled();
+
         const strategicRegions = await this.strategicRegionsLoader.load(session);
+        session.throwIfCancelled();
+
         const supplyAreas = await this.supplyAreasLoader.load(session);
+        session.throwIfCancelled();
 
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
