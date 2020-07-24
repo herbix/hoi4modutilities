@@ -4,7 +4,15 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.6] - 2020/07/17 - Latest
+## [0.3.7] - 2020/07/25 - Latest
+
+### Fixed
+* Add check before all usage of fsPath to make sure error message popup.
+* An issue that D01 not treated as country scope.
+* An issue that `dynamic_tags` is treated as a country in country tags files.
+* An issue that world map still loading even preview page closed.
+
+## [0.3.6] - 2020/07/17
 
 ### Changed
 * Add telemetry to record usage and exceptions to provide better experience. It can be disabled with VSCode telemetry settings.
