@@ -78,6 +78,35 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
     };
 }
 
+export function enableZoom(contentElement: HTMLDivElement): void {
+    let scale = getState().scale || 1;
+    contentElement.style.transform = `scale(${scale})`;
+    contentElement.style.transformOrigin = '0 0';
+    window.addEventListener('wheel', function(e) {
+        e.preventDefault();
+        const oldScale = scale;
+
+        if (e.deltaY > 0) {
+            scale = Math.max(0.2, scale - 0.2);
+        } else if (e.deltaY < 0) {
+            scale = Math.min(1, scale + 0.2);
+        }
+
+        const oldScrollX = window.pageXOffset;
+        const oldScrollY = window.pageYOffset;
+        
+        contentElement.style.transform = `scale(${scale})`;
+        setState({ scale });
+
+        const nextScrollX = e.pageX * scale / oldScale - (e.pageX - oldScrollX);
+        const nextScrollY = (e.pageY - 40) * scale / oldScale + 40 - (e.pageY - oldScrollY);
+        window.scrollTo(nextScrollX, nextScrollY);
+    },
+    {
+        passive: false
+    });
+}
+
 function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
     vscode.postMessage({
         command: 'navigate',

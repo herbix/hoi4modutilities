@@ -6,7 +6,7 @@ import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable } from '../../util/styletable';
 import { HOIEvent } from './schema';
-import { flatten, repeat } from 'lodash';
+import { flatten, repeat, max } from 'lodash';
 import { arrayToMap } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
@@ -41,7 +41,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
 
 const leftPaddingBase = 50;
 const topPaddingBase = 50;
-const xGridSize = 130;
+const xGridSize = 150;
 const yGridSize = 130;
 
 async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
@@ -57,8 +57,8 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
     const graph = eventsToGraph(eventIdToEvent, eventsLoaderResult.mainNamespaces);
-    const idToScopeMap: Record<string, string> = {};
-    const gridBoxItems = graphToGridBoxItems(graph, idToScopeMap, eventsLoaderResult.localizationDict);
+    const idToContentMap: Record<string, string> = {};
+    const gridBoxItems = graphToGridBoxItems(graph, idToContentMap, eventsLoaderResult.localizationDict, styleTable);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -66,21 +66,7 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     }, {
         styleTable,
         items: arrayToMap(gridBoxItems, 'id'),
-        onRenderItem: async (item) => {
-            const eventId = item.id.substr(0, item.id.indexOf(':'));
-            const event = eventIdToEvent[eventId];
-            const content = `${idToScopeMap[item.id]}\n${eventId}\n${event ? (eventsLoaderResult.localizationDict[event.title] ?? event.title) : '[N/A]'}`;
-            return `<div><div
-                class="${styleTable.style('event-item', () => `
-                    text-align: center;
-                    padding-top: 10px;
-                    overflow: hidden;
-                    text-overflow: ellipsis;`)}"
-                title='${htmlEscape(content.trim())}'
-            >
-                ${content.replace(/\n/g, '<br/>')}
-            </div></div>`;
-        },
+        onRenderItem: async (item) => idToContentMap[item.id],
         cornerPosition: 0.5,
     });
 
@@ -92,28 +78,26 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
             left:0;
             top:0;
         `)}"></div>
-        <div>
+        <div id="eventtreecontent">
             ${renderedGridBox}
         </div>
     `;
-
-    /*
-    return `<div class="${styleTable.style('content', () => 'font-family: Consolas, monospace;')}">
-        ${JSON.stringify(graph, undefined, 2).replace(/ /g, '&nbsp;').replace(/\n/g, '<br/>')}
-    </div>`;
-    */
 }
 
 interface EventNode {
     event: HOIEvent;
-    children: EventEdge[];
+    children: (EventEdge | OptionNode)[];
     relatedNamespace: string[];
+}
+
+interface OptionNode {
+    optionName: string;
+    children: EventEdge[];
 }
 
 interface EventEdge {
     toScope: string;
     toNode: EventNode | string;
-    optionName: string;
 }
 
 function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces: string[]): EventNode[] {
@@ -159,6 +143,15 @@ function eventToNode(
     };
 
     for (const option of [event.immediate, ...event.options]) {
+        const isImmediate = !option.name;
+        const optionNode: OptionNode = {
+            optionName: option.name ?? ':immediate',
+            children: [],
+        };
+        if (!isImmediate) {
+            eventNode.children.push(optionNode);
+        }
+
         for (const childEvent of option.childEvents) {
             const childEventItem = eventIdToEvent[childEvent.eventName];
             eventHasParent[childEvent.eventName] = true;
@@ -174,12 +167,17 @@ function eventToNode(
                     }
                 });
             }
-            
-            eventNode.children.push({
+
+            const eventEdge: EventEdge = {
                 toNode,
                 toScope: childEvent.scopeName,
-                optionName: option.name ?? 'immediate',
-            });
+            };
+            
+            if (isImmediate) {
+                eventNode.children.push(eventEdge);
+            } else {
+                optionNode.children.push(eventEdge);
+            }
         }
     }
 
@@ -187,49 +185,79 @@ function eventToNode(
     return eventNode;
 }
 
-function graphToGridBoxItems(graph: EventNode[], idToScopeMap: Record<string, string>, localizationDict: Record<string, string>): GridBoxItem[] {
-    const result: GridBoxItem[] = [];
-    let xOffset = 0;
+interface GridBoxTree {
+    id: string;
+    items: GridBoxItem[];
+    starts: number[];
+    ends: number[];
+}
+
+function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, string>, localizationDict: Record<string, string>, styleTable: StyleTable): GridBoxItem[] {
+    const resultTree: GridBoxTree = {
+        id: '',
+        items: [],
+        starts: [],
+        ends: [],
+    };
+
     for (const eventNode of graph) {
         const scopeContext: ScopeContext = {
             fromStack: [],
             currentScopeName: 'EVENT_TARGET',
         };
-        const [id, width] = eventNodeToGridBoxItems(eventNode, result, xOffset, 0, idToScopeMap, scopeContext, localizationDict);
-        idToScopeMap[id] = '\n\n' + scopeContext.currentScopeName;
-        xOffset += width;
+        const tree = eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, localizationDict, styleTable, { id: 0 });
+        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode.event, localizationDict, styleTable);
+        appendChildToTree(resultTree, tree);
     }
 
-    return result;
+    return resultTree.items;
 }
 
 function eventNodeToGridBoxItems(
-    node: EventNode | string,
-    items: GridBoxItem[],
-    xOffset: number,
-    yOffset: number,
-    idToScopeMap: Record<string, string>,
+    node: EventNode | OptionNode | string,
+    idToContentMap: Record<string, string>,
     scopeContext: ScopeContext,
     localizationDict: Record<string, string>,
-): [string, number] {
-    let width = 0;
+    styleTable: StyleTable,
+    idContainer: { id: number },
+): GridBoxTree {
+    const result: GridBoxTree = {
+        id: '',
+        items: [],
+        starts: [],
+        ends: [],
+    };
     const childIds: string[] = [];
     if (typeof node === 'object') {
         for (const child of node.children) {
-            const toNode = child.toNode;
-            const nextScopeContext = nextScope(scopeContext, child.toScope);
-            const [id, childWidth] = eventNodeToGridBoxItems(toNode, items, xOffset + width, yOffset + 1, idToScopeMap, nextScopeContext, localizationDict);
-            idToScopeMap[id] = (localizationDict[child.optionName] ?? child.optionName) + '\n\n' + nextScopeContext.currentScopeName;
-            width += childWidth;
-            childIds.push(id);
+            let tree: GridBoxTree;
+            if ('toNode' in child) {
+                const toNode = child.toNode;
+                const nextScopeContext = nextScope(scopeContext, child.toScope);
+                tree = eventNodeToGridBoxItems(toNode, idToContentMap, nextScopeContext, localizationDict, styleTable, idContainer);
+            } else {
+                tree = eventNodeToGridBoxItems(child, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
+            }
+            childIds.push(tree.id);
+            appendChildToTree(result, tree, 1);
         }
     }
 
-    const id = (typeof node === 'object' ? node.event.id : node) + ':' + items.length;
-    items.push({
+    const isOption = typeof node === 'object' && !('event' in node);
+    const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
+    if (isOption) {
+        idToContentMap[id] = makeOptionNode((node as OptionNode).optionName, localizationDict, styleTable);
+    } else {
+        idToContentMap[id] = makeEventNode(scopeContext.currentScopeName,
+            typeof node === 'object' ? (node as EventNode).event : node, localizationDict, styleTable);
+    }
+
+    const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
+    result.id = id;
+    result.items.push({
         id,
-        gridX: xOffset + Math.max(0, Math.floor((width - 1) / 2)),
-        gridY: yOffset,
+        gridX: x,
+        gridY: 0,
         connections: childIds.map<GridBoxConnection>(id => ({
             target: id,
             targetType: 'child',
@@ -237,7 +265,20 @@ function eventNodeToGridBoxItems(
         })),
     });
 
-    return [id, Math.max(1, width)];
+    if (result.starts.length === 0) {
+        result.starts.push(0);
+        result.ends.push(1);
+    } else {
+        if (result.starts[0] === result.ends[0]) {
+            result.starts[0] = x;
+            result.ends[0] = x + 1;
+        } else {
+            result.starts[0] = Math.min(x, result.starts[0] ?? 0);
+            result.ends[0] = Math.max(x + 1, result.ends[0] ?? 0);
+        }
+    }
+
+    return result;
 }
 
 interface ScopeContext {
@@ -264,4 +305,79 @@ function nextScope(scopeContext: ScopeContext, toScope: string): ScopeContext {
         fromStack: [ ...scopeContext.fromStack, scopeContext.currentScopeName ],
         currentScopeName,
     };
+}
+
+function makeEventNode(scope: string, event: HOIEvent | string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+    const eventId = typeof event === 'object' ? event.id : event;
+    const title = `Scope: ${scope}\nEvent ID: ${eventId}\nTitle: ${typeof event === 'object' ? (localizationDict[event.title] ?? event.title) : '[N/A]'}`;
+    const content = `${scope}\n${eventId}\n${typeof event === 'object' ? (localizationDict[event.title] ?? event.title) : '[N/A]'}`;
+    return `<div class=${styleTable.style('event-item-outer', () => `
+        height: 100%;
+        width: 100%;
+        position: relative;
+    `)}>
+        <div
+            class="
+            ${styleTable.style('event-item', () => `
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: calc(100% - 10px);
+                text-align: center;
+                padding: 10px 0;
+                margin: 0 5px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                background: rgba(255, 80, 80, 0.5);`)}"
+            title='${htmlEscape(title.trim())}'
+        >
+            ${content.replace(/\n/g, '<br/>')}
+        </div>
+    </div>`;
+}
+
+function makeOptionNode(option: string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+    const content = `${localizationDict[option] ?? option}`;
+        return `<div class=${styleTable.style('event-option-outer', () => `
+        height: 100%;
+        width: 100%;
+        position: relative;
+    `)}>
+        <div
+            class="${styleTable.style('event-option', () => `
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                width: calc(100% - 10px);
+                text-align: center;
+                padding: 10px 0;
+                margin: 0 5px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                background: rgba(80, 80, 255, 0.5);`)}"
+            title='${htmlEscape(content.trim())}'
+        >
+            ${content.replace(/\n/g, '<br/>')}
+        </div>
+    </div>`;
+}
+
+function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset: number = 0): void {
+    const xOffset = max(nextChild.starts.map((s, i) => {
+        const e = target.ends[i + yOffset] ?? 0;
+        return e - s;
+    })) ?? 0;
+    target.items.push(...nextChild.items.map(v => ({
+        ...v,
+        gridX: v.gridX + xOffset,
+        gridY: v.gridY + yOffset,
+    })));
+    nextChild.ends.forEach((e, i) => {
+        if (target.starts[i + yOffset] === target.ends[i + yOffset]) {
+            target.starts[i + yOffset] = nextChild.starts[i] ?? 0;
+        } else {
+            target.starts[i + yOffset] = target.starts[i + yOffset] ?? 0;
+        }
+        target.ends[i + yOffset] = e + xOffset;
+    });
 }

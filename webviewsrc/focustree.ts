@@ -1,4 +1,4 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun } from "./util/common";
+import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBox, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridbox";
@@ -274,33 +274,8 @@ window.addEventListener('load', tryRun(async function() {
     }
 
     // Zoom
-    let scale = getState().scale || 1;
     const contentElement = document.getElementById('focustreecontent') as HTMLDivElement;
-    contentElement.style.transform = `scale(${scale})`;
-    contentElement.style.transformOrigin = '0 0';
-    window.addEventListener('wheel', function(e) {
-        e.preventDefault();
-        const oldScale = scale;
-
-        if (e.deltaY > 0) {
-            scale = Math.max(0.2, scale - 0.2);
-        } else if (e.deltaY < 0) {
-            scale = Math.min(1, scale + 0.2);
-        }
-
-        const oldScrollX = window.pageXOffset;
-        const oldScrollY = window.pageYOffset;
-        
-        contentElement.style.transform = `scale(${scale})`;
-        setState({ scale });
-
-        const nextScrollX = e.pageX * scale / oldScale - (e.pageX - oldScrollX);
-        const nextScrollY = (e.pageY - 40) * scale / oldScale + 40 - (e.pageY - oldScrollY);
-        window.scrollTo(nextScrollX, nextScrollY);
-    },
-    {
-        passive: false
-    });
+    enableZoom(contentElement);
 
     // Toggle warnings
     const showWarnings = document.getElementById('show-warnings') as HTMLButtonElement;
