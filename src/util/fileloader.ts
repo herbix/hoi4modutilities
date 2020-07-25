@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as AdmZip from 'adm-zip';
 import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readdirfiles, isFile, isDirectory } from './nodecommon';
+import { getLastModified, getLastModifiedAsync, readdirfiles, isFile, isDirectory, isSamePath } from './nodecommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
@@ -22,10 +22,6 @@ const dlcZipCache = new Cache({
     expireWhenChange: getLastModified,
     life: 15 * 1000,
 });
-
-function isSamePath(a: string, b: string): boolean {
-    return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
-}
 
 export async function getFilePathFromMod(relativePath: string): Promise<string | undefined> {
     let absolutePath: string | undefined = undefined;
@@ -60,6 +56,10 @@ export async function getFilePathFromMod(relativePath: string): Promise<string |
 export async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     let absolutePath: string | undefined = await getFilePathFromMod(relativePath);
+
+    if (absolutePath !== undefined) {
+        return absolutePath;
+    }
 
     const replacePaths = await getReplacePaths();
     if (replacePaths) {

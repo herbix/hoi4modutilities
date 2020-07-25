@@ -1,6 +1,7 @@
 import { DDSHeader, HEADER_LENGTH_INT, DDS_MAGIC, DDPF_FOURCC, DDSCAPS2_CUBEMAP, DDSCAPS2_VOLUME, DDSCAPS_MIPMAP, DDSCAPS2_CUBEMAP_POSITIVEX, DDSCAPS2_CUBEMAP_NEGATIVEX, DDSCAPS2_CUBEMAP_POSITIVEY, DDSCAPS2_CUBEMAP_NEGATIVEY, DDSCAPS2_CUBEMAP_POSITIVEZ, DDSCAPS2_CUBEMAP_NEGATIVEZ, DDSHeaderDXT10, FOURCC_DX10, HEADER_DXT10_LENGTH_INT, DDS_RESOURCE_MISC_TEXTURECUBE, ResourceDimension } from './typedef';
 import { Surface } from './surface';
 import { convertPixelFormat, PixelFormat, getImageSizeInBytes } from './pixelformat';
+import { UserError } from '../../common';
 
 export class DDS {
     private constructor(
@@ -15,7 +16,7 @@ export class DDS {
     public static parse(buffer: ArrayBuffer): DDS {
         const headerArray = new Int32Array(buffer, 0, HEADER_LENGTH_INT);
         if (headerArray[0] !== DDS_MAGIC) {
-            throw new Error('Invalid magic number in DDS header');
+            throw new UserError('Invalid magic number in DDS header');
         }
 
         const header = extractHeader(headerArray);
@@ -35,7 +36,7 @@ export class DDS {
         const volume = !!(header.dwCaps2 & DDSCAPS2_VOLUME);
 
         if (cubeMap && volume) {
-            throw new Error('Cannot set DDSCAPS2_CUBEMAP and DDSCAPS2_VOLUME at same time');
+            throw new UserError('Cannot set DDSCAPS2_CUBEMAP and DDSCAPS2_VOLUME at same time');
         }
         
         const mipmapCount = (header.dwCaps & DDSCAPS_MIPMAP) ? header.dwMipMapCount - 1 : 0;
@@ -68,7 +69,7 @@ export class DDS {
         const volume = dxt10Header.resourceDimension === ResourceDimension.DDS_DIMENSION_TEXTURE3D;
 
         if (cubeMap && volume) {
-            throw new Error('Cannot set DDS_RESOURCE_MISC_TEXTURECUBE and use DDS_DIMENSION_TEXTURE3D at same time');
+            throw new UserError('Cannot set DDS_RESOURCE_MISC_TEXTURECUBE and use DDS_DIMENSION_TEXTURE3D at same time');
         }
 
         const mipmapCount = (header.dwCaps & DDSCAPS_MIPMAP) ? header.dwMipMapCount - 1 : 0;
@@ -179,7 +180,7 @@ function pushSurface(surfaces: Surface[], buffer: ArrayBuffer, offset: number, w
     const length = getImageSizeInBytes(pixelFormat, width, height);
     const end = offset + length;
     if (end > buffer.byteLength) {
-        throw new Error(`Image ${name} (start ${offset}, end ${end}) exceeds buffer size ${buffer.byteLength}`);
+        throw new UserError(`Image ${name} (start ${offset}, end ${end}) exceeds buffer size ${buffer.byteLength}`);
     }
 
     surfaces.push(new Surface(buffer, offset, length, name, width, height, pixelFormat));

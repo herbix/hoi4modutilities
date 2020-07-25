@@ -5,7 +5,7 @@ import { getDocumentByUri, isFileScheme } from '../util/vsccommon';
 import { isEqual } from 'lodash';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
 import * as path from 'path';
-import { mkdirs, writeFile } from '../util/nodecommon';
+import { mkdirs, writeFile, isSamePath } from '../util/nodecommon';
 import { sendByMessage } from '../util/telemetry';
 
 export abstract class PreviewBase {
@@ -84,12 +84,13 @@ export abstract class PreviewBase {
 
         this.cachedDependencies = dependencies;
     }
-    
+
     protected async openOrCopyFile(file: string, start: number | undefined, end: number | undefined): Promise<void> {
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && d.uri.fsPath === filePathInMod.replace('opened?', ''))
-                ?? await vscode.workspace.openTextDocument(filePathInMod);
+            const filePathInModWithoutOpened = filePathInMod.replace('opened?', '');
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, filePathInModWithoutOpened))
+                ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
                 viewColumn: vscode.ViewColumn.One,

@@ -62,3 +62,7 @@ function fsFuncWrapperWithOption<T, O>(func: (path: fs.PathLike, options: O, cb:
 function fsFuncWrapperWrite<T>(func: (path: fs.PathLike, data: T, cb: (err: NodeJS.ErrnoException | null) => void) => void, path: fs.PathLike, data: T): Promise<void> {
     return new Promise<void>((resolve, reject) => func(path, data, (err) => err ? reject(err) : resolve()));
 }
+
+export function isSamePath(a: string, b: string): boolean {
+    return path.resolve(a).toLowerCase() === path.resolve(b).toLowerCase();
+}

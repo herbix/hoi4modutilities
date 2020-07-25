@@ -119,7 +119,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
             png = PNG.sync.read(buffer);
 
         } else {
-            throw new Error('Unsupported image type: ' + relativePath);
+            throw new UserError('Unsupported image type: ' + relativePath);
         }
 
         return new Image(pngBuffer, png.width, png.height, realPath);

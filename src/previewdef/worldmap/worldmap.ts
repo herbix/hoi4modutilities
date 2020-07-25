@@ -6,7 +6,7 @@ import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
-import { writeFile, matchPathEnd, mkdirs } from '../../util/nodecommon';
+import { writeFile, matchPathEnd, mkdirs, isSamePath } from '../../util/nodecommon';
 import { slice, debounceByInput } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
@@ -156,8 +156,9 @@ export class WorldMap {
         // TODO duplicate with previewbase.ts
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && d.uri.fsPath === filePathInMod.replace('opened?', ''))
-                ?? await vscode.workspace.openTextDocument(filePathInMod);
+            const filePathInModWithoutOpened = filePathInMod.replace('opened?', '');
+            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, filePathInModWithoutOpened))
+                ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
             });
