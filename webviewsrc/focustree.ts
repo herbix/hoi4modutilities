@@ -275,7 +275,7 @@ window.addEventListener('load', tryRun(async function() {
 
     // Zoom
     const contentElement = document.getElementById('focustreecontent') as HTMLDivElement;
-    enableZoom(contentElement);
+    enableZoom(contentElement, 0, 40);
 
     // Toggle warnings
     const showWarnings = document.getElementById('show-warnings') as HTMLButtonElement;

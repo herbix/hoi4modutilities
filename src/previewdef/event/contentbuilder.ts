@@ -5,12 +5,13 @@ import { debug } from '../../util/debug';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable } from '../../util/styletable';
-import { HOIEvent } from './schema';
+import { HOIEvent, HOIEventType } from './schema';
 import { flatten, repeat, max } from 'lodash';
 import { arrayToMap } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
+import { Token } from '../../hoiformat/hoiparser';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const styleTable = new StyleTable();
@@ -34,6 +35,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             'eventtree.js',
         ],
         [
+            'codicon.css',
             styleTable
         ],
     );
@@ -41,7 +43,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
 
 const leftPaddingBase = 50;
 const topPaddingBase = 50;
-const xGridSize = 150;
+const xGridSize = 180;
 const yGridSize = 130;
 
 async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
@@ -78,7 +80,10 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
             left:0;
             top:0;
         `)}"></div>
-        <div id="eventtreecontent">
+        <div id="eventtreecontent" class="${styleTable.oneTimeStyle('eventtreecontent', () => `
+            left: -20px;
+            position: relative;
+        `)}">
             ${renderedGridBox}
         </div>
     `;
@@ -86,13 +91,17 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
 
 interface EventNode {
     event: HOIEvent;
+    loop: boolean;
     children: (EventEdge | OptionNode)[];
     relatedNamespace: string[];
+    token: Token | undefined;
 }
 
 interface OptionNode {
     optionName: string;
     children: EventEdge[];
+    file: string;
+    token: Token | undefined;
 }
 
 interface EventEdge {
@@ -107,7 +116,6 @@ function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces:
 
     for (const event of Object.values(eventIdToEvent)) {
         const node = eventToNode(event, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
-        eventIdToNode[event.id] = node;
     }
     
     const result: EventNode[] = [];
@@ -140,13 +148,18 @@ function eventToNode(
         event,
         children: [],
         relatedNamespace: [event.namespace],
+        token: event.token,
+        loop: false,
     };
+    eventIdToNode[event.id] = eventNode;
 
     for (const option of [event.immediate, ...event.options]) {
         const isImmediate = !option.name;
         const optionNode: OptionNode = {
             optionName: option.name ?? ':immediate',
             children: [],
+            file: event.file,
+            token: option.token,
         };
         if (!isImmediate) {
             eventNode.children.push(optionNode);
@@ -157,8 +170,15 @@ function eventToNode(
             eventHasParent[childEvent.eventName] = true;
 
             let toNode: EventNode | string;
-            if (!childEventItem || eventStack.includes(childEventItem)) {
+            if (!childEventItem) {
                 toNode = childEvent.eventName;
+            } else if (eventStack.includes(childEventItem)) {
+                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
+                toNode = {
+                    ...toNode,
+                    children: [],
+                    loop: true,
+                };
             } else {
                 toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
                 toNode.relatedNamespace.forEach(n => {
@@ -199,14 +219,15 @@ function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, 
         starts: [],
         ends: [],
     };
+    const idContainer = { id: 0 };
 
     for (const eventNode of graph) {
         const scopeContext: ScopeContext = {
             fromStack: [],
             currentScopeName: 'EVENT_TARGET',
         };
-        const tree = eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, localizationDict, styleTable, { id: 0 });
-        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode.event, localizationDict, styleTable);
+        const tree = eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
+        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode, localizationDict, styleTable);
         appendChildToTree(resultTree, tree);
     }
 
@@ -239,17 +260,17 @@ function eventNodeToGridBoxItems(
                 tree = eventNodeToGridBoxItems(child, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
             }
             childIds.push(tree.id);
-            appendChildToTree(result, tree, 1);
+            appendChildToTree(result, tree, 1, true);
         }
     }
 
     const isOption = typeof node === 'object' && !('event' in node);
     const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
     if (isOption) {
-        idToContentMap[id] = makeOptionNode((node as OptionNode).optionName, localizationDict, styleTable);
+        idToContentMap[id] = makeOptionNode(node as OptionNode, localizationDict, styleTable);
     } else {
         idToContentMap[id] = makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? (node as EventNode).event : node, localizationDict, styleTable);
+            typeof node === 'object' ? node as EventNode : node, localizationDict, styleTable);
     }
 
     const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
@@ -307,66 +328,133 @@ function nextScope(scopeContext: ScopeContext, toScope: string): ScopeContext {
     };
 }
 
-function makeEventNode(scope: string, event: HOIEvent | string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
-    const eventId = typeof event === 'object' ? event.id : event;
-    const title = `Scope: ${scope}\nEvent ID: ${eventId}\nTitle: ${typeof event === 'object' ? (localizationDict[event.title] ?? event.title) : '[N/A]'}`;
-    const content = `${scope}\n${eventId}\n${typeof event === 'object' ? (localizationDict[event.title] ?? event.title) : '[N/A]'}`;
-    return `<div class=${styleTable.style('event-item-outer', () => `
+const typeToIcon: Record<HOIEventType, string> = {
+    state: 'location',
+    country: 'globe',
+    unit_leader: 'account',
+    news: 'note',
+    operative_leader: 'device-camera',
+};
+
+function makeEventNode(scope: string, eventNode: EventNode | string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+    if (typeof eventNode === 'object') {
+        const event = eventNode.event;
+        const eventId = event.id;
+        const title = `${event.type}_event\nEvent ID: ${eventId}\n` +
+            `${event.major ? 'Major\n' : ''}${event.hidden ? 'Hidden\n' : ''}${event.fire_only_once ? 'Fire only once\n' : ''}` +
+            `${event.isTriggeredOnly ? 'Is triggered only' : `Mean time to happen (base): ${event.meanTimeToHappenBase}`}\n` +
+            `Scope: ${scope}\nTitle: ${localizationDict[event.title] ?? event.title}`;
+        const content = `<p class="
+                ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
+                ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
+            ">
+                ${makeIcon(typeToIcon[event.type], styleTable)}
+                ${event.hidden ? makeIcon('eye-closed', styleTable) : ''}
+                ${event.fire_only_once ? makeIcon('sync-ignored', styleTable) : ''}
+                ${event.major ? makeIcon('broadcast', styleTable) : ''}
+                ${eventId}
+                ${eventNode.loop ? makeIcon('refresh', styleTable) : ''}
+                ${!event.isTriggeredOnly ?
+                    `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} days` :
+                    ''}
+                <br/>
+                ${makeIcon('symbol-namespace', styleTable)} ${scope}
+            </p>
+            <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
+                ${localizationDict[event.title] ?? event.title}
+            </p>`;
+    
+        return makeNode(
+            content,
+            title,
+            styleTable,
+            [
+                styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
+                styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
+            ].join(' '),
+            event.token,
+            event.file);
+
+    } else {
+        const eventId = eventNode;
+        const title = `Event ID: ${eventId}\nScope: ${scope}`;
+        const content = `<p class="
+                ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
+                ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
+            ">
+                ${makeIcon('question', styleTable)}
+                ${eventId}
+                <br/>
+                ${makeIcon('symbol-namespace', styleTable)} ${scope}
+            </p>`;
+    
+        return makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'));
+    }
+}
+
+function makeIcon(type: string, styleTable: StyleTable): string {
+    return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
+}
+
+function makeOptionNode(option: OptionNode, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+    const content = `${localizationDict[option.optionName] ?? option.optionName}`;
+    return makeNode(
+        content,
+        content,
+        styleTable,
+        styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;'),
+        option.token,
+        option.file);
+}
+
+function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, navigateToken?: Token, navigateFile?: string) {
+    const hasNavigator = !!navigateToken;
+    return `<div class=${styleTable.style('event-node-outer', () => `
         height: 100%;
         width: 100%;
         position: relative;
     `)}>
         <div
-            class="
-            ${styleTable.style('event-item', () => `
+            class="${styleTable.style('event-node', () => `
                 position: absolute;
                 top: 50%;
                 transform: translateY(-50%);
                 width: calc(100% - 10px);
                 text-align: center;
-                padding: 10px 0;
+                padding: 10px 5px;
                 margin: 0 5px;
                 overflow: hidden;
-                text-overflow: ellipsis;
-                background: rgba(255, 80, 80, 0.5);`)}"
+                box-sizing: border-box;
+                text-overflow: ellipsis;`)}
+                ${extraClasses}
+                ${hasNavigator ? 'navigator' : ''}"
             title='${htmlEscape(title.trim())}'
+            ${hasNavigator ? `
+                start="${navigateToken?.start}"
+                end="${navigateToken?.end}"
+                ${navigateFile ? `file="${navigateFile}"` : ''}
+                `
+            : ''}
         >
-            ${content.replace(/\n/g, '<br/>')}
+            ${content}
         </div>
     </div>`;
 }
 
-function makeOptionNode(option: string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
-    const content = `${localizationDict[option] ?? option}`;
-        return `<div class=${styleTable.style('event-option-outer', () => `
-        height: 100%;
-        width: 100%;
-        position: relative;
-    `)}>
-        <div
-            class="${styleTable.style('event-option', () => `
-                position: absolute;
-                top: 50%;
-                transform: translateY(-50%);
-                width: calc(100% - 10px);
-                text-align: center;
-                padding: 10px 0;
-                margin: 0 5px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                background: rgba(80, 80, 255, 0.5);`)}"
-            title='${htmlEscape(content.trim())}'
-        >
-            ${content.replace(/\n/g, '<br/>')}
-        </div>
-    </div>`;
-}
-
-function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset: number = 0): void {
-    const xOffset = max(nextChild.starts.map((s, i) => {
-        const e = target.ends[i + yOffset] ?? 0;
-        return e - s;
-    })) ?? 0;
+function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset: number = 0, canBeLessThanZero: boolean = false): void {
+    const minXOffset = target.starts.length === 0 ? -(max(nextChild.starts) ?? 0) : -Infinity;
+    const xOffset = Math.max(minXOffset, max(nextChild.starts.map((s, i) => {
+        if (!canBeLessThanZero) {
+            const e = target.ends[i + yOffset] ?? 0;
+            return e - s;
+        } else {
+            if (target.ends[i + yOffset] === target.starts[i + yOffset]) {
+                return -Infinity;
+            } else {
+                return target.ends[i + yOffset] - s;
+            }
+        }
+    })) ?? 0);
     target.items.push(...nextChild.items.map(v => ({
         ...v,
         gridX: v.gridX + xOffset,
@@ -374,7 +462,7 @@ function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset:
     })));
     nextChild.ends.forEach((e, i) => {
         if (target.starts[i + yOffset] === target.ends[i + yOffset]) {
-            target.starts[i + yOffset] = nextChild.starts[i] ?? 0;
+            target.starts[i + yOffset] = (nextChild.starts[i] ?? 0) + xOffset;
         } else {
             target.starts[i + yOffset] = target.starts[i + yOffset] ?? 0;
         }

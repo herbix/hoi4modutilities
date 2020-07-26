@@ -78,7 +78,7 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
     };
 }
 
-export function enableZoom(contentElement: HTMLDivElement): void {
+export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOffset: number): void {
     let scale = getState().scale || 1;
     contentElement.style.transform = `scale(${scale})`;
     contentElement.style.transformOrigin = '0 0';
@@ -98,8 +98,8 @@ export function enableZoom(contentElement: HTMLDivElement): void {
         contentElement.style.transform = `scale(${scale})`;
         setState({ scale });
 
-        const nextScrollX = e.pageX * scale / oldScale - (e.pageX - oldScrollX);
-        const nextScrollY = (e.pageY - 40) * scale / oldScale + 40 - (e.pageY - oldScrollY);
+        const nextScrollX = (e.pageX - xOffset) * scale / oldScale + xOffset - (e.pageX - oldScrollX);
+        const nextScrollY = (e.pageY - yOffset) * scale / oldScale + yOffset - (e.pageY - oldScrollY);
         window.scrollTo(nextScrollX, nextScrollY);
     },
     {

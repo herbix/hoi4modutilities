@@ -21,7 +21,6 @@ function canPreviewEvent(document: vscode.TextDocument) {
     return /(country_event|news_event|unit_leader_event|state_event|operative_leader_event)\s*=\s*{/.exec(text)?.index;
 }
 
-const eventsGFX = 'interface/eventpictures.gfx';
 class EventPreview extends PreviewBase {
     private eventsLoader: EventsLoader;
     private content: string | undefined;

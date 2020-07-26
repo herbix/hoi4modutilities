@@ -1,4 +1,4 @@
-import { Node } from "../../hoiformat/hoiparser";
+import { Node, Token } from "../../hoiformat/hoiparser";
 import { Raw, SchemaDef, convertNodeToJson, HOIPartial, isSymbolNode } from "../../hoiformat/schema";
 import { extractEffectValue, EffectItem, EffectComplexExpr } from "../../hoiformat/effect";
 import { Scope, ScopeType } from "../../hoiformat/scope";
@@ -18,12 +18,19 @@ export interface HOIEvent {
     picture: string;
     immediate: HOIEventOption;
     options: HOIEventOption[];
+    token: Token | undefined;
+    major: boolean;
+    hidden: boolean;
+    isTriggeredOnly: boolean;
+    meanTimeToHappenBase: number;
+    fire_only_once: boolean;
     file: string;
 }
 
 export interface HOIEventOption {
     name?: string;
     childEvents: ChildEvent[];
+    token: Token | undefined;
 }
 
 export interface ChildEvent {
@@ -45,8 +52,21 @@ interface EventDef {
     title: string;
     picture: string;
     is_triggered_only: boolean;
+    major: boolean;
+    hidden: boolean;
+    mean_time_to_happen: MeanTimeToHappen;
+    fire_only_once: boolean;
     option: Raw[];
     immediate: Raw;
+    _token: Token;
+}
+
+interface MeanTimeToHappen {
+    base: number;
+    factor: number;
+    days: number;
+    months: number;
+    years: number;
 }
 
 interface EventOptionDef {
@@ -54,6 +74,7 @@ interface EventOptionDef {
     trigger: Raw;
     ai_chance: string;
     original_recipient_only: boolean;
+    _token: Token;
 }
 
 const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
@@ -68,6 +89,16 @@ const eventDefSchema: SchemaDef<EventDef> = {
     title: "string",
     picture: "string",
     is_triggered_only: "boolean",
+    major: "boolean",
+    hidden: "boolean",
+    fire_only_once: "boolean",
+    mean_time_to_happen: {
+        base: "number",
+        factor: "number",
+        days: "number",
+        months: "number",
+        years: "number",
+    },
     option: {
         _innerType: "raw",
         _type: "array",
@@ -166,6 +197,15 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     const immediate = convertOption(eventDef.immediate, scope);
     const options = eventDef.option.map(o => convertOption(o, scope));
 
+    const meanTimeToHappenBase = eventDef.mean_time_to_happen ?
+        Math.floor(eventDef.mean_time_to_happen.factor ??
+            eventDef.mean_time_to_happen.base ??
+            eventDef.mean_time_to_happen.days ??
+            (eventDef.mean_time_to_happen.months ? Math.floor(eventDef.mean_time_to_happen.months) * 30 : undefined) ??
+            (eventDef.mean_time_to_happen.years ? Math.floor(eventDef.mean_time_to_happen.years) * 365 : undefined) ??
+            1) :
+        1;
+
     return {
         type,
         id,
@@ -175,12 +215,18 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
         file,
         immediate,
         options,
+        token: eventDef._token,
+        major: !!eventDef.major,
+        hidden: !!eventDef.hidden,
+        isTriggeredOnly: !!eventDef.is_triggered_only,
+        meanTimeToHappenBase,
+        fire_only_once: !!eventDef.fire_only_once,
     };
 }
 
 function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption {
     if (optionRaw === undefined) {
-        return { childEvents: [] };
+        return { childEvents: [], token: undefined };
     }
 
     const optionDef = convertNodeToJson<EventOptionDef>(optionRaw._raw, eventOptionDefSchema);
@@ -196,6 +242,7 @@ function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption
     return {
         name,
         childEvents: uniqueChildEvents,
+        token: optionDef._token,
     };
 }
 
