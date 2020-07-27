@@ -17,7 +17,9 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         if (error || (content === undefined)) {
             throw error;
         }
-        
+
+        debug('load ' + this.file);
+
         const eventsDependencies = dependencies.filter(d => d.type === 'event').map(d => d.path);
         const eventsDepFiles = (await Promise.all(eventsDependencies.map(async (dep) => {
             try {
@@ -45,6 +47,8 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
 
         const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'));
         Object.assign(localizationDict, ...eventsDepFiles.map(f => f.result.localizationDict));
+
+        debug('load ' + this.file + ' done');
 
         return {
             result: {

@@ -1,5 +1,5 @@
 import { ContentLoader, Dependency, LoaderSession, LoadResultOD } from "./loader";
-import * as yaml from 'js-yaml';
+import { parseYaml } from "../yaml";
 
 export class YamlLoader extends ContentLoader<any> {
     constructor(file: string, contentProvider?: () => Promise<string>) {
@@ -12,16 +12,8 @@ export class YamlLoader extends ContentLoader<any> {
             throw error;
         }
 
-        try {
-            return {
-                result: yaml.safeLoad(content)
-            };
-        } catch (e) {
-            content = content.replace(/:\d+\s*"/g, ": \"").replace(/(?<=")((?:\\.|[^\\"\n\r])*?)"(?!\s*$)/gm, "$1\\\"");
-        }
-
         return {
-            result: yaml.safeLoad(content)
+            result: parseYaml(content),
         };
     }
 

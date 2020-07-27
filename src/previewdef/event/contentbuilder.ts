@@ -44,7 +44,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
 const leftPaddingBase = 50;
 const topPaddingBase = 50;
 const xGridSize = 180;
-const yGridSize = 130;
+const yGridSize = 150;
 
 async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
     const leftPadding = leftPaddingBase;
@@ -336,26 +336,34 @@ const typeToIcon: Record<HOIEventType, string> = {
     operative_leader: 'device-camera',
 };
 
+const flagIcons: string[] = [
+    'eye-closed',
+    'sync-ignored',
+    'broadcast',
+    'refresh',
+];
+
 function makeEventNode(scope: string, eventNode: EventNode | string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
     if (typeof eventNode === 'object') {
         const event = eventNode.event;
         const eventId = event.id;
-        const title = `${event.type}_event\nEvent ID: ${eventId}\n` +
-            `${event.major ? 'Major\n' : ''}${event.hidden ? 'Hidden\n' : ''}${event.fire_only_once ? 'Fire only once\n' : ''}` +
-            `${event.isTriggeredOnly ? 'Is triggered only' : `Mean time to happen (base): ${event.meanTimeToHappenBase}`}\n` +
-            `Scope: ${scope}\nTitle: ${localizationDict[event.title] ?? event.title}`;
+        const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
+            (event.major ? localize('eventtree.major', 'Major') + '\n' : '') +
+            (event.hidden ? localize('eventtree.hidden', 'Hidden') + '\n' : '') +
+            (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
+            (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
+                `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizationDict[event.title] ?? event.title}`;
+        const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
             ">
                 ${makeIcon(typeToIcon[event.type], styleTable)}
-                ${event.hidden ? makeIcon('eye-closed', styleTable) : ''}
-                ${event.fire_only_once ? makeIcon('sync-ignored', styleTable) : ''}
-                ${event.major ? makeIcon('broadcast', styleTable) : ''}
                 ${eventId}
-                ${eventNode.loop ? makeIcon('refresh', styleTable) : ''}
+                ${flags.includes(true) ? '<br/>' + flags.map((v, i) => v ? makeIcon(flagIcons[i], styleTable) : '').join(' ') : ''}
                 ${!event.isTriggeredOnly ?
-                    `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} days` :
+                    `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}` :
                     ''}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
@@ -377,7 +385,7 @@ function makeEventNode(scope: string, eventNode: EventNode | string, localizatio
 
     } else {
         const eventId = eventNode;
-        const title = `Event ID: ${eventId}\nScope: ${scope}`;
+        const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}

@@ -19,6 +19,9 @@ export abstract class PreviewBase {
 
     private disposed = false;
 
+    // Trying to keep reference to document to avoid document to be disposed before close
+    public document: vscode.TextDocument | undefined;
+
     constructor(
         readonly uri: vscode.Uri,
         readonly panel: vscode.WebviewPanel,
@@ -26,7 +29,7 @@ export abstract class PreviewBase {
         this.registerEvents(panel);
     }
 
-    public async onDocumentChange(document: vscode.TextDocument, changedDocument?: vscode.TextDocument): Promise<void> {
+    public async onDocumentChange(document: vscode.TextDocument): Promise<void> {
         try {
             this.panel.webview.html = await this.getContent(document);
         } catch(e) {
@@ -47,18 +50,18 @@ export abstract class PreviewBase {
 
     public async initializePanelContent(document: vscode.TextDocument): Promise<void> {
         this.panel.webview.html = localize('loading', 'Loading...');
-        await this.onDocumentChange(document, document);
+        await this.onDocumentChange(document);
     }
 
     protected registerEvents(panel: vscode.WebviewPanel): void {
         panel.webview.onDidReceiveMessage((msg) => {
             if (msg.command === 'navigate' && msg.start !== undefined) {
-                const document = getDocumentByUri(this.uri);
-                if (document === undefined) {
-                    return;
-                }
-
                 if (msg.file === undefined) {
+                    const document = getDocumentByUri(this.uri);
+                    if (document === undefined) {
+                        return;
+                    }
+
                     vscode.window.showTextDocument(this.uri, {
                         selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
                         viewColumn: vscode.ViewColumn.One

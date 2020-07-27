@@ -8,12 +8,14 @@ export namespace ViewType {
 
 export namespace ContextName {
     export const ShouldHideHoi4Preview = 'shouldHideHoi4Preview';
-    export const Hoi4MUInDev = 'Hoi4MUInDev';
+    export const Hoi4PreviewType = 'hoi4PreviewType';
+    export const Hoi4MUInDev = 'hoi4MUInDev';
 }
 
 export namespace Commands {
     export const Preview = 'hoi4modutilities.preview';
     export const PreviewWorld = 'hoi4modutilities.previewworld';
+    export const ScanReferences = 'hoi4modutilities.scanreferences';
     export const SelectModFile = 'hoi4modutilities.selectmodfile';
 }
 

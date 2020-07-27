@@ -84,6 +84,12 @@
 				"category": "%hoi4modutilities.category%"
 			},
 			{
+				"command": "hoi4modutilities.scanreferences",
+				"title": "%hoi4modutilities.scanreferences.title%",
+				"icon": "$(references)",
+				"category": "%hoi4modutilities.category%"
+			},
+			{
 				"command": "hoi4modutilities.test",
 				"title": "HOI4 test",
 				"category": "%hoi4modutilities.category%"
@@ -116,12 +122,31 @@
 					"command": "hoi4modutilities.preview",
 					"when": "editorLangId == paradox && !shouldHideHoi4Preview",
 					"group": "navigation"
+				},
+				{
+					"command": "hoi4modutilities.scanreferences",
+					"when": "editorLangId == plaintext && hoi4PreviewType == event",
+					"group": "navigation"
+				},
+				{
+					"command": "hoi4modutilities.scanreferences",
+					"when": "editorLangId == hoi4 && hoi4PreviewType == event",
+					"group": "navigation"
+				},
+				{
+					"command": "hoi4modutilities.scanreferences",
+					"when": "editorLangId == paradox && hoi4PreviewType == event",
+					"group": "navigation"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "hoi4modutilities.preview",
 					"when": "!shouldHideHoi4Preview"
+				},
+				{
+					"command": "hoi4modutilities.scanreferences",
+					"when": "hoi4PreviewType == event"
 				},
 				{
 					"command": "hoi4modutilities.selectmodfile"
@@ -131,7 +156,7 @@
 				},
 				{
 					"command": "hoi4modutilities.test",
-					"when": "Hoi4MUInDev"
+					"when": "hoi4MUInDev"
 				}
 			]
 		}

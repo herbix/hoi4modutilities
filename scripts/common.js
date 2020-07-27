@@ -1,11 +1,11 @@
 const path = require('path');
-const common = require("../out/src/util/nodecommon");
+const fs = require("fs");
 
 async function recursiveFindAll(input, result = []) {
-    const files = await common.readdir(input);
+    const files = await fs.promises.readdir(input);
     await Promise.all(files.map(async (file) => {
         const fullPath = path.join(input, file);
-        const stat = await common.lstat(fullPath);
+        const stat = await fs.promises.lstat(fullPath);
         if (stat.isDirectory()) {
             await recursiveFindAll(fullPath, result);
         } else {

@@ -1,5 +1,5 @@
 const { recursiveFindAll } = require("./common");
-const common = require("../out/src/util/nodecommon");
+const fs = require("fs");
 const readline = require('readline');
 
 var rl = readline.createInterface({
@@ -22,7 +22,7 @@ function unescapeString(str) {
 }
 
 async function findLocalizeInside(file, localize, type) {
-    const content = (await common.readFile(file)).toString();
+    const content = (await fs.promises.readFile(file)).toString();
     const regex = type !== 'html' ? new RegExp("(?<!\\w)(" + localize + "\\s*\\()" + strRegex + "\\s*,\\s*" + strRegex + "\\s*[,)]", "g") :
         /(%)(.*?)(?:\|(.*?))?%/g;
 
@@ -43,7 +43,7 @@ async function findLocalizeInside(file, localize, type) {
 
 async function replaceInFile(file, matches) {
     matches.sort((a, b) => a[3] - b[3]);
-    const content = (await common.readFile(file)).toString();
+    const content = (await fs.promises.readFile(file)).toString();
     let resultContent = "";
     let lastEnd = 0;
 
@@ -62,7 +62,7 @@ async function replaceInFile(file, matches) {
 
     resultContent += content.substr(lastEnd);
 
-    await common.writeFile(file, resultContent);
+    await fs.promises.writeFile(file, resultContent);
 }
 
 (async () => {
@@ -131,7 +131,7 @@ async function replaceInFile(file, matches) {
     }
 
     const resultStr = JSON.stringify(result, Object.keys(result).sort(), 4);
-    await common.writeFile('./scripts/i18n.json', resultStr);
+    await fs.promises.writeFile('./scripts/i18n.json', resultStr);
 
     console.log(resultStr);
 

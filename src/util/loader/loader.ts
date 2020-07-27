@@ -3,6 +3,8 @@ import * as path from 'path';;
 import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
 import { error } from '../debug';
 import { UserError } from '../common';
+import { Dependency, getDependenciesFromText } from '../dependency';
+export { Dependency } from '../dependency';
 
 export class LoaderSession {
     private loadedLoader: Set<Loader<unknown, unknown>> = new Set();
@@ -272,33 +274,12 @@ export function mergeInLoadResult<K extends string, T extends { [k in K]: any[] 
     return loadResults.reduce<T[K]>((p, c) => (p as any).concat(c[key]), [] as unknown as T[K]);
 }
 
-export type Dependency = { type: string, path: string };
-function getDependenciesFromText(text: string): Dependency[] {
-    const dependencies: Dependency[] = [];
-    const regex = /^\s*#!(?<type>.*?):(?<path>.*\.(?<ext>.*?))$/gm;
-    let match = regex.exec(text);
-    while (match) {
-        const type = match.groups?.type;
-        const ext = match.groups?.ext!;
-        if (type && (type === ext || ext === 'txt' || ext === 'yml')) {   
-            const path = match.groups?.path!;
-            const pathValue = path.trim().replace(/\/\/+|\\+/g, '/');
-
-            dependencies.push({ type, path: pathValue });
-        }
-
-        match = regex.exec(text);
-    }
-
-    return dependencies;
-}
-
 function checkLoaderSessionLoadingFile(session: LoaderSession, file: string) {
     const length = session.loadingLoader.length - 1;
     for (let i = 0; i < length; i++) {
         const loader = session.loadingLoader[i];
         if ('file' in loader && (loader as any).file === file) {
-            throw new Error('Circular dependency when loading file. Loading loaders: ' + session.loadingLoader);
+            throw new UserError('Circular dependency when loading file. Loading loaders: ' + session.loadingLoader);
         }
     }
 }
