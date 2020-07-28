@@ -4,7 +4,6 @@ import { GuiFile, guiFileSchema } from "../../hoiformat/gui";
 import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
-import { error as debugError } from "../../util/debug";
 import { flatMap, chain } from "lodash";
 
 export interface TechnologyTreeLoaderResult {
@@ -33,17 +32,7 @@ export class TechnologyTreeLoader extends ContentLoader<TechnologyTreeLoaderResu
         const technologyTrees = getTechnologyTrees(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)));
         const guiDependencies = [guiFilePath, ...dependencies.filter(d => d.type === 'gui').map(d => d.path)];
         
-        const guiDepFiles = (await Promise.all(guiDependencies.map(async (dep) => {
-            try {
-                const guiDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, GuiFileLoader), GuiFileLoader);
-                return await guiDepLoader.load(session);
-            } catch (e) {
-                debugError(e);
-                return undefined;
-            }
-        }))).filter((v): v is LoadResult<GuiFileLoaderResult> => !!v);
-        
-        this.loaderDependencies.flip();
+        const guiDepFiles = await this.loaderDependencies.loadMultiple(guiDependencies, session, GuiFileLoader);
 
         return {
             result: {
@@ -69,17 +58,7 @@ export class GuiFileLoader extends ContentLoader<GuiFileLoaderResult> {
         const gfxDependencies = [this.file.replace(/.gui$/, '.gfx'), ...dependencies.filter(d => d.type === 'gfx').map(d => d.path)];
         const guiDependencies = dependencies.filter(d => d.type === 'gui').map(d => d.path);
 
-        const guiDepFiles = (await Promise.all(guiDependencies.map(async (dep) => {
-            try {
-                const guiDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, GuiFileLoader), GuiFileLoader);
-                return await guiDepLoader.load(session);
-            } catch (e) {
-                debugError(e);
-                return undefined;
-            }
-        }))).filter((v): v is LoadResult<GuiFileLoaderResult> => !!v);
-
-        this.loaderDependencies.flip();
+        const guiDepFiles = await this.loaderDependencies.loadMultiple(guiDependencies, session, GuiFileLoader);
 
         const guiFile = convertNodeToJson<GuiFile>(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), guiFileSchema);
 

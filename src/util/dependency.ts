@@ -50,9 +50,9 @@ async function scanReferences(): Promise<void> {
     try {
         if (contextContainer.contextValue[ContextName.Hoi4PreviewType] === 'event') {
             await scanReferencesForEvents(editor);
-            vscode.window.showInformationMessage(localize('TODO', 'Scan reference done.'));
+            vscode.window.showInformationMessage(localize('scanref.done', 'Scan reference done.'));
         } else {
-            vscode.window.showErrorMessage(localize('TODO', 'Unsupported file type to scan references.'));
+            vscode.window.showErrorMessage(localize('scanref.unsupportedtype', 'Unsupported file type to scan references.'));
         }
     } catch (e) {
         error(e);

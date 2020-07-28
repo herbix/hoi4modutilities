@@ -14,31 +14,35 @@ import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gu
 import { Token } from '../../hoiformat/hoiparser';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
-    const styleTable = new StyleTable();
-    let baseContent = '';
+    const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
     
     try {
         const session = new LoaderSession(false);
         const loadResult = await loader.load(session);
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
-        debug('Loader session focus tree', loadedLoaders);
-        baseContent = await renderEvents(loadResult.result, styleTable);
+        debug('Loader session event tree', loadedLoaders);
+
+        const styleTable = new StyleTable();
+        const baseContent = await renderEvents(loadResult.result, styleTable);
+
+        return html(
+            webview,
+            baseContent,
+            [
+                { content: `window.previewedFileUri = "${uri.toString()}";` },
+                'eventtree.js',
+            ],
+            [
+                'codicon.css',
+                styleTable
+            ],
+        );
+
     } catch (e) {
-        baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
 
-    return html(
-        webview,
-        baseContent,
-        [
-            { content: `window.previewedFileUri = "${uri.toString()}";` },
-            'eventtree.js',
-        ],
-        [
-            'codicon.css',
-            styleTable
-        ],
-    );
 }
 
 const leftPaddingBase = 50;

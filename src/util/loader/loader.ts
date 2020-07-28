@@ -78,6 +78,7 @@ export abstract class Loader<T, E = {}> {
             session.setLoaded(this);
             session.loadingLoader.push(this);
             try {
+                this.beforeLoadImpl(session);
                 if (this.loadingPromise === undefined) {
                     this.cachedValue = await (this.loadingPromise = this.loadImpl(session));
                 } else {
@@ -113,6 +114,9 @@ export abstract class Loader<T, E = {}> {
         return Promise.resolve(true);
     }
 
+    protected beforeLoadImpl(session: LoaderSession): void {
+    }
+
     protected async fireOnProgressEvent(progress: string): Promise<void> {
         this.onProgressEmitter.fire(progress);
         await new Promise(resolve => setTimeout(resolve, 0));
@@ -132,9 +136,11 @@ export abstract class FileLoader<T, E={}> extends Loader<T, E> {
         return await hoiFileExpiryToken(this.file) !== this.expiryToken;
     }
 
-    protected async loadImpl(session: LoaderSession): Promise<LoadResult<T, E>> {
+    protected beforeLoadImpl(session: LoaderSession): void {
         checkLoaderSessionLoadingFile(session, this.file);
+    }
 
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<T, E>> {
         this.expiryToken = await hoiFileExpiryToken(this.file);
 
         const result = await this.loadFromFile(session);
@@ -212,9 +218,11 @@ export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
         }
     }
 
-    protected async loadImpl(session: LoaderSession): Promise<LoadResult<T, E>> {
+    protected beforeLoadImpl(session: LoaderSession): void {
         checkLoaderSessionLoadingFile(session, this.file);
+    }
 
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<T, E>> {
         const dependencies: string[] = [this.file];
 
         if (this.contentProvider === undefined) {
@@ -234,6 +242,7 @@ export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
 
         const dependenciesFromText = this.readDependency && content ? getDependenciesFromText(content) : [];
         const result = await this.postLoad(content, dependenciesFromText, errorValue, session);
+        this.loaderDependencies.flip();
 
         return {
             ...result,
@@ -244,6 +253,7 @@ export abstract class ContentLoader<T, E={}> extends Loader<T, E> {
     protected abstract postLoad(content: string | undefined, dependencies: Dependency[], error: any, session: LoaderSession): Promise<LoadResultOD<T, E>>;
 }
 
+type PromiseValue<P> = P extends Promise<infer K> ? K : P;
 class LoaderDependencies {
     public current: Record<string, Loader<unknown, unknown>> = {};
     private newValues: Record<string, Loader<unknown, unknown>> = {};
@@ -262,6 +272,32 @@ class LoaderDependencies {
             this.newValues[key] = newLoader;
             return newLoader;
         }
+    }
+
+    public async loadMultiple<R extends Loader<unknown, unknown>>(dependencies: string[], session: LoaderSession, type: { new (...args: any[]): R }) {
+        type Result = PromiseValue<ReturnType<R['load']>>;
+        const loadDep = async (dep: string) => {
+            try {
+                const eventsDepLoader = this.getOrCreate(dep, k => session.createOrGetCachedLoader(k, type), type);
+                return (await eventsDepLoader.load(session)) as PromiseValue<ReturnType<R['load']>>;
+            } catch (e) {
+                error(e);
+                return undefined;
+            }
+        };
+
+        // Don't use parallel loading because A -> B -> C will cause dead lock.
+        //                                    |--> C -> B
+        // return (await Promise.all(dependencies.map(loadDep))).filter((v): v is Result => !!v);
+        const result: Result[] = [];
+        for (const dependency of dependencies) {
+            const value = await loadDep(dependency);
+            if (value !== undefined) {
+                result.push(value);
+            }
+        }
+
+        return result;
     }
 
     public flip() {

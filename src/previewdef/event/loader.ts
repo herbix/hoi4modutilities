@@ -1,6 +1,6 @@
 import { HOIEvents, getEvents } from "./schema";
 import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
-import { error as debugError, debug } from "../../util/debug";
+import { debug } from "../../util/debug";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten } from "lodash";
@@ -21,29 +21,13 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         debug('load ' + this.file);
 
         const eventsDependencies = dependencies.filter(d => d.type === 'event').map(d => d.path);
-        const eventsDepFiles = (await Promise.all(eventsDependencies.map(async (dep) => {
-            try {
-                const eventsDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, EventsLoader), EventsLoader);
-                return await eventsDepLoader.load(session);
-            } catch (e) {
-                debugError(e);
-                return undefined;
-            }
-        }))).filter((v): v is LoadResult<EventsLoaderResult> => !!v);
+        const eventsDepFiles = await this.loaderDependencies.loadMultiple(eventsDependencies, session, EventsLoader);
 
         const events = getEvents(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), this.file);
         const mergedEvents = mergeEvents(events, ...eventsDepFiles.map(f => f.result.events));
         
         const localizationDependencies = dependencies.filter(d => d.type.match(/^locali[sz]ation$/) && d.path.endsWith('.yml')).map(d => d.path);
-        const localizationDepFiles = (await Promise.all(localizationDependencies.map(async (dep) => {
-            try {
-                const localizationDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, YamlLoader), YamlLoader);
-                return await localizationDepLoader.load(session);
-            } catch (e) {
-                debugError(e);
-                return undefined;
-            }
-        }))).filter((v): v is LoadResult<any> => !!v);
+        const localizationDepFiles = await this.loaderDependencies.loadMultiple(localizationDependencies, session, YamlLoader);
 
         const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'));
         Object.assign(localizationDict, ...eventsDepFiles.map(f => f.result.localizationDict));

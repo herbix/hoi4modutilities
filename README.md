@@ -6,6 +6,7 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 
 * World map preview
 * Focus tree preview
+* Event tree preview
 * Technology tree preview
 * `.gfx` file preview (sprites used by HOI4 are defined here)
 * `.dds` file preview (images files used by HOI4)
@@ -35,6 +36,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ![Focus tree preview demo](demo/1.gif)
 
+### Event tree preview
+
+![Event tree preview demo](demo/6.gif)
+
 ### Technology tree preview
 
 ![Technology tree preview demo](demo/4.gif)
@@ -56,13 +61,18 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 * GUI of focus tree can't be configured like technology tree.
 * Edge lines on world map not alway fit edge of colors.
+* Event tree preview will duplicate events even they are same event if they are from different option.
 
 ## Release Notes
 
-### [0.3.7]
+## [0.4.0]
 
-### Fixed
-* Add check before all usage of fsPath to make sure error message popup.
-* An issue that D01 not treated as country scope.
-* An issue that `dynamic_tags` is treated as a country in country tags files.
-* An issue that world map still loading even preview page closed.
+### Added
+* Event tree preview
+  * Show relationship of events.
+  * Easily navigate from preview to event definition.
+  * Resolve and show event target scope and other informations.
+  * Localization support.
+  * Zoom event tree using wheel.
+* Command
+  * `HOI4 Mod Utilities: Scan References` to automatically discover references of current script.

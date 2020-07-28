@@ -8,7 +8,7 @@ import { getRelativePathInWorkspace } from '../../util/vsccommon';
 
 function canPreviewFocusTree(document: vscode.TextDocument) {
     const uri = document.uri;
-    if (matchPathEnd(uri.toString(), ['common', 'national_focus', '*'])) {
+    if (matchPathEnd(uri.toString().toLowerCase(), ['common', 'national_focus', '*']) && uri.path.toLowerCase().endsWith('.txt')) {
         return 0;
     }
 

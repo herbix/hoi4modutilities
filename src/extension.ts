@@ -31,6 +31,8 @@ export function activate(context: vscode.ExtensionContext) {
 
         setVscodeContext(ContextName.Hoi4MUInDev, true);
     }
+    
+    setVscodeContext(ContextName.Hoi4MULoaded, true);
 }
 
 export function deactivate() {}

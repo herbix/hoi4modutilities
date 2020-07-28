@@ -3,7 +3,6 @@ import { FocusTree, getFocusTree } from "./schema";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten, chain } from "lodash";
-import { error as debugError } from "../../util/debug";
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
@@ -19,15 +18,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
         }
         
         const focusTreeDependencies = dependencies.filter(d => d.type === 'focus').map(d => d.path);
-        const focusTreeDepFiles = (await Promise.all(focusTreeDependencies.map(async (dep) => {
-            try {
-                const focusTreeDepLoader = this.loaderDependencies.getOrCreate(dep, k => session.createOrGetCachedLoader(k, FocusTreeLoader), FocusTreeLoader);
-                return await focusTreeDepLoader.load(session);
-            } catch (e) {
-                debugError(e);
-                return undefined;
-            }
-        }))).filter((v): v is LoadResult<FocusTreeLoaderResult> => !!v);
+        const focusTreeDepFiles = await this.loaderDependencies.loadMultiple(focusTreeDependencies, session, FocusTreeLoader);
 
         const sharedFocusTrees = chain(focusTreeDepFiles)
             .flatMap(f => f.result.focusTrees)
