@@ -11,6 +11,7 @@
     "hoi4modutilities.modFile.title": "Working Mod File",
     "hoi4modutilities.modFile.desc": "Path to the working .mod file. This file is used to read replace_path. If not specified, will use first .mod file in first folder of the workspace.",
     "hoi4modutilities.preview.title": "Preview HOI4 file",
-    "hoi4modutilities.previewworld.title": "Preview world map",
+    "hoi4modutilities.previewworld.title": "Preview World Map",
+    "hoi4modutilities.scanreferences.title": "Scan References",
     "hoi4modutilities.selectmodfile.title": "Select Mod File"
 }

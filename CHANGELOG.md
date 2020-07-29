@@ -4,7 +4,19 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.3.7] - 2020/07/25 - Latest
+## [0.4.0] - 2020/07/29 - Latest
+
+### Added
+* Event tree preview
+  * Show relationship of events.
+  * Easily navigate from preview to event definition.
+  * Resolve and show event target scope and other informations.
+  * Localization support.
+  * Zoom event tree using wheel.
+* Command
+  * `HOI4 Mod Utilities: Scan References` to automatically discover references of current script.
+
+## [0.3.7] - 2020/07/25
 
 ### Fixed
 * Add check before all usage of fsPath to make sure error message popup.
