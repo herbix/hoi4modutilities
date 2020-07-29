@@ -7,13 +7,14 @@ import { worldMap } from './previewdef/worldmap';
 import { ViewType, ContextName } from './constants';
 import { registerTelemetryReporter, sendEvent } from './util/telemetry';
 import { registerScanReferencesCommand } from './util/dependency';
+import { locale } from './util/i18n';
 
 export function activate(context: vscode.ExtensionContext) {
     // Must register this first because other component may use it.
     context.subscriptions.push(registerContextContainer(context));
     context.subscriptions.push(registerTelemetryReporter());
 
-    sendEvent('extension.activate');
+    sendEvent('extension.activate', { locale });
 
     context.subscriptions.push(previewManager.register());
     context.subscriptions.push(registerModFile());

@@ -2,7 +2,7 @@ import { error } from "./debug";
 import { __table } from '../../i18n/en';
 
 const config = JSON.parse(process.env.VSCODE_NLS_CONFIG || '{}');
-const locale: string = config.locale ?? 'en';
+export const locale: string = config.locale ?? 'en';
 const splitLocale = locale.split('-');
 
 const table: Record<string, string> = tryLoadTable(locale) ??

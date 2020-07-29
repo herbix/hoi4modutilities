@@ -76,3 +76,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
   * Zoom event tree using wheel.
 * Command
   * `HOI4 Mod Utilities: Scan References` to automatically discover references of current script.
+
+## Contribute
+* If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
+* If you want to contribute translation, feel free to create pull request to this [Github repo](https://github.com/herbix/hoi4modutilities). All localization related files are under `i18n` folder.

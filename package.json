@@ -113,16 +113,6 @@
 					"command": "hoi4modutilities.preview",
 					"when": "editorLangId =~ /^(:?plaintext|hoi4|paradox)$/ && !shouldHideHoi4Preview",
 					"group": "navigation"
-				},
-				{
-					"command": "hoi4modutilities.scanreferences",
-					"when": "editorLangId =~ /^(:?plaintext|hoi4|paradox)$/ && !hoi4MULoaded",
-					"group": "navigation"
-				},
-				{
-					"command": "hoi4modutilities.scanreferences",
-					"when": "editorLangId =~ /^(:?plaintext|hoi4|paradox)$/ && hoi4PreviewType == event",
-					"group": "navigation"
 				}
 			],
 			"commandPalette": [
