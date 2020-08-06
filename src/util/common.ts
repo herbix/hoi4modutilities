@@ -25,7 +25,7 @@ export function arrayToMap<T, K extends keyof T, V = T>(items: T[], key: K, valu
     for (const item of items) {
         const id = item[key];
         if (typeof id !== 'string' && typeof id !== 'number') {
-            throw new Error('key of arrayToMap must be a string type');
+            throw new Error('key of arrayToMap must be a string or number type');
         }
         result[id] = valueSelector ? valueSelector(item) : item;
     }

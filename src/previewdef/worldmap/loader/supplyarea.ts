@@ -9,6 +9,7 @@ import { DefaultMapLoader } from "./provincemap";
 import { StatesLoader } from "./states";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
+import { UserError } from '../../../util/common';
 
 interface SupplyAreaFile {
     supply_area: SupplyAreaDefinition[];
@@ -146,7 +147,7 @@ function sortSupplyAreas(supplyAreas: SupplyAreaNoRegion[], warnings: WorldMapWa
     const { sorted, badId } = sortItems(
         supplyAreas,
         10000,
-        (maxId) => { throw new Error(localize('worldmap.warnings.supplyareaidtoolarge', 'Max supply area ID is too large: {0}.', maxId)); },
+        (maxId) => { throw new UserError(localize('worldmap.warnings.supplyareaidtoolarge', 'Max supply area ID is too large: {0}.', maxId)); },
         (newSupplyArea, existingSupplyArea, badId) => warnings.push({
                 source: [{ type: 'supplyarea', id: badId }],
                 relatedFiles: [newSupplyArea.file, existingSupplyArea.file],

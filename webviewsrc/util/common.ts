@@ -2,6 +2,7 @@ import { enableDropdowns } from './dropdown';
 import { enableCheckboxes } from './checkbox';
 import { vscode } from './vscode';
 import { sendException } from './telemetry';
+export { arrayToMap } from '../../src/util/common';
 
 export function setState(obj: Record<string, any>): void {
     const state = getState();
@@ -18,20 +19,6 @@ export function scrollToState() {
     const xOffset = state.xOffset || 0;
     const yOffset = state.yOffset || 0;
     window.scroll(xOffset, yOffset);
-}
-
-export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
-    T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never {
-    const result: Record<string | number, T> = {};
-    for (const item of items) {
-        const id = item[key];
-        if (typeof id !== 'string' && typeof id !== 'number') {
-            throw new Error('key of arrayToMap must be a string or number type');
-        }
-        result[id] = item;
-    }
-
-    return result as any;
 }
 
 export function copyArray<T>(src: T[], dst: T[], offsetSrc: number, offsetDst: number, length: number): void {

@@ -4,7 +4,7 @@ import { SchemaDef, Enum } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson, readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { parseBmp, BMP } from "../../../util/image/bmp/bmpparser";
 import { TerrainDefinitionLoader } from "./terrain";
-import { arrayToMap } from "../../../util/common";
+import { arrayToMap, UserError } from "../../../util/common";
 import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader/loader";
 
@@ -180,7 +180,7 @@ async function loadDefaultMap(progressReporter: ProgressReporter): Promise<Defau
     const defaultMap = await readFileFromModOrHOI4AsJson<DefaultMap>('map/default.map', defaultMapSchema);
     (['definitions', 'provinces', 'adjacencies', 'continent'] as (keyof DefaultMap)[]).forEach(field => {
         if (!defaultMap[field]) {
-            throw new Error(localize('worldmap.error.fieldnotindefaultmap', 'Field "{0}" is not found in default.map.', field));
+            throw new UserError(localize('worldmap.error.fieldnotindefaultmap', 'Field "{0}" is not found in default.map.', field));
         }
     });
 
@@ -361,7 +361,7 @@ function sortProvinces(provinces: Province[], badProvinceId: number, relatedFile
     const { sorted, badId } = sortItems(
         provinces,
         200000,
-        (maxId) => { throw new Error(localize('worldmap.error.provinceidtoolarge', 'Max province id is too large: {0}.', maxId)); },
+        (maxId) => { throw new UserError(localize('worldmap.error.provinceidtoolarge', 'Max province id is too large: {0}.', maxId)); },
         (newProvince, existingProvince, badId) => warnings.push({
                 source: [{ type: 'province', id: badId, color: existingProvince.color }],
                 relatedFiles,

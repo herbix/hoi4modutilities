@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { localize } from '../../util/i18n';
 import { Technology, TechnologyTree, TechnologyFolder } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap } from '../../util/common';
+import { arrayToMap, UserError } from '../../util/common';
 import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
@@ -61,7 +61,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     const containerWindowTypes = flatMap(guiTypes, t => t.containerwindowtype);
     const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
     if (!techTreeView) {
-        throw new Error(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
+        throw new UserError(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
     }
 
     const gfxFiles = loadResult.gfxFiles;

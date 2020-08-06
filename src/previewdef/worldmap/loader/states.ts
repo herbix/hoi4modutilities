@@ -4,7 +4,7 @@ import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
 import { Token } from "../../../hoiformat/hoiparser";
-import { arrayToMap } from "../../../util/common";
+import { arrayToMap, UserError } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
 import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader/loader";
@@ -266,7 +266,7 @@ function sortStates(states: StateNoBoundingBox[], warnings: WorldMapWarning[]): 
     const { sorted, badId } = sortItems(
         states,
         10000,
-        (maxId) => { throw new Error(localize('worldmap.warnings.stateidtoolarge', 'Max state id is too large: {0}', maxId)); },
+        (maxId) => { throw new UserError(localize('worldmap.warnings.stateidtoolarge', 'Max state id is too large: {0}', maxId)); },
         (newState, existingState, badId) => warnings.push({
                 source: [{ type: 'state', id: badId }],
                 relatedFiles: [newState.file, existingState.file],

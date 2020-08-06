@@ -1,4 +1,5 @@
 import { DDSPixelFormat, DDSHeaderDXT10, DDPF_FOURCC, FOURCC_DX10, FOURCC_DXT1, FOURCC_DXT2, FOURCC_DXT3, FOURCC_DXT4, FOURCC_DXT5, DDPF_RGB, DDPF_ALPHA_CHANNEL, DDPF_LUMINANCE, DDPF_ALPHA, DDPF_YUV, DxgiFormat } from "./typedef";
+import { UserError } from '../../common';
 
 export const PIXEL_VALUE_TYPE_SIGNED = 0x1;
 export const PIXEL_VALUE_TYPE_NORM = 0x2;
@@ -70,7 +71,7 @@ export function convertPixelFormat(ddsPixelFormat: DDSPixelFormat, dxt10Header?:
     if (ddsPixelFormat.dwFlags & DDPF_FOURCC) {
         if (ddsPixelFormat.dwFourCC === FOURCC_DX10) {
             if (!dxt10Header) {
-                throw new Error("dxt10Header should be provided when fourCC is DX10");
+                throw new UserError("dxt10Header should be provided when fourCC is DX10");
             }
             return convertDx10PixelFormat(dxt10Header);
         } else {
@@ -118,7 +119,7 @@ function convertFourCCPixelFormat(fourCC: number): PixelFormat {
         case FOURCC_DXT3: compressFormat = CompressFormat.bc2; break;
         case FOURCC_DXT4:
         case FOURCC_DXT5: compressFormat = CompressFormat.bc3; break;
-        default: throw new Error("fourCC value not supported: " + fourCC);
+        default: throw new UserError("fourCC value not supported: " + fourCC);
     }
 
     return {
@@ -134,7 +135,7 @@ function convertDx10PixelFormat(dxt10Header: DDSHeaderDXT10): PixelFormat {
         return format;
     }
 
-    throw new Error(`Not supported DXGI format ${DxgiFormat[dxt10Header.dxgiFormat]} (${dxt10Header.dxgiFormat})`);
+    throw new UserError(`Not supported DXGI format ${DxgiFormat[dxt10Header.dxgiFormat]} (${dxt10Header.dxgiFormat})`);
 }
 
 function convertNormalPixelFormat(ddsPixelFormat: DDSPixelFormat) : PixelFormat {
@@ -178,7 +179,7 @@ function convertNormalPixelFormat(ddsPixelFormat: DDSPixelFormat) : PixelFormat 
         }
 
     } else {
-        throw new Error("Unknown pixel format flags " + pfflags);
+        throw new UserError("Unknown pixel format flags " + pfflags);
     }
 
     const bitsPerPixel = ddsPixelFormat.dwRGBBitCount;
@@ -189,7 +190,7 @@ function convertNormalPixelFormat(ddsPixelFormat: DDSPixelFormat) : PixelFormat 
 function getStartLengthByMask(id: number, mask: number): [number, number, number] {
     const start = tail0count(mask);
     if (all1Count((mask >>> start) + 1) > 1) {
-        throw new Error("Not valid mask: " + mask);
+        throw new UserError("Not valid mask: " + mask);
     }
     return [ id, start, all1Count(mask) ];
 }
@@ -237,7 +238,7 @@ function rawPixelFormat(format: ChannelFormat, valueType: PixelValueType, bitsPe
     channelIdStartLength.sort((a, b) => a[1] - b[1]);
     
     if (!channelIdStartLength.every((v, i, a) => i === a.length - 1 ? v[1] + v[2] <= bitsPerPixel : v[1] + v[2] === a[i + 1][1])) {
-        throw new Error("Masks not compact: " + channelIdStartLength.map(v => ((1 << v[1]) - 1) << v[0]));
+        throw new UserError("Masks not compact: " + channelIdStartLength.map(v => ((1 << v[1]) - 1) << v[0]));
     }
 
     return {

@@ -1,3 +1,5 @@
+import { UserError } from '../../common';
+
 export interface BMP {
     width: number;
     height: number;
@@ -9,7 +11,7 @@ export interface BMP {
 export function parseBmp(buffer: ArrayBuffer): BMP {
     const uint8Buffer = new Uint8Array(buffer);
     if (uint8Buffer[0] !== 0x42 || uint8Buffer[1] !== 0x4D) {
-        throw new Error("Bmp not starts with 'BM'");
+        throw new UserError("Bmp not starts with 'BM'");
     }
 
     const bmpHeader = new DataView(buffer, 2, 4 << 2);

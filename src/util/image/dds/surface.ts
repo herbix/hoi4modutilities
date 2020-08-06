@@ -1,4 +1,5 @@
 import { PixelFormat, RawPixelFormat, CompressedPixelFormat, getBlockSize, CompressFormat, PixelValueType, ChannelFormat, pixelFormatToString } from "./pixelformat";
+import { UserError } from '../../common';
 
 export class Surface {
     constructor(
@@ -23,35 +24,35 @@ export class Surface {
     private getFullRgbaFromRawPixels(pixelFormat: RawPixelFormat): Uint8Array {
         const valueType = pixelFormat.valueType;
         if (valueType === PixelValueType.typeless) {
-            throw new Error("Can't get rgba from typeless pixel value");
+            throw new UserError("Can't get rgba from typeless pixel value");
         }
         if (valueType === PixelValueType.shardedexp || valueType === PixelValueType.unorm_srgb) {
-            throw new Error("Pixel value type shardedexp and unorm_srgb are not supported to get rgba");
+            throw new UserError("Pixel value type shardedexp and unorm_srgb are not supported to get rgba");
         }
         if (pixelFormat.channelLengthInPixel.some(l => l > 32)) {
-            throw new Error("Some channel length larger than 32");
+            throw new UserError("Some channel length larger than 32");
         }
         if (valueType === PixelValueType.float) {
             if (pixelFormat.channelLengthInPixel.some(l => l !== 32) || pixelFormat.bitsPerPixel % 32 !== 0) {
-                throw new Error("Pixel value type float supports only 32 bits channel and bitsPerPixel should be multiply of 32");
+                throw new UserError("Pixel value type float supports only 32 bits channel and bitsPerPixel should be multiply of 32");
             }
         }
         
         const channelFormat = pixelFormat.channelFormat;
         const resultPutter = resultPutters[channelFormat];
         if (resultPutter === undefined) {
-            throw new Error(`Channel format ${channelFormat} is not supported to get rgba`);
+            throw new UserError(`Channel format ${channelFormat} is not supported to get rgba`);
         }
 
         const normalizer = pixelNormalizers[valueType];
         if (normalizer === undefined) {
-            throw new Error(`Value type ${valueType} is not supported to get rgba`);
+            throw new UserError(`Value type ${valueType} is not supported to get rgba`);
         }
 
         const length = this.length;
         const channelReader = getChannelReader(this.buffer, this.offset, length, pixelFormat);
         if (channelReader === undefined) {
-            throw new Error(`Unsupported pixel format to read: ${pixelFormatToString(pixelFormat)}`);
+            throw new UserError(`Unsupported pixel format to read: ${pixelFormatToString(pixelFormat)}`);
         }
 
         const readerState = channelReader.readerState;
@@ -117,7 +118,7 @@ export class Surface {
                     decompressDXT5(buffer, i, block);
                     break;
                 default:
-                    throw new Error("Compress format not implemented yet: bc" + pixelFormat.compressFormat);
+                    throw new UserError("Compress format not implemented yet: bc" + pixelFormat.compressFormat);
             }
 
             const xBlock = k % blocksPerLine;

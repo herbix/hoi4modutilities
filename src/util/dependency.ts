@@ -74,6 +74,10 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
             return undefined;
         }
     }))).filter((e): e is HOIEvents => e !== undefined);
+    
+    if (document.isClosed) {
+        return;
+    }
 
     const eventItems = flatMap(events, e => flatten(Object.values(e.eventItemsByNamespace)));
     const includedEventFiles: string[] = [];
@@ -115,6 +119,10 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         searched[event.id] = true;
         searchedEvents.push(event);
     }
+    
+    if (document.isClosed) {
+        return;
+    }
 
     const existingDependency = getDependenciesFromText(document.getText());
     const existingEventDependency = existingDependency.filter(d => d.type === 'event').map(d => d.path.replace(/\\+/g, '/'));
@@ -148,6 +156,10 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         }
         return false;
     }).map(lf => `#!localisation:${lf.file}\n`).join('');
+
+    if (document.isClosed) {
+        return;
+    }
 
     await editor.edit(eb => {
         eb.insert(new vscode.Position(0, 0), moreEventDependencyContent + moreLocalizationDependencyContent);

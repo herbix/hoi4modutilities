@@ -6,7 +6,7 @@ import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { localize } from "../../../util/i18n";
 import { StatesLoader } from "./states";
-import { arrayToMap } from "../../../util/common";
+import { arrayToMap, UserError } from "../../../util/common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
@@ -168,7 +168,7 @@ function sortStrategicRegions(strategicRegions: StrategicRegionNoRegion[], warni
     const { sorted, badId } = sortItems(
         strategicRegions,
         10000,
-        (maxId) => { throw new Error(localize('worldmap.warnings.strategicregionidtoolarge', 'Max strategic region ID is too large: {0}.', maxId)); },
+        (maxId) => { throw new UserError(localize('worldmap.warnings.strategicregionidtoolarge', 'Max strategic region ID is too large: {0}.', maxId)); },
         (newStrategicRegion, existingStrategicRegion, badId) => warnings.push({
                 source: [{ type: 'strategicregion', id: badId }],
                 relatedFiles: [newStrategicRegion.file, existingStrategicRegion.file],
