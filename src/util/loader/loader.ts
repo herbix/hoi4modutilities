@@ -8,7 +8,7 @@ export { Dependency } from '../dependency';
 
 export class LoaderSession {
     private loadedLoader: Set<Loader<unknown, unknown>> = new Set();
-    private shouldLoaderReload: Map<Loader<unknown, unknown>, boolean> = new Map();
+    private shouldLoaderReload: Map<Loader<unknown, unknown>, boolean | 'checking'> = new Map();
     private cachedLoader: Record<string, Loader<unknown, unknown>> = {};
     public loadingLoader: Loader<unknown, unknown>[] = [];
 
@@ -23,11 +23,19 @@ export class LoaderSession {
         this.loadedLoader.add(loader);
     }
 
+    public checkingShouldReload(loader: Loader<unknown, unknown>) {
+        this.shouldLoaderReload.set(loader, 'checking');
+    }
+
     public setShouldReload(loader: Loader<unknown, unknown>) {
         this.shouldLoaderReload.set(loader, true);
     }
 
-    public shouldReload(loader: Loader<unknown, unknown>): boolean {
+    public clearShouldReload(loader: Loader<unknown, unknown>) {
+        this.shouldLoaderReload.delete(loader);
+    }
+
+    public shouldReload(loader: Loader<unknown, unknown>): boolean | 'checking' {
         return this.shouldLoaderReload.get(loader) ?? false;
     }
 
@@ -98,13 +106,20 @@ export abstract class Loader<T, E = {}> {
 
     public async shouldReload(session: LoaderSession): Promise<boolean> {
         // Always return same value for shouldReload in one session
-        if (session.shouldReload(this)) {
+        const cachedShouldReload = session.shouldReload(this);
+        if (cachedShouldReload === 'checking') {
+            return false;
+        }
+        if (cachedShouldReload) {
             return true;
         }
 
+        session.checkingShouldReload(this);
         const result = await this.shouldReloadImpl(session);
         if (result) {
             session.setShouldReload(this);
+        } else {
+            session.clearShouldReload(this);
         }
 
         return result;
@@ -259,7 +274,13 @@ class LoaderDependencies {
     private newValues: Record<string, Loader<unknown, unknown>> = {};
 
     public async shouldReload(session: LoaderSession): Promise<boolean> {
-        return (await Promise.all(Object.values(this.current).map(v => v.shouldReload(session)))).some(v => v);
+        // Don't use Promise.all because it will cause infinite loop when there are circular dependencies.
+        for (const loader of Object.values(this.current)) {
+            if (await loader.shouldReload(session)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public getOrCreate<R extends Loader<unknown, unknown>>(key: string, factory: (key: string) => R, type: { new (...args: any[]): R }): R {

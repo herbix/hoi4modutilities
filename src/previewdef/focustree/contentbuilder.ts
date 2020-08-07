@@ -37,6 +37,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
             [
                 setPreviewFileUriScript,
                 ...jsCodes.map(c => ({ content: c })),
+                'common.js',
                 'focustree.js',
             ],
             [

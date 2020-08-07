@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Fixed
+* Preview doesn't properly update when document has circular dependencies.
+
 ## [0.4.0] - 2020/07/29 - Latest
 
 ### Added

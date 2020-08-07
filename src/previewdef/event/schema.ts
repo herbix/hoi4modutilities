@@ -1,5 +1,5 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { Raw, SchemaDef, convertNodeToJson, HOIPartial, isSymbolNode } from "../../hoiformat/schema";
+import { Raw, SchemaDef, convertNodeToJson, HOIPartial, isSymbolNode, NumberLike } from "../../hoiformat/schema";
 import { extractEffectValue, EffectItem, EffectComplexExpr } from "../../hoiformat/effect";
 import { Scope, ScopeType } from "../../hoiformat/scope";
 import { uniqBy } from "lodash";
@@ -36,6 +36,10 @@ export interface HOIEventOption {
 export interface ChildEvent {
     scopeName: string;
     eventName: string;
+    days: number;
+    hours: number;
+    randomDays: number;
+    randomHours: number;
 }
 
 interface EventFile {
@@ -75,6 +79,15 @@ interface EventOptionDef {
     ai_chance: string;
     original_recipient_only: boolean;
     _token: Token;
+}
+
+interface EventEffectDef {
+    id: string;
+    days: number;
+    hours: number;
+    random: number;
+    random_hours: number;
+    random_days: number;
 }
 
 const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
@@ -131,6 +144,15 @@ const eventFileSchema: SchemaDef<EventFile> = {
         _innerType: eventDefSchema,
         _type: "array",
     },
+};
+
+const eventEffectDefSchema: SchemaDef<EventEffectDef> = {
+    id: "string",
+    days: "number",
+    hours: "number",
+    random: "number",
+    random_hours: "number",
+    random_days: "number",
 };
 
 export function getEvents(node: Node, filePath: string): HOIEvents {
@@ -235,8 +257,8 @@ function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption
     const effect = extractEffectValue(optionRaw._raw.value, scope);
     const childEventItems = findChildEventItems(effect.effect);
     const childEvents = childEventItems
-        .map(item => ({ scopeName: item.scopeName, eventName: getEventId(item.node) }))
-        .filter((e): e is ChildEvent => e.eventName !== undefined);
+        .map(effectItemToChildEvent)
+        .filter((e): e is ChildEvent => e !== undefined);
     const uniqueChildEvents = uniqBy(childEvents, e => e.eventName + '@' + e.scopeName);
 
     return {
@@ -266,15 +288,38 @@ function findChildEventItems(effect: EffectComplexExpr, result: EffectItem[] = [
     return result;
 }
 
-function getEventId(node: Node): string | undefined {
+function effectItemToChildEvent(item: EffectItem): ChildEvent | undefined {
+    const eventEffectDef = getEventEffectDef(item.node);
+    if (!eventEffectDef) {
+        return undefined;
+    }
+
+    return {
+        scopeName: item.scopeName,
+        eventName: eventEffectDef.id,
+        days: eventEffectDef.days,
+        hours: eventEffectDef.hours,
+        randomDays: eventEffectDef.random_days,
+        randomHours: eventEffectDef.random_hours === 0 ? eventEffectDef.random : eventEffectDef.random_hours,
+    };
+}
+
+function getEventEffectDef(node: Node): EventEffectDef | undefined {
     if (isSymbolNode(node.value)) {
-        return node.value.name;
+        return { id: node.value.name, days: 0, hours: 0, random: 0, random_days: 0, random_hours: 0 };
     }
 
     if (typeof node.value === 'string') {
-        return node.value;
+        return { id: node.value, days: 0, hours: 0, random: 0, random_days: 0, random_hours: 0 };
     }
 
-    const callEventDef = convertNodeToJson<{ id: string }>(node, { id: "string" });
-    return callEventDef.id;
+    const callEventDef = convertNodeToJson<EventEffectDef>(node, eventEffectDefSchema);
+    return callEventDef.id === undefined ? undefined : {
+        id: callEventDef.id,
+        days: callEventDef.days ?? 0,
+        hours: callEventDef.hours ?? 0,
+        random: callEventDef.random ?? 0,
+        random_days: callEventDef.random_days ?? 0,
+        random_hours: callEventDef.random_hours ?? 0,
+    };
 }

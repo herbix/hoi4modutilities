@@ -29,7 +29,8 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             webview,
             baseContent,
             [
-                { content: `window.previewedFileUri = "${uri.toString()}";` },
+                setPreviewFileUriScript,
+                'common.js',
                 'eventtree.js',
             ],
             [
@@ -111,6 +112,10 @@ interface OptionNode {
 interface EventEdge {
     toScope: string;
     toNode: EventNode | string;
+    days: number;
+    hours: number;
+    randomDays: number;
+    randomHours: number;
 }
 
 function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces: string[]): EventNode[] {
@@ -195,6 +200,10 @@ function eventToNode(
             const eventEdge: EventEdge = {
                 toNode,
                 toScope: childEvent.scopeName,
+                days: childEvent.days,
+                hours: childEvent.hours,
+                randomDays: childEvent.randomDays,
+                randomHours: childEvent.randomHours,
             };
             
             if (isImmediate) {
@@ -230,8 +239,8 @@ function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, 
             fromStack: [],
             currentScopeName: 'EVENT_TARGET',
         };
-        const tree = eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
-        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode, localizationDict, styleTable);
+        const tree = eventNodeToGridBoxItems(eventNode, undefined, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
+        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode, undefined, localizationDict, styleTable);
         appendChildToTree(resultTree, tree);
     }
 
@@ -240,6 +249,7 @@ function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, 
 
 function eventNodeToGridBoxItems(
     node: EventNode | OptionNode | string,
+    edge: EventEdge | undefined,
     idToContentMap: Record<string, string>,
     scopeContext: ScopeContext,
     localizationDict: Record<string, string>,
@@ -259,9 +269,9 @@ function eventNodeToGridBoxItems(
             if ('toNode' in child) {
                 const toNode = child.toNode;
                 const nextScopeContext = nextScope(scopeContext, child.toScope);
-                tree = eventNodeToGridBoxItems(toNode, idToContentMap, nextScopeContext, localizationDict, styleTable, idContainer);
+                tree = eventNodeToGridBoxItems(toNode, child, idToContentMap, nextScopeContext, localizationDict, styleTable, idContainer);
             } else {
-                tree = eventNodeToGridBoxItems(child, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
+                tree = eventNodeToGridBoxItems(child, undefined, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
             }
             childIds.push(tree.id);
             appendChildToTree(result, tree, 1, true);
@@ -274,7 +284,7 @@ function eventNodeToGridBoxItems(
         idToContentMap[id] = makeOptionNode(node as OptionNode, localizationDict, styleTable);
     } else {
         idToContentMap[id] = makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? node as EventNode : node, localizationDict, styleTable);
+            typeof node === 'object' ? node as EventNode : node, edge, localizationDict, styleTable);
     }
 
     const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
@@ -347,7 +357,7 @@ const flagIcons: string[] = [
     'refresh',
 ];
 
-function makeEventNode(scope: string, eventNode: EventNode | string, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, localizationDict: Record<string, string>, styleTable: StyleTable): string {
     if (typeof eventNode === 'object') {
         const event = eventNode.event;
         const eventId = event.id;
@@ -357,7 +367,13 @@ function makeEventNode(scope: string, eventNode: EventNode | string, localizatio
             (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
             (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
+            (edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ? 
+                localize('TODO', 'Delay: ') + (edge.days > 0 || edge.hours > 0 ?
+                    `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
+                    `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('TODO', 'hour(s)')}`) + '\n' :
+                '') +
             `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizationDict[event.title] ?? event.title}`;
+
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
@@ -371,6 +387,11 @@ function makeEventNode(scope: string, eventNode: EventNode | string, localizatio
                     ''}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
+                ${edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ?
+                    `<br/>${makeIcon('watch', styleTable)} ${edge.days > 0 || edge.hours > 0 ?
+                        `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
+                        `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('TODO', 'hour(s)')}`}`
+                    : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
                 ${localizationDict[event.title] ?? event.title}

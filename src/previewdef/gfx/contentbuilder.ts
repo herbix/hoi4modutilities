@@ -19,6 +19,7 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
             baseContent, 
             [
                 setPreviewFileUriScript,
+                'common.js',
                 'gfx.js',
             ],
             [

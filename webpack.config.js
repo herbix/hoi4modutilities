@@ -45,6 +45,7 @@ const mainConfig = {
     ]
   },
   plugins: [
+    // @ts-ignore
     new CopyWebpackPlugin([
       {
         from: 'i18n/*.nls.*.json',
@@ -97,6 +98,7 @@ const webviewJsConfig = {
     ]
   },
   plugins: [
+    // @ts-ignore
     new CopyWebpackPlugin([
       {
         from: 'resource/**/*',
@@ -114,7 +116,19 @@ const webviewJsConfig = {
         flatten: true
       }
     ])
-  ]
+  ],
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        common: {
+          name: 'common',
+          chunks: 'initial',
+          minChunks: 2,
+          priority: 2,
+        }
+      }
+    }
+  }
 };
 
 module.exports = [ mainConfig, webviewJsConfig ];

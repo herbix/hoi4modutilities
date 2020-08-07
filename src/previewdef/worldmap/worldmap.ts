@@ -60,7 +60,7 @@ export class WorldMap {
         return html(
             webview,
             localizeText(worldmapview),
-            [{ content: i18nTableAsScript() }, 'worldmap.js'],
+            [{ content: i18nTableAsScript() }, 'common.js', 'worldmap.js'],
             ['common.css', 'codicon.css', { content: worldmapviewstyles }]
         );
     }

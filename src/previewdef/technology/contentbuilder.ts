@@ -39,6 +39,7 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
             baseContent,
             [
                 setPreviewFileUriScript,
+                'common.js',
                 'techtree.js',
             ],
             [
@@ -387,6 +388,7 @@ async function getTechnologySprite(sprite: string, technology: Technology, folde
             `GFX_technology_available_item_bg`,
         ] : [
             `GFX_technology_${folder}_small_available_item_bg`,
+            `GFX_technology_small_available_item_bg`,
             `GFX_technology_${folder}_available_item_bg`,
             `GFX_technology_available_item_bg`,
         ];
