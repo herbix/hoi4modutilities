@@ -1,0 +1,183 @@
+{
+	"name": "hoi4modutilities",
+	"displayName": "%hoi4modutilities.displayName%",
+	"description": "Utilities for Heart of Iron IV mods developers",
+	"version": "0.4.1",
+	"author": "Chaofan Yang",
+	"publisher": "Chaofan",
+	"icon": "icon.png",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/herbix/hoi4modutilities"
+	},
+	"engines": {
+		"vscode": "^1.44.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"mod",
+		"paradox",
+		"hoi",
+		"Heart of Iron"
+	],
+	"activationEvents": [
+		"onCommand:hoi4modutilities.preview",
+		"onCommand:hoi4modutilities.previewworld",
+		"onCommand:hoi4modutilities.scanreferences",
+		"onCommand:hoi4modutilities.selectmodfile",
+		"onCustomEditor:hoi4modutilities.dds",
+		"onWebviewPanel:hoi4ftpreview",
+		"onWebviewPanel:hoi4worldmappreview"
+	],
+	"main": "./dist/extension.js",
+	"contributes": {
+		"configuration": [
+			{
+				"title": "%hoi4modutilities.displayName%",
+				"properties": {
+					"hoi4ModUtilities.installPath": {
+						"title": "%hoi4modutilities.installPath.title%",
+						"type": "string",
+						"default": "",
+						"description": "%hoi4modutilities.installPath.desc%"
+					},
+					"hoi4ModUtilities.loadDlcContents": {
+						"title": "%hoi4modutilities.loadDlcContents.title%",
+						"type": "boolean",
+						"default": false,
+						"description": "%hoi4modutilities.loadDlcContents.desc%"
+					},
+					"hoi4ModUtilities.modFile": {
+						"title": "%hoi4modutilities.modFile.title%",
+						"type": "string",
+						"default": "",
+						"description": "%hoi4modutilities.modFile.desc%"
+					},
+					"hoi4ModUtilities.featureFlags": {
+						"title": "%hoi4modutilities.featureFlags.title%",
+						"type": "array",
+						"default": [],
+						"description": "%hoi4modutilities.featureFlags.desc%"
+					}
+				}
+			}
+		],
+		"commands": [
+			{
+				"command": "hoi4modutilities.preview",
+				"title": "%hoi4modutilities.preview.title%",
+				"icon": {
+					"dark": "static/preview-right-dark.svg",
+					"light": "static/preview-right-light.svg"
+				},
+				"category": "%hoi4modutilities.category%"
+			},
+			{
+				"command": "hoi4modutilities.selectmodfile",
+				"title": "%hoi4modutilities.selectmodfile.title%",
+				"category": "%hoi4modutilities.category%"
+			},
+			{
+				"command": "hoi4modutilities.previewworld",
+				"title": "%hoi4modutilities.previewworld.title%",
+				"category": "%hoi4modutilities.category%"
+			},
+			{
+				"command": "hoi4modutilities.scanreferences",
+				"title": "%hoi4modutilities.scanreferences.title%",
+				"icon": "$(references)",
+				"category": "%hoi4modutilities.category%"
+			},
+			{
+				"command": "hoi4modutilities.test",
+				"title": "HOI4 test",
+				"category": "%hoi4modutilities.category%"
+			}
+		],
+		"customEditors": [
+			{
+				"viewType": "hoi4modutilities.dds",
+				"displayName": "%hoi4modutilities.dds.editorName%",
+				"selector": [
+					{
+						"filenamePattern": "*.dds"
+					}
+				]
+			}
+		],
+		"menus": {
+			"editor/title": [
+				{
+					"command": "hoi4modutilities.preview",
+					"when": "editorLangId =~ /^(:?plaintext|hoi4|paradox)$/ && !shouldHideHoi4Preview",
+					"group": "navigation"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "hoi4modutilities.preview",
+					"when": "!shouldHideHoi4Preview"
+				},
+				{
+					"command": "hoi4modutilities.scanreferences",
+					"when": "!hoi4MULoaded || hoi4PreviewType == event"
+				},
+				{
+					"command": "hoi4modutilities.selectmodfile"
+				},
+				{
+					"command": "hoi4modutilities.previewworld"
+				},
+				{
+					"command": "hoi4modutilities.test",
+					"when": "hoi4MUInDev"
+				}
+			]
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "webpack --mode production",
+		"webpack": "webpack --mode development",
+		"webpack-dev": "webpack --mode development --watch --display errors-only --info-verbosity verbose",
+		"compile-ts": "tsc -d -p ./",
+		"lint": "eslint src --ext ts",
+		"watch": "tsc -watch -p ./",
+		"pretest": "npm run compile-ts && npm run lint",
+		"test": "mocha ./out/test/**/*.test.js",
+		"pretest-ui": "npm run compile-ts && npm run lint",
+		"test-ui": "node ./out/test-ui/runTest.js"
+	},
+	"devDependencies": {
+		"@types/adm-zip": "^0.4.33",
+		"@types/glob": "^7.1.1",
+		"@types/js-yaml": "^3.12.5",
+		"@types/lodash": "^4.14.149",
+		"@types/mocha": "^7.0.2",
+		"@types/node": "^13.11.0",
+		"@types/pngjs": "^3.4.2",
+		"@types/vscode": "^1.44.0",
+		"@typescript-eslint/eslint-plugin": "^2.26.0",
+		"@typescript-eslint/parser": "^2.26.0",
+		"copy-webpack-plugin": "^5.1.1",
+		"eslint": "^6.8.0",
+		"glob": "^7.1.6",
+		"mocha": "^7.1.1",
+		"raw-loader": "^4.0.1",
+		"ts-loader": "^7.0.0",
+		"tslib": "^2.0.0",
+		"typescript": "^3.8.3",
+		"vscode-codicons": "https://github.com/microsoft/vscode-codicons",
+		"vscode-test": "^1.3.0",
+		"webpack": "^4.42.1",
+		"webpack-cli": "^3.3.11"
+	},
+	"dependencies": {
+		"adm-zip": "^0.4.14",
+		"js-yaml": "^3.14.0",
+		"lodash": "^4.17.15",
+		"pngjs": "^5.0.0",
+		"vscode-extension-telemetry": "^0.1.6"
+	}
+}
