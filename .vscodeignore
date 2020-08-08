@@ -18,3 +18,5 @@ scripts/**
 webviewsrc/**
 resource/**
 prod/**
+test/**
+test-ui/**
