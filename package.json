@@ -176,7 +176,7 @@
 	"dependencies": {
 		"adm-zip": "^0.4.14",
 		"js-yaml": "^3.14.0",
-		"lodash": "^4.17.15",
+		"lodash": "^4.17.19",
 		"pngjs": "^5.0.0",
 		"vscode-extension-telemetry": "^0.1.6"
 	}
