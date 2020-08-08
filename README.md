@@ -9,7 +9,7 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 * Event tree preview
 * Technology tree preview
 * `.gfx` file preview (sprites used by HOI4 are defined here)
-* `.dds` file preview (images files used by HOI4)
+* `.dds`, `.tga` file preview (images files used by HOI4)
 
 For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](https://github.com/herbix/hoi4modutilities/wiki).
 

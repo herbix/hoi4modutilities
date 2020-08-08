@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+### Added
+* Support `.tga` format image in all previews.
+
+### Changed
+* Event preview will show delay time of each event if not happen immediately.
+
 ### Fixed
 * Preview doesn't properly update when document has circular dependencies.
 

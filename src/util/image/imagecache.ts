@@ -3,7 +3,7 @@ import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { readFileFromModOrHOI4, hoiFileExpiryToken } from '../fileloader';
 import { PromiseCache } from '../cache';
-import { ddsToPng } from './converter';
+import { ddsToPng, tgaToPng } from './converter';
 import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/spritetype';
 import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
@@ -109,9 +109,14 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         let png: PNG;
         let pngBuffer: Buffer;
 
+        relativePath = relativePath.toLowerCase();
         if (relativePath.endsWith('.dds')) {
             const dds = DDS.parse(buffer.buffer);
             png = ddsToPng(dds);
+            pngBuffer = PNG.sync.write(png);
+        
+        } else if (relativePath.endsWith('.tga')) {
+            png = tgaToPng(buffer);
             pngBuffer = PNG.sync.write(png);
 
         } else if (relativePath.endsWith('.png')) {

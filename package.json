@@ -103,6 +103,9 @@
 				"selector": [
 					{
 						"filenamePattern": "*.dds"
+					},
+					{
+						"filenamePattern": "*.tga"
 					}
 				]
 			}
@@ -180,6 +183,7 @@
 		"js-yaml": "^3.14.0",
 		"lodash": "^4.17.19",
 		"pngjs": "^5.0.0",
+		"tga": "^1.0.4",
 		"vscode-extension-telemetry": "^0.1.6"
 	}
 }
