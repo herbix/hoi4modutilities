@@ -270,8 +270,8 @@ function checkStatesContiguous(states: State[], provinces: (Province | undefined
         }
     }
 
-    const accessedKeys = Object.keys(accessedStates);
-    return accessedKeys.length === states.length ? undefined : [states.find(state => !accessedStates[state.id])!.id, parseInt(Object.keys(accessedStates)[0])];
+    const inAccessedState = states.find(state => !accessedStates[state.id]);
+    return inAccessedState === undefined ? undefined : [inAccessedState.id, parseInt(Object.keys(accessedStates)[0])];
 }
 
 function statesAreAdjacent(stateA: State, stateB: State, provinces: (Province | undefined | null)[]): boolean {

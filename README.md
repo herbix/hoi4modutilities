@@ -63,19 +63,16 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes
-
-## [0.4.0]
+## Release Notes - [0.4.1]
 
 ### Added
-* Event tree preview
-  * Show relationship of events.
-  * Easily navigate from preview to event definition.
-  * Resolve and show event target scope and other informations.
-  * Localization support.
-  * Zoom event tree using wheel.
-* Command
-  * `HOI4 Mod Utilities: Scan References` to automatically discover references of current script.
+* Support `.tga` format image in all previews.
+
+### Changed
+* Event preview will show delay time of each event if not happen immediately.
+
+### Fixed
+* Preview doesn't properly update when document has circular dependencies.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

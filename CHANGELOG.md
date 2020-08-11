@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.4.1] - 2020/08/11 - Latest
 
 ### Added
 * Support `.tga` format image in all previews.
@@ -15,7 +15,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Fixed
 * Preview doesn't properly update when document has circular dependencies.
 
-## [0.4.0] - 2020/07/29 - Latest
+## [0.4.0] - 2020/07/29
 
 ### Added
 * Event tree preview

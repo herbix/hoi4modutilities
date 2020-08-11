@@ -124,7 +124,7 @@ function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces:
     const eventStack: HOIEvent[] = [];
 
     for (const event of Object.values(eventIdToEvent)) {
-        const node = eventToNode(event, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
+        eventToNode(event, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
     }
     
     const result: EventNode[] = [];
@@ -368,9 +368,9 @@ function makeEventNode(scope: string, eventNode: EventNode | string, edge: Event
             (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
             (edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ? 
-                localize('TODO', 'Delay: ') + (edge.days > 0 || edge.hours > 0 ?
+                localize('eventtree.delay', 'Delay: ') + (edge.days > 0 || edge.hours > 0 ?
                     `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
-                    `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('TODO', 'hour(s)')}`) + '\n' :
+                    `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
                 '') +
             `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizationDict[event.title] ?? event.title}`;
 
@@ -390,7 +390,7 @@ function makeEventNode(scope: string, eventNode: EventNode | string, edge: Event
                 ${edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ?
                     `<br/>${makeIcon('watch', styleTable)} ${edge.days > 0 || edge.hours > 0 ?
                         `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
-                        `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('TODO', 'hour(s)')}`}`
+                        `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`}`
                     : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
