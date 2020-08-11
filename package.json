@@ -103,6 +103,9 @@
 				"selector": [
 					{
 						"filenamePattern": "*.dds"
+					},
+					{
+						"filenamePattern": "*.tga"
 					}
 				]
 			}
@@ -147,7 +150,8 @@
 		"pretest": "npm run compile-ts && npm run lint",
 		"test": "mocha ./out/test/**/*.test.js",
 		"pretest-ui": "npm run compile-ts && npm run lint",
-		"test-ui": "node ./out/test-ui/runTest.js"
+		"test-ui": "node ./out/test-ui/runTest.js",
+		"clean": "rimraf dist out static"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.4.33",
@@ -165,6 +169,7 @@
 		"glob": "^7.1.6",
 		"mocha": "^7.1.1",
 		"raw-loader": "^4.0.1",
+		"rimraf": "^3.0.2",
 		"ts-loader": "^7.0.0",
 		"tslib": "^2.0.0",
 		"typescript": "^3.8.3",
@@ -178,6 +183,7 @@
 		"js-yaml": "^3.14.0",
 		"lodash": "^4.17.19",
 		"pngjs": "^5.0.0",
+		"tga": "^1.0.4",
 		"vscode-extension-telemetry": "^0.1.6"
 	}
 }
