@@ -4,6 +4,7 @@ export const ConfigurationKey = 'hoi4ModUtilities';
 
 export namespace ViewType {
     export const DDS = 'hoi4modutilities.dds';
+    export const TGA = 'hoi4modutilities.tga';
 }
 
 export namespace ContextName {

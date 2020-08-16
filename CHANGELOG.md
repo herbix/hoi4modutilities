@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Changed
+* Changed preview `.tga` editor name.
+
 ## [0.4.1] - 2020/08/11 - Latest
 
 ### Added

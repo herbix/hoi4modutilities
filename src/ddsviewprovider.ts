@@ -9,7 +9,7 @@ import { StyleTable } from './util/styletable';
 import { sendEvent } from './util/telemetry';
 import { ensureFileScheme } from './util/vsccommon';
 
-export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
+abstract class CommonViewProvider /* implements vscode.CustomEditorProvider */ {
     public async openCustomDocument(uri: vscode.Uri) {
         // Don't try opening it as text
         return { uri, dispose: () => { } };
@@ -18,13 +18,7 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
     public async resolveCustomEditor(document: { uri: vscode.Uri }, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         try {
             ensureFileScheme(document.uri);
-
-            const documentPath = document.uri.fsPath.toLowerCase();
-            if (documentPath.endsWith('.dds')) {
-                sendEvent('preview.dds');
-            } else {
-                sendEvent('preview.tga');
-            }
+            this.onOpen();
 
             const buffer = await Promise.race([
                 fs.promises.readFile(document.uri.fsPath),
@@ -35,18 +29,8 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
                 return;
             }
 
-            let png: PNG;
-            let pngBuffer: Buffer;
-            if (documentPath.endsWith('.dds')) {
-                const dds = DDS.parse(buffer.buffer);
-                png = ddsToPng(dds);
-                pngBuffer = PNG.sync.write(png);
-
-            } else {
-                png = tgaToPng(buffer);
-                pngBuffer = PNG.sync.write(png);
-            }
-
+            const png = this.getPng(buffer);
+            const pngBuffer = PNG.sync.write(png);
             const styleTable = new StyleTable();
 
             webviewPanel.webview.html = html(
@@ -60,5 +44,29 @@ export class DDSViewProvider /* implements vscode.CustomEditorProvider */ {
         } catch (e) {
             webviewPanel.webview.html = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
         }
+    }
+
+    protected abstract onOpen(): void;
+    protected abstract getPng(buffer: Buffer): PNG;
+}
+
+export class DDSViewProvider extends CommonViewProvider {
+    protected onOpen(): void {
+        sendEvent('preview.dds');
+    }
+
+    protected getPng(buffer: Buffer): PNG {
+        const dds = DDS.parse(buffer.buffer);
+        return ddsToPng(dds);
+    }
+}
+
+export class TGAViewProvider extends CommonViewProvider {
+    protected onOpen(): void {
+        sendEvent('preview.tga');
+    }
+
+    protected getPng(buffer: Buffer): PNG {
+        return tgaToPng(buffer);
     }
 }

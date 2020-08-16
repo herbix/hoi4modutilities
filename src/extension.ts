@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { previewManager } from './previewdef/previewmanager';
 import { registerContextContainer, setVscodeContext } from './context';
-import { DDSViewProvider } from './ddsviewprovider';
+import { DDSViewProvider, TGAViewProvider } from './ddsviewprovider';
 import { registerModFile } from './util/modfile';
 import { worldMap } from './previewdef/worldmap';
 import { ViewType, ContextName } from './constants';
@@ -23,6 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Use proposed vscode API
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider() as any));
+    context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider() as any));
 
     if (process.env.NODE_ENV !== 'production') {
         vscode.commands.registerCommand('hoi4modutilities.test', () => {

@@ -14,6 +14,6 @@ export function error(error: Error | string): void {
     }
 
     if (!(error instanceof UserError)) {
-        sendException(error);
+        sendException(error, { callerStack: new Error().stack ?? '' });
     }
 }

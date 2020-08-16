@@ -45,14 +45,15 @@ const mainConfig = {
     ]
   },
   plugins: [
-    // @ts-ignore
-    new CopyWebpackPlugin([
-      {
-        from: 'i18n/*.nls.*.json',
-        to: __dirname,
-        flatten: true
-      }
-    ]),
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'i18n/*.nls.*.json',
+          to: __dirname,
+          flatten: true
+        }
+      ]
+    }),
     new webpack.DefinePlugin({
       EXTENSION_ID: JSON.stringify(require("./package.json").name),
       VERSION: JSON.stringify(require("./package.json").version),
@@ -99,23 +100,25 @@ const webviewJsConfig = {
   },
   plugins: [
     // @ts-ignore
-    new CopyWebpackPlugin([
-      {
-        from: 'resource/**/*',
-        to: path.resolve(__dirname, 'static'),
-        flatten: true
-      },
-      {
-        from: 'node_modules/vscode-codicons/dist/codicon.css',
-        to: path.resolve(__dirname, 'static'),
-        flatten: true
-      },
-      {
-        from: 'node_modules/vscode-codicons/dist/codicon.ttf',
-        to: path.resolve(__dirname, 'static'),
-        flatten: true
-      }
-    ])
+    new CopyWebpackPlugin({
+      patterns: [
+        {
+          from: 'resource/**/*',
+          to: path.resolve(__dirname, 'static'),
+          flatten: true
+        },
+        {
+          from: 'node_modules/vscode-codicons/dist/codicon.css',
+          to: path.resolve(__dirname, 'static'),
+          flatten: true
+        },
+        {
+          from: 'node_modules/vscode-codicons/dist/codicon.ttf',
+          to: path.resolve(__dirname, 'static'),
+          flatten: true
+        }
+      ]
+    })
   ],
   optimization: {
     splitChunks: {
