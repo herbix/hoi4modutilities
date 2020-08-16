@@ -28,6 +28,7 @@
 		"onCommand:hoi4modutilities.scanreferences",
 		"onCommand:hoi4modutilities.selectmodfile",
 		"onCustomEditor:hoi4modutilities.dds",
+		"onCustomEditor:hoi4modutilities.tga",
 		"onWebviewPanel:hoi4ftpreview",
 		"onWebviewPanel:hoi4worldmappreview"
 	],
@@ -103,7 +104,13 @@
 				"selector": [
 					{
 						"filenamePattern": "*.dds"
-					},
+					}
+				]
+			},
+			{
+				"viewType": "hoi4modutilities.tga",
+				"displayName": "%hoi4modutilities.tga.editorName%",
+				"selector": [
 					{
 						"filenamePattern": "*.tga"
 					}
@@ -164,7 +171,7 @@
 		"@types/vscode": "^1.44.0",
 		"@typescript-eslint/eslint-plugin": "^2.26.0",
 		"@typescript-eslint/parser": "^2.26.0",
-		"copy-webpack-plugin": "^5.1.1",
+		"copy-webpack-plugin": "^6.0.3",
 		"eslint": "^6.8.0",
 		"glob": "^7.1.6",
 		"mocha": "^7.1.1",
@@ -175,8 +182,8 @@
 		"typescript": "^3.8.3",
 		"vscode-codicons": "https://github.com/microsoft/vscode-codicons",
 		"vscode-test": "^1.3.0",
-		"webpack": "^4.42.1",
-		"webpack-cli": "^3.3.11"
+		"webpack": "^4.44.1",
+		"webpack-cli": "^3.3.12"
 	},
 	"dependencies": {
 		"adm-zip": "^0.4.14",
