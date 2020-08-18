@@ -8,6 +8,7 @@ import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
 import { NumberPosition } from "../src/util/common";
 import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
+import { feLocalize } from './util/i18n';
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -50,26 +51,31 @@ function search(searchContent: string, navigate: boolean = true) {
 }
 
 const useConditionInFocus = (window as any).useConditionInFocus;
-let selectedExprs: ConditionItem[] = getState().selectedExprs || [];
+const focusTrees: FocusTree[] = (window as any).focusTrees;
+
+let selectedExprs: ConditionItem[] = getState().selectedExprs ?? [];
+let selectedFocusTreeIndex: number = Math.min(focusTrees.length - 1, getState().selectedFocusTreeIndex ?? 0);
+let allowBranches: DivDropdown | undefined = undefined;
+let conditions: DivDropdown | undefined = undefined;
 
 async function buildContent() {
     const focustreeplaceholder = document.getElementById('focustreeplaceholder') as HTMLDivElement;
     
     const styleTable = new StyleTable();
     const renderedFocus: Record<string, string> = (window as any).renderedFocus;
-    const focustree: FocusTree = (window as any).focustree;
-    const focuses = Object.values(focustree.focuses);
+    const focusTree = focusTrees[selectedFocusTreeIndex];
+    const focuses = Object.values(focusTree.focuses);
 
     const allowBranchOptionsValue: Record<string, boolean> = {};
-    focustree.allowBranchOptions.forEach(option => {
-        const focus = focustree.focuses[option];
+    focusTree.allowBranchOptions.forEach(option => {
+        const focus = focusTree.focuses[option];
         allowBranchOptionsValue[option] = !focus || focus.allowBranch === undefined || applyCondition(focus.allowBranch, selectedExprs);
     });
 
     const gridbox: GridBoxType = (window as any).gridBox;
 
     const focusPosition: Record<string, NumberPosition> = {};
-    const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focustree, allowBranchOptionsValue, focusPosition)).filter((v): v is GridBoxItem => !!v);
+    const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focusTree, allowBranchOptionsValue, focusPosition)).filter((v): v is GridBoxItem => !!v);
     
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
     const leftPadding = gridbox.position.x._value - Math.min(minX * (window as any).xGridSize, 0);
@@ -85,7 +91,54 @@ async function buildContent() {
     });
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
+
     subscribeNavigators();
+}
+
+function updateSelectedFocusTree() {
+    const focusTree = focusTrees[selectedFocusTreeIndex];
+    const continuousFocuses = document.getElementById('continuousFocuses') as HTMLDivElement;
+
+    if (focusTree.continuousFocusPositionX !== undefined && focusTree.continuousFocusPositionY !== undefined) {
+        continuousFocuses.style.left = (focusTree.continuousFocusPositionX - 59) + 'px';
+        continuousFocuses.style.top = (focusTree.continuousFocusPositionY + 7) + 'px';
+        continuousFocuses.style.display = 'block';
+    } else {
+        continuousFocuses.style.display = 'none';
+    }
+
+    if (useConditionInFocus) {
+        const conditionContainerElement = document.getElementById('condition-container') as HTMLDivElement | null;
+        if (conditionContainerElement) {
+            conditionContainerElement.style.display = focusTree.conditionExprs.length > 0 ? 'block' : 'none';
+        }
+
+        if (conditions) {
+            conditions.select.innerHTML = `<span class="value"></span>
+                ${focusTree.conditionExprs.map(option =>
+                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
+                ).join('')}`;
+            conditions.setSelection([]);
+        }
+
+    } else {
+        const allowBranchesContainerElement = document.getElementById('allowbranch-container') as HTMLDivElement | null;
+        if (allowBranchesContainerElement) {
+            allowBranchesContainerElement.style.display = focusTree.allowBranchOptions.length > 0 ? 'block' : 'none';
+        }
+
+        if (allowBranches) {
+            allowBranches.select.innerHTML = `<span class="value"></span>
+                ${focusTree.allowBranchOptions.map(option => `<div class="option" value="inbranch_${option}">${option}</div>`).join('')}`;
+            allowBranches.selectAll();
+        }
+    }
+
+    const warnings = document.getElementById('warnings') as HTMLTextAreaElement | null;
+    if (warnings) {
+        warnings.value = focusTree.warnings.length === 0 ? feLocalize('worldmap.warnings.nowarnings', 'No warnings.') :
+            focusTree.warnings.map(w => `[${w.source}] ${w.text}`).join('\n');
+    }
 }
 
 function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<string, NumberPosition>, focusTree: FocusTree, focusStack: Focus[] = []): NumberPosition {
@@ -178,8 +231,16 @@ function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsV
 }
 
 window.addEventListener('load', tryRun(async function() {
-    await buildContent();
-    scrollToState();
+    // Focuses
+    const focusesElement = document.getElementById('focuses') as HTMLSelectElement | null;
+    if (focusesElement) {
+        focusesElement.value = selectedFocusTreeIndex.toString();
+        focusesElement.addEventListener('change', () => {
+            selectedFocusTreeIndex = parseInt(focusesElement.value);
+            setState({ selectedFocusTreeIndex });
+            updateSelectedFocusTree();
+        });
+    }
 
     // Allow branch
     if (!useConditionInFocus) {
@@ -190,7 +251,7 @@ window.addEventListener('load', tryRun(async function() {
 
         const allowBranchesElement = document.getElementById('allowbranch') as HTMLDivElement | null;
         if (allowBranchesElement) {
-            const allowBranches = new DivDropdown(allowBranchesElement, true);
+            allowBranches = new DivDropdown(allowBranchesElement, true);
             allowBranches.selectAll();
 
             const allValues = allowBranches.selectedValues;
@@ -203,6 +264,9 @@ window.addEventListener('load', tryRun(async function() {
                 const hideBranches = difference(oldSelection, selection);
                 hideBranches.forEach(s => showBranch(false, s));
                 oldSelection = selection;
+
+                const hiddenBranches = difference(allValues, selection);
+                setState({ hiddenBranches });
             });
         }
     }
@@ -245,7 +309,7 @@ window.addEventListener('load', tryRun(async function() {
     if (useConditionInFocus) {
         const conditionsElement = document.getElementById('conditions') as HTMLDivElement | null;
         if (conditionsElement) {
-            const conditions = new DivDropdown(conditionsElement, true);
+            conditions = new DivDropdown(conditionsElement, true);
             
             conditions.setSelection(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
 
@@ -287,4 +351,8 @@ window.addEventListener('load', tryRun(async function() {
             warnings.style.display = visible ? 'none' : 'block';
         });
     }
+    
+    updateSelectedFocusTree();
+    await buildContent();
+    scrollToState();
 }));

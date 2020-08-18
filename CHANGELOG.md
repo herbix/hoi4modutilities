@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+### Added
+* Focus tree preview supports multiple trees in one file now.
+
 ### Changed
 * Changed preview `.tga` editor name.
 

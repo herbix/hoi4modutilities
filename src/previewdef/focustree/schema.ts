@@ -9,6 +9,7 @@ import { randomString, Warning } from "../../util/common";
 import { localize } from "../../util/i18n";
 
 export interface FocusTree {
+    id: string;
     focuses: Record<string, Focus>;
     allowBranchOptions: string[];
     conditionExprs: ConditionItem[];
@@ -149,6 +150,7 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
         const warnings: FocusWarning[] = [];
         const focuses = getFocuses(file.shared_focus, conditionExprs, filePath, warnings);
         const sharedFocusTree = {
+            id: localize('focustree.sharedfocuses', '<Shared focuses>'),
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
             conditionExprs,
@@ -176,6 +178,7 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
         validateRelativePositionId(focuses, warnings);
 
         focusTrees.push({
+            id: focusTree.id ?? localize('focustree.ananymous', '<Anonymous focus tree>'),
             focuses,
             allowBranchOptions: getAllowBranchOptions(focuses),
             continuousFocusPositionX: normalizeNumberLike(focusTree.continuous_focus_position?.x, 0) ?? 50,

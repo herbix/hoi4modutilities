@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { FocusTree, Focus, FocusWarning } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
-import { localize } from '../../util/i18n';
+import { localize, i18nTableAsScript } from '../../util/i18n';
 import { randomString } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { html, htmlEscape } from '../../util/html';
@@ -11,6 +11,7 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable } from '../../util/styletable';
 import { useConditionInFocus } from '../../util/featureflags';
+import { flatMap } from 'lodash';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -28,8 +29,10 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         const jsCodes: string[] = [];
         const styleNonce = randomString(32);
         const baseContent = focustrees.length > 0 ?
-            await renderFocusTree(focustrees[0], styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file) :
+            await renderFocusTrees(focustrees, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file) :
             localize('focustree.nofocustree', 'No focus tree.');
+
+        jsCodes.push(i18nTableAsScript());
 
         return html(
             webview,
@@ -59,8 +62,7 @@ const topPaddingBase = 50;
 const xGridSize = 96;
 const yGridSize = 130;
 
-async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfxFiles: string[], jsCodes: string[], styleNonce: string, file: string): Promise<string> {
-    const focuses = Object.values(focustree.focuses);
+async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable, gfxFiles: string[], jsCodes: string[], styleNonce: string, file: string): Promise<string> {
     const leftPadding = leftPaddingBase;
     const topPadding = topPaddingBase;
 
@@ -72,28 +74,26 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
     } as HOIPartial<GridBoxType>;
 
     const renderedFocus: Record<string, string> = {};
-    await Promise.all(focuses.map(async (focus) =>
+    await Promise.all(flatMap(focusTrees, tree => Object.values(tree.focuses)).map(async (focus) =>
         renderedFocus[focus.id] = (await renderFocus(focus, styleTable, gfxFiles, file)).replace(/\s\s+/g, ' ')));
 
-    jsCodes.push('window.focustree = ' + JSON.stringify(focustree));
+    jsCodes.push('window.focusTrees = ' + JSON.stringify(focusTrees));
     jsCodes.push('window.renderedFocus = ' + JSON.stringify(renderedFocus));
     jsCodes.push('window.gridBox = ' + JSON.stringify(gridBox));
     jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
     jsCodes.push('window.useConditionInFocus = ' + useConditionInFocus);
     jsCodes.push('window.xGridSize = ' + xGridSize);
 
-    const continuousFocusContent = focustree.continuousFocusPositionX !== undefined && focustree.continuousFocusPositionY !== undefined ?
-        `<div class="${styleTable.oneTimeStyle('continuousFocuses', () => `
+    const continuousFocusContent =
+        `<div id="continuousFocuses" class="${styleTable.oneTimeStyle('continuousFocuses', () => `
             position: absolute;
             width: 770px;
             height: 380px;
-            left: ${(focustree.continuousFocusPositionX ?? 0) - 59}px;
-            top: ${(focustree.continuousFocusPositionY ?? 0) + 7}px;
             margin: 20px;
             background: rgba(128, 128, 128, 0.2);
             text-align: center;
             pointer-events: none;
-        `)}">Continuous focuses</div>` : '';
+        `)}">Continuous focuses</div>`;
 
     return (
         `<div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
@@ -107,14 +107,14 @@ async function renderFocusTree(focustree: FocusTree, styleTable: StyleTable, gfx
             <div id="focustreeplaceholder"></div>
             ${continuousFocusContent}
         </div>` +
-        renderWarningContainer(focustree.warnings, styleTable) +
-        renderToolBar(focustree, styleTable)
+        renderWarningContainer(styleTable) +
+        renderToolBar(focusTrees, styleTable)
     );
 }
 
-function renderWarningContainer(warnings: FocusWarning[], styleTable: StyleTable) {
+function renderWarningContainer(styleTable: StyleTable) {
     styleTable.style('warnings', () => 'outline: none;', ':focus');
-    return warnings.length === 0 ? '' : `
+    return `
     <div id="warnings-container" class="${styleTable.style('warnings-container', () => `
         height: 100vh;
         width: 100vw;
@@ -137,11 +137,19 @@ function renderWarningContainer(warnings: FocusWarning[], styleTable: StyleTable
             border-left: none;
             border-bottom: none;
             box-sizing: border-box;
-        `)}">${warnings.map(w => `[${w.source}] ${w.text}`).join('\n')}</textarea>
+        `)}"></textarea>
     </div>`;
 }
 
-function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
+function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string {
+    const focuses = focusTrees.length <= 1 ? '' : `
+        <label for="focuses" class="${styleTable.style('focusesLabel', () => `margin-right:5px`)}">${localize('focustree.focustree', 'Focus tree: ')}</label>
+        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+            <select id="focuses" class="select multiple-select" tabindex="0" role="combobox">
+                ${focusTrees.map((focus, i) => `<option value="${i}">${focus.id}</option>`).join('')}
+            </select>
+        </div>`;
+
     const searchbox = `    
         <label for="searchbox" class="${styleTable.style('searchboxLabel', () => `margin-right:5px`)}">${localize('focustree.search', 'Search: ')}</label>
         <input
@@ -150,33 +158,34 @@ function renderToolBar(focusTree: FocusTree, styleTable: StyleTable): string {
             type="text"
         />`;
 
-    const allowbranch = focusTree.allowBranchOptions.length === 0 ? '' : `
-        <label for="allowbranch" class="${styleTable.style('allowbranchLabel', () => `margin-right:5px`)}">${localize('focustree.allowbranch', 'Allow branch: ')}</label>
-        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
-            <div id="allowbranch" class="select multiple-select" tabindex="0" role="combobox">
-                <span class="value"></span>
-                ${focusTree.allowBranchOptions.map(option => `<div class="option" value="inbranch_${option}">${option}</div>`).join('')}
+    const allowbranch = `
+        <div id="allowbranch-container">
+            <label for="allowbranch" class="${styleTable.style('allowbranchLabel', () => `margin-right:5px`)}">${localize('focustree.allowbranch', 'Allow branch: ')}</label>
+            <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+                <div id="allowbranch" class="select multiple-select" tabindex="0" role="combobox">
+                    <span class="value"></span>
+                </div>
             </div>
         </div>`;
 
-    const conditions = focusTree.conditionExprs.length === 0 ? '' : `
-        <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('focustree.conditions', 'Conditions: ')}</label>
-        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
-            <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
-                <span class="value"></span>
-                ${focusTree.conditionExprs.map(option =>
-                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
-                ).join('')}
+    const conditions = `
+        <div id="condition-container">
+            <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('focustree.conditions', 'Conditions: ')}</label>
+            <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+                <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
+                    <span class="value"></span>
+                </div>
             </div>
         </div>`;
     
-    const warningsButton = focusTree.warnings.length === 0 ? '' : `
+    const warningsButton = focusTrees.every(ft => ft.warnings.length === 0) ? '' : `
         <button id="show-warnings" title="${localize('focustree.warnings', 'Toggle warnings')}">
             <i class="codicon codicon-warning"></i>
         </button>`;
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
         <div class="toolbar">
+            ${focuses}
             ${searchbox}
             ${useConditionInFocus ? conditions : allowbranch}
             ${warningsButton}
