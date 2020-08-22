@@ -21,7 +21,9 @@ interface RenderContext {
     provinceToState: Record<number, number | undefined>;
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
-    renderedProvinces: Province[];
+    renderedProvincesByOffset: Record<number, Province[]>;
+    renderedProvincesById: Record<number, Province>;
+    renderedProvinces?: Province[];
     extraState: any;
 }
 
@@ -146,19 +148,24 @@ export class Renderer extends Subscriber {
             provinceToState: worldMap.getProvinceToStateMap(),
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
-            renderedProvinces: [],
+            renderedProvincesByOffset: {},
+            renderedProvincesById: {},
             extraState: undefined,
         };
 
         const mapZone: Zone = { x: 0, y: 0, w: worldMap.width, h: worldMap.height };
         this.renderAllOffsets(mapZone, worldMap.width, xOffset => this.renderMapBackground(worldMap, xOffset, renderContext));
+
+        renderContext.renderedProvinces = Object.values(renderContext.renderedProvincesById);
         this.renderAllOffsets(mapZone, worldMap.width, xOffset => this.renderMapForeground(worldMap, xOffset, renderContext));
     }
 
     private renderMapBackground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
         const context = this.mapCanvasContext;
         const scale = this.viewPoint.scale;
-        const { renderedProvinces } = renderContext;
+        const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
+        const { renderedProvincesById } = renderContext;
+        renderContext.renderedProvincesByOffset[xOffset] = renderedProvinces;
 
         worldMap.forEachProvince(province => {
             if (this.viewPoint.bboxInView(province.boundingBox, xOffset)) {
@@ -166,21 +173,19 @@ export class Renderer extends Subscriber {
                 context.fillStyle = toColor(color);
                 this.renderProvince(context, province, scale, xOffset);
                 renderedProvinces.push(province);
+                renderedProvincesById[province.id] = province;
             }
         });
     }
 
     private renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
-        const { renderedProvinces } = renderContext;
         const viewMode = this.topBar.viewMode.value;
         const renderScale = renderScaleByViewMode[viewMode];
         const scale = this.viewPoint.scale;
         const context = this.mapCanvasContext;
 
         if (renderScale.edge <= scale) {
-            for (const province of renderedProvinces) {
-                this.renderEdges(renderContext, province, worldMap, context, xOffset);
-            }
+            this.renderAllEdges(renderContext, worldMap, context, xOffset);
         }
 
         if (renderScale.labels <= scale) {
@@ -188,8 +193,27 @@ export class Renderer extends Subscriber {
         }
     }
 
+    private renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
+        const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
+
+        context.strokeStyle = 'black';
+        context.beginPath();
+        for (const province of renderedProvinces) {
+            this.renderEdges(renderContext, province, worldMap, context, xOffset, false);
+        }
+        context.stroke();
+
+        context.strokeStyle = 'red';
+        context.beginPath();
+        for (const province of renderedProvinces) {
+            this.renderEdges(renderContext, province, worldMap, context, xOffset, true);
+        }
+        context.stroke();
+    }
+
     private renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
-        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces } = renderContext;
+        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea } = renderContext;
+        const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const viewMode = this.topBar.viewMode.value;
 
         context.font = '10px sans-serif';
@@ -225,7 +249,7 @@ export class Renderer extends Subscriber {
         }
     }
 
-    private renderEdges(renderContext: RenderContext, province: Province, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
+    private renderEdges(renderContext: RenderContext, province: Province, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number, isRed: boolean) {
         const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces } = renderContext;
         const viewPoint = this.viewPoint;
         const scale = viewPoint.scale;
@@ -246,11 +270,15 @@ export class Renderer extends Subscriber {
             const stateFromImpassable = worldMap.getStateById(stateFromId)?.impassable ?? false;
             const stateToImpassable = worldMap.getStateById(stateToId)?.impassable ?? false;
 
-            const strategicRegionFromId = provinceToStrategicRegion[province.id];
-            const strategicRegionToId = provinceToStrategicRegion[provinceEdge.to];
-
             const impassable = provinceEdge.type === 'impassable' || stateFromImpassable !== stateToImpassable;
             const paths = provinceEdge.path;
+            
+            if ((impassable || (paths.length === 0 && provinceEdge.type !== 'impassable')) !== isRed) {
+                continue;
+            }
+
+            const strategicRegionFromId = provinceToStrategicRegion[province.id];
+            const strategicRegionToId = provinceToStrategicRegion[provinceEdge.to];
 
             if (!impassable && paths.length > 0) {
                 const viewMode = this.topBar.viewMode.value;
@@ -271,13 +299,11 @@ export class Renderer extends Subscriber {
                 }
             }
 
-            context.strokeStyle = impassable ? 'red' : 'black';
             for (const path of paths) {
                 if (path.length === 0) {
                     continue;
                 }
 
-                context.beginPath();
                 context.moveTo(viewPoint.convertX(path[0].x + xOffset), viewPoint.convertY(path[0].y));
                 for (let j = 0; j < path.length; j++) {
                     if (scale <= 4 && j % (scale < 1 ? Math.floor(10 / scale) : 6 - scale) !== 0 && !isCriticalPoint(path, j)) {
@@ -286,18 +312,14 @@ export class Renderer extends Subscriber {
                     const pos = path[j];
                     context.lineTo(viewPoint.convertX(pos.x + xOffset), viewPoint.convertY(pos.y));
                 }
-                context.stroke();
             }
 
             if (paths.length === 0 && provinceEdge.type !== 'impassable') {
-                const toProvince = renderedProvinces.find(p => p.id === provinceEdge.to);
+                const toProvince = renderedProvinces?.find(p => p.id === provinceEdge.to);
                 const [startPoint, endPoint] = findNearestPoints(provinceEdge.start, provinceEdge.stop, province, toProvince);
 
-                context.strokeStyle = 'red';
-                context.beginPath();
                 context.moveTo(viewPoint.convertX(startPoint.x + xOffset), viewPoint.convertY(startPoint.y));
                 context.lineTo(viewPoint.convertX(endPoint.x + xOffset), viewPoint.convertY(endPoint.y));
-                context.stroke();
             }
         }
     }

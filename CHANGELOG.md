@@ -11,6 +11,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Changed
 * Changed preview `.tga` editor name.
+* This extension will automatically activate when there're previewable files in workspace.
+* Buttons on editor menu is visible only when extension is activated now.
+
+### Fixed
+* Improve performace of edge rendering in world map preview.
 
 ## [0.4.1] - 2020/08/11 - Latest
 

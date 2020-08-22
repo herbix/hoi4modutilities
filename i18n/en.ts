@@ -119,7 +119,7 @@ const internalTable = {
     "worldmap.topbar.colorset.terrain": "Terrain",
     "worldmap.topbar.colorset.vicotrypoint": "Victory Points",
     "worldmap.topbar.colorset.warnings": "Warnings",
-    "worldmap.topbar.open.title": "Open in Workspace",
+    "worldmap.topbar.open.title": "Open in workspace",
     "worldmap.topbar.refresh.title": "Refresh",
     "worldmap.topbar.search": "Search: ",
     "worldmap.topbar.search.placeholder": "Range: {0}",

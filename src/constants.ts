@@ -9,6 +9,7 @@ export namespace ViewType {
 
 export namespace ContextName {
     export const ShouldHideHoi4Preview = 'shouldHideHoi4Preview';
+    export const ShouldShowHoi4Preview = 'shouldShowHoi4Preview';
     export const Hoi4PreviewType = 'hoi4PreviewType';
     export const Hoi4MUInDev = 'hoi4MUInDev';
     export const Hoi4MULoaded = 'hoi4MULoaded';

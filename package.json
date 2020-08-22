@@ -30,7 +30,12 @@
 		"onCustomEditor:hoi4modutilities.dds",
 		"onCustomEditor:hoi4modutilities.tga",
 		"onWebviewPanel:hoi4ftpreview",
-		"onWebviewPanel:hoi4worldmappreview"
+		"onWebviewPanel:hoi4worldmappreview",
+		"workspaceContains:**/*.gfx",
+		"workspaceContains:common/national_focus/*.txt",
+		"workspaceContains:common/technologies/*.txt",
+		"workspaceContains:events/*.txt",
+		"workspaceContains:map/default.map"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -121,14 +126,14 @@
 			"editor/title": [
 				{
 					"command": "hoi4modutilities.preview",
-					"when": "editorLangId =~ /^(:?plaintext|hoi4|paradox)$/ && !shouldHideHoi4Preview",
+					"when": "shouldShowHoi4Preview && resourceScheme != webview-panel",
 					"group": "navigation"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "hoi4modutilities.preview",
-					"when": "!shouldHideHoi4Preview"
+					"when": "!shouldHideHoi4Preview && resourceScheme != webview-panel"
 				},
 				{
 					"command": "hoi4modutilities.scanreferences",
