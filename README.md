@@ -63,16 +63,17 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.4.1]
+## Release Notes - [0.4.2]
 
 ### Added
-* Support `.tga` format image in all previews.
+* Focus tree preview supports multiple trees in one file now.
 
 ### Changed
-* Event preview will show delay time of each event if not happen immediately.
+* Changed preview `.tga` editor name.
+* This extension will automatically activate when there're previewable files in workspace.
 
 ### Fixed
-* Preview doesn't properly update when document has circular dependencies.
+* Improve performace of edge rendering in world map preview.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

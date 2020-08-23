@@ -4,7 +4,19 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.4.1] - 2020/08/11 - Latest
+## [0.4.2] - 2020/08/23 - Latest
+
+### Added
+* Focus tree preview supports multiple trees in one file now.
+
+### Changed
+* Changed preview `.tga` editor name.
+* This extension will automatically activate when there're previewable files in workspace.
+
+### Fixed
+* Improve performace of edge rendering in world map preview.
+
+## [0.4.1] - 2020/08/11
 
 ### Added
 * Support `.tga` format image in all previews.
