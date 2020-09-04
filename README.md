@@ -16,7 +16,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 ## Steps to start
 
 1. Install and enable this extension in VSCode.
-2. Update setting `hoi4ModUtilities.installPath` to the folder that installed Heart of Iron IV.
+2. Update setting `hoi4ModUtilities.installPath` (you can open settings page of VSCode using `Ctrl+,`) to the folder that installed Heart of Iron IV.
 3. Open your mod develop folder.
 4. (*Optional*) Open command palette using `Ctrl+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
 5. Use these entries:
