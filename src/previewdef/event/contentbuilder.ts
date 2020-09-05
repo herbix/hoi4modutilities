@@ -4,7 +4,7 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
-import { StyleTable } from '../../util/styletable';
+import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { HOIEvent, HOIEventType } from './schema';
 import { flatten, repeat, max } from 'lodash';
 import { arrayToMap } from '../../util/common';
@@ -12,6 +12,7 @@ import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoif
 import { GridBoxType } from '../../hoiformat/gui';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { Token } from '../../hoiformat/hoiparser';
+import { getSpriteByGfxName } from '../../util/image/imagecache';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -65,7 +66,7 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
     const graph = eventsToGraph(eventIdToEvent, eventsLoaderResult.mainNamespaces);
     const idToContentMap: Record<string, string> = {};
-    const gridBoxItems = graphToGridBoxItems(graph, idToContentMap, eventsLoaderResult.localizationDict, styleTable);
+    const gridBoxItems = await graphToGridBoxItems(graph, idToContentMap, eventsLoaderResult, styleTable);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -225,7 +226,12 @@ interface GridBoxTree {
     ends: number[];
 }
 
-function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, string>, localizationDict: Record<string, string>, styleTable: StyleTable): GridBoxItem[] {
+async function graphToGridBoxItems(
+    graph: EventNode[],
+    idToContentMap: Record<string, string>,
+    eventsLoaderResult: EventsLoaderResult,
+    styleTable: StyleTable
+): Promise<GridBoxItem[]> {
     const resultTree: GridBoxTree = {
         id: '',
         items: [],
@@ -239,23 +245,23 @@ function graphToGridBoxItems(graph: EventNode[], idToContentMap: Record<string, 
             fromStack: [],
             currentScopeName: 'EVENT_TARGET',
         };
-        const tree = eventNodeToGridBoxItems(eventNode, undefined, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
-        idToContentMap[tree.id] = makeEventNode(scopeContext.currentScopeName, eventNode, undefined, localizationDict, styleTable);
+        const tree = await eventNodeToGridBoxItems(eventNode, undefined, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
+        idToContentMap[tree.id] = await makeEventNode(scopeContext.currentScopeName, eventNode, undefined, eventsLoaderResult, styleTable);
         appendChildToTree(resultTree, tree);
     }
 
     return resultTree.items;
 }
 
-function eventNodeToGridBoxItems(
+async function eventNodeToGridBoxItems(
     node: EventNode | OptionNode | string,
     edge: EventEdge | undefined,
     idToContentMap: Record<string, string>,
     scopeContext: ScopeContext,
-    localizationDict: Record<string, string>,
+    eventsLoaderResult: EventsLoaderResult,
     styleTable: StyleTable,
     idContainer: { id: number },
-): GridBoxTree {
+): Promise<GridBoxTree> {
     const result: GridBoxTree = {
         id: '',
         items: [],
@@ -269,9 +275,9 @@ function eventNodeToGridBoxItems(
             if ('toNode' in child) {
                 const toNode = child.toNode;
                 const nextScopeContext = nextScope(scopeContext, child.toScope);
-                tree = eventNodeToGridBoxItems(toNode, child, idToContentMap, nextScopeContext, localizationDict, styleTable, idContainer);
+                tree = await eventNodeToGridBoxItems(toNode, child, idToContentMap, nextScopeContext, eventsLoaderResult, styleTable, idContainer);
             } else {
-                tree = eventNodeToGridBoxItems(child, undefined, idToContentMap, scopeContext, localizationDict, styleTable, idContainer);
+                tree = await eventNodeToGridBoxItems(child, undefined, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
             }
             childIds.push(tree.id);
             appendChildToTree(result, tree, 1, true);
@@ -281,10 +287,10 @@ function eventNodeToGridBoxItems(
     const isOption = typeof node === 'object' && !('event' in node);
     const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
     if (isOption) {
-        idToContentMap[id] = makeOptionNode(node as OptionNode, localizationDict, styleTable);
+        idToContentMap[id] = makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
     } else {
-        idToContentMap[id] = makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? node as EventNode : node, edge, localizationDict, styleTable);
+        idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
+            typeof node === 'object' ? node as EventNode : node, edge, eventsLoaderResult, styleTable);
     }
 
     const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
@@ -357,8 +363,9 @@ const flagIcons: string[] = [
     'refresh',
 ];
 
-function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, localizationDict: Record<string, string>, styleTable: StyleTable): string {
+async function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
     if (typeof eventNode === 'object') {
+        const { localizationDict, gfxFiles } = eventsLoaderResult;
         const event = eventNode.event;
         const eventId = event.id;
         const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
@@ -396,17 +403,42 @@ function makeEventNode(scope: string, eventNode: EventNode | string, edge: Event
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
                 ${localizationDict[event.title] ?? event.title}
             </p>`;
-    
+        
+        const extraAttributes = [];
+        const extraClasses = [
+            styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
+            styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
+        ];
+        if (event.token) { 
+            extraAttributes.push(`
+                start="${event.token.start}"
+                end="${event.token.end}"
+                ${event.file ? `file="${event.file}"` : ''}
+            `);
+            extraClasses.push('navigator');
+        }
+
+        const picture = event.picture ? await getSpriteByGfxName(event.picture, gfxFiles) : undefined;
+        if (picture) {
+            const pictureStyle = styleTable.style('event-picture-' + normalizeForStyle(event.picture ?? '-empty'), () => `
+                background-image: url(${picture.image.uri});
+                background-size: ${picture.image.width}px;
+                width: ${picture.image.width}px;
+                height: ${picture.image.height}px;
+            `);
+            extraAttributes.push(`
+                picture-style-key="${pictureStyle}"
+                picture-width="${picture.image.width}"
+            `);
+            extraClasses.push('event-picture-host');
+        }
+
         return makeNode(
             content,
             title,
             styleTable,
-            [
-                styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
-                styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
-            ].join(' '),
-            event.token,
-            event.file);
+            extraClasses.join(' '),
+            extraAttributes.join(' '));
 
     } else {
         const eventId = eventNode;
@@ -429,19 +461,25 @@ function makeIcon(type: string, styleTable: StyleTable): string {
     return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
 }
 
-function makeOptionNode(option: OptionNode, localizationDict: Record<string, string>, styleTable: StyleTable): string {
-    const content = `${localizationDict[option.optionName] ?? option.optionName}`;
+function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): string {
+    const content = `${eventsLoaderResult.localizationDict[option.optionName] ?? option.optionName}`;
+    
+    const extraAttributes = option.token ? `
+        start="${option.token.start}"
+        end="${option.token.end}"
+        ${option.file ? `file="${option.file}"` : ''}
+        ` : '';
+
     return makeNode(
         content,
         content,
         styleTable,
-        styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;'),
-        option.token,
-        option.file);
+        styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
+            + (option.token ? ' navigator' : ''),
+        extraAttributes);
 }
 
-function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, navigateToken?: Token, navigateFile?: string) {
-    const hasNavigator = !!navigateToken;
+function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, extraAttributes?: string) {
     return `<div class=${styleTable.style('event-node-outer', () => `
         height: 100%;
         width: 100%;
@@ -459,15 +497,9 @@ function makeNode(content: string, title: string, styleTable: StyleTable, extraC
                 overflow: hidden;
                 box-sizing: border-box;
                 text-overflow: ellipsis;`)}
-                ${extraClasses}
-                ${hasNavigator ? 'navigator' : ''}"
+                ${extraClasses}"
             title='${htmlEscape(title.trim())}'
-            ${hasNavigator ? `
-                start="${navigateToken?.start}"
-                end="${navigateToken?.end}"
-                ${navigateFile ? `file="${navigateFile}"` : ''}
-                `
-            : ''}
+            ${extraAttributes ?? ''}
         >
             ${content}
         </div>

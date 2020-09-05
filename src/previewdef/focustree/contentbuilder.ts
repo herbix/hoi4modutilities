@@ -9,7 +9,7 @@ import { GridBoxType } from '../../hoiformat/gui';
 import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
-import { StyleTable } from '../../util/styletable';
+import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { useConditionInFocus } from '../../util/featureflags';
 import { flatMap } from 'lodash';
 
@@ -199,8 +199,8 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     return `<div
     class="
         navigator
-        ${styleTable.oneTimeStyle('focus', () => `
-            ${icon ? `background-image: url(${icon?.uri});` : 'background: grey;'}
+        ${styleTable.style('focus-icon-' + normalizeForStyle(focus.icon ?? '-empty'), () => `
+            ${icon ? `background-image: url(${icon.uri});` : 'background: grey;'}
             background-size: ${icon ? icon.width: 0}px;
         `)}
         ${styleTable.style('focus-common', () => `

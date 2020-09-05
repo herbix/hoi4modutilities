@@ -9,16 +9,17 @@ import { YamlLoader } from "../../util/loader/yaml";
 export interface EventsLoaderResult {
     events: HOIEvents;
     mainNamespaces: string[];
+    gfxFiles: string[];
     localizationDict: Record<string, string>;
 }
+
+const eventsGFX = 'interface/eventpictures.gfx';
 
 export class EventsLoader extends ContentLoader<EventsLoaderResult> {
     protected async postLoad(content: string | undefined, dependencies: Dependency[], error: any, session: LoaderSession): Promise<LoadResultOD<EventsLoaderResult>> {
         if (error || (content === undefined)) {
             throw error;
         }
-
-        debug('load ' + this.file);
 
         const eventsDependencies = dependencies.filter(d => d.type === 'event').map(d => d.path);
         const eventsDepFiles = await this.loaderDependencies.loadMultiple(eventsDependencies, session, EventsLoader);
@@ -31,13 +32,17 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
 
         const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'));
         Object.assign(localizationDict, ...eventsDepFiles.map(f => f.result.localizationDict));
-
-        debug('load ' + this.file + ' done');
+        
+        const gfxDependencies = [
+            ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
+            ...flatten(eventsDepFiles.map(f => f.result.gfxFiles))
+        ];
 
         return {
             result: {
                 events: mergedEvents,
                 mainNamespaces: Object.keys(events.eventItemsByNamespace),
+                gfxFiles: uniq([...gfxDependencies, eventsGFX]),
                 localizationDict,
             },
             dependencies: uniq([

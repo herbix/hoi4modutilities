@@ -35,3 +35,7 @@ export class StyleTable {
         return `<style nonce="${nonce}">${Object.entries(this.records).map(([k, v]) => `.${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}</style>`;
     }
 }
+
+export function normalizeForStyle(name: string): string {
+    return name.replace(/[^\w_]/g, r => '_' + r.charCodeAt(0));
+}

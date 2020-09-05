@@ -15,7 +15,7 @@ export interface HOIEvent {
     id: string;
     title: string;
     namespace: string;
-    picture: string;
+    picture?: string;
     immediate: HOIEventOption;
     options: HOIEventOption[];
     token: Token | undefined;
@@ -211,7 +211,7 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     const id = eventDef.id;
     const title = eventDef.title ?? (id + '.t');
     const namespace = id.split('.')[0];
-    const picture = eventDef.picture ?? '';
+    const picture = eventDef.picture;
 
     const scopeType = eventTypeToScopeType(type);
     const scope: Scope = { scopeName: `{event_target}`, scopeType };
