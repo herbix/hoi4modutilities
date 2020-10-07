@@ -16,7 +16,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 ## Steps to start
 
 1. Install and enable this extension in VSCode.
-2. Update setting `hoi4ModUtilities.installPath` to the folder that installed Heart of Iron IV.
+2. Update setting `hoi4ModUtilities.installPath` (you can open settings page of VSCode using `Ctrl+,`) to the folder that installed Heart of Iron IV.
 3. Open your mod develop folder.
 4. (*Optional*) Open command palette using `Ctrl+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
 5. Use these entries:
@@ -63,18 +63,17 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.4.2]
+## Release Notes - [0.4.3]
 
 ### Added
-* Focus tree preview supports multiple trees in one file now.
-
-### Changed
-* Changed preview `.tga` editor name.
-* This extension will automatically activate when there're previewable files in workspace.
+* Show event picture in event tree.
+* Partially supported Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
 
 ### Fixed
-* Improve performace of edge rendering in world map preview.
+* An issue that preview window closes even when text editor exists.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
 * If you want to contribute translation, feel free to create pull request to this [Github repo](https://github.com/herbix/hoi4modutilities). All localization related files are under `i18n` folder.
+
+* Thanks to all contributors listed [here](https://github.com/herbix/hoi4modutilities/graphs/contributors).
