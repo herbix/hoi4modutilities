@@ -96,6 +96,19 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     public shallowForceReload(): void {
         this.shouldReloadValue = true;
     }
+    
+    protected extraMesurements(result: LoadResult<WorldMapData>) {
+        return {
+            ...super.extraMesurements(result),
+            width: result.result.width,
+            height: result.result.height,
+            provincesCount: result.result.provincesCount,
+            statesCount: result.result.statesCount,
+            countriesCount: result.result.countriesCount,
+            strategicRegionsCount: result.result.strategicRegionsCount,
+            supplyAreasCount: result.result.supplyAreasCount,
+        };
+    }
 
     public toString() {
         return `[WorldMapLoader]`;

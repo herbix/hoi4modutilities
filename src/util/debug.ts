@@ -1,5 +1,6 @@
 import { sendException } from "./telemetry";
 import { UserError } from "./common";
+import { YAMLException } from 'js-yaml';
 
 export function debug(message: any, ...args: any[]): void {
     if (process.env.NODE_ENV !== 'production') {
@@ -13,7 +14,7 @@ export function error(error: Error | string): void {
         error = new Error(error);
     }
 
-    if (!(error instanceof UserError)) {
+    if (!(error instanceof UserError) && !(error instanceof YAMLException)) {
         sendException(error, { callerStack: new Error().stack ?? '' });
     }
 }

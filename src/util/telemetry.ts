@@ -1,6 +1,25 @@
 import TelemetryReporter from 'vscode-extension-telemetry';
 
-let telemetryReporter: TelemetryReporter | undefined = undefined;
+interface TelemetryReporterInterface {
+    sendTelemetryEvent(eventName: string, properties?: {
+        [key: string]: string;
+    }, measurements?: {
+        [key: string]: number;
+    }): void;
+    sendTelemetryErrorEvent(eventName: string, properties?: {
+        [key: string]: string;
+    }, measurements?: {
+        [key: string]: number;
+    }, errorProps?: string[]): void;
+    sendTelemetryException(error: Error, properties?: {
+        [key: string]: string;
+    }, measurements?: {
+        [key: string]: number;
+    }): void;
+    dispose(): Promise<any>;
+}
+
+let telemetryReporter: TelemetryReporterInterface | undefined = undefined;
 
 export interface TelemetryMessage {
     command: 'telemetry';
@@ -12,6 +31,8 @@ export function registerTelemetryReporter() {
     const isDev = process.env.NODE_ENV !== 'production';
     if (!isDev) {
         telemetryReporter = new TelemetryReporter(EXTENSION_ID, VERSION, '41a5f5b6-f4f0-4707-96ba-c895a2dabf17');
+    } else {
+        telemetryReporter = new DevTelemetryReporter();
     }
 
     return {
@@ -51,5 +72,22 @@ export function sendByMessage(message: TelemetryMessage) {
             args[0] = error;
             sendException(...(args as Parameters<typeof sendException>));
             break;
+    }
+}
+
+class DevTelemetryReporter implements TelemetryReporterInterface {
+    sendTelemetryEvent(eventName: string, properties?: { [key: string]: string; } | undefined, measurements?: { [key: string]: number; } | undefined): void {
+        console.log('TelemetryEvent', eventName, JSON.stringify(properties), JSON.stringify(measurements));
+    }
+
+    sendTelemetryErrorEvent(eventName: string, properties?: { [key: string]: string; } | undefined, measurements?: { [key: string]: number; } | undefined, errorProps?: string[] | undefined): void {
+        console.error('TelemetryErrorEvent', eventName, JSON.stringify(properties), JSON.stringify(measurements), JSON.stringify(errorProps));
+    }
+
+    sendTelemetryException(error: Error, properties?: { [key: string]: string; } | undefined, measurements?: { [key: string]: number; } | undefined): void {
+        console.error('TelemetryException', error, JSON.stringify(properties), JSON.stringify(measurements));
+    }
+
+    async dispose(): Promise<any> {
     }
 }

@@ -76,9 +76,12 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
     }
 
     private onCloseTextDocument(document: vscode.TextDocument): void {
-        const key = document.uri.toString();
-        this._previews[key]?.panel.dispose();
-        debug(`dispose panel ${key} because text document closed`);
+        if (!vscode.window.visibleTextEditors.some(e => e.document.uri.toString() === document.uri.toString())) {
+            const key = document.uri.toString();
+            this._previews[key]?.panel.dispose();
+            debug(`dispose panel ${key} because text document closed`);
+        }
+
         this.updatePreviewItemsInSubscription(document.uri);
     }
     
@@ -173,7 +176,6 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         }
 
         const previewItem = new previewProvider.previewContructor(uri, panel);
-        previewItem.document = document;
         this._previews[key] = previewItem;
 
         previewItem.onDispose(() => {

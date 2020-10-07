@@ -4,8 +4,8 @@ out/
 *.vsix
 /package.nls.*.json
 /src/util/debug.shouldignore.ts
-/scripts/*.log
-/scripts/*.json
+/scripts/*
+!/scripts/*.js
 /static/
 /prod/
 /.vscode-test

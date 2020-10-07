@@ -114,6 +114,15 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         return loader;
     }
 
+    protected extraMesurements(result: LoadResult<ProvinceMap>) {
+        return {
+            ...super.extraMesurements(result),
+            width: result.result.width,
+            height: result.result.height,
+            provinceCount: result.result.provinces.length
+        };
+    }
+
     public toString() {
         return `[DefaultMapLoader]`;
     }
@@ -139,6 +148,15 @@ class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
         return {
             result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), warnings),
             warnings,
+        };
+    }
+
+    protected extraMesurements(result: LoadResult<ProvinceBmp>) {
+        return {
+            ...super.extraMesurements(result),
+            width: result.result.width,
+            height: result.result.height,
+            provinceCount: result.result.provinces.length
         };
     }
 

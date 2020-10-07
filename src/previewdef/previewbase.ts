@@ -19,9 +19,6 @@ export abstract class PreviewBase {
 
     private disposed = false;
 
-    // Trying to keep reference to document to avoid document to be disposed before close
-    public document: vscode.TextDocument | undefined;
-
     constructor(
         readonly uri: vscode.Uri,
         readonly panel: vscode.WebviewPanel,

@@ -20,3 +20,4 @@ resource/**
 prod/**
 test/**
 test-ui/**
+static/test.js

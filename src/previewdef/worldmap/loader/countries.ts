@@ -78,6 +78,7 @@ export class CountriesLoader extends Loader<Country[]> {
             let countryLoader = this.countryLoaders[tag.tag];
             if (!countryLoader) {
                 countryLoader = new CountryLoader(tag.tag, 'common/' + tag.file);
+                countryLoader.disableTelemetry = true;
                 countryLoader.onProgress(e => this.onProgressEmitter.fire(e));
             }
 
@@ -101,6 +102,10 @@ export class CountriesLoader extends Loader<Country[]> {
             dependencies: mergeInLoadResult(allResults, 'dependencies'),
             warnings: mergeInLoadResult(allResults, 'warnings'),
         };
+    }
+
+    protected extraMesurements(result: LoadResult<Country[]>) {
+        return { ...super.extraMesurements(result), fileCount: Object.keys(this.countryLoaders).length };
     }
 
     public toString() {

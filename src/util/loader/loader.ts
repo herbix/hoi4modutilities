@@ -4,6 +4,7 @@ import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } fro
 import { error } from '../debug';
 import { UserError } from '../common';
 import { Dependency, getDependenciesFromText } from '../dependency';
+import { sendEvent } from '../telemetry';
 export { Dependency } from '../dependency';
 
 export class LoaderSession {
@@ -75,6 +76,8 @@ export abstract class Loader<T, E = {}> {
 
     private loadingPromise: Promise<LoadResult<T, E>> | undefined = undefined;
 
+    public disableTelemetry = false;
+
     constructor() {
     }
 
@@ -83,6 +86,8 @@ export abstract class Loader<T, E = {}> {
 
         // Load each loader at most one time in one session
         if (this.cachedValue === undefined || (!session.isLoaded(this) && (session.force || await this.shouldReload(session)))) {
+            const loadStartTime = Date.now();
+
             session.setLoaded(this);
             session.loadingLoader.push(this);
             try {
@@ -97,6 +102,14 @@ export abstract class Loader<T, E = {}> {
                 if (session.loadingLoader.pop() !== this) {
                     throw new Error('loadingLoader corrupted.');
                 }
+            }
+
+            const timeElapsed = Date.now() - loadStartTime;
+
+            if (timeElapsed > 500 && !this.disableTelemetry) {
+                sendEvent('loader.loaddone',
+                    { loaderType: this.constructor.name },
+                    { timeElapsed, ...this.extraMesurements(this.cachedValue) });
             }
         }
 
@@ -136,6 +149,10 @@ export abstract class Loader<T, E = {}> {
         this.onProgressEmitter.fire(progress);
         await new Promise(resolve => setTimeout(resolve, 0));
     }
+
+    protected extraMesurements(result: LoadResult<T, E>): Record<string, number> {
+        return {};
+    };
 
     protected abstract loadImpl(session: LoaderSession): Promise<LoadResult<T, E>>;
 }
@@ -201,6 +218,7 @@ export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E
             let subLoader = subLoaders[file];
             if (!subLoader) {
                 subLoader = new this.subLoaderConstructor(path.join(this.folder, file));
+                subLoader.disableTelemetry = true;
                 subLoader.onProgress(e => this.onProgressEmitter.fire(e));
             }
 
@@ -211,6 +229,10 @@ export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E
         this.subLoaders = newSubLoaders;
 
         return this.mergeFiles(await Promise.all(fileResultPromises), session);
+    }
+
+    protected extraMesurements(result: LoadResult<T, E>) {
+        return { ...super.extraMesurements(result), fileCount: this.fileCount };
     }
 
     protected abstract mergeFiles(fileResults: LoadResult<TFile, EFile>[], session: LoaderSession): Promise<LoadResult<T, E>>;

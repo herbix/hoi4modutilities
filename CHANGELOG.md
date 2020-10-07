@@ -4,12 +4,16 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.4.3] - 2020/10/07 - Latest
 
 ### Added
 * Show event picture in event tree.
+* Partially supported Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
 
-## [0.4.2] - 2020/08/23 - Latest
+### Fixed
+* An issue that preview window closes even when text editor exists.
+
+## [0.4.2] - 2020/08/23
 
 ### Added
 * Focus tree preview supports multiple trees in one file now.
