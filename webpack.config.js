@@ -4,6 +4,7 @@
 
 const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const TerserPlugin = require('terser-webpack-plugin');
 const webpack = require('webpack');
 
 /**@type {import('webpack').Configuration}*/
@@ -58,7 +59,17 @@ const mainConfig = {
       EXTENSION_ID: JSON.stringify(require("./package.json").name),
       VERSION: JSON.stringify(require("./package.json").version),
     }),
-  ]
+  ],
+  optimization: {
+    minimizer: [
+      new TerserPlugin({
+        terserOptions: {
+          keep_classnames: /\w*Loader$/,
+        },
+        extractComments: false,
+      })
+    ]
+  }
 };
 
 /**@type {import('webpack').Configuration}*/

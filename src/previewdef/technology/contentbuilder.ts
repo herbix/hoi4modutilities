@@ -300,13 +300,14 @@ async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: F
         ...commonOptions,
         onRenderChild: async (type, child, parent) => {
             if (type === 'icon') {
+                const icon = child as HOIPartial<IconType>;
                 const childName = child.name?.toLowerCase();
                 if (childName === 'first') {
-                    return await renderIcon({...child, spritetype: upDownDirection ? 'GFX_techtree_xor_up' : 'GFX_techtree_xor_left' } as HOIPartial<IconType>,
+                    return await renderIcon({...icon, spritetype: upDownDirection ? 'GFX_techtree_xor_up' : 'GFX_techtree_xor_left' },
                         parent, commonOptions);
                 }
                 if (childName === 'second') {
-                    return await renderIcon({ ...child, spritetype: upDownDirection ? 'GFX_techtree_xor_down' : 'GFX_techtree_xor_right' } as HOIPartial<IconType>,
+                    return await renderIcon({ ...icon, spritetype: upDownDirection ? 'GFX_techtree_xor_down' : 'GFX_techtree_xor_right' },
                         parent, commonOptions);
                 }
             }
@@ -340,11 +341,12 @@ async function renderTechnology(
             }
 
             if (type === 'instanttextbox') {
+                const text = child as HOIPartial<InstantTextBoxType>;
                 const childname = child.name?.toLowerCase();
                 if (childname === 'bonus') {
                     return '';
                 } else if (childname === 'name') {
-                    return await renderInstantTextBox({ ...child, text: technology.id } as HOIPartial<InstantTextBoxType>, parentInfo, commonOptions);
+                    return await renderInstantTextBox({ ...text, text: technology.id }, parentInfo, commonOptions);
                 }
             }
 
@@ -484,23 +486,24 @@ async function renderLineItem(
         noSize: true,
         onRenderChild: async (type, child, parent) => {
             if (type === 'icon') {
+                const icon = child as HOIPartial<IconType>;
                 const childName = child.name?.toLowerCase();
                 if (childName === 'left' || childName === 'right' || childName === 'up' || childName === 'down') {
                     if (item[childName]) {
                         return await renderIcon({
-                            ...child,
+                            ...icon,
                             spritetype: `GFX_techtree_line_${childName}_${sameInOut ? 'dot_' : ''}states`,
                             frame: 2,
-                        } as HOIPartial<IconType>, parent, commonOptions);
+                        }, parent, commonOptions);
                     } else {
                         return '';
                     }
                 } else if (childName === 'center') {
                     if (centerName && !sameInOut) {
                         return await renderIcon({
-                            ...child,
+                            ...icon,
                             spritetype: `GFX_techline_center_${centerName}_states`, frame: 2
-                        } as HOIPartial<IconType>, parent, commonOptions);
+                        }, parent, commonOptions);
                     } else {
                         return '';
                     }
