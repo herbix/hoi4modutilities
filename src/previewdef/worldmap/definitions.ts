@@ -125,6 +125,7 @@ export interface Terrain {
     name: string;
     color: number;
     isNaval: boolean;
+    file: string;
 }
 
 export interface StrategicRegion extends Region, TokenInFile {

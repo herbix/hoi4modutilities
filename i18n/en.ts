@@ -182,6 +182,7 @@ const internalTable = {
     "worldmap.warnings.supplyareanostates": "Supply area {0} in \"{1}\" doesn't have states.",
     "worldmap.warnings.supplyareanotexist": "Supply area with id {0} doesn't exist.",
     "worldmap.warnings.supplyareanovalidstates": "Supply area {0} doesn't have valid states.",
+    "worldmap.warnings.terraindefinedtwice": "Terrain {0} is defined in two files: {1}, {2}.",
     "worldmap.warnings.terrainnotdefined": "Terrain \"{0}\" is not defined.",
     "worldmap.warnings.xcrossing": "Map invalid X crossing at: ({0}, {1})."
 };

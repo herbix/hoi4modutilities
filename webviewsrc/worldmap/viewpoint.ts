@@ -47,6 +47,26 @@ export class ViewPoint extends Subscriber {
         return r > bbox.x + xoffset && br + xoffset > this.x && b > bbox.y && bb > this.y;
     }
 
+    public lineInView(start: Point, end: Point, xoffset: number) {
+        const r = this.x + this.canvas.width / this.scale;
+        const b = this.y + this.canvas.height / this.scale;
+        if (start.x > end.x) {
+            const t = start;
+            start = end;
+            end = t;
+        }
+
+        if (start.x >= r || end.x <= this.x) {
+            return false;
+        }
+
+        const k = (end.y - start.y) / (end.x - start.x);
+        const y1 = k * (this.x - start.x - xoffset) + start.y;
+        const y2 = k * (r - start.x - xoffset) + start.y;
+        return (y1 > this.y && y1 < b) || (y2 > this.y && y2 < b) ||
+            (y1 < b && y2 > this.y) || (y1 > this.y && y2 < b);
+    }
+
     public centerZone(zone: Zone) {
         const expectedScale = Math.min(this.canvas.width / zone.w / 2, this.canvas.height / zone.h / 2);
         if (expectedScale < 1) {

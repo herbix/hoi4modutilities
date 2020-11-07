@@ -4,6 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.4.4] - Unreleased
+
+### Fixed
+* An issue that not all terrain definitions are read.
+* An issue that connection between provinces are not visible when one of the province is out of view.
+
 ## [0.4.3] - 2020/10/07 - Latest
 
 ### Added

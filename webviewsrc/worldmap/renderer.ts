@@ -166,6 +166,8 @@ export class Renderer extends Subscriber {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const { renderedProvincesById } = renderContext;
         renderContext.renderedProvincesByOffset[xOffset] = renderedProvinces;
+        const viewMode = this.topBar.viewMode.value;
+        const renderScale = renderScaleByViewMode[viewMode];
 
         worldMap.forEachProvince(province => {
             if (this.viewPoint.bboxInView(province.boundingBox, xOffset)) {
@@ -174,6 +176,33 @@ export class Renderer extends Subscriber {
                 this.renderProvince(context, province, scale, xOffset);
                 renderedProvinces.push(province);
                 renderedProvincesById[province.id] = province;
+            }
+
+            if (renderScale.edge > scale) {
+                return;
+            }
+
+            for (const edge of province.edges) {
+                if (edge.path.length > 0) {
+                    continue;
+                }
+
+                const toProvince = worldMap.getProvinceById(edge.to);
+                if (!toProvince) {
+                    continue;
+                }
+
+                const [startPoint, endPoint] = findNearestPoints(edge.start, edge.stop, province, toProvince);
+                if (this.viewPoint.lineInView(startPoint, endPoint, xOffset)) {
+                    if (!(province.id in renderedProvincesById)) {
+                        renderedProvinces.push(province);
+                        renderedProvincesById[province.id] = province;
+                    }
+                    if (!(edge.to in renderedProvincesById)) {
+                        renderedProvinces.push(toProvince);
+                        renderedProvincesById[edge.to] = toProvince;
+                    }
+                }
             }
         });
     }

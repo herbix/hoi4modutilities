@@ -79,7 +79,7 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
             mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
     
         validateProvinceContinents(provinces, continents.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.continent], warnings);
-        validateProvinceTerrains(provinces, terrains.result, ['map/' + defaultMap.definitions, this.terrainDefinitionLoader.file], warnings);
+        validateProvinceTerrains(provinces, terrains.result, ['map/' + defaultMap.definitions], warnings);
 
         fillAdjacencyEdges(provinces, adjacencies.result, provinceBmp.result.height, ['map/' + defaultMap.provinces, 'map/' + defaultMap.definitions], warnings);
     
