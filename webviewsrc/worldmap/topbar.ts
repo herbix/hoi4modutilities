@@ -25,6 +25,7 @@ export class TopBar extends Subscriber {
     public hoverSupplyAreaId$: BehaviorSubject<number | undefined>;
     public selectedSupplyAreaId$: BehaviorSubject<number | undefined>;
     public warningFilter: DivDropdown;
+    public display: DivDropdown;
 
     public warningsVisible: boolean = false;
 
@@ -34,6 +35,7 @@ export class TopBar extends Subscriber {
         super();
 
         this.addSubscription(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
+        this.addSubscription(this.display = new DivDropdown(document.getElementById('display') as HTMLDivElement, true));
 
         this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? 'province');
         this.colorSet$ = toBehaviorSubject(document.getElementById('colorset') as HTMLSelectElement, state.colorSet ?? 'provinceid');
@@ -49,6 +51,11 @@ export class TopBar extends Subscriber {
             this.warningFilter.selectedValues$.next(state.warningFilter);
         } else {
             this.warningFilter.selectAll();
+        }
+        if (state.display) {
+            this.display.selectedValues$.next(state.display);
+        } else {
+            this.display.selectAll();
         }
 
         this.searchBox = document.getElementById("searchbox") as HTMLInputElement;

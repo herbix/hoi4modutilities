@@ -1,6 +1,6 @@
 function generate(name) {
-    const en = require('../out/i18n/en');
-    const zhCn = require('../out/i18n/' + name);
+    const en = require('../out/i18n/en').default;
+    const zhCn = require('../out/i18n/' + name).default;
     const fs = require("fs");
 
     const result = { ...en, ...zhCn };

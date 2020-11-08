@@ -72,6 +72,7 @@ export class Renderer extends Subscriber {
                 topBar.hoverSupplyAreaId$,
                 topBar.selectedSupplyAreaId$,
                 topBar.warningFilter.selectedValues$,
+                topBar.display.selectedValues$,
             ]).pipe(
                 distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
             ).subscribe(this.renderCanvas)
@@ -135,6 +136,9 @@ export class Renderer extends Subscriber {
             viewMode: this.topBar.viewMode$.value,
             colorSet: this.topBar.colorSet$.value,
             warningFilter: this.topBar.warningFilter.selectedValues$.value,
+            edgeVisible: this.topBar.display.selectedValues$.value.includes('edge'),
+            labelVisible: this.topBar.display.selectedValues$.value.includes('label'),
+            adaptZooming: this.topBar.display.selectedValues$.value.includes('adaptzooming'),
             ...this.viewPoint.toJson(),
         };
 
@@ -225,17 +229,33 @@ export class Renderer extends Subscriber {
     }
 
     private isEdgeVisible() {
-        const viewMode = this.topBar.viewMode$.value;
-        const renderScale = renderScaleByViewMode[viewMode];
-        const scale = this.viewPoint.scale;
-        return renderScale.edge <= scale;
+        if (this.topBar.display.selectedValues$.value.includes('adaptzooming')) {
+            const viewMode = this.topBar.viewMode$.value;
+            const renderScale = renderScaleByViewMode[viewMode];
+            const scale = this.viewPoint.scale;
+            return renderScale.edge <= scale && this.topBar.display.selectedValues$.value.includes('edge');
+        }
+
+        return this.topBar.display.selectedValues$.value.includes('edge');
     }
 
     private isLabelVisible() {
-        const viewMode = this.topBar.viewMode$.value;
-        const renderScale = renderScaleByViewMode[viewMode];
-        const scale = this.viewPoint.scale;
-        return renderScale.labels <= scale;
+        if (this.topBar.display.selectedValues$.value.includes('adaptzooming')) {
+            const viewMode = this.topBar.viewMode$.value;
+            const renderScale = renderScaleByViewMode[viewMode];
+            const scale = this.viewPoint.scale;
+            return renderScale.labels <= scale && this.topBar.display.selectedValues$.value.includes('label');
+        }
+
+        return this.topBar.display.selectedValues$.value.includes('label');
+    }
+
+    private isMouseHighlightVisible() {
+        return this.topBar.display.selectedValues$.value.includes('mousehighlight');
+    }
+
+    private isTooltipVisible() {
+        return this.topBar.display.selectedValues$.value.includes('tooltip');
     }
 
     private renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
@@ -496,23 +516,25 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         }
         province = worldMap.getProvinceById(this.topBar.hoverProvinceId$.value);
         if (province) {
-            if (this.topBar.selectedProvinceId$ !== this.topBar.hoverProvinceId$) {
+            if (this.topBar.selectedProvinceId$ !== this.topBar.hoverProvinceId$ && this.isMouseHighlightVisible()) {
                 this.renderHoverProvince(province, worldMap);
             }
-            this.renderProvinceTooltip(province, worldMap);
+            if (this.isTooltipVisible()) {
+                this.renderProvinceTooltip(province, worldMap);
+            }
         }
     }
 
     private renderStateHoverSelection(worldMap: FEWorldMap) {
         const hover = worldMap.getStateById(this.topBar.hoverStateId$.value);
         this.renderHoverSelection(worldMap, hover, worldMap.getStateById(this.topBar.selectedStateId$.value));
-        hover && this.renderStateTooltip(hover, worldMap);
+        hover && this.isTooltipVisible() && this.renderStateTooltip(hover, worldMap);
     }
 
     private renderStrategicRegionHoverSelection(worldMap: FEWorldMap) {
         const hover = worldMap.getStrategicRegionById(this.topBar.hoverStrategicRegionId$.value);
         this.renderHoverSelection(worldMap, hover, worldMap.getStrategicRegionById(this.topBar.selectedStrategicRegionId$.value));
-        hover && this.renderStrategicRegionTooltip(hover, worldMap);
+        hover && this.isTooltipVisible() && this.renderStrategicRegionTooltip(hover, worldMap);
     }
 
     private renderSupplyAreaHoverSelection(worldMap: FEWorldMap) {
@@ -531,7 +553,7 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         };
 
         this.renderHoverSelection(worldMap, toProvinces(hover), toProvinces(selected));
-        hover && this.renderSupplyAreaTooltip(hover, worldMap);
+        hover && this.isTooltipVisible() && this.renderSupplyAreaTooltip(hover, worldMap);
     }
 
     private renderHoverSelection(worldMap: FEWorldMap, hover: { provinces: number[] } | undefined, selected: { provinces: number[] } | undefined) {
@@ -544,13 +566,11 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
             }
         }
 
-        if (hover) {
-            if (hover !== selected) {
-                for (const provinceId of hover.provinces) {
-                    const province = worldMap.getProvinceById(provinceId);
-                    if (province) {
-                        this.renderHoverProvince(province, worldMap, false);
-                    }
+        if (hover && this.isMouseHighlightVisible() && hover !== selected) {
+            for (const provinceId of hover.provinces) {
+                const province = worldMap.getProvinceById(provinceId);
+                if (province) {
+                    this.renderHoverProvince(province, worldMap, false);
                 }
             }
         }

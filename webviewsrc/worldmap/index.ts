@@ -21,6 +21,7 @@ fromEvent(window, 'load').subscribe(function() {
     topBar.selectedStrategicRegionId$.subscribe(setStateForKey('selectedStrategicRegionId'));
     topBar.selectedSupplyAreaId$.subscribe(setStateForKey('selectedSupplyAreaId'));
     topBar.warningFilter.selectedValues$.subscribe(setStateForKey('warningFilter'));
+    topBar.display.selectedValues$.subscribe(setStateForKey('display'));
 });
 
 function setStateForKey<T>(key: string): (newValue: T) => void {

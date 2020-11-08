@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [0.4.4] - Unreleased
 
+### Added
+* `Display` option in world map preview, which can show or hide map components.
+
 ### Fixed
 * An issue that not all terrain definitions are read.
 * An issue that connection between provinces are not visible when one of the province is out of view.
