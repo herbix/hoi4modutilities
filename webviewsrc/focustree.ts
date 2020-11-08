@@ -118,7 +118,7 @@ function updateSelectedFocusTree() {
                 ${focusTree.conditionExprs.map(option =>
                     `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
                 ).join('')}`;
-            conditions.setSelection([]);
+            conditions.selectedValues$.next([]);
         }
 
     } else {
@@ -254,11 +254,11 @@ window.addEventListener('load', tryRun(async function() {
             allowBranches = new DivDropdown(allowBranchesElement, true);
             allowBranches.selectAll();
 
-            const allValues = allowBranches.selectedValues;
-            allowBranches.setSelection(allValues.filter(v => !hiddenBranches[v]));
+            const allValues = allowBranches.selectedValues$.value;
+            allowBranches.selectedValues$.next(allValues.filter(v => !hiddenBranches[v]));
 
-            let oldSelection = allowBranches.selectedValues;
-            allowBranches.onChange(selection => {
+            let oldSelection = allowBranches.selectedValues$.value;
+            allowBranches.selectedValues$.subscribe(selection => {
                 const showBranches = difference(selection, oldSelection);
                 showBranches.forEach(s => showBranch(true, s));
                 const hideBranches = difference(oldSelection, selection);
@@ -311,9 +311,8 @@ window.addEventListener('load', tryRun(async function() {
         if (conditionsElement) {
             conditions = new DivDropdown(conditionsElement, true);
             
-            conditions.setSelection(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
-
-            conditions.onChange(async (selection) => {
+            conditions.selectedValues$.next(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
+            conditions.selectedValues$.subscribe(async (selection) => {
                 selectedExprs = selection.map<ConditionItem>(selection => {
                     const index = selection.indexOf('!|');
                     if (index === -1) {

@@ -1,10 +1,11 @@
-import { Observable, asEvent, Subscriber } from "../util/event";
+import { Subscriber, toBehaviorSubject } from "../util/event";
 import { Loader, FEWorldMap } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { vscode } from "../util/vscode";
 import { WorldMapMessage, WorldMapWarning } from "../../src/previewdef/worldmap/definitions";
 import { feLocalize } from "../util/i18n";
 import { DivDropdown } from "../util/dropdown";
+import { BehaviorSubject, combineLatest, fromEvent } from 'rxjs';
 
 export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' |
@@ -13,47 +14,43 @@ export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | '
 export const topBarHeight = 40;
 
 export class TopBar extends Subscriber {
-    public viewMode: Observable<ViewMode>;
-    public colorSet: Observable<ColorSet>;
-    public hoverProvinceId: Observable<number | undefined>;
-    public selectedProvinceId: Observable<number | undefined>;
-    public hoverStateId: Observable<number | undefined>;
-    public selectedStateId: Observable<number | undefined>;
-    public hoverStrategicRegionId: Observable<number | undefined>;
-    public selectedStrategicRegionId: Observable<number | undefined>;
-    public hoverSupplyAreaId: Observable<number | undefined>;
-    public selectedSupplyAreaId: Observable<number | undefined>;
+    public viewMode$: BehaviorSubject<ViewMode>;
+    public colorSet$: BehaviorSubject<ColorSet>;
+    public hoverProvinceId$: BehaviorSubject<number | undefined>;
+    public selectedProvinceId$: BehaviorSubject<number | undefined>;
+    public hoverStateId$: BehaviorSubject<number | undefined>;
+    public selectedStateId$: BehaviorSubject<number | undefined>;
+    public hoverStrategicRegionId$: BehaviorSubject<number | undefined>;
+    public selectedStrategicRegionId$: BehaviorSubject<number | undefined>;
+    public hoverSupplyAreaId$: BehaviorSubject<number | undefined>;
+    public selectedSupplyAreaId$: BehaviorSubject<number | undefined>;
     public warningFilter: DivDropdown;
 
     public warningsVisible: boolean = false;
 
-    private viewModeElement: HTMLSelectElement;
-    private colorSetElement: HTMLSelectElement;
     private searchBox: HTMLInputElement;
 
     constructor(canvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, state: any) {
         super();
 
-        this.subscriptions.push(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
+        this.addSubscription(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
 
-        this.viewMode = new Observable<ViewMode>(state.viewMode ?? 'province');
-        this.colorSet = new Observable<ColorSet>(state.colorSet ?? 'provinceid');
-        this.hoverProvinceId = new Observable<number | undefined>(undefined);
-        this.selectedProvinceId = new Observable<number | undefined>(state.selectedProvinceId ?? undefined);
-        this.hoverStateId = new Observable<number | undefined>(undefined);
-        this.selectedStateId = new Observable<number | undefined>(state.selectedStateId ?? undefined);
-        this.hoverStrategicRegionId = new Observable<number | undefined>(undefined);
-        this.selectedStrategicRegionId = new Observable<number | undefined>(state.selectedStrategicRegionId ?? undefined);
-        this.hoverSupplyAreaId = new Observable<number | undefined>(undefined);
-        this.selectedSupplyAreaId = new Observable<number | undefined>(state.selectedSupplyAreaId ?? undefined);
+        this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? 'province');
+        this.colorSet$ = toBehaviorSubject(document.getElementById('colorset') as HTMLSelectElement, state.colorSet ?? 'provinceid');
+        this.hoverProvinceId$ = new BehaviorSubject<number | undefined>(undefined);
+        this.selectedProvinceId$ = new BehaviorSubject<number | undefined>(state.selectedProvinceId ?? undefined);
+        this.hoverStateId$ = new BehaviorSubject<number | undefined>(undefined);
+        this.selectedStateId$ = new BehaviorSubject<number | undefined>(state.selectedStateId ?? undefined);
+        this.hoverStrategicRegionId$ = new BehaviorSubject<number | undefined>(undefined);
+        this.selectedStrategicRegionId$ = new BehaviorSubject<number | undefined>(state.selectedStrategicRegionId ?? undefined);
+        this.hoverSupplyAreaId$ = new BehaviorSubject<number | undefined>(undefined);
+        this.selectedSupplyAreaId$ = new BehaviorSubject<number | undefined>(state.selectedSupplyAreaId ?? undefined);
         if (state.warningFilter) {
-            this.warningFilter.setSelection(state.warningFilter);
+            this.warningFilter.selectedValues$.next(state.warningFilter);
         } else {
             this.warningFilter.selectAll();
         }
 
-        this.viewModeElement = document.getElementById('viewmode') as HTMLSelectElement;
-        this.colorSetElement = document.getElementById('colorset') as HTMLSelectElement;
         this.searchBox = document.getElementById("searchbox") as HTMLInputElement;
 
         this.loadControls();
@@ -66,15 +63,15 @@ export class TopBar extends Subscriber {
         });
     
         let colorSetHidden = true;
-        document.querySelectorAll('#colorset > option[viewmode~="' + this.viewMode.value + '"]').forEach(v => {
+        document.querySelectorAll('#colorset > option[viewmode~="' + this.viewMode$.value + '"]').forEach(v => {
             (v as HTMLOptionElement).hidden = false;
-            if ((v as HTMLOptionElement).value === this.colorSet.value) {
+            if ((v as HTMLOptionElement).value === this.colorSet$.value) {
                 colorSetHidden = false;
             }
         });
         
         document.querySelectorAll('#colorset > option:not([viewmode])').forEach(v => {
-            if ((v as HTMLOptionElement).value === this.colorSet.value) {
+            if ((v as HTMLOptionElement).value === this.colorSet$.value) {
                 colorSetHidden = false;
             }
         });
@@ -83,7 +80,7 @@ export class TopBar extends Subscriber {
             (v as HTMLButtonElement).style.display = 'none';
         });
 
-        document.querySelectorAll('button[viewmode~="' + this.viewMode.value + '"]').forEach(v => {
+        document.querySelectorAll('button[viewmode~="' + this.viewMode$.value + '"]').forEach(v => {
             (v as HTMLButtonElement).style.display = 'inline-block';
         });
 
@@ -91,14 +88,13 @@ export class TopBar extends Subscriber {
             (v as HTMLDivElement).style.display = 'none';
         });
 
-        document.querySelectorAll('.group[viewmode~="' + this.viewMode.value + '"]').forEach(v => {
+        document.querySelectorAll('.group[viewmode~="' + this.viewMode$.value + '"]').forEach(v => {
             (v as HTMLDivElement).style.display = 'inline-block';
         });
     
         if (colorSetHidden) {
             const newColorset = (document.querySelector('#colorset > option:not(*[hidden])') as HTMLOptionElement)?.value;
-            this.colorSetElement.value = newColorset;
-            this.colorSet.set(newColorset as any);
+            this.colorSet$.next(newColorset as any);
         }
 
         this.setSearchBoxPlaceHolder();
@@ -107,22 +103,9 @@ export class TopBar extends Subscriber {
     private loadControls() {
         const topBar = this;
 
-        this.subscriptions.push(asEvent(this.viewModeElement, 'change')(function() {
-            topBar.viewMode.set(this.value as any);
-        }));
-    
-        this.subscriptions.push(asEvent(this.colorSetElement, 'change')(function() {
-            topBar.colorSet.set(this.value as any);
-        }));
-    
-        this.viewModeElement.value = this.viewMode.value;
-        this.onViewModeChange();
-    
-        this.colorSetElement.value = this.colorSet.value;
-
         const warningsContainer = document.getElementById('warnings-container')!;
         const showWarnings = document.getElementById('show-warnings')!;
-        this.subscriptions.push(asEvent(showWarnings, 'click')(() => {
+        this.addSubscription(fromEvent(showWarnings, 'click').subscribe(() => {
             this.warningsVisible = !this.warningsVisible;
             if (this.warningsVisible) {
                 warningsContainer.style.display = 'block';
@@ -133,47 +116,47 @@ export class TopBar extends Subscriber {
 
         const searchBox = this.searchBox;
         const search = document.getElementById("search")!;
-        this.subscriptions.push(asEvent(searchBox, 'keypress')(function(e) {
+        this.addSubscription(fromEvent<KeyboardEvent>(searchBox, 'keypress').subscribe((e) => {
             if (e.code === 'Enter') {
-                topBar.search(this.value);
+                topBar.search(searchBox.value);
             }
         }));
-        this.subscriptions.push(asEvent(search, 'click')(() => {
+        this.addSubscription(fromEvent(search, 'click').subscribe(() => {
             topBar.search(searchBox.value);
         }));
         
         const refresh = document.getElementById("refresh") as HTMLButtonElement;
-        this.subscriptions.push(asEvent(refresh, 'click')(() => {
+        this.addSubscription(fromEvent(refresh, 'click').subscribe(() => {
             if (!refresh.disabled) {
                 this.loader.refresh();
             }
         }));
-        refresh.disabled = this.loader.loading.value;
-        this.subscriptions.push(this.loader.loading.onChange(v => {
+        refresh.disabled = this.loader.loading$.value;
+        this.addSubscription(this.loader.loading$.subscribe(v => {
             refresh.disabled = v;
         }));
 
         const open = document.getElementById("open") as HTMLButtonElement;
-        this.subscriptions.push(asEvent(open, 'click')((e) => {
+        this.addSubscription(fromEvent(open, 'click').subscribe((e) => {
             e.stopPropagation();
-            if (this.viewMode.value === 'state') {
-                if (this.selectedStateId.value) {
-                    const state = this.loader.worldMap.getStateById(this.selectedStateId.value);
+            if (this.viewMode$.value === 'state') {
+                if (this.selectedStateId$.value) {
+                    const state = this.loader.worldMap.getStateById(this.selectedStateId$.value);
                     if (state) {
                         vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'state', file: state.file, start: state.token?.start, end: state.token?.end });
                     }
                 }
-            } else if (this.viewMode.value === 'strategicregion') {
-                if (this.selectedStrategicRegionId.value) {
-                    const strategicRegion = this.loader.worldMap.getStrategicRegionById(this.selectedStrategicRegionId.value);
+            } else if (this.viewMode$.value === 'strategicregion') {
+                if (this.selectedStrategicRegionId$.value) {
+                    const strategicRegion = this.loader.worldMap.getStrategicRegionById(this.selectedStrategicRegionId$.value);
                     if (strategicRegion) {
                         vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'strategicregion', file: strategicRegion.file,
                             start: strategicRegion.token?.start, end: strategicRegion.token?.end });
                     }
                 }
-            } else if (this.viewMode.value === 'supplyarea') {
-                if (this.selectedSupplyAreaId.value) {
-                    const supplyArea = this.loader.worldMap.getSupplyAreaById(this.selectedSupplyAreaId.value);
+            } else if (this.viewMode$.value === 'supplyarea') {
+                if (this.selectedSupplyAreaId$.value) {
+                    const supplyArea = this.loader.worldMap.getSupplyAreaById(this.selectedSupplyAreaId$.value);
                     if (supplyArea) {
                         vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'supplyarea', file: supplyArea.file,
                             start: supplyArea.token?.start, end: supplyArea.token?.end });
@@ -181,25 +164,23 @@ export class TopBar extends Subscriber {
                 }
             }
         }));
-        const setOpenDisabled = () => {
-            open.disabled = !((this.viewMode.value === 'state' && this.selectedStateId.value !== undefined) ||
-                (this.viewMode.value === 'strategicregion' && this.selectedStrategicRegionId.value !== undefined) ||
-                (this.viewMode.value === 'supplyarea' && this.selectedSupplyAreaId.value !== undefined));
-        };
-        setOpenDisabled();
-        this.subscriptions.push(this.selectedStateId.onChange(setOpenDisabled));
-        this.subscriptions.push(this.selectedStrategicRegionId.onChange(setOpenDisabled));
-        this.subscriptions.push(this.selectedSupplyAreaId.onChange(setOpenDisabled));
-        this.subscriptions.push(this.viewMode.onChange(setOpenDisabled));
+
+        this.addSubscription(combineLatest([this.viewMode$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$]).subscribe(
+            ([viewMode, selectedStateId, selectedStrategicRegionId, selectedSupplyAreaId]) => {
+                open.disabled = !((viewMode === 'state' && selectedStateId !== undefined) ||
+                    (viewMode === 'strategicregion' && selectedStrategicRegionId !== undefined) ||
+                    (viewMode === 'supplyarea' && selectedSupplyAreaId !== undefined));
+            }
+        ));
     }
     
     private registerEventListeners(canvas: HTMLCanvasElement) {
-        this.subscriptions.push(asEvent(canvas, 'mousemove')((e) => {
+        this.addSubscription(fromEvent<MouseEvent>(canvas, 'mousemove').subscribe((e) => {
             if (!this.loader.worldMap) {
-                this.hoverProvinceId.set(undefined);
-                this.hoverStateId.set(undefined);
-                this.hoverStrategicRegionId.set(undefined);
-                this.hoverSupplyAreaId.set(undefined);
+                this.hoverProvinceId$.next(undefined);
+                this.hoverStateId$.next(undefined);
+                this.hoverStrategicRegionId$.next(undefined);
+                this.hoverSupplyAreaId$.next(undefined);
                 return;
             }
     
@@ -213,39 +194,39 @@ export class TopBar extends Subscriber {
                 x -= worldMap.width;
             }
 
-            this.hoverProvinceId.set(worldMap.getProvinceByPosition(x, y)?.id);
-            this.hoverStateId.set(this.hoverProvinceId.value === undefined ? undefined : worldMap.getStateByProvinceId(this.hoverProvinceId.value)?.id);
-            this.hoverStrategicRegionId.set(this.hoverProvinceId.value === undefined ? undefined : worldMap.getStrategicRegionByProvinceId(this.hoverProvinceId.value)?.id);
-            this.hoverSupplyAreaId.set(this.hoverStateId.value === undefined ? undefined : worldMap.getSupplyAreaByStateId(this.hoverStateId.value)?.id);
+            this.hoverProvinceId$.next(worldMap.getProvinceByPosition(x, y)?.id);
+            this.hoverStateId$.next(this.hoverProvinceId$.value === undefined ? undefined : worldMap.getStateByProvinceId(this.hoverProvinceId$.value)?.id);
+            this.hoverStrategicRegionId$.next(this.hoverProvinceId$.value === undefined ? undefined : worldMap.getStrategicRegionByProvinceId(this.hoverProvinceId$.value)?.id);
+            this.hoverSupplyAreaId$.next(this.hoverStateId$.value === undefined ? undefined : worldMap.getSupplyAreaByStateId(this.hoverStateId$.value)?.id);
         }));
     
-        this.subscriptions.push(asEvent(canvas, 'mouseleave')(() => {
-            this.hoverProvinceId.set(undefined);
-            this.hoverStateId.set(undefined);
-            this.hoverStrategicRegionId.set(undefined);
-            this.hoverSupplyAreaId.set(undefined);
+        this.addSubscription(fromEvent(canvas, 'mouseleave').subscribe(() => {
+            this.hoverProvinceId$.next(undefined);
+            this.hoverStateId$.next(undefined);
+            this.hoverStrategicRegionId$.next(undefined);
+            this.hoverSupplyAreaId$.next(undefined);
         }));
     
-        this.subscriptions.push(asEvent(canvas, 'click')(() => {
-            switch (this.viewMode.value) {
+        this.addSubscription(fromEvent(canvas, 'click').subscribe(() => {
+            switch (this.viewMode$.value) {
                 case 'province':
-                    this.selectedProvinceId.set(this.selectedProvinceId.value === this.hoverProvinceId.value ? undefined : this.hoverProvinceId.value);
+                    this.selectedProvinceId$.next(this.selectedProvinceId$.value === this.hoverProvinceId$.value ? undefined : this.hoverProvinceId$.value);
                     break;
                 case 'state':
-                    this.selectedStateId.set(this.selectedStateId.value === this.hoverStateId.value ? undefined : this.hoverStateId.value);
+                    this.selectedStateId$.next(this.selectedStateId$.value === this.hoverStateId$.value ? undefined : this.hoverStateId$.value);
                     break;
                 case 'strategicregion':
-                    this.selectedStrategicRegionId.set(this.selectedStrategicRegionId.value === this.hoverStrategicRegionId.value ? undefined : this.hoverStrategicRegionId.value);
+                    this.selectedStrategicRegionId$.next(this.selectedStrategicRegionId$.value === this.hoverStrategicRegionId$.value ? undefined : this.hoverStrategicRegionId$.value);
                     break;
                 case 'supplyarea':
-                    this.selectedSupplyAreaId.set(this.selectedSupplyAreaId.value === this.hoverSupplyAreaId.value ? undefined : this.hoverSupplyAreaId.value);
+                    this.selectedSupplyAreaId$.next(this.selectedSupplyAreaId$.value === this.hoverSupplyAreaId$.value ? undefined : this.hoverSupplyAreaId$.value);
                     break;
             }
         }));
 
-        this.subscriptions.push(this.viewMode.onChange(() => this.onViewModeChange()));
+        this.addSubscription(this.viewMode$.subscribe(() => this.onViewModeChange()));
 
-        this.subscriptions.push(this.loader.onMapChanged(wm => {
+        this.addSubscription(this.loader.worldMap$.subscribe(wm => {
             const warnings = document.getElementById('warnings') as HTMLTextAreaElement;
             if (wm.warnings.length === 0) {
                 warnings.value = feLocalize('worldmap.warnings.nowarnings', 'No warnings.');
@@ -263,16 +244,17 @@ export class TopBar extends Subscriber {
             return;
         }
 
+        const viewMode = this.viewMode$.value;
         const [getRegionById, selectedId] =
-            this.viewMode.value === 'province' ? [this.loader.worldMap.getProvinceById, this.selectedProvinceId] :
-            this.viewMode.value === 'state' ? [this.loader.worldMap.getStateById, this.selectedStateId] :
-            this.viewMode.value === 'strategicregion' ? [this.loader.worldMap.getStrategicRegionById, this.selectedStrategicRegionId] :
-            this.viewMode.value === 'supplyarea' ? [this.loader.worldMap.getSupplyAreaById, this.selectedSupplyAreaId] :
+            viewMode === 'province' ? [this.loader.worldMap.getProvinceById, this.selectedProvinceId$] :
+            viewMode === 'state' ? [this.loader.worldMap.getStateById, this.selectedStateId$] :
+            viewMode === 'strategicregion' ? [this.loader.worldMap.getStrategicRegionById, this.selectedStrategicRegionId$] :
+            viewMode === 'supplyarea' ? [this.loader.worldMap.getSupplyAreaById, this.selectedSupplyAreaId$] :
             [() => undefined, undefined];
             
         const region = getRegionById(number);
         if (region) {
-            selectedId?.set(number);
+            selectedId?.next(number);
             this.viewPoint.centerZone(region.boundingBox);
         }
     }
@@ -283,7 +265,7 @@ export class TopBar extends Subscriber {
         }
 
         let placeholder = '';
-        switch (this.viewMode.value) {
+        switch (this.viewMode$.value) {
             case 'province':
                 placeholder = worldMap.provincesCount > 1 ? `1-${worldMap.provincesCount - 1}` : '';
                 break;

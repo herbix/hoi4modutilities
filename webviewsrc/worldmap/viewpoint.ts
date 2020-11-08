@@ -1,25 +1,28 @@
-import { EventEmitter, asEvent, Subscriber } from "../util/event";
+import { Subscriber } from "../util/event";
 import { FEWorldMap } from "./loader";
 import { Zone, Point } from "./definitions";
 import { bboxCenter } from "./graphutils";
+import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
+
+type ViewPointObj = { x: number; y: number; scale: number; };
 
 export class ViewPoint extends Subscriber {
-    private onChangedEmitter = new EventEmitter<void>();
-    public onChanged = this.onChangedEmitter.event;
     public x: number;
     public y: number;
     public scale: number;
+    public observable$: Observable<ViewPointObj>;
 
     constructor(
         private canvas: HTMLCanvasElement,
         private loader: { worldMap: FEWorldMap | undefined },
         private topBarHeight: number,
-        viewPointObj: { x: number; y: number; scale: number; },
+        viewPointObj: ViewPointObj,
     ) {
         super();
         this.x = viewPointObj.x;
         this.y = viewPointObj.y;
         this.scale = viewPointObj.scale;
+        this.observable$ = new BehaviorSubject<ViewPointObj>(viewPointObj);
         this.enableDragger();
     }
 
@@ -81,7 +84,7 @@ export class ViewPoint extends Subscriber {
         this.x = point.x - this.canvas.width / 2 / this.scale;
         this.y = point.y - this.canvas.height / 2 / this.scale;
         this.alignViewPointXY();
-        this.onChangedEmitter.fire();
+        this.updateObservable();
     }
 
     public toJson() {
@@ -99,7 +102,7 @@ export class ViewPoint extends Subscriber {
         let vpx = -1;
         let vpy = -1;
     
-        this.subscriptions.push(asEvent(this.canvas, 'mousedown')((e) => {
+        this.addSubscription(fromEvent<MouseEvent>(this.canvas, 'mousedown').subscribe((e) => {
             if (!this.loader.worldMap || !(e.buttons & 2)) {
                 return;
             }
@@ -111,7 +114,7 @@ export class ViewPoint extends Subscriber {
             pressed = true;
         }));
     
-        this.subscriptions.push(asEvent(document.body, 'mousemove')((e) => {
+        this.addSubscription(fromEvent<MouseEvent>(document.body, 'mousemove').subscribe((e) => {
             if (!this.loader.worldMap) {
                 pressed = false;
             }
@@ -120,21 +123,21 @@ export class ViewPoint extends Subscriber {
                 this.x = vpx - (e.pageX - mdx) / this.scale;
                 this.y = vpy - (e.pageY - mdy) / this.scale;
                 this.alignViewPointXY();
-                this.onChangedEmitter.fire();
+                this.updateObservable();
             }
         }));
     
-        this.subscriptions.push(asEvent(document.body, 'mouseup')(function() {
+        this.addSubscription(fromEvent<MouseEvent>(document.body, 'mouseup').subscribe(() => {
             pressed = false;
         }));
     
-        this.subscriptions.push(asEvent(document.body, 'mouseenter')(function(e) {
+        this.addSubscription(fromEvent<MouseEvent>(document.body, 'mouseenter').subscribe((e) => {
             if (pressed && (e.buttons & 2) !== 2) {
                 pressed = false;
             }
         }));
     
-        this.subscriptions.push(asEvent(this.canvas, 'wheel')((e) => {
+        this.addSubscription(fromEvent<WheelEvent>(this.canvas, 'wheel').subscribe((e) => {
             this.x += e.pageX / this.scale;
             this.y += e.pageY / this.scale;
     
@@ -158,7 +161,7 @@ export class ViewPoint extends Subscriber {
             this.y -= e.pageY / this.scale;
     
             this.alignViewPointXY();
-            this.onChangedEmitter.fire();
+            this.updateObservable();
         }));
     }
 
@@ -185,5 +188,9 @@ export class ViewPoint extends Subscriber {
         } else if (this.y > maxY) {
             this.y = maxY;
         }
+    }
+
+    private updateObservable() {
+        (this.observable$ as BehaviorSubject<ViewPointObj>).next(this.toJson());
     }
 }

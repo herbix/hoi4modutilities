@@ -1,9 +1,10 @@
 import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, Country, Point } from "./definitions";
 import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
-import { EventEmitter, asEvent, Subscriber, Observable } from "../util/event";
+import { Subscriber } from "../util/event";
 import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
+import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
 
 interface ExtraMapData {
     provincesCount: number;
@@ -43,15 +44,15 @@ export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicR
 
 export class Loader extends Subscriber {
     public worldMap: FEWorldMapClass;
-    public loading = new Observable<boolean>(false);
+    public loading$ = new BehaviorSubject<boolean>(false);
     public progress: number = 0;
     public progressText: string = '';
 
-    private onMapChangedEmitter = new EventEmitter<FEWorldMap>();
-    public onMapChanged = this.onMapChangedEmitter.event;
+    private writableWorldMap$ = new Subject<FEWorldMap>();
+    public worldMap$: Observable<FEWorldMap> = this.writableWorldMap$;
 
-    private onProgressChangedEmitter = new EventEmitter<void>();
-    public onProgressChanged = this.onProgressChangedEmitter.event;
+    private writableProgress$ = new BehaviorSubject({ progress: 0, progressText: '' });
+    public progress$: Observable<ObservedValueOf<Loader['writableProgress$']>> = this.writableProgress$;
 
     private loadingProvinceMap: WorldMapData & { provincesCount: number; statesCount: number; countriesCount: number; } | undefined;
     private loadingQueue: WorldMapMessage[] = [];
@@ -61,18 +62,18 @@ export class Loader extends Subscriber {
         super();
         this.worldMap = new FEWorldMapClass();
         this.load();
-        this.onMapChanged(wm => (window as any)['worldMap'] = wm);
+        this.worldMap$.subscribe(wm => (window as any)['worldMap'] = wm);
     }
 
     public refresh() {
         this.worldMap = new FEWorldMapClass();
-        this.onMapChangedEmitter.fire(this.worldMap);
+        this.writableWorldMap$.next(this.worldMap);
         vscode.postMessage({ command: 'loaded', force: true } as WorldMapMessage);
-        this.loading.set(true);
+        this.loading$.next(true);
     }
 
     private load() {
-        this.subscriptions.push(asEvent(window, 'message')(event => {
+        this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {
             const message = event.data as WorldMapMessage;
             switch (message.command) {
                 case 'provincemapsummary':
@@ -124,18 +125,18 @@ export class Loader extends Subscriber {
                     break;
                 case 'progress':
                     this.progressText = message.data;
-                    this.onProgressChangedEmitter.fire();
+                    this.writableProgress$.next({ progressText: this.progressText, progress: this.progress });
                     break;
                 case 'error':
                     this.progressText = message.data;
-                    this.onProgressChangedEmitter.fire();
-                    this.loading.set(false);
+                    this.writableProgress$.next({ progressText: this.progressText, progress: this.progress });
+                    this.loading$.next(false);
                     break;
             }
         }));
 
         vscode.postMessage({ command: 'loaded', force: false } as WorldMapMessage);
-        this.loading.set(true);
+        this.loading$.next(true);
     }
 
     private startLoading() {
@@ -175,16 +176,16 @@ export class Loader extends Subscriber {
     
         if (updateMap) {
             this.worldMap = new FEWorldMapClass(this.loadingProvinceMap!);
-            this.onMapChangedEmitter.fire(this.worldMap);
+            this.writableWorldMap$.next(this.worldMap);
         }
     
         if (this.loadingQueue.length === 0) {
-            this.loading.set(false);
+            this.loading$.next(false);
         } else {
             vscode.postMessage(this.loadingQueue.shift());
         }
 
-        this.onProgressChangedEmitter.fire();
+        this.writableProgress$.next({ progressText: this.progressText, progress: this.progress });
     }
     
     private receiveData<T>(arr: T[] | undefined, start: number, end: number, data: string): void {

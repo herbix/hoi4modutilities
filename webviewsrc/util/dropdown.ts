@@ -1,6 +1,7 @@
-import { Disposable, asEvent, Subscriber, EventEmitter } from "./event";
+import { Disposable, Subscriber, toDisposable } from "./event";
 import { feLocalize } from "./i18n";
 import { Checkbox } from "./checkbox";
+import { BehaviorSubject, fromEvent, Observable, Subject, Subscription } from 'rxjs';
 
 const dropdowns: Dropdown[] = [];
 
@@ -24,7 +25,7 @@ class Dropdown extends Subscriber {
     }
 
     private init() {
-        this.subscriptions.push(asEvent(this.select, 'mousedown')(e => {
+        this.addSubscription(fromEvent<MouseEvent>(this.select, 'mousedown').subscribe(e => {
             e.preventDefault();
             this.select.focus();
             if (this.closeDropdown) {
@@ -33,7 +34,7 @@ class Dropdown extends Subscriber {
                 this.showSelectionsForDropdown();
             }
         }));
-        this.subscriptions.push(asEvent(this.select, 'keydown')(e => {
+        this.addSubscription(fromEvent<KeyboardEvent>(this.select, 'keydown').subscribe(e => {
             if (e.code === 'Enter') {
                 e.preventDefault();
                 if (this.closeDropdown) {
@@ -62,7 +63,7 @@ class Dropdown extends Subscriber {
         const dropdownMenu = new DropdownMenu(optionForDropdownMenu);
         const dropdownMenuSubscriptions: Disposable[] = [ dropdownMenu ];
 
-        dropdownMenuSubscriptions.push(dropdownMenu.onChanged(options => {
+        dropdownMenuSubscriptions.push(toDisposable(dropdownMenu.options$.subscribe(options => {
             const selectedOption = options.find(o => o.selected);
             if (selectedOption) {
                 this.select.value = selectedOption.value;
@@ -71,14 +72,14 @@ class Dropdown extends Subscriber {
 
             this.closeDropdown?.apply(this);
             setTimeout(() => this.select.focus(), 0);
-        }));
+        })));
 
-        dropdownMenuSubscriptions.push(dropdownMenu.onClose(isKey => {
+        dropdownMenuSubscriptions.push(toDisposable(dropdownMenu.close$.subscribe(isKey => {
             if (isKey) {
                 this.select.focus();
             }
             this.closeDropdown?.apply(this);
-        }));
+        })));
 
         this.closeDropdown = () => {
             this.select.classList.remove('dropdown-opened');
@@ -93,28 +94,16 @@ class Dropdown extends Subscriber {
 
 export class DivDropdown extends Subscriber {
     private closeDropdown: (() => void) | undefined = undefined;
-    
-    private onChangeEmitter = new EventEmitter<readonly string[]>();
-    public onChange = this.onChangeEmitter.event;
 
-    public selectedValues: readonly string[] = [];
+    public selectedValues$ = new BehaviorSubject<readonly string[]>([]);
 
     constructor(readonly select: HTMLDivElement, private multiSelection: boolean = false) {
         super();
         this.init();
-    }
-
-    public setSelection(value: string | string[]) {
-        if (typeof value === 'string') {
-            this.selectedValues = [value];
-        } else {
-            this.selectedValues = value;
-        }
-
-        this.onChangeEmitter.fire(this.selectedValues);
-
-        const options = this.getOptions();
-        this.updateSelectedValue(options);
+        this.addSubscription(this.selectedValues$.subscribe((value) => {
+            const options = this.getOptions(value);
+            this.updateSelectedValue(options);
+        }));
     }
 
     public selectAll() {
@@ -125,14 +114,11 @@ export class DivDropdown extends Subscriber {
             values.push(option.value);
         });
 
-        this.selectedValues = values;
-        this.onChangeEmitter.fire(this.selectedValues);
-
-        this.updateSelectedValue(options);
+        this.selectedValues$.next(values);
     }
 
     private init() {
-        this.subscriptions.push(asEvent(this.select, 'mousedown')(e => {
+        this.addSubscription(fromEvent<MouseEvent>(this.select, 'mousedown').subscribe(e => {
             e.preventDefault();
             this.select.focus();
             if (this.closeDropdown) {
@@ -142,7 +128,7 @@ export class DivDropdown extends Subscriber {
             }
         }));
 
-        this.subscriptions.push(asEvent(this.select, 'keydown')(e => {
+        this.addSubscription(fromEvent<KeyboardEvent>(this.select, 'keydown').subscribe(e => {
             if (e.code === 'Enter') {
                 e.preventDefault();
                 if (this.closeDropdown) {
@@ -163,22 +149,21 @@ export class DivDropdown extends Subscriber {
         const dropdownMenu = new DropdownMenu(this.getOptions(), this.multiSelection);
         const dropdownMenuSubscriptions: Disposable[] = [ dropdownMenu ];
 
-        dropdownMenuSubscriptions.push(dropdownMenu.onChanged(options => {
+        dropdownMenuSubscriptions.push(toDisposable(dropdownMenu.options$.subscribe(options => {
             this.updateSelectedValue(options);
-            this.selectedValues = options.filter(o => o.selected).map(o => o.value);
-            this.onChangeEmitter.fire(this.selectedValues);
+            this.selectedValues$.next(options.filter(o => o.selected).map(o => o.value));
             if (!this.multiSelection) {
                 this.closeDropdown?.apply(this);
                 setTimeout(() => this.select.focus(), 0);
             }
-        }));
+        })));
 
-        dropdownMenuSubscriptions.push(dropdownMenu.onClose(isKey => {
+        dropdownMenuSubscriptions.push(toDisposable(dropdownMenu.close$.subscribe(isKey => {
             if (isKey) {
                 this.select.focus();
             }
             this.closeDropdown?.apply(this);
-        }));
+        })));
 
         this.closeDropdown = () => {
             this.select.classList.remove('dropdown-opened');
@@ -190,7 +175,11 @@ export class DivDropdown extends Subscriber {
         dropdownMenu.show(this.select);
     }
 
-    private getOptions(): Option[] {
+    private getOptions(selectedValues?: readonly string[]): Option[] {
+        if (selectedValues === undefined) {
+            selectedValues = this.selectedValues$.value;
+        }
+
         const options = this.select.querySelectorAll('.option');
         const optionForDropdownMenu: Option[] = [];
         options.forEach(option => {
@@ -199,7 +188,7 @@ export class DivDropdown extends Subscriber {
                 optionForDropdownMenu.push({
                     text: option.textContent ?? '',
                     value: value ?? '',
-                    selected: value !== null ? this.selectedValues.includes(value) : false,
+                    selected: value !== null ? selectedValues!.includes(value) : false,
                 });
             }
         });
@@ -219,19 +208,25 @@ export class DivDropdown extends Subscriber {
 
 type Option = { text: string, value: string, selected: boolean };
 class DropdownMenu extends Subscriber {
-    private onChangedEmitter = new EventEmitter<Option[]>();
-    public onChanged = this.onChangedEmitter.event;
-    private onCloseEmitter = new EventEmitter<boolean>();
-    public onClose = this.onCloseEmitter.event;
+    private writableOptions$: Subject<Option[]>;
+    public options$: Observable<Option[]>;
+    
+    private writableClose$: Subject<boolean>;
+    public close$: Observable<boolean>;
 
     private list: HTMLUListElement;
     private items: HTMLLIElement[] = [];
-    private subscriptionWhenOpen: Disposable[] = [];
+    private subscriptionWhenOpen: Subscription[] = [];
 
     constructor(private options: Option[], private multiSelection: boolean = false) {
         super();
         this.list = this.createList();
-        this.subscriptions.push({
+        this.writableOptions$ = new Subject();
+        this.options$ = this.writableOptions$;
+        this.writableClose$ = new Subject();
+        this.close$ = this.writableClose$;
+
+        this.addSubscription({
             dispose: () => {
                 this.list.remove();
             }
@@ -255,7 +250,7 @@ class DropdownMenu extends Subscriber {
 
     public hide() {
         this.list.parentElement?.removeChild(this.list);
-        this.subscriptionWhenOpen.forEach(s => s.dispose());
+        this.subscriptionWhenOpen.forEach(s => s.unsubscribe());
     }
 
     private createList(): HTMLUListElement {
@@ -286,20 +281,20 @@ class DropdownMenu extends Subscriber {
 
             item.appendChild(checkbox);
             const checkboxItem = new Checkbox(checkbox, option.text);
-            this.subscriptions.push(checkboxItem);
+            this.addSubscription(checkboxItem);
 
-            asEvent(checkbox, 'change')(() => {
+            fromEvent(checkbox, 'change').subscribe(() => {
                 option.selected = checkbox.checked;
-                this.onChangedEmitter.fire(this.options);
+                this.writableOptions$.next(this.options);
             });
 
-            asEvent(item, 'click')((e) => {
+            fromEvent<MouseEvent>(item, 'click').subscribe((e) => {
                 if (e.target === item) {
                     checkbox.click();
                 }
             });
 
-            asEvent(item, 'keydown')((e) => {
+            fromEvent<KeyboardEvent>(item, 'keydown').subscribe((e) => {
                 if (e.target === item && (e.code === 'Enter' || e.code === 'Space')) {
                     e.preventDefault();
                     checkbox.click();
@@ -311,12 +306,12 @@ class DropdownMenu extends Subscriber {
             const updateValue = () => {
                 this.options.forEach(o => o.selected = false);
                 option.selected = true;
-                this.onChangedEmitter.fire(this.options);
+                this.writableOptions$.next(this.options);
             };
 
-            asEvent(item, 'click')(updateValue);
+            fromEvent(item, 'click').subscribe(updateValue);
 
-            asEvent(item, 'keydown')((e) => {
+            fromEvent<KeyboardEvent>(item, 'keydown').subscribe((e) => {
                 if (e.code === 'Enter') {
                     e.preventDefault();
                     updateValue();
@@ -324,11 +319,11 @@ class DropdownMenu extends Subscriber {
             });
         }
 
-        asEvent(item, 'mouseenter')(() => {
+        fromEvent(item, 'mouseenter').subscribe(() => {
             item.focus();
         });
 
-        asEvent(item, 'keydown')((e) => {
+        fromEvent<KeyboardEvent>(item, 'keydown').subscribe((e) => {
             if (e.code === 'ArrowDown' && index < items.length - 1) {
                 e.preventDefault();
                 items[index + 1].focus();
@@ -344,28 +339,28 @@ class DropdownMenu extends Subscriber {
     }
 
     private registerEventHandlerWhenOpen(host: Element) {
-        const closeDropdown = (eacapeKey: boolean = false) => {
-            this.onCloseEmitter.fire(eacapeKey);
+        const closeDropdown = (escapeKey: boolean = false) => {
+            this.writableClose$.next(escapeKey);
             this.hide();
         };
 
-        this.subscriptionWhenOpen.push(asEvent(window, 'blur')(() => {
+        this.subscriptionWhenOpen.push(fromEvent(window, 'blur').subscribe(() => {
             closeDropdown();
         }));
 
-        this.subscriptionWhenOpen.push(asEvent(window, 'focusin')((e) => {
+        this.subscriptionWhenOpen.push(fromEvent<MouseEvent>(window, 'focusin').subscribe((e) => {
             if (!(this.list.contains(e.target as any) || host.contains(e.target as any))) {
                 closeDropdown();
             }
         }));
 
-        this.subscriptionWhenOpen.push(asEvent(window, 'mousedown')((e) => {
+        this.subscriptionWhenOpen.push(fromEvent<MouseEvent>(window, 'mousedown').subscribe((e) => {
             if (!(this.list.contains(e.target as any) || host.contains(e.target as any))) {
                 closeDropdown();
             }
         }));
 
-        this.subscriptionWhenOpen.push(asEvent(window, 'keydown')((e) => {
+        this.subscriptionWhenOpen.push(fromEvent<KeyboardEvent>(window, 'keydown').subscribe((e) => {
             if (e.code === 'Escape') {
                 closeDropdown(true);
             }

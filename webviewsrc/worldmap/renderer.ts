@@ -3,10 +3,12 @@ import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
 import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
-import { asEvent, Subscriber } from "../util/event";
+import { Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
 import { feLocalize } from "../util/i18n";
 import { chain, max, padStart } from "lodash";
+import { combineLatest, fromEvent } from 'rxjs';
+import { distinctUntilChanged } from 'rxjs/operators';
 
 const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> = {
     province: { edge: 2, labels: 3 },
@@ -43,7 +45,7 @@ export class Renderer extends Subscriber {
     constructor(private mainCanvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, private topBar: TopBar) {
         super();
 
-        this.subscriptions.push(asEvent(window, 'resize')(this.resizeCanvas));
+        this.addSubscription(fromEvent(window, 'resize').subscribe(this.resizeCanvas));
 
         this.mainCanvasContext = this.mainCanvas.getContext('2d')!;
         this.backCanvas = document.createElement('canvas');
@@ -54,20 +56,26 @@ export class Renderer extends Subscriber {
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
 
-        this.subscriptions.push(loader.onMapChanged(this.renderCanvas));
-        this.subscriptions.push(loader.onProgressChanged(this.renderCanvas));
-        this.subscriptions.push(viewPoint.onChanged(this.renderCanvas));
-        this.subscriptions.push(topBar.viewMode.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.colorSet.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.hoverProvinceId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.selectedProvinceId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.hoverStateId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.selectedStateId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.hoverStrategicRegionId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.selectedStrategicRegionId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.hoverSupplyAreaId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.selectedSupplyAreaId.onChange(this.renderCanvas));
-        this.subscriptions.push(topBar.warningFilter.onChange(this.renderCanvas));
+        this.addSubscription(loader.worldMap$.subscribe(this.renderCanvas));
+        this.addSubscription(
+            combineLatest([
+                loader.progress$,
+                viewPoint.observable$,
+                topBar.viewMode$,
+                topBar.colorSet$,
+                topBar.hoverProvinceId$,
+                topBar.selectedProvinceId$,
+                topBar.hoverStateId$,
+                topBar.selectedStateId$,
+                topBar.hoverStrategicRegionId$,
+                topBar.selectedStrategicRegionId$,
+                topBar.hoverSupplyAreaId$,
+                topBar.selectedSupplyAreaId$,
+                topBar.warningFilter.selectedValues$,
+            ]).pipe(
+                distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
+            ).subscribe(this.renderCanvas)
+        );
     }
 
     public renderCanvas = () => {
@@ -85,7 +93,7 @@ export class Renderer extends Subscriber {
         this.renderMap();
         backCanvasContext.drawImage(this.mapCanvas, 0, 0);
 
-        const viewMode = this.topBar.viewMode.value;
+        const viewMode = this.topBar.viewMode$.value;
         switch (viewMode) {
             case 'province':
             case 'warnings':
@@ -104,7 +112,7 @@ export class Renderer extends Subscriber {
 
         if (this.loader.progressText !== '') {
             this.renderLoadingText(this.loader.progressText);
-        } else if (this.loader.loading.value) {
+        } else if (this.loader.loading$.value) {
             this.renderLoadingText(feLocalize('worldmap.progress.visualizing', 'Visualizing map data: {0}', Math.round(this.loader.progress * 100) + '%'));
         }
     
@@ -124,9 +132,9 @@ export class Renderer extends Subscriber {
             worldMap,
             canvasWidth: this.canvasWidth,
             canvasHeight: this.canvasHeight,
-            viewMode: this.topBar.viewMode.value,
-            colorSet: this.topBar.colorSet.value,
-            warningFilter: this.topBar.warningFilter.selectedValues,
+            viewMode: this.topBar.viewMode$.value,
+            colorSet: this.topBar.colorSet$.value,
+            warningFilter: this.topBar.warningFilter.selectedValues$.value,
             ...this.viewPoint.toJson(),
         };
 
@@ -166,41 +174,38 @@ export class Renderer extends Subscriber {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const { renderedProvincesById } = renderContext;
         renderContext.renderedProvincesByOffset[xOffset] = renderedProvinces;
-        const viewMode = this.topBar.viewMode.value;
-        const renderScale = renderScaleByViewMode[viewMode];
+        const edgeVisible = this.isEdgeVisible();
 
         worldMap.forEachProvince(province => {
             if (this.viewPoint.bboxInView(province.boundingBox, xOffset)) {
-                const color = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, renderContext);
+                const color = getColorByColorSet(this.topBar.colorSet$.value, province, worldMap, renderContext);
                 context.fillStyle = toColor(color);
                 this.renderProvince(context, province, scale, xOffset);
                 renderedProvinces.push(province);
                 renderedProvincesById[province.id] = province;
             }
 
-            if (renderScale.edge > scale) {
-                return;
-            }
-
-            for (const edge of province.edges) {
-                if (edge.path.length > 0) {
-                    continue;
-                }
-
-                const toProvince = worldMap.getProvinceById(edge.to);
-                if (!toProvince) {
-                    continue;
-                }
-
-                const [startPoint, endPoint] = findNearestPoints(edge.start, edge.stop, province, toProvince);
-                if (this.viewPoint.lineInView(startPoint, endPoint, xOffset)) {
-                    if (!(province.id in renderedProvincesById)) {
-                        renderedProvinces.push(province);
-                        renderedProvincesById[province.id] = province;
+            if (edgeVisible) {
+                for (const edge of province.edges) {
+                    if (edge.path.length > 0) {
+                        continue;
                     }
-                    if (!(edge.to in renderedProvincesById)) {
-                        renderedProvinces.push(toProvince);
-                        renderedProvincesById[edge.to] = toProvince;
+
+                    const toProvince = worldMap.getProvinceById(edge.to);
+                    if (!toProvince) {
+                        continue;
+                    }
+
+                    const [startPoint, endPoint] = findNearestPoints(edge.start, edge.stop, province, toProvince);
+                    if (this.viewPoint.lineInView(startPoint, endPoint, xOffset)) {
+                        if (!(province.id in renderedProvincesById)) {
+                            renderedProvinces.push(province);
+                            renderedProvincesById[province.id] = province;
+                        }
+                        if (!(edge.to in renderedProvincesById)) {
+                            renderedProvinces.push(toProvince);
+                            renderedProvincesById[edge.to] = toProvince;
+                        }
                     }
                 }
             }
@@ -208,18 +213,29 @@ export class Renderer extends Subscriber {
     }
 
     private renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
-        const viewMode = this.topBar.viewMode.value;
-        const renderScale = renderScaleByViewMode[viewMode];
-        const scale = this.viewPoint.scale;
         const context = this.mapCanvasContext;
 
-        if (renderScale.edge <= scale) {
+        if (this.isEdgeVisible()) {
             this.renderAllEdges(renderContext, worldMap, context, xOffset);
         }
 
-        if (renderScale.labels <= scale) {
+        if (this.isLabelVisible()) {
             this.renderMapLabels(renderContext, worldMap, context, xOffset);
         }
+    }
+
+    private isEdgeVisible() {
+        const viewMode = this.topBar.viewMode$.value;
+        const renderScale = renderScaleByViewMode[viewMode];
+        const scale = this.viewPoint.scale;
+        return renderScale.edge <= scale;
+    }
+
+    private isLabelVisible() {
+        const viewMode = this.topBar.viewMode$.value;
+        const renderScale = renderScaleByViewMode[viewMode];
+        const scale = this.viewPoint.scale;
+        return renderScale.labels <= scale;
     }
 
     private renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
@@ -243,14 +259,14 @@ export class Renderer extends Subscriber {
     private renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const { provinceToState, provinceToStrategicRegion, stateToSupplyArea } = renderContext;
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
-        const viewMode = this.topBar.viewMode.value;
+        const viewMode = this.topBar.viewMode$.value;
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
-                const provinceColor = getColorByColorSet(this.topBar.colorSet.value, province, worldMap, renderContext);
+                const provinceColor = getColorByColorSet(this.topBar.colorSet$.value, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
                 context.fillText(province.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
@@ -269,7 +285,7 @@ export class Renderer extends Subscriber {
                     if (region) {
                         const labelPosition = region.centerOfMass;
                         const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
-                        const provinceColor = getColorByColorSet(this.topBar.colorSet.value, provinceAtLabel ?? province, worldMap, renderContext);
+                        const provinceColor = getColorByColorSet(this.topBar.colorSet$.value, provinceAtLabel ?? province, worldMap, renderContext);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                         context.fillText(region.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
                     }
@@ -310,7 +326,7 @@ export class Renderer extends Subscriber {
             const strategicRegionToId = provinceToStrategicRegion[provinceEdge.to];
 
             if (!impassable && paths.length > 0) {
-                const viewMode = this.topBar.viewMode.value;
+                const viewMode = this.topBar.viewMode$.value;
                 if (viewMode === 'state') {
                     if (stateFromId === stateToId && (stateFromId !== undefined || strategicRegionFromId === strategicRegionToId)) {
                         continue;
@@ -382,7 +398,7 @@ export class Renderer extends Subscriber {
     }
 
     private registerCanvasEventHandlers() {
-        this.subscriptions.push(asEvent(this.mainCanvas, 'mousemove')((e) => {
+        this.addSubscription(fromEvent<MouseEvent>(this.mainCanvas, 'mousemove').subscribe((e) => {
             this.cursorX = e.pageX;
             this.cursorY = e.pageY;
             this.renderCanvas();
@@ -474,13 +490,13 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
     }
 
     private renderProvinceHoverSelection(worldMap: FEWorldMap) {
-        let province = worldMap.getProvinceById(this.topBar.selectedProvinceId.value);
+        let province = worldMap.getProvinceById(this.topBar.selectedProvinceId$.value);
         if (province) {
             this.renderSelectedProvince(province, worldMap);
         }
-        province = worldMap.getProvinceById(this.topBar.hoverProvinceId.value);
+        province = worldMap.getProvinceById(this.topBar.hoverProvinceId$.value);
         if (province) {
-            if (this.topBar.selectedProvinceId !== this.topBar.hoverProvinceId) {
+            if (this.topBar.selectedProvinceId$ !== this.topBar.hoverProvinceId$) {
                 this.renderHoverProvince(province, worldMap);
             }
             this.renderProvinceTooltip(province, worldMap);
@@ -488,20 +504,20 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
     }
 
     private renderStateHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getStateById(this.topBar.hoverStateId.value);
-        this.renderHoverSelection(worldMap, hover, worldMap.getStateById(this.topBar.selectedStateId.value));
+        const hover = worldMap.getStateById(this.topBar.hoverStateId$.value);
+        this.renderHoverSelection(worldMap, hover, worldMap.getStateById(this.topBar.selectedStateId$.value));
         hover && this.renderStateTooltip(hover, worldMap);
     }
 
     private renderStrategicRegionHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getStrategicRegionById(this.topBar.hoverStrategicRegionId.value);
-        this.renderHoverSelection(worldMap, hover, worldMap.getStrategicRegionById(this.topBar.selectedStrategicRegionId.value));
+        const hover = worldMap.getStrategicRegionById(this.topBar.hoverStrategicRegionId$.value);
+        this.renderHoverSelection(worldMap, hover, worldMap.getStrategicRegionById(this.topBar.selectedStrategicRegionId$.value));
         hover && this.renderStrategicRegionTooltip(hover, worldMap);
     }
 
     private renderSupplyAreaHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getSupplyAreaById(this.topBar.hoverSupplyAreaId.value);
-        const selected = worldMap.getSupplyAreaById(this.topBar.selectedSupplyAreaId.value);
+        const hover = worldMap.getSupplyAreaById(this.topBar.hoverSupplyAreaId$.value);
+        const selected = worldMap.getSupplyAreaById(this.topBar.selectedSupplyAreaId$.value);
         const toProvinces = (supplyArea: SupplyArea | undefined) => {
             return supplyArea ?
                 {
@@ -757,8 +773,8 @@ function getColorByColorSet(
         case 'warnings':
             {
                 const isLand = province.type === 'land';
-                const viewMode = topBar.viewMode.value;
-                const warningFilter = topBar.warningFilter.selectedValues;
+                const viewMode = topBar.viewMode$.value;
+                const warningFilter = topBar.warningFilter.selectedValues$.value;
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
                 const strategicRegion = worldMap.getStrategicRegionById(provinceToStrategicRegion[province.id]);

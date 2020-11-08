@@ -3,9 +3,9 @@ import { ViewPoint } from './viewpoint';
 import { topBarHeight, TopBar } from './topbar';
 import { getState, setState } from '../util/common';
 import { Renderer } from './renderer';
-import { asEvent } from '../util/event';
+import { fromEvent } from 'rxjs';
 
-asEvent(window, 'load')(function() {
+fromEvent(window, 'load').subscribe(function() {
     const state = getState();
     const loader = new Loader();
     const mainCanvas = document.getElementById('main-canvas') as HTMLCanvasElement;
@@ -13,17 +13,14 @@ asEvent(window, 'load')(function() {
     const topBar = new TopBar(mainCanvas, viewPoint, loader, state);
     const renderer = new Renderer(mainCanvas, viewPoint, loader, topBar);
 
-    viewPoint.onChanged(() => {
-        setState({ viewPoint: viewPoint.toJson() });
-    });
-
-    topBar.viewMode.onChange(setStateForKey('viewMode'));
-    topBar.colorSet.onChange(setStateForKey('colorSet'));
-    topBar.selectedProvinceId.onChange(setStateForKey('selectedProvinceId'));
-    topBar.selectedStateId.onChange(setStateForKey('selectedStateId'));
-    topBar.selectedStrategicRegionId.onChange(setStateForKey('selectedStrategicRegionId'));
-    topBar.selectedSupplyAreaId.onChange(setStateForKey('selectedSupplyAreaId'));
-    topBar.warningFilter.onChange(setStateForKey('warningFilter'));
+    viewPoint.observable$.subscribe(setStateForKey('viewPoint'));
+    topBar.viewMode$.subscribe(setStateForKey('viewMode'));
+    topBar.colorSet$.subscribe(setStateForKey('colorSet'));
+    topBar.selectedProvinceId$.subscribe(setStateForKey('selectedProvinceId'));
+    topBar.selectedStateId$.subscribe(setStateForKey('selectedStateId'));
+    topBar.selectedStrategicRegionId$.subscribe(setStateForKey('selectedStrategicRegionId'));
+    topBar.selectedSupplyAreaId$.subscribe(setStateForKey('selectedSupplyAreaId'));
+    topBar.warningFilter.selectedValues$.subscribe(setStateForKey('warningFilter'));
 });
 
 function setStateForKey<T>(key: string): (newValue: T) => void {

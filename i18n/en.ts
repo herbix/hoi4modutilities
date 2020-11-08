@@ -185,7 +185,7 @@ const internalTable = {
     "worldmap.warnings.terraindefinedtwice": "Terrain {0} is defined in two files: {1}, {2}.",
     "worldmap.warnings.terrainnotdefined": "Terrain \"{0}\" is not defined.",
     "worldmap.warnings.xcrossing": "Map invalid X crossing at: ({0}, {1})."
-};
+};/* EOT Don't remove this comment */
 
 export const __table = Object.assign(internalTable, {
     "worldmap.openfiletype.state": "state",

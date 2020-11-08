@@ -1,6 +1,6 @@
 import { __table } from './en';
 /*eslint sort-keys: "warn"*/
-const zhTable: Partial<typeof __table> = {
+const table: Partial<typeof __table> = {
     "combobox.all": "（全部）",
     "combobox.multiple": "{0}（+{1}）",
     "combobox.noselection": "（无选择）",
@@ -185,8 +185,9 @@ const zhTable: Partial<typeof __table> = {
     "worldmap.warnings.supplyareanostates": "“{1}”中的补给区域{0}不包含省份。",
     "worldmap.warnings.supplyareanotexist": "补给区域{0}不存在。",
     "worldmap.warnings.supplyareanovalidstates": "补给区域{0}不存在于地图上。",
+    "worldmap.warnings.terraindefinedtwice": "地形\"{0}\"在不同的文件内重复定义：{1}，{2}。",
     "worldmap.warnings.terrainnotdefined": "地形\"{0}\"不存在。",
     "worldmap.warnings.xcrossing": "地块有十字交叉边界，位于：({0}，{1})。"
 };
 
-export = zhTable;
+module.exports = table;

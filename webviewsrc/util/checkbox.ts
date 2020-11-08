@@ -1,4 +1,5 @@
-import { Subscriber, asEvent } from "./event";
+import { fromEvent } from 'rxjs';
+import { Subscriber } from "./event";
 
 const checkboxes: Checkbox[] = [];
 
@@ -55,7 +56,7 @@ export class Checkbox extends Subscriber {
         this.input.tabIndex = -1;
         this.input.after(checkboxContainerOut);
 
-        this.subscriptions.push({
+        this.addSubscription({
             dispose: () => {
                 checkboxContainerOut.remove();
             }
@@ -71,12 +72,12 @@ export class Checkbox extends Subscriber {
             this.input.dispatchEvent(new Event('change'));
         };
 
-        this.subscriptions.push(asEvent(checkboxContainer, 'click')((e) => {
+        this.addSubscription(fromEvent<MouseEvent>(checkboxContainer, 'click').subscribe((e) => {
             e.preventDefault();
             toggleValue();
         }));
 
-        this.subscriptions.push(asEvent(checkboxContainer, 'keydown')((e) => {
+        this.addSubscription(fromEvent<KeyboardEvent>(checkboxContainer, 'keydown').subscribe((e) => {
             if (e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
                 toggleValue();
