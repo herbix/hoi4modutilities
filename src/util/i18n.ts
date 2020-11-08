@@ -11,7 +11,7 @@ const table: Record<string, string> = tryLoadTable(locale) ??
 
 function tryLoadTable(locale: string): Record<string, string> | undefined {
     try {
-        return require('../../i18n/' + locale + '.ts');
+        return require('../../i18n/' + locale + '.ts').default;
     } catch(e) {
         error(e);
     }

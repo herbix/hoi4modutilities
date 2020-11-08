@@ -190,4 +190,4 @@ const table: Partial<typeof __table> = {
     "worldmap.warnings.xcrossing": "Map invalid X crossing at: ({0}, {1})."
 };
 
-module.exports = table;
+export default table;

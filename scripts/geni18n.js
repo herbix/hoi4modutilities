@@ -65,6 +65,16 @@ async function replaceInFile(file, matches) {
     await fs.promises.writeFile(file, resultContent);
 }
 
+async function generateEnLocalizationFile(file, resultStr) {
+    const content = (await fs.promises.readFile(file)).toString('utf-8');
+    const sotComment = '/* SOT Do not remove this comment */';
+    const eotComment = ';/* EOT Do not remove this comment */';
+    const sPos = content.indexOf(sotComment) + sotComment.length;
+    const ePos = content.indexOf(eotComment);
+    const str = content.substr(0, sPos) + resultStr + content.substr(ePos);
+    await fs.promises.writeFile(file, str);
+}
+
 (async () => {
     const srcFiles = (await recursiveFindAll("./src")).filter(file => file.endsWith(".ts"));
     const localizedPairs = (await Promise.all(srcFiles.map(file => findLocalizeInside(file, 'localize')))).reduce((p, c) => p.concat(c), []);
@@ -131,7 +141,7 @@ async function replaceInFile(file, matches) {
     }
 
     const resultStr = JSON.stringify(result, Object.keys(result).sort(), 4);
-    await fs.promises.writeFile('./scripts/i18n.json', resultStr);
+    await generateEnLocalizationFile('./i18n/en.ts', resultStr);
 
     console.log(resultStr);
 

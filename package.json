@@ -161,14 +161,15 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch --display errors-only --info-verbosity verbose",
-		"compile-ts": "tsc -d -p ./",
+		"compile-ts": "tsc -d -p ./ --module commonjs",
 		"lint": "eslint src --ext ts",
 		"watch": "tsc -watch -p ./",
 		"pretest": "npm run compile-ts && npm run lint",
 		"test": "mocha ./out/test/**/*.test.js",
 		"pretest-ui": "npm run compile-ts && npm run lint",
 		"test-ui": "node ./out/test-ui/runTest.js",
-		"clean": "rimraf dist out static"
+		"clean": "rimraf dist out static",
+		"geni18n": "npm run compile-ts && node scripts/genzhi18n.js"
 	},
 	"devDependencies": {
 		"@types/adm-zip": "^0.4.33",

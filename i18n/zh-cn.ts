@@ -190,4 +190,4 @@ const table: Partial<typeof __table> = {
     "worldmap.warnings.xcrossing": "地块有十字交叉边界，位于：({0}，{1})。"
 };
 
-module.exports = table;
+export default table;
