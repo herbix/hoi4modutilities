@@ -1,6 +1,6 @@
 import { NumberLike, Position, HOIPartial, parseNumberLike } from "../../hoiformat/schema";
 import { Sprite } from "../image/imagecache";
-import { NumberSize, NumberPosition } from "../common";
+import { NumberSize, NumberPosition, UserError } from "../common";
 import { CorneredTileSprite } from "../image/sprite";
 import { StyleTable } from '../styletable';
 import { Orientation, ComplexSize, Size, Margin, Background } from "../../hoiformat/gui";
@@ -34,8 +34,10 @@ export function normalizeNumberLike(value: NumberLike | undefined, parentValue: 
 
 const offsetMap: Record<Orientation['_name'], { x: number, y: number }> = {
     'upper_left': { x: 0, y: 0 },
+    'upper_center': { x: 0.5, y: 0 },
     'upper_right': { x: 1, y: 0 },
     'lower_left': { x: 0, y: 1 },
+    'lower_center': { x: 0.5, y: 1 },
     'lower_right': { x: 1, y: 1 },
     'center_up': { x: 0.5, y: 0 },
     'center_down': { x: 0.5, y: 1 },
@@ -45,6 +47,10 @@ const offsetMap: Record<Orientation['_name'], { x: number, y: number }> = {
     'center': { x: 0.5, y: 0.5 },
     'left': { x: 0, y: 0.5 },
     'right': { x: 1, y: 0.5 },
+    'up': { x: 0.5, y: 0 },
+    'down': { x: 0.5, y: 1 },
+    'top': { x: 0.5, y: 0 },
+    'bottom': { x: 0.5, y: 1 },
 };
 
 export function calculateStartLength(pos: NumberLike | undefined, size: NumberLike | undefined, parentSize: number, orientationFactor: number, origoFactor: number): [number, number] {
@@ -85,6 +91,14 @@ export function calculateBBox(
     const parentSize = parentInfo.size;
     const orientationFactor = offsetMap[myOrientation];
     const origoFactor = offsetMap[origo?._name ?? 'upper_left'];
+
+    if (!orientationFactor) {
+        throw new UserError('Unknown orientation value: ' + myOrientation);
+    }
+
+    if (!origoFactor) {
+        throw new UserError('Unknown orientation value: ' + origo?._name);
+    }
 
     let [x, width] = calculateStartLength(position?.x, size?.width, parentSize.width, orientationFactor.x, origoFactor.x);
     let [y, height] = calculateStartLength(position?.y, size?.height, parentSize.height, orientationFactor.y, origoFactor.y);

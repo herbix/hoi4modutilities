@@ -20,12 +20,16 @@ const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> 
 
 interface RenderContext {
     topBar: TopBar;
+    viewPoint: ViewPoint;
+    mapCanvasContext: CanvasRenderingContext2D;
     provinceToState: Record<number, number | undefined>;
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
     renderedProvincesByOffset: Record<number, Province[]>;
     renderedProvincesById: Record<number, Province>;
     renderedProvinces?: Province[];
+    overwriteRenderPrecision?: number;
+    preciseEdge?: boolean;
     extraState: any;
 }
 
@@ -37,7 +41,6 @@ export class Renderer extends Subscriber {
     private mapCanvas: HTMLCanvasElement;
     private mainCanvasContext: CanvasRenderingContext2D;
     private backCanvasContext: CanvasRenderingContext2D;
-    private mapCanvasContext: CanvasRenderingContext2D;
     
     private cursorX = 0;
     private cursorY = 0;
@@ -51,7 +54,6 @@ export class Renderer extends Subscriber {
         this.backCanvas = document.createElement('canvas');
         this.backCanvasContext = this.backCanvas.getContext('2d')!;
         this.mapCanvas = document.createElement('canvas');
-        this.mapCanvasContext = this.mapCanvas.getContext('2d')!;
 
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
@@ -129,6 +131,7 @@ export class Renderer extends Subscriber {
     private oldMapState: any = undefined;
     private renderMap() {
         const worldMap = this.loader.worldMap;
+        const displayOptions = this.topBar.display.selectedValues$.value;
         const newMapState = {
             worldMap,
             canvasWidth: this.canvasWidth,
@@ -136,9 +139,10 @@ export class Renderer extends Subscriber {
             viewMode: this.topBar.viewMode$.value,
             colorSet: this.topBar.colorSet$.value,
             warningFilter: this.topBar.warningFilter.selectedValues$.value,
-            edgeVisible: this.topBar.display.selectedValues$.value.includes('edge'),
-            labelVisible: this.topBar.display.selectedValues$.value.includes('label'),
-            adaptZooming: this.topBar.display.selectedValues$.value.includes('adaptzooming'),
+            edgeVisible: displayOptions.includes('edge'),
+            labelVisible: displayOptions.includes('label'),
+            adaptZooming: displayOptions.includes('adaptzooming'),
+            fastRendering: displayOptions.includes('fastrending'),
             ...this.viewPoint.toJson(),
         };
 
@@ -147,44 +151,48 @@ export class Renderer extends Subscriber {
             return;
         }
         this.oldMapState = newMapState;
-        this.renderMapImpl(worldMap);
+        Renderer.renderMapImpl(this.mapCanvas, this.topBar, this.viewPoint, worldMap,
+            newMapState.fastRendering ? {} : { preciseEdge: true, overwriteRenderPrecision: 1 });
     }
 
-    private renderMapImpl(worldMap: FEWorldMap) {
-        const mapCanvasContext = this.mapCanvasContext;
+    public static renderMapImpl(canvas: HTMLCanvasElement, topBar: TopBar, viewPoint: ViewPoint, worldMap: FEWorldMap, otherRenderContext?: Partial<RenderContext>) {
+        const mapCanvasContext = canvas.getContext('2d')!;
         mapCanvasContext.fillStyle = 'black';
-        mapCanvasContext.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
+        mapCanvasContext.fillRect(0, 0, canvas.width, canvas.height);
 
         const renderContext: RenderContext = {
-            topBar: this.topBar,
+            topBar,
+            viewPoint,
+            mapCanvasContext,
             provinceToState: worldMap.getProvinceToStateMap(),
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
             renderedProvincesByOffset: {},
             renderedProvincesById: {},
             extraState: undefined,
+            ...otherRenderContext,
         };
 
         const mapZone: Zone = { x: 0, y: 0, w: worldMap.width, h: worldMap.height };
-        this.renderAllOffsets(mapZone, worldMap.width, xOffset => this.renderMapBackground(worldMap, xOffset, renderContext));
+        Renderer.renderAllOffsets(viewPoint, mapZone, worldMap.width, xOffset => Renderer.renderMapBackground(worldMap, xOffset, renderContext));
 
         renderContext.renderedProvinces = Object.values(renderContext.renderedProvincesById);
-        this.renderAllOffsets(mapZone, worldMap.width, xOffset => this.renderMapForeground(worldMap, xOffset, renderContext));
+        Renderer.renderAllOffsets(viewPoint, mapZone, worldMap.width, xOffset => Renderer.renderMapForeground(worldMap, xOffset, renderContext));
     }
 
-    private renderMapBackground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
-        const context = this.mapCanvasContext;
-        const scale = this.viewPoint.scale;
+    private static renderMapBackground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
+        const { mapCanvasContext: context, topBar, viewPoint, overwriteRenderPrecision } = renderContext;
+        const scale = viewPoint.scale;
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const { renderedProvincesById } = renderContext;
         renderContext.renderedProvincesByOffset[xOffset] = renderedProvinces;
-        const edgeVisible = this.isEdgeVisible();
+        const edgeVisible = Renderer.isEdgeVisible(topBar, viewPoint);
 
         worldMap.forEachProvince(province => {
-            if (this.viewPoint.bboxInView(province.boundingBox, xOffset)) {
-                const color = getColorByColorSet(this.topBar.colorSet$.value, province, worldMap, renderContext);
+            if (renderContext.viewPoint.bboxInView(province.boundingBox, xOffset)) {
+                const color = getColorByColorSet(topBar.colorSet$.value, province, worldMap, renderContext);
                 context.fillStyle = toColor(color);
-                this.renderProvince(context, province, scale, xOffset);
+                Renderer.renderProvince(viewPoint, context, province, scale, xOffset, overwriteRenderPrecision);
                 renderedProvinces.push(province);
                 renderedProvincesById[province.id] = province;
             }
@@ -201,7 +209,7 @@ export class Renderer extends Subscriber {
                     }
 
                     const [startPoint, endPoint] = findNearestPoints(edge.start, edge.stop, province, toProvince);
-                    if (this.viewPoint.lineInView(startPoint, endPoint, xOffset)) {
+                    if (renderContext.viewPoint.lineInView(startPoint, endPoint, xOffset)) {
                         if (!(province.id in renderedProvincesById)) {
                             renderedProvinces.push(province);
                             renderedProvincesById[province.id] = province;
@@ -216,38 +224,38 @@ export class Renderer extends Subscriber {
         });
     }
 
-    private renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
-        const context = this.mapCanvasContext;
+    private static renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
+        const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
 
-        if (this.isEdgeVisible()) {
-            this.renderAllEdges(renderContext, worldMap, context, xOffset);
+        if (Renderer.isEdgeVisible(topBar, viewPoint)) {
+            Renderer.renderAllEdges(renderContext, worldMap, context, xOffset);
         }
 
-        if (this.isLabelVisible()) {
-            this.renderMapLabels(renderContext, worldMap, context, xOffset);
+        if (Renderer.isLabelVisible(topBar, viewPoint)) {
+            Renderer.renderMapLabels(renderContext, worldMap, context, xOffset);
         }
     }
 
-    private isEdgeVisible() {
-        if (this.topBar.display.selectedValues$.value.includes('adaptzooming')) {
-            const viewMode = this.topBar.viewMode$.value;
+    private static isEdgeVisible(topBar: TopBar, viewPoint: ViewPoint) {
+        if (topBar.display.selectedValues$.value.includes('adaptzooming')) {
+            const viewMode = topBar.viewMode$.value;
             const renderScale = renderScaleByViewMode[viewMode];
-            const scale = this.viewPoint.scale;
-            return renderScale.edge <= scale && this.topBar.display.selectedValues$.value.includes('edge');
+            const scale = viewPoint.scale;
+            return renderScale.edge <= scale && topBar.display.selectedValues$.value.includes('edge');
         }
 
-        return this.topBar.display.selectedValues$.value.includes('edge');
+        return topBar.display.selectedValues$.value.includes('edge');
     }
 
-    private isLabelVisible() {
-        if (this.topBar.display.selectedValues$.value.includes('adaptzooming')) {
-            const viewMode = this.topBar.viewMode$.value;
+    private static isLabelVisible(topBar: TopBar, viewPoint: ViewPoint) {
+        if (topBar.display.selectedValues$.value.includes('adaptzooming')) {
+            const viewMode = topBar.viewMode$.value;
             const renderScale = renderScaleByViewMode[viewMode];
-            const scale = this.viewPoint.scale;
-            return renderScale.labels <= scale && this.topBar.display.selectedValues$.value.includes('label');
+            const scale = viewPoint.scale;
+            return renderScale.labels <= scale && topBar.display.selectedValues$.value.includes('label');
         }
 
-        return this.topBar.display.selectedValues$.value.includes('label');
+        return topBar.display.selectedValues$.value.includes('label');
     }
 
     private isMouseHighlightVisible() {
@@ -258,38 +266,40 @@ export class Renderer extends Subscriber {
         return this.topBar.display.selectedValues$.value.includes('tooltip');
     }
 
-    private renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
+    private static renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
+        const preciseEdge = renderContext.preciseEdge;
 
         context.strokeStyle = 'black';
         context.beginPath();
         for (const province of renderedProvinces) {
-            this.renderEdges(renderContext, province, worldMap, context, xOffset, false);
+            Renderer.renderEdges(renderContext, province, worldMap, context, xOffset, false, preciseEdge);
         }
         context.stroke();
 
         context.strokeStyle = 'red';
         context.beginPath();
         for (const province of renderedProvinces) {
-            this.renderEdges(renderContext, province, worldMap, context, xOffset, true);
+            Renderer.renderEdges(renderContext, province, worldMap, context, xOffset, true, preciseEdge);
         }
         context.stroke();
     }
 
-    private renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
-        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea } = renderContext;
+    private static renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
+        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, topBar, viewPoint } = renderContext;
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
-        const viewMode = this.topBar.viewMode$.value;
+        const viewMode = topBar.viewMode$.value;
+        const colorSet = topBar.colorSet$.value;
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
-                const provinceColor = getColorByColorSet(this.topBar.colorSet$.value, province, worldMap, renderContext);
+                const provinceColor = getColorByColorSet(colorSet, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
-                context.fillText(province.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
+                context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
             }
         } else {
             const renderedRegions: Record<number, boolean> = {};
@@ -305,19 +315,27 @@ export class Renderer extends Subscriber {
                     if (region) {
                         const labelPosition = region.centerOfMass;
                         const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
-                        const provinceColor = getColorByColorSet(this.topBar.colorSet$.value, provinceAtLabel ?? province, worldMap, renderContext);
+                        const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                        context.fillText(region.id.toString(), this.viewPoint.convertX(labelPosition.x + xOffset), this.viewPoint.convertY(labelPosition.y));
+                        context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
                     }
                 }
             }
         }
     }
 
-    private renderEdges(renderContext: RenderContext, province: Province, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number, isRed: boolean) {
-        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces } = renderContext;
-        const viewPoint = this.viewPoint;
+    private static renderEdges(
+        renderContext: RenderContext,
+        province: Province,
+        worldMap: FEWorldMap,
+        context: CanvasRenderingContext2D,
+        xOffset: number,
+        isRed: boolean,
+        preciseEdge?: boolean,
+    ) {
+        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces, topBar, viewPoint } = renderContext;
         const scale = viewPoint.scale;
+        const viewMode = topBar.viewMode$.value;
 
         context.lineWidth = 2;
         for (const provinceEdge of province.edges) {
@@ -346,7 +364,6 @@ export class Renderer extends Subscriber {
             const strategicRegionToId = provinceToStrategicRegion[provinceEdge.to];
 
             if (!impassable && paths.length > 0) {
-                const viewMode = this.topBar.viewMode$.value;
                 if (viewMode === 'state') {
                     if (stateFromId === stateToId && (stateFromId !== undefined || strategicRegionFromId === strategicRegionToId)) {
                         continue;
@@ -371,7 +388,7 @@ export class Renderer extends Subscriber {
 
                 context.moveTo(viewPoint.convertX(path[0].x + xOffset), viewPoint.convertY(path[0].y));
                 for (let j = 0; j < path.length; j++) {
-                    if (scale <= 4 && j % (scale < 1 ? Math.floor(10 / scale) : 6 - scale) !== 0 && !isCriticalPoint(path, j)) {
+                    if (!preciseEdge && scale <= 4 && j % (scale < 1 ? Math.floor(10 / scale) : 6 - scale) !== 0 && !isCriticalPoint(path, j)) {
                         continue;
                     }
                     const pos = path[j];
@@ -389,13 +406,19 @@ export class Renderer extends Subscriber {
         }
     }
 
-    private renderProvince(context: CanvasRenderingContext2D, province: Province, scale?: number, xOffset: number = 0): void {
-        const viewPoint = this.viewPoint;
+    private static renderProvince(
+        viewPoint: ViewPoint,
+        context: CanvasRenderingContext2D,
+        province: Province,
+        scale?: number,
+        xOffset: number = 0,
+        overwriteRenderPrecision?: number
+    ): void {
         scale = scale ?? viewPoint.scale;
         const renderPrecisionBase = 2;
-        const renderPrecision = scale < 1 ? Math.pow(2, Math.floor(Math.log2((1 / scale))) + renderPrecisionBase) :
-            scale <= renderPrecisionBase ? Math.pow(2, renderPrecisionBase + 1 - Math.round(scale)) :
-            1;
+        const renderPrecision = 
+            scale < 1 ? Math.pow(2, Math.floor(Math.log2((1 / scale))) + (overwriteRenderPrecision !== undefined ? 0 : renderPrecisionBase)) :
+            overwriteRenderPrecision ?? (scale <= renderPrecisionBase ? Math.pow(2, renderPrecisionBase + 1 - Math.round(scale)) : 1);
         const renderPrecisionMask = renderPrecision - 1;
         const renderPrecisionOffset = (renderPrecision - 1) / 2;
         for (const zone of province.coverZones) {
@@ -415,6 +438,10 @@ export class Renderer extends Subscriber {
                     zone.h * scale);
             }
         }
+    }
+
+    private renderProvince(context: CanvasRenderingContext2D, province: Province, scale?: number, xOffset: number = 0): void {
+        Renderer.renderProvince(this.viewPoint, context, province, scale, xOffset);
     }
 
     private registerCanvasEventHandlers() {
@@ -683,10 +710,10 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
         });
     }
 
-    private renderAllOffsets(boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
+    private static renderAllOffsets(viewPoint: ViewPoint, boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
         let xOffset = 0;
         let i = 0;
-        let inView = this.viewPoint.bboxInView(boundingBox, xOffset);
+        let inView = viewPoint.bboxInView(boundingBox, xOffset);
         while (inView || i < minimalRenderCount) {
             if (inView) {
                 callback(xOffset);
@@ -696,8 +723,12 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
             }
             xOffset += step;
             i++;
-            inView = this.viewPoint.bboxInView(boundingBox, xOffset);
+            inView = viewPoint.bboxInView(boundingBox, xOffset);
         }
+    }
+
+    private renderAllOffsets(boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
+        Renderer.renderAllOffsets(this.viewPoint, boundingBox, step, callback, minimalRenderCount);
     }
 }
 

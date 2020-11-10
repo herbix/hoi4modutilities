@@ -171,7 +171,7 @@ export interface TokenInFile {
     token: Token | null;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
@@ -212,6 +212,11 @@ export interface OpenFileMessage {
     file: string;
     start: number | undefined;
     end: number | undefined;
+}
+
+export interface ExportMapMessage {
+    command: 'exportmap' | 'requestexportmap';
+    dataUrl?: string;
 }
 
 export type ProgressReporter = (progress: string) => Promise<void>;

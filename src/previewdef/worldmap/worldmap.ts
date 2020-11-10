@@ -14,6 +14,8 @@ import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
 import { isFileScheme } from '../../util/vsccommon';
+import * as fs from 'fs';
+import { URL } from 'url';
 
 export class WorldMap {
     public panel: vscode.WebviewPanel | undefined;
@@ -21,6 +23,8 @@ export class WorldMap {
     private worldMapLoader: WorldMapLoader;
     private worldMapDependencies: string[] | undefined;
     private cachedWorldMap: WorldMapData | undefined;
+
+    private lastRequestedExportUri: vscode.Uri | undefined;
 
     constructor(panel: vscode.WebviewPanel) {
         this.panel = panel;
@@ -92,6 +96,12 @@ export class WorldMap {
                     break;
                 case 'telemetry':
                     await sendByMessage(msg);
+                    break;
+                case 'requestexportmap':
+                    await this.requestExportMap();
+                    break;
+                case 'exportmap':
+                    await this.exportMap(msg.dataUrl);
                     break;
             }
         } catch (e) {
@@ -309,5 +319,41 @@ export class WorldMap {
         }
 
         return await this.panel.webview.postMessage(message);
+    }
+
+    private async requestExportMap() {
+        const uri = await vscode.window.showSaveDialog({ filters: { [localize('pngfile', 'PNG file')]: ['png'] } });
+        this.lastRequestedExportUri = uri;
+        if (!uri) {
+            return;
+        }
+
+        await this.postMessageToWebview({ command: 'requestexportmap' });
+    }
+
+    private async exportMap(dataUrl?: string) {
+        const uri = this.lastRequestedExportUri;
+        if (!uri) {
+            return;
+        }
+
+        const prefix = 'data:image/png;base64,';
+        if (!dataUrl || !dataUrl.startsWith(prefix)) {
+            vscode.window.showErrorMessage(localize('worldmap.export.error.imgformat', 'Can\'t export world map: Image is not in correct format.'));
+            return;
+        }
+
+        try {
+            const base64 = dataUrl.substr(prefix.length);
+            const buffer = Buffer.from(base64, 'base64');
+
+            await fs.promises.writeFile(new URL(uri.toString()), buffer);
+
+            vscode.window.showInformationMessage(localize('worldmap.export.success', 'Successfully exported world map.'));
+
+        } catch (e) {
+            error(e);
+            vscode.window.showErrorMessage(localize('worldmap.export.error', 'Can\'t export world map: {0}.', e));
+        }
     }
 }

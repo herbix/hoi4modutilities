@@ -63,14 +63,15 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.4.3]
+## Release Notes - [0.4.4]
 
 ### Added
-* Show event picture in event tree.
-* Partially supported Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
+* `Display` option in world map preview, which can show or hide map components.
+* `Export as image` button to export whole world map to an image.
 
 ### Fixed
-* An issue that preview window closes even when text editor exists.
+* An issue that not all terrain definitions are read.
+* An issue that connection between provinces are not visible when one of the province is out of view.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -6,3 +6,7 @@ declare interface VSCodeAPI {
     getState<T>(): T | undefined;
     postMessage<T>(message: T): void;
 }
+
+interface NodeRequire {
+    context(directory: string, useSubdirectories?: boolean, regExp?: RegExp, mode?: string): NodeRequire;
+}

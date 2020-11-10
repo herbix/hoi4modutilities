@@ -34,6 +34,21 @@
                 </div>
             </div>
 
+            <div class="group">
+                <label for="warningfilter">%worldmap.topbar.display|Display: %</label>
+                <div class="select-container">
+                    <div id="display" class="select multiple-select" tabindex="0" role="combobox">
+                        <span class="value"></span>
+                        <div class="option" value="edge">%worldmap.topbar.display.border|Show border%</div>
+                        <div class="option" value="label">%worldmap.topbar.display.label|Show label%</div>
+                        <div class="option" value="tooltip">%worldmap.topbar.display.tooltip|Show tooltip%</div>
+                        <div class="option" value="mousehighlight">%worldmap.topbar.display.mousehighlight|Mouse highlight%</div>
+                        <div class="option" value="fastrending">%worldmap.topbar.display.fastrendering|Fast rendering%</div>
+                        <div class="option" value="adaptzooming">%worldmap.topbar.display.adaptzooming|Adapt zooming%</div>
+                    </div>
+                </div>
+            </div>
+
             <div class="group" viewmode="province state strategicregion supplyarea">
                 <label for="searchbox">%worldmap.topbar.search|Search: %</label>
                 <input id="searchbox" type="text"/>
@@ -56,24 +71,14 @@
             </div>
 
             <div class="group">
-                <label for="warningfilter">%worldmap.topbar.display|Display: %</label>
-                <div class="select-container">
-                    <div id="display" class="select multiple-select" tabindex="0" role="combobox">
-                        <span class="value"></span>
-                        <div class="option" value="edge">%worldmap.topbar.display.border|Show border%</div>
-                        <div class="option" value="label">%worldmap.topbar.display.label|Show label%</div>
-                        <div class="option" value="tooltip">%worldmap.topbar.display.tooltip|Show tooltip%</div>
-                        <div class="option" value="mousehighlight">%worldmap.topbar.display.mousehighlight|Mouse highlight%</div>
-                        <div class="option" value="adaptzooming">%worldmap.topbar.display.adaptzooming|Adapt zooming%</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="group">
                 <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%">
                     <i class="codicon codicon-refresh"></i>
                 </button>
+                <button id="export" title="%worldmap.export.title|Export as image%">
+                    <i class="codicon codicon-export"></i>
+                </button>
             </div>
+
             <div class="group">
                 <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%">
                     <i class="codicon codicon-warning"></i>

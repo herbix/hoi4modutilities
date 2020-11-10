@@ -18,10 +18,10 @@ export interface Margin {
 
 export type Format = StringIgnoreCase<'left' | 'right' | 'up' | 'down' | 'center'>;
 export type Orientation = StringIgnoreCase<
-    'upper_left' | 'upper_right' |
-    'lower_left' | 'lower_right' |
+    'upper_left' | 'upper_right' | 'upper_center' |
+    'lower_left' | 'lower_right' | 'lower_center' |
     'center_up' | 'center_down' | 'center_left' | 'center_right' | 'center_middle' | 'center' |
-    'left' | 'right' 
+    'left' | 'right' | 'up' | 'down' | 'top' | 'bottom'
 >;
 
 export interface Background {

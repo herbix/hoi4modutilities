@@ -21,7 +21,6 @@ const techTreeViewName = 'countrytechtreeview';
 
 export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
-    const styleTable = new StyleTable();
     try {
         const session = new LoaderSession(false);
         const loadResult = await loader.load(session);
@@ -30,9 +29,14 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
 
         const technologyTrees = loadResult.result.technologyTrees;
         const folders = uniq(technologyTrees.map(tt => tt.folder));
-        const baseContent = folders.length === 0 ?
-            localize('techtree.notechtree', 'No technology tree.') :
-            await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
+        
+        if (folders.length === 0) {
+            const baseContent = localize('techtree.notechtree', 'No technology tree.');
+            return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+        }
+
+        const styleTable = new StyleTable();
+        const baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
 
         return html(
             webview,

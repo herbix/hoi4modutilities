@@ -6,6 +6,8 @@ import { WorldMapMessage, WorldMapWarning } from "../../src/previewdef/worldmap/
 import { feLocalize } from "../util/i18n";
 import { DivDropdown } from "../util/dropdown";
 import { BehaviorSubject, combineLatest, fromEvent } from 'rxjs';
+import { Renderer } from './renderer';
+import { sendEvent } from '../util/telemetry';
 
 export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' |
@@ -108,44 +110,60 @@ export class TopBar extends Subscriber {
     }
     
     private loadControls() {
-        const topBar = this;
+        this.loadWarningButton();
+        this.loadSearchBox();
+        this.loadRefreshButton();
+        this.loadOpenButton();
+        this.loadExportButton();
+    }
 
+    private loadWarningButton() {
         const warningsContainer = document.getElementById('warnings-container')!;
         const showWarnings = document.getElementById('show-warnings')!;
         this.addSubscription(fromEvent(showWarnings, 'click').subscribe(() => {
             this.warningsVisible = !this.warningsVisible;
             if (this.warningsVisible) {
+                sendEvent('worldmap.openwarnings');
                 warningsContainer.style.display = 'block';
             } else {
                 warningsContainer.style.display = 'none';
             }
         }));
+    }
 
+    private loadSearchBox() {
         const searchBox = this.searchBox;
         const search = document.getElementById("search")!;
         this.addSubscription(fromEvent<KeyboardEvent>(searchBox, 'keypress').subscribe((e) => {
             if (e.code === 'Enter') {
-                topBar.search(searchBox.value);
+                sendEvent('worldmap.search', { keypress: 'true' });
+                this.search(searchBox.value);
             }
         }));
         this.addSubscription(fromEvent(search, 'click').subscribe(() => {
-            topBar.search(searchBox.value);
+            sendEvent('worldmap.search', { keypress: 'false' });
+            this.search(searchBox.value);
         }));
-        
+    }
+
+    private loadRefreshButton() {
         const refresh = document.getElementById("refresh") as HTMLButtonElement;
         this.addSubscription(fromEvent(refresh, 'click').subscribe(() => {
             if (!refresh.disabled) {
+                sendEvent('worldmap.refresh');
                 this.loader.refresh();
             }
         }));
-        refresh.disabled = this.loader.loading$.value;
         this.addSubscription(this.loader.loading$.subscribe(v => {
             refresh.disabled = v;
         }));
+    }
 
+    private loadOpenButton() {
         const open = document.getElementById("open") as HTMLButtonElement;
         this.addSubscription(fromEvent(open, 'click').subscribe((e) => {
             e.stopPropagation();
+            sendEvent('worldmap.open.' + this.viewMode$.value);
             if (this.viewMode$.value === 'state') {
                 if (this.selectedStateId$.value) {
                     const state = this.loader.worldMap.getStateById(this.selectedStateId$.value);
@@ -179,6 +197,37 @@ export class TopBar extends Subscriber {
                     (viewMode === 'supplyarea' && selectedSupplyAreaId !== undefined));
             }
         ));
+    }
+
+    private loadExportButton() {
+        const exportButton = document.getElementById("export") as HTMLButtonElement;
+        exportButton.disabled = true;
+        this.addSubscription(this.loader.worldMap$.subscribe(wm => {
+            exportButton.disabled = !wm;
+        }));
+        this.addSubscription(fromEvent(exportButton, 'click').subscribe(e => {
+            e.stopPropagation();
+            vscode.postMessage({ command: 'requestexportmap' });
+        }));
+        this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {
+            const message = event.data as WorldMapMessage;
+            if (message.command !== 'requestexportmap') {
+                return;
+            }
+
+            const worldMap = this.loader.worldMap;
+            if (!worldMap) {
+                return;
+            }
+
+            sendEvent('worldmap.export');
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.max(1, worldMap.width);
+            canvas.height = Math.max(1, worldMap.height);
+            const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: 1 });
+            Renderer.renderMapImpl(canvas, this, viewPoint, worldMap, { preciseEdge: true, overwriteRenderPrecision: 1 });
+            vscode.postMessage({ command: 'exportmap', dataUrl: canvas.toDataURL() });
+        }));
     }
     
     private registerEventListeners(canvas: HTMLCanvasElement) {

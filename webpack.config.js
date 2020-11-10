@@ -141,8 +141,7 @@ const webviewJsConfig = {
           priority: 2,
         }
       }
-    },
-    usedExports: true
+    }
   }
 };
 

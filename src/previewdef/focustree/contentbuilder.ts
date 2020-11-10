@@ -25,13 +25,16 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         debug('Loader session focus tree', loadedLoaders);
 
         const focustrees = loadResult.result.focusTrees;
+
+        if (focustrees.length === 0) {
+            const baseContent = localize('focustree.nofocustree', 'No focus tree.');
+            return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+        }
+
         const styleTable = new StyleTable();
         const jsCodes: string[] = [];
         const styleNonce = randomString(32);
-        const baseContent = focustrees.length > 0 ?
-            await renderFocusTrees(focustrees, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file) :
-            localize('focustree.nofocustree', 'No focus tree.');
-
+        const baseContent = await renderFocusTrees(focustrees, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
         jsCodes.push(i18nTableAsScript());
 
         return html(
