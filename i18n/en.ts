@@ -1,6 +1,6 @@
 // Hack tsc
 /*eslint sort-keys: "warn"*/
-const internalTable = {
+const internalTable = /* SOT Do not remove this comment */{
     "combobox.all": "(All)",
     "combobox.multiple": "{0} (+{1})",
     "combobox.noselection": "(No selection)",
@@ -45,6 +45,7 @@ const internalTable = {
     "modfile.selectworkingmod": "Select working mod",
     "modfile.type": "Mod file",
     "modfile.workspacesetting": "Workspace setting",
+    "pngfile": "PNG file",
     "preview.cantfinddoc": "Can't find opened document {0}.",
     "preview.cantpreviewfile": "Can't preview this file.\nValid types: {0}.",
     "preview.failedtoopen": "Failed to open file \"{0}\": {1}.",
@@ -63,6 +64,10 @@ const internalTable = {
     "techtree.techfolder": "Technology folder: ",
     "worldmap.error.fieldnotindefaultmap": "Field \"{0}\" is not found in default.map.",
     "worldmap.error.provinceidtoolarge": "Max province id is too large: {0}.",
+    "worldmap.export.error": "Can't export world map: {0}.",
+    "worldmap.export.error.imgformat": "Can't export world map: Image is not in correct format.",
+    "worldmap.export.success": "Successfully exported world map.",
+    "worldmap.export.title": "Export as image",
     "worldmap.failedtoload": "Failed to load world map: {0}.",
     "worldmap.failedtoopenstate": "Failed to open {0} file: {1}.",
     "worldmap.mustopenafolder": "Must open a folder before opening {0} file.",
@@ -119,6 +124,13 @@ const internalTable = {
     "worldmap.topbar.colorset.terrain": "Terrain",
     "worldmap.topbar.colorset.vicotrypoint": "Victory Points",
     "worldmap.topbar.colorset.warnings": "Warnings",
+    "worldmap.topbar.display": "Display: ",
+    "worldmap.topbar.display.adaptzooming": "Adapt zooming",
+    "worldmap.topbar.display.border": "Show border",
+    "worldmap.topbar.display.fastrendering": "Fast rendering",
+    "worldmap.topbar.display.label": "Show label",
+    "worldmap.topbar.display.mousehighlight": "Mouse highlight",
+    "worldmap.topbar.display.tooltip": "Show tooltip",
     "worldmap.topbar.open.title": "Open in workspace",
     "worldmap.topbar.refresh.title": "Refresh",
     "worldmap.topbar.search": "Search: ",
@@ -182,9 +194,10 @@ const internalTable = {
     "worldmap.warnings.supplyareanostates": "Supply area {0} in \"{1}\" doesn't have states.",
     "worldmap.warnings.supplyareanotexist": "Supply area with id {0} doesn't exist.",
     "worldmap.warnings.supplyareanovalidstates": "Supply area {0} doesn't have valid states.",
+    "worldmap.warnings.terraindefinedtwice": "Terrain {0} is defined in two files: {1}, {2}.",
     "worldmap.warnings.terrainnotdefined": "Terrain \"{0}\" is not defined.",
     "worldmap.warnings.xcrossing": "Map invalid X crossing at: ({0}, {1})."
-};
+};/* EOT Do not remove this comment */
 
 export const __table = Object.assign(internalTable, {
     "worldmap.openfiletype.state": "state",
@@ -193,4 +206,4 @@ export const __table = Object.assign(internalTable, {
 });
 
 // Real export
-module.exports = __table;
+export default __table;

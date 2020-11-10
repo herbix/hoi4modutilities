@@ -4,7 +4,17 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.4.3] - 2020/10/07 - Latest
+## [0.4.4] - 2020/11/11 - Latest
+
+### Added
+* `Display` option in world map preview, which can show or hide map components.
+* `Export as image` button to export whole world map to an image.
+
+### Fixed
+* An issue that not all terrain definitions are read.
+* An issue that connection between provinces are not visible when one of the province is out of view.
+
+## [0.4.3] - 2020/10/07
 
 ### Added
 * Show event picture in event tree.

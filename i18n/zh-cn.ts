@@ -1,6 +1,6 @@
 import { __table } from './en';
 /*eslint sort-keys: "warn"*/
-const zhTable: Partial<typeof __table> = {
+const table: Partial<typeof __table> = {
     "combobox.all": "（全部）",
     "combobox.multiple": "{0}（+{1}）",
     "combobox.noselection": "（无选择）",
@@ -45,6 +45,7 @@ const zhTable: Partial<typeof __table> = {
     "modfile.selectworkingmod": "选择工作模组",
     "modfile.type": "模组文件",
     "modfile.workspacesetting": "工作区设置",
+    "pngfile": "PNG文件",
     "preview.cantfinddoc": "无法找到打开的文档：{0}。",
     "preview.cantpreviewfile": "无法预览此文件。\n可以预览的类型：{0}。",
     "preview.failedtoopen": "无法打开文件 “{0}”：{1}。",
@@ -63,6 +64,10 @@ const zhTable: Partial<typeof __table> = {
     "techtree.techfolder": "科技树目录：",
     "worldmap.error.fieldnotindefaultmap": "default.map中缺少字段“{0}”。",
     "worldmap.error.provinceidtoolarge": "地块编号过大，最大值：{0}。",
+    "worldmap.export.error": "无法导出地图：{0}。",
+    "worldmap.export.error.imgformat": "无法导出地图：图像格式问题。",
+    "worldmap.export.success": "成功导出地图。",
+    "worldmap.export.title": "导出成图像",
     "worldmap.failedtoload": "载入地图失败：{0}。",
     "worldmap.failedtoopenstate": "打开{0}文件失败：{1}。",
     "worldmap.mustopenafolder": "要打开{0}文件，必须先打开文件夹。",
@@ -122,6 +127,13 @@ const zhTable: Partial<typeof __table> = {
     "worldmap.topbar.colorset.terrain": "地形",
     "worldmap.topbar.colorset.vicotrypoint": "胜利点",
     "worldmap.topbar.colorset.warnings": "警告",
+    "worldmap.topbar.display": "显示：",
+    "worldmap.topbar.display.adaptzooming": "适应缩放",
+    "worldmap.topbar.display.border": "显示边界",
+    "worldmap.topbar.display.fastrendering": "快速绘制",
+    "worldmap.topbar.display.label": "显示标签",
+    "worldmap.topbar.display.mousehighlight": "指针高亮",
+    "worldmap.topbar.display.tooltip": "显示信息",
     "worldmap.topbar.open.title": "在工作区内打开",
     "worldmap.topbar.refresh.title": "刷新",
     "worldmap.topbar.search": "搜索：",
@@ -185,8 +197,9 @@ const zhTable: Partial<typeof __table> = {
     "worldmap.warnings.supplyareanostates": "“{1}”中的补给区域{0}不包含省份。",
     "worldmap.warnings.supplyareanotexist": "补给区域{0}不存在。",
     "worldmap.warnings.supplyareanovalidstates": "补给区域{0}不存在于地图上。",
+    "worldmap.warnings.terraindefinedtwice": "地形\"{0}\"在不同的文件内重复定义：{1}，{2}。",
     "worldmap.warnings.terrainnotdefined": "地形\"{0}\"不存在。",
     "worldmap.warnings.xcrossing": "地块有十字交叉边界，位于：({0}，{1})。"
 };
 
-export = zhTable;
+export default table;
