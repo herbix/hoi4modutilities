@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Unreleased
+
+### Fixed
+* Show error message when size of map image is not multiply of 256.
+
 ## [0.4.4] - 2020/11/11 - Latest
 
 ### Added

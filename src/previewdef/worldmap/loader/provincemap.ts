@@ -276,6 +276,11 @@ function convertRowToProvince(row: string[], warnings: WorldMapWarning[]): Provi
 
 type ColorContainer = { color: number, warnings: [] };
 function getProvincesByPosition(provinceMapImage: BMP): { colorByPosition: number[], provinces: ColorContainer[], colorToProvince: Record<number, ColorContainer> } {
+    if (provinceMapImage.width % 256 !== 0 || provinceMapImage.height % 256 !== 0) {
+        throw new UserError(localize('worldmap.error.multiply256', 'Height and width of map image must be multiply of 256: {0}x{1}.',
+            provinceMapImage.width, provinceMapImage.height));
+    }
+
     const colorByPosition: number[] = new Array(provinceMapImage.width * provinceMapImage.height);
     const bitmapData = provinceMapImage.data;
     const provinces: ColorContainer[] = [];
