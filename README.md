@@ -2,6 +2,8 @@
 
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
 
+**[Support me on Patreon](https://www.patreon.com/chaofan)**
+
 ## Features
 
 * World map preview
@@ -78,3 +80,6 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * If you want to contribute translation, feel free to create pull request to this [Github repo](https://github.com/herbix/hoi4modutilities). All localization related files are under `i18n` folder.
 
 * Thanks to all contributors listed [here](https://github.com/herbix/hoi4modutilities/graphs/contributors).
+
+## Support
+* If you feel this extension useful and want to support me, please visit [my Patreon page](https://www.patreon.com/chaofan). Your issues will get resolved faster if you are my Patrons.
