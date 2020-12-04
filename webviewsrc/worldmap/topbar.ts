@@ -159,35 +159,42 @@ export class TopBar extends Subscriber {
         }));
     }
 
+    private openMapItem(useHoverValue = false) {
+        sendEvent('worldmap.open.' + this.viewMode$.value + (useHoverValue ? '.dblclick' : ''));
+        if (this.viewMode$.value === 'state') {
+            const selected = useHoverValue ? this.hoverStateId$.value : this.selectedStateId$.value;
+            if (selected) {
+                const state = this.loader.worldMap.getStateById(selected);
+                if (state) {
+                    vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'state', file: state.file, start: state.token?.start, end: state.token?.end });
+                }
+            }
+        } else if (this.viewMode$.value === 'strategicregion') {
+            const selected = useHoverValue ? this.hoverStrategicRegionId$.value : this.selectedStrategicRegionId$.value;
+            if (selected) {
+                const strategicRegion = this.loader.worldMap.getStrategicRegionById(selected);
+                if (strategicRegion) {
+                    vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'strategicregion', file: strategicRegion.file,
+                        start: strategicRegion.token?.start, end: strategicRegion.token?.end });
+                }
+            }
+        } else if (this.viewMode$.value === 'supplyarea') {
+            const selected = useHoverValue ? this.hoverSupplyAreaId$.value : this.selectedSupplyAreaId$.value;
+            if (selected) {
+                const supplyArea = this.loader.worldMap.getSupplyAreaById(selected);
+                if (supplyArea) {
+                    vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'supplyarea', file: supplyArea.file,
+                        start: supplyArea.token?.start, end: supplyArea.token?.end });
+                }
+            }
+        }
+    }
+
     private loadOpenButton() {
         const open = document.getElementById("open") as HTMLButtonElement;
         this.addSubscription(fromEvent(open, 'click').subscribe((e) => {
             e.stopPropagation();
-            sendEvent('worldmap.open.' + this.viewMode$.value);
-            if (this.viewMode$.value === 'state') {
-                if (this.selectedStateId$.value) {
-                    const state = this.loader.worldMap.getStateById(this.selectedStateId$.value);
-                    if (state) {
-                        vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'state', file: state.file, start: state.token?.start, end: state.token?.end });
-                    }
-                }
-            } else if (this.viewMode$.value === 'strategicregion') {
-                if (this.selectedStrategicRegionId$.value) {
-                    const strategicRegion = this.loader.worldMap.getStrategicRegionById(this.selectedStrategicRegionId$.value);
-                    if (strategicRegion) {
-                        vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'strategicregion', file: strategicRegion.file,
-                            start: strategicRegion.token?.start, end: strategicRegion.token?.end });
-                    }
-                }
-            } else if (this.viewMode$.value === 'supplyarea') {
-                if (this.selectedSupplyAreaId$.value) {
-                    const supplyArea = this.loader.worldMap.getSupplyAreaById(this.selectedSupplyAreaId$.value);
-                    if (supplyArea) {
-                        vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'supplyarea', file: supplyArea.file,
-                            start: supplyArea.token?.start, end: supplyArea.token?.end });
-                    }
-                }
-            }
+            this.openMapItem();
         }));
 
         this.addSubscription(combineLatest([this.viewMode$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$]).subscribe(
@@ -278,6 +285,11 @@ export class TopBar extends Subscriber {
                     this.selectedSupplyAreaId$.next(this.selectedSupplyAreaId$.value === this.hoverSupplyAreaId$.value ? undefined : this.hoverSupplyAreaId$.value);
                     break;
             }
+        }));
+
+        this.addSubscription(fromEvent(canvas, 'dblclick').subscribe(e => {
+            e.stopPropagation();
+            this.openMapItem(true);
         }));
 
         this.addSubscription(this.viewMode$.subscribe(() => this.onViewModeChange()));

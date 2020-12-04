@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Unreleased
 
+### Change
+* Items in world map preview can be opened by double click instead of clicking button on toolbar.
+
 ### Fixed
 * Show error message when size of map image is not multiply of 256.
 
