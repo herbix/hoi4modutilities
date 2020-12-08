@@ -63,6 +63,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "techtree.notechtree": "No technology tree.",
     "techtree.techfolder": "Technology folder: ",
     "worldmap.error.fieldnotindefaultmap": "Field \"{0}\" is not found in default.map.",
+    "worldmap.error.multiply256": "Height and width of map image must be multiply of 256: {0}x{1}.",
     "worldmap.error.provinceidtoolarge": "Max province id is too large: {0}.",
     "worldmap.export.error": "Can't export world map: {0}.",
     "worldmap.export.error.imgformat": "Can't export world map: Image is not in correct format.",
