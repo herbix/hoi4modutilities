@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.4.5] - 2020/12/08 - Latest
 
 ### Change
 * Items in world map preview can be opened by double click instead of clicking button on toolbar.
@@ -12,7 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Fixed
 * Show error message when size of map image is not multiply of 256.
 
-## [0.4.4] - 2020/11/11 - Latest
+## [0.4.4] - 2020/11/11
 
 ### Added
 * `Display` option in world map preview, which can show or hide map components.
