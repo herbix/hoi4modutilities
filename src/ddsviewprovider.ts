@@ -9,13 +9,13 @@ import { StyleTable } from './util/styletable';
 import { sendEvent } from './util/telemetry';
 import { ensureFileScheme } from './util/vsccommon';
 
-abstract class CommonViewProvider /* implements vscode.CustomEditorProvider */ {
+abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider {
     public async openCustomDocument(uri: vscode.Uri) {
         // Don't try opening it as text
         return { uri, dispose: () => { } };
     }
 
-    public async resolveCustomEditor(document: { uri: vscode.Uri }, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
+    public async resolveCustomEditor(document: vscode.CustomDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         try {
             ensureFileScheme(document.uri);
             this.onOpen();

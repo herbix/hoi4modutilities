@@ -22,8 +22,8 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(registerScanReferencesCommand());
 
     // Use proposed vscode API
-    context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider() as any));
-    context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider() as any));
+    context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
+    context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
 
     if (process.env.NODE_ENV !== 'production') {
         vscode.commands.registerCommand('hoi4modutilities.test', () => {

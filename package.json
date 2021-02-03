@@ -179,7 +179,7 @@
 		"@types/mocha": "^7.0.2",
 		"@types/node": "^13.11.0",
 		"@types/pngjs": "^3.4.2",
-		"@types/vscode": "^1.44.0",
+		"@types/vscode": "^1.52.0",
 		"@typescript-eslint/eslint-plugin": "^4.4.1",
 		"@typescript-eslint/parser": "^4.4.1",
 		"copy-webpack-plugin": "^6.0.3",

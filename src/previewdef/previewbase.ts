@@ -37,7 +37,7 @@ export abstract class PreviewBase {
     public dispose(): void {
         this.dependencyChangedEmitter.dispose();
         this.disposed = true;
-        this.disposeEmitter.fire();
+        this.disposeEmitter.fire(undefined);
         this.disposeEmitter.dispose();
     }
 
