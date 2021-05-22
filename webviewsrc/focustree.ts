@@ -1,7 +1,7 @@
 import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
-import { renderGridBox, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridbox";
+import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
 import { StyleTable } from "../src/util/styletable";
 import { FocusTree, Focus } from "../src/previewdef/focustree/schema";
 import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
@@ -80,7 +80,7 @@ async function buildContent() {
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
     const leftPadding = gridbox.position.x._value - Math.min(minX * (window as any).xGridSize, 0);
 
-    const focusTreeContent = await renderGridBox({ ...gridbox, position: {...gridbox.position, x: toNumberLike(leftPadding)} }, {
+    const focusTreeContent = await renderGridBoxCommon({ ...gridbox, position: {...gridbox.position, x: toNumberLike(leftPadding)} }, {
         size: { width: 0, height: 0 },
         orientation: 'upper_left'
     }, {

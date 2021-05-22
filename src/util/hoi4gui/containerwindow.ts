@@ -1,9 +1,10 @@
 import { HOIPartial } from "../../hoiformat/schema";
-import { calculateBBox, normalizeMargin, ParentInfo, RenderCommonOptions, removeHtmlOptions, renderBackground } from "./common";
+import { calculateBBox, normalizeMargin, ParentInfo, removeHtmlOptions } from "./common";
 import { renderIcon } from "./icon";
 import { renderInstantTextBox } from "./instanttextbox";
 import { renderGridBox } from "./gridbox";
 import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/gui";
+import { renderBackground, RenderNodeCommonOptions } from './nodecommon';
 
 export interface RenderChildTypeMap {
     containerwindow: HOIPartial<ContainerWindowType>;
@@ -12,7 +13,7 @@ export interface RenderChildTypeMap {
     instanttextbox: HOIPartial<InstantTextBoxType>;
 }
 
-export interface RenderContainerWindowOptions extends RenderCommonOptions {
+export interface RenderContainerWindowOptions extends RenderNodeCommonOptions {
     noSize?: boolean;
     onRenderChild?<T extends keyof RenderChildTypeMap>(type: T, child: RenderChildTypeMap[T], parentInfo: ParentInfo): Promise<string | undefined>;
 }

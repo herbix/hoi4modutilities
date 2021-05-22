@@ -16,6 +16,7 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { flatMap, sumBy, min, flatten, chain, uniq } from 'lodash';
 import { StyleTable } from '../../util/styletable';
+import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 
 const techTreeViewName = 'countrytechtreeview';
 
@@ -146,7 +147,7 @@ async function renderTechnologyFolder(
         const lineItem = allContainerWindowTypes.find(c => c.name === 'techtree_line_item');
         const xorItem = allContainerWindowTypes.find(c => c.name === 'techtree_xor_item');
 
-        const commonOptions: RenderCommonOptions = {
+        const commonOptions: RenderNodeCommonOptions = {
             getSprite: defaultGetSprite(gfxFiles),
             styleTable,
         };

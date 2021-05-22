@@ -50,8 +50,7 @@ const mainConfig = {
       patterns: [
         {
           from: 'i18n/*.nls.*.json',
-          to: __dirname,
-          flatten: true
+          to: path.resolve(__dirname, '[name][ext]')
         }
       ]
     }),
@@ -93,7 +92,14 @@ const webviewJsConfig = {
   devtool: 'source-map',
 
   resolve: {
-    extensions: ['.ts', '.js']
+    extensions: ['.ts', '.js'],
+    fallback: {
+      'assert': false,
+      'buffer': false,
+      'stream': false,
+      'util': false,
+      'zlib': false,
+    }
   },
   
   module: {
@@ -115,18 +121,15 @@ const webviewJsConfig = {
       patterns: [
         {
           from: 'resource/**/*',
-          to: path.resolve(__dirname, 'static'),
-          flatten: true
+          to: path.resolve(__dirname, 'static', '[name][ext]')
         },
         {
           from: 'node_modules/vscode-codicons/dist/codicon.css',
-          to: path.resolve(__dirname, 'static'),
-          flatten: true
+          to: path.resolve(__dirname, 'static', '[name][ext]')
         },
         {
           from: 'node_modules/vscode-codicons/dist/codicon.ttf',
-          to: path.resolve(__dirname, 'static'),
-          flatten: true
+          to: path.resolve(__dirname, 'static', '[name][ext]')
         }
       ]
     })

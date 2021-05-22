@@ -1,8 +1,9 @@
 import { HOIPartial } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, renderSprite, RenderCommonOptions } from "./common";
+import { ParentInfo, calculateBBox } from "./common";
 import { IconType } from "../../hoiformat/gui";
+import { RenderNodeCommonOptions, renderSprite } from './nodecommon';
 
-export interface RenderIconOptions extends RenderCommonOptions {
+export interface RenderIconOptions extends RenderNodeCommonOptions {
 }
 
 export async function renderIcon(icon: HOIPartial<IconType>, parentInfo: ParentInfo, options: RenderIconOptions): Promise<string> {

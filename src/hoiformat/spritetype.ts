@@ -5,6 +5,8 @@ import { NumberPosition } from "../util/common";
 interface SpriteTypes {
     spritetype: SpriteTypeDef[];
     corneredtilespritetype: CorneredTileSpriteTypeDef[];
+    frameanimatedspritetype: SpriteTypeDef[];
+    textspritetype: SpriteTypeDef[];
 }
 
 interface SpriteTypeDef {
@@ -63,22 +65,32 @@ const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteTypeDef> = {
     tilingCenter: "boolean",
 };
 
+const spriteTypeSchema: SchemaDef<SpriteTypeDef> = {
+    name: {
+        _innerType: "string",
+        _type: "detailvalue",
+    },
+    texturefile: "string",
+    noofframes: "number",
+};
+
 const spriteTypesSchema: SchemaDef<SpriteTypes> = {
     spritetype: {
-        _innerType: {
-            name: {
-                _innerType: "string",
-                _type: "detailvalue",
-            },
-            texturefile: "string",
-            noofframes: "number",
-        },
+        _innerType: spriteTypeSchema,
         _type: "array",
     },
     corneredtilespritetype: {
         _innerType: corneredTileSpriteTypeSchema,
         _type: "array",
-    }
+    },
+    frameanimatedspritetype: {
+        _innerType: spriteTypeSchema,
+        _type: "array",
+    },
+    textspritetype: {
+        _innerType: spriteTypeSchema,
+        _type: "array",
+    },
 };
 
 const spriteFileSchema: SchemaDef<SpriteFile> = {
@@ -93,7 +105,7 @@ export function getSpriteTypes(node: Node): (SpriteType | CorneredTileSpriteType
     const result: (SpriteType | CorneredTileSpriteType)[] = [];
 
     for (const spritetypes of file.spritetypes) {
-        for (const sprite of spritetypes.spritetype) {
+        for (const sprite of spritetypes.spritetype.concat(spritetypes.frameanimatedspritetype).concat(spritetypes.textspritetype)) {
             const name = sprite.name?._value;
             const texturefile = sprite.texturefile;
             if (name && texturefile) {
