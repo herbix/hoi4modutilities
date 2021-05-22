@@ -92,14 +92,7 @@ const webviewJsConfig = {
   devtool: 'source-map',
 
   resolve: {
-    extensions: ['.ts', '.js'],
-    fallback: {
-      'assert': false,
-      'buffer': false,
-      'stream': false,
-      'util': false,
-      'zlib': false,
-    }
+    extensions: ['.ts', '.js']
   },
   
   module: {
