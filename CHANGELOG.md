@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.4.6] - 2021/05/22 - Latest
+## [0.4.7] - 2021/10/09 - Latest
+
+### Fixed
+* `meta_effect` can't be parsed.
+
+## [0.4.6] - 2021/05/22
 
 ### Added
 * Support preview of `frameanimatedspritetype` and `textspritetype`.

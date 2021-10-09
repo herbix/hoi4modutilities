@@ -65,11 +65,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.4.6]
+## Release Notes - [0.4.7]
 
-### Added
-* Support preview of `frameanimatedspritetype` and `textspritetype`.
-* Support trusted workspaces feature in VSCode.
+### Fixed
+* `meta_effect` can't be parsed.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
