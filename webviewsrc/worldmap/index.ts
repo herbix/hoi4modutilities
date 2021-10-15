@@ -13,6 +13,8 @@ fromEvent(window, 'load').subscribe(function() {
     const topBar = new TopBar(mainCanvas, viewPoint, loader, state);
     const renderer = new Renderer(mainCanvas, viewPoint, loader, topBar);
 
+    fromEvent(mainCanvas, 'contextmenu').subscribe(event => event.preventDefault());
+
     viewPoint.observable$.subscribe(setStateForKey('viewPoint'));
     topBar.viewMode$.subscribe(setStateForKey('viewMode'));
     topBar.colorSet$.subscribe(setStateForKey('colorSet'));

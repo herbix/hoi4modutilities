@@ -131,6 +131,8 @@ window.addEventListener('load', function() {
             return;
         }
 
+        dragger.addEventListener('contextmenu', event => event.preventDefault());
+
         let mdx = -1;
         let mdy = -1;
         let pressed = false;
