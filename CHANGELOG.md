@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.4.7] - 2021/10/09 - Latest
+## [0.4.8] - 2021/10/15 - Latest
+
+### Fixed
+* Remove context menu from preview panels.
+
+## [0.4.7] - 2021/10/09
 
 ### Fixed
 * `meta_effect` can't be parsed.
