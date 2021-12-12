@@ -6,6 +6,10 @@ import { Renderer } from './renderer';
 import { fromEvent } from 'rxjs';
 
 fromEvent(window, 'load').subscribe(function() {
+    if (!(window as any)['enableSupplyArea']) {
+        disableSupplyArea();
+    }
+
     const state = getState();
     const loader = new Loader();
     const mainCanvas = document.getElementById('main-canvas') as HTMLCanvasElement;
@@ -30,4 +34,22 @@ function setStateForKey<T>(key: string): (newValue: T) => void {
     return newValue => {
         setState({ [key]: newValue });
     };
+}
+
+function disableSupplyArea() {
+    const viewModes = document.getElementById('viewmode')!.getElementsByTagName('option');
+    for (let i = 0; i < viewModes.length; i++) {
+        const viewMode = viewModes[i];
+        if (viewMode.value === "supplyarea") {
+            viewMode.remove();
+        }
+    }
+
+    const colorSets = document.getElementById('colorset')!.getElementsByTagName('option');
+    for (let i = 0; i < colorSets.length; i++) {
+        const colorSet = colorSets[i];
+        if (colorSet.value === "supplyareaid") {
+            colorSet.remove();
+        }
+    }
 }

@@ -7,6 +7,7 @@ import { debug } from "../../../util/debug";
 import { StrategicRegionsLoader } from "./strategicregion";
 import { SupplyAreasLoader } from "./supplyarea";
 import { LoaderSession } from "../../../util/loader/loader";
+import { getConfiguration } from "../../../util/vsccommon";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -53,7 +54,10 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         const strategicRegions = await this.strategicRegionsLoader.load(session);
         session.throwIfCancelled();
 
-        const supplyAreas = await this.supplyAreasLoader.load(session);
+        const enableSupplyArea = getConfiguration().enableSupplyArea;
+        const supplyAreas = enableSupplyArea ?
+            await this.supplyAreasLoader.load(session) :
+            { warnings: [], result: { supplyAreas: [], badSupplyAreasCount: 0 }, dependencies: [] };
         session.throwIfCancelled();
 
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());

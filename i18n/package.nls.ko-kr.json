@@ -15,5 +15,7 @@
     "hoi4modutilities.preview.title": "HOI4 파일 미리보기",
     "hoi4modutilities.previewworld.title": "세계지도 미리보기",
     "hoi4modutilities.scanreferences.title": "레퍼런스 스캔",
-    "hoi4modutilities.selectmodfile.title": "모드파일 선택"
+    "hoi4modutilities.selectmodfile.title": "모드파일 선택",
+    "hoi4modutilities.enableSupplyArea.title": "Enable Supply Area",
+    "hoi4modutilities.enableSupplyArea.desc": "If you are developing mod for HOI4(version<=1.10). Check this to enable supply area."
 }

@@ -5,6 +5,7 @@ declare module 'vscode' {
             readonly loadDlcContents: boolean;
             readonly modFile: string;
             readonly featureFlags: string[];
+            readonly enableSupplyArea: boolean;
         };
     }
 }

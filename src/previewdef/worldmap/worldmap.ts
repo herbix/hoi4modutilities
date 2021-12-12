@@ -13,7 +13,7 @@ import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
-import { isFileScheme } from '../../util/vsccommon';
+import { getConfiguration, isFileScheme } from '../../util/vsccommon';
 import * as fs from 'fs';
 import { URL } from 'url';
 
@@ -64,7 +64,12 @@ export class WorldMap {
         return html(
             webview,
             localizeText(worldmapview),
-            [{ content: i18nTableAsScript() }, 'common.js', 'worldmap.js'],
+            [
+                { content: i18nTableAsScript() },
+                { content: 'window.__enableSupplyArea = ' + getConfiguration().enableSupplyArea + ';' },
+                'common.js',
+                'worldmap.js'
+            ],
             ['common.css', 'codicon.css', { content: worldmapviewstyles }]
         );
     }
