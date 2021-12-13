@@ -2,7 +2,7 @@
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.4.8",
+	"version": "0.5.0",
 	"author": "Chaofan Yang",
 	"publisher": "chaofan",
 	"icon": "icon.png",
@@ -65,6 +65,12 @@
 						"type": "string",
 						"default": "",
 						"description": "%hoi4modutilities.modFile.desc%"
+					},
+					"hoi4ModUtilities.enableSupplyArea": {
+						"title": "%hoi4modutilities.enableSupplyArea.title%",
+						"type": "boolean",
+						"default": false,
+						"description": "%hoi4modutilities.enableSupplyArea.desc%"
 					},
 					"hoi4ModUtilities.featureFlags": {
 						"title": "%hoi4modutilities.featureFlags.title%",
