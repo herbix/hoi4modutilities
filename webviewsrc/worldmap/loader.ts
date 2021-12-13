@@ -2,7 +2,7 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { Subscriber } from "../util/event";
-import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
 import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
 
@@ -10,6 +10,8 @@ interface ExtraMapData {
     provincesCount: number;
     statesCount: number;
     countriesCount: number;
+    railwaysCount: number;
+    supplyNodesCount: number;
 }
 
 interface FEWorldMapClassExtra {
@@ -27,6 +29,10 @@ interface FEWorldMapClassExtra {
     getSupplyAreaByStateId(stateId: number): SupplyArea | undefined;
     getStateToSupplyAreaMap(): Record<number, number | undefined>;
 
+    getRailwayLevelByProvinceId(provinceId: number): number | undefined;
+
+    getSupplyNodeByProvinceId(provinceId: number): SupplyNode | undefined;
+
     getProvinceByPosition(x: number, y: number): Province | undefined;
 
     getProvinceWarnings(province?: Province, state?: State, strategicRegion?: StrategicRegion, supplyArea?: SupplyArea): string[];
@@ -38,9 +44,12 @@ interface FEWorldMapClassExtra {
     forEachState(callback: (state: State) => boolean | void): void;
     forEachStrategicRegion(callback: (strategicRegion: StrategicRegion) => boolean | void): void;
     forEachSupplyArea(callback: (supplyArea: SupplyArea) => boolean | void): void;
+    forEachRailway(callback: (railway: Railway) => boolean | void): void;
+    forEachSupplyNode(callback: (supplyNode: SupplyNode) => boolean | void): void;
 }
 
-export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicRegions' | 'supplyAreas'> & ExtraMapData & FEWorldMapClassExtra;
+export type FEWorldMap = Omit<WorldMapData, 'states' | 'provinces' | 'strategicRegions' | 'supplyAreas' | 'railways' | 'supplyNodes'>
+    & ExtraMapData & FEWorldMapClassExtra;
 
 export class Loader extends Subscriber {
     public worldMap: FEWorldMapClass;
@@ -105,6 +114,14 @@ export class Loader extends Subscriber {
                     this.receiveData(this.loadingProvinceMap?.supplyAreas, message.start, message.end, message.data);
                     this.loadNext();
                     break;
+                case 'railways':
+                    this.receiveData(this.loadingProvinceMap?.railways, message.start, message.end, message.data);
+                    this.loadNext();
+                    break;
+                case 'supplynodes':
+                    this.receiveData(this.loadingProvinceMap?.supplyNodes, message.start, message.end, message.data);
+                    this.loadNext();
+                    break;
                 case 'warnings':
                     if (this.loadingProvinceMap) {
                         this.loadingProvinceMap.warnings = JSON.parse(message.data);
@@ -155,6 +172,8 @@ export class Loader extends Subscriber {
         this.queueLoadingRequest('requeststates', -this.loadingProvinceMap.badStatesCount, 300, this.loadingProvinceMap.badStatesCount);
         this.queueLoadingRequest('requestprovinces', this.loadingProvinceMap.provincesCount, 300);
         this.queueLoadingRequest('requestprovinces', -this.loadingProvinceMap.badProvincesCount, 300, this.loadingProvinceMap.badProvincesCount);
+        this.queueLoadingRequest('requestrailways', this.loadingProvinceMap.railwaysCount, 1000);
+        this.queueLoadingRequest('requestsupplynodes', this.loadingProvinceMap.supplyNodesCount, 2000);
 
         this.loadingQueueStartLength = this.loadingQueue.length;
         this.progressText = '';
@@ -205,6 +224,8 @@ class FEWorldMapClass implements FEWorldMap {
     countriesCount!: number;
     strategicRegionsCount!: number;
     supplyAreasCount!: number;
+    railwaysCount!: number;
+    supplyNodesCount!: number;
     badProvincesCount!: number;
     badStatesCount!: number;
     badStrategicRegionsCount!: number;
@@ -216,13 +237,17 @@ class FEWorldMapClass implements FEWorldMap {
     private states!: (State | null | undefined)[];
     private strategicRegions!: (StrategicRegion | null | undefined)[];
     private supplyAreas!: (SupplyArea | null | undefined)[];
+    private railways!: (Railway | null | undefined)[];
+    private supplyNodes!: (SupplyNode | null | undefined)[];
 
     constructor(worldMap?: WorldMapData & ExtraMapData) {
         Object.assign(this, worldMap ?? ({
             width: 0, height: 0,
             provinces: [], states: [], countries: [], warnings: [], continents: [], strategicRegions: [], supplyAreas: [], terrains: [],
+            railways: [], supplyNodes: [],
             provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
             badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
+            railwaysCount: 0, supplyNodesCount: 0,
         } as WorldMapData & ExtraMapData));
     }
 
@@ -273,6 +298,27 @@ class FEWorldMapClass implements FEWorldMap {
             }
         });
         return resultSupplyArea;
+    }
+
+    public getRailwayLevelByProvinceId(provinceId: number): number | undefined {
+        let resultRailwayLevel = -1;
+        this.forEachRailway(railway => {
+            if (railway.provinces.includes(provinceId)) {
+                resultRailwayLevel = Math.max(resultRailwayLevel, railway.level);
+            }
+        });
+        return resultRailwayLevel === -1 ? undefined : resultRailwayLevel;
+    }
+
+    public getSupplyNodeByProvinceId(provinceId: number): SupplyNode | undefined {
+        let resultSupplyNode: SupplyNode | undefined = undefined;
+        this.forEachSupplyNode(supplyNode => {
+            if (supplyNode.province === provinceId) {
+                resultSupplyNode = supplyNode;
+                return true;
+            }
+        });
+        return resultSupplyNode;
     }
     
     public getProvinceByPosition(x: number, y: number): Province | undefined {
@@ -358,6 +404,26 @@ class FEWorldMapClass implements FEWorldMap {
         for (let i = this.badSupplyAreasCount; i < count; i++) {
             const supplyArea = this.supplyAreas[i];
             if (supplyArea && callback(supplyArea)) {
+                break;
+            }
+        }
+    }
+    
+    public forEachRailway(callback: (railway: Railway) => boolean | void): void {
+        const count = this.railwaysCount;
+        for (let i = 0; i < count; i++) {
+            const railway = this.railways[i];
+            if (railway && callback(railway)) {
+                break;
+            }
+        }
+    }
+    
+    public forEachSupplyNode(callback: (supplyNode: SupplyNode) => boolean | void): void {
+        const count = this.supplyNodesCount;
+        for (let i = 0; i < count; i++) {
+            const supplyNode = this.supplyNodes[i];
+            if (supplyNode && callback(supplyNode)) {
                 break;
             }
         }

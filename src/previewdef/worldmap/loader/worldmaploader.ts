@@ -8,6 +8,7 @@ import { StrategicRegionsLoader } from "./strategicregion";
 import { SupplyAreasLoader } from "./supplyarea";
 import { LoaderSession } from "../../../util/loader/loader";
 import { getConfiguration } from "../../../util/vsccommon";
+import { RailwayLoader, SupplyNodeLoader } from "./railway";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -15,6 +16,8 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     private countriesLoader: CountriesLoader;
     private strategicRegionsLoader: StrategicRegionsLoader;
     private supplyAreasLoader: SupplyAreasLoader;
+    private railwayLoader: RailwayLoader;
+    private supplyNodeLoader: SupplyNodeLoader;
     private shouldReloadValue: boolean = false;
 
     constructor() {
@@ -33,6 +36,12 @@ export class WorldMapLoader extends Loader<WorldMapData> {
 
         this.supplyAreasLoader = new SupplyAreasLoader(this.defaultMapLoader, this.statesLoader);
         this.supplyAreasLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.railwayLoader = new RailwayLoader(this.defaultMapLoader);
+        this.railwayLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.supplyNodeLoader = new SupplyNodeLoader(this.defaultMapLoader);
+        this.supplyNodeLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(): Promise<boolean> {
@@ -59,11 +68,21 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             await this.supplyAreasLoader.load(session) :
             { warnings: [], result: { supplyAreas: [], badSupplyAreasCount: 0 }, dependencies: [] };
         session.throwIfCancelled();
+        
+        const railways = enableSupplyArea ?
+            { warnings: [], result: { railways: [] }, dependencies: [] } :
+            await this.railwayLoader.load(session);
+        session.throwIfCancelled();
+        
+        const supplyNodes = enableSupplyArea ?
+            { warnings: [], result: { supplyNodes: [] }, dependencies: [] } :
+            await this.supplyNodeLoader.load(session);
+        session.throwIfCancelled();
 
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
 
-        const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas ];
+        const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
 
         const worldMap: WorldMapData = {
@@ -71,12 +90,16 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             ...stateMap.result,
             ...strategicRegions.result,
             ...supplyAreas.result,
+            ...railways.result,
+            ...supplyNodes.result,
             provincesCount: provinceMap.result.provinces.length,
             statesCount: stateMap.result.states.length,
             countriesCount: countries.result.length,
             strategicRegionsCount: strategicRegions.result.strategicRegions.length,
             supplyAreasCount: supplyAreas.result.supplyAreas.length,
             countries: countries.result,
+            railwaysCount: railways.result.railways.length,
+            supplyNodesCount: supplyNodes.result.supplyNodes.length,
             warnings,
         };
 

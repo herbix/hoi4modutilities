@@ -9,11 +9,15 @@ export interface WorldMapData {
     countries: Country[];
     strategicRegions: (StrategicRegion | undefined | null)[];
     supplyAreas: (SupplyArea | undefined | null)[];
+    railways: (Railway | undefined | null)[];
+    supplyNodes: (SupplyNode | undefined | null)[];
     provincesCount: number;
     statesCount: number;
     countriesCount: number;
     strategicRegionsCount: number;
     supplyAreasCount: number;
+    railwaysCount: number;
+    supplyNodesCount: number;
     badProvincesCount: number; // will be * -1
     badStatesCount: number; // will be * -1;
     badStrategicRegionsCount: number;
@@ -90,6 +94,16 @@ export interface State extends Region, TokenInFile {
     victoryPoints: Record<number, number | undefined>;
 }
 
+export interface Railway {
+    provinces: number[];
+    level: number;
+}
+
+export interface SupplyNode {
+    province: number;
+    level: number;
+}
+
 export interface WorldMapWarning extends Warning<WorldMapWarningSource[]> {
     relatedFiles: string[];
 }
@@ -107,7 +121,7 @@ interface WarningSourceProvince extends WarningSourceBase {
 }
 
 interface WarningSourceIdOnly extends WarningSourceBase {
-    type: 'state' | 'strategicregion' | 'supplyarea';
+    type: 'state' | 'strategicregion' | 'supplyarea' | 'railway' | 'supplynode';
     id: number;
 }
 
@@ -179,13 +193,13 @@ export interface LoadedMessage {
 }
 
 export interface RequestMapItemMessage {
-    command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions' | 'requestsupplyareas';
+    command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions' | 'requestsupplyareas' | 'requestrailways' | 'requestsupplynodes';
     start: number;
     end: number;
 }
 
 export interface MapItemMessage {
-    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas';
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas' | 'railways' | 'supplynodes';
     data: string;
     start: number;
     end: number;

@@ -143,6 +143,7 @@ export class Renderer extends Subscriber {
             labelVisible: displayOptions.includes('label'),
             adaptZooming: displayOptions.includes('adaptzooming'),
             fastRendering: displayOptions.includes('fastrending'),
+            supplyVisible: displayOptions.includes('supply'),
             ...this.viewPoint.toJson(),
         };
 
@@ -231,6 +232,10 @@ export class Renderer extends Subscriber {
             Renderer.renderAllEdges(renderContext, worldMap, context, xOffset);
         }
 
+        if (topBar.display.selectedValues$.value.includes('supply')) {
+            Renderer.renderSupplyRelated(renderContext, worldMap, context, xOffset);
+        }
+
         if (Renderer.isLabelVisible(topBar, viewPoint)) {
             Renderer.renderMapLabels(renderContext, worldMap, context, xOffset);
         }
@@ -290,13 +295,15 @@ export class Renderer extends Subscriber {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const viewMode = topBar.viewMode$.value;
         const colorSet = topBar.colorSet$.value;
+        const showSupply = topBar.display.selectedValues$.value.includes('supply');
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
-                const provinceColor = getColorByColorSet(colorSet, province, worldMap, renderContext);
+                const provinceColor = showSupply && worldMap.getSupplyNodeByProvinceId(province.id) ? 0xFF0000 :
+                    getColorByColorSet(colorSet, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
                 context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
@@ -406,6 +413,54 @@ export class Renderer extends Subscriber {
         }
     }
 
+    private static renderSupplyRelated(
+        renderContext: RenderContext,
+        worldMap: FEWorldMap,
+        context: CanvasRenderingContext2D,
+        xOffset: number
+    ): void {
+        const { renderedProvincesById, viewPoint } = renderContext;
+        
+        context.strokeStyle = 'rgb(200, 0, 0)';
+        worldMap.forEachRailway(railway => {
+            if (railway.provinces.every(id => !renderedProvincesById[id])) {
+                return;
+            }
+
+            context.beginPath();
+            context.lineWidth = Math.min(10, 2 * railway.level);
+            let hasProvince = false;
+            for (let i = 0; i < railway.provinces.length; i++) {
+                const province = worldMap.getProvinceById(railway.provinces[i]);
+                if (province) {
+                    if (!hasProvince) {
+                        context.moveTo(viewPoint.convertX(province.centerOfMass.x + xOffset), viewPoint.convertY(province.centerOfMass.y));
+                    } else {
+                        context.lineTo(viewPoint.convertX(province.centerOfMass.x + xOffset), viewPoint.convertY(province.centerOfMass.y));
+                    }
+                    hasProvince = true;
+                } else {
+                    context.stroke();
+                    hasProvince = false;
+                }
+            }
+            if (hasProvince) {
+                context.stroke();
+            }
+        });
+
+        context.fillStyle = 'rgb(200, 0, 0)';
+        const size = Math.min(30, viewPoint.scale * 10);
+        worldMap.forEachSupplyNode(supplyNode => {
+            const province = renderedProvincesById[supplyNode.province];
+            if (province) {
+                const x = viewPoint.convertX(province.centerOfMass.x + xOffset);
+                const y = viewPoint.convertY(province.centerOfMass.y);
+                context.fillRect(x - size / 2, y - size / 2, size, size);
+            }
+        });
+    }
+
     private static renderProvince(
         viewPoint: ViewPoint,
         context: CanvasRenderingContext2D,
@@ -487,6 +542,8 @@ export class Renderer extends Subscriber {
         const stateObject = worldMap.getStateByProvinceId(province.id);
         const strategicRegion = worldMap.getStrategicRegionByProvinceId(province.id);
         const supplyArea = stateObject ? worldMap.getSupplyAreaByStateId(stateObject.id) : undefined;
+        const railwayLevel = worldMap.getRailwayLevelByProvinceId(province.id);
+        const supplyNode = worldMap.getSupplyNodeByProvinceId(province.id);
         const vp = stateObject?.victoryPoints[province.id];
 
         this.renderTooltip(`
@@ -498,6 +555,12 @@ ${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}`: ''
 }
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
+` : ''}
+${railwayLevel ? `
+${feLocalize('worldmap.tooltip.railwaylevel', 'Railway level')}=${railwayLevel}
+` : ''}
+${supplyNode ? `
+${feLocalize('worldmap.tooltip.supplynode', 'Supply node')}=true
 ` : ''}
 ${strategicRegion ? `
 ${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}

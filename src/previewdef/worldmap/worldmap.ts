@@ -96,6 +96,12 @@ export class WorldMap {
                 case 'requestsupplyareas':
                     await this.sendMapData('supplyareas', msg, (await this.worldMapLoader.getWorldMap()).supplyAreas);
                     break;
+                case 'requestrailways':
+                    await this.sendMapData('railways', msg, (await this.worldMapLoader.getWorldMap()).railways);
+                    break;
+                case 'requestsupplynodes':
+                    await this.sendMapData('supplynodes', msg, (await this.worldMapLoader.getWorldMap()).supplyNodes);
+                    break;
                 case 'openfile':
                     await this.openFile(msg.file, msg.type, msg.start, msg.end);
                     break;
@@ -224,6 +230,7 @@ export class WorldMap {
         const changeMessages: WorldMapMessage[] = [];
 
         if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount', 'supplyAreasCount',
+            'railwaysCount', 'supplyNodesCount',
             'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount'] as (keyof WorldMapData)[])
             .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
             return false;
@@ -258,6 +265,14 @@ export class WorldMap {
         }
 
         if (!this.fillMessageForItem(changeMessages, worldMap.supplyAreas, cachedWorldMap.supplyAreas, 'supplyareas', worldMap.badSupplyAreasCount, worldMap.supplyAreasCount)) {
+            return false;
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.railways, cachedWorldMap.railways, 'railways', 0, worldMap.railwaysCount)) {
+            return false;
+        }
+
+        if (!this.fillMessageForItem(changeMessages, worldMap.supplyNodes, cachedWorldMap.supplyNodes, 'supplynodes', 0, worldMap.supplyNodesCount)) {
             return false;
         }
 

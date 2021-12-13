@@ -6,9 +6,7 @@ import { Renderer } from './renderer';
 import { fromEvent } from 'rxjs';
 
 fromEvent(window, 'load').subscribe(function() {
-    if (!(window as any)['enableSupplyArea']) {
-        disableSupplyArea();
-    }
+    hideBySupplyAreaFlag((window as any)['__enableSupplyArea']);
 
     const state = getState();
     const loader = new Loader();
@@ -36,11 +34,12 @@ function setStateForKey<T>(key: string): (newValue: T) => void {
     };
 }
 
-function disableSupplyArea() {
+function hideBySupplyAreaFlag(enableSupplyArea: boolean) {
     const viewModes = document.getElementById('viewmode')!.getElementsByTagName('option');
     for (let i = 0; i < viewModes.length; i++) {
         const viewMode = viewModes[i];
-        if (viewMode.value === "supplyarea") {
+        const attribute = viewMode.getAttribute('enablesupplyarea');
+        if (attribute && attribute !== enableSupplyArea.toString()) {
             viewMode.remove();
         }
     }
@@ -48,8 +47,18 @@ function disableSupplyArea() {
     const colorSets = document.getElementById('colorset')!.getElementsByTagName('option');
     for (let i = 0; i < colorSets.length; i++) {
         const colorSet = colorSets[i];
-        if (colorSet.value === "supplyareaid") {
+        const attribute = colorSet.getAttribute('enablesupplyarea');
+        if (attribute && attribute !== enableSupplyArea.toString()) {
             colorSet.remove();
+        }
+    }
+
+    const displayOptions = document.getElementById('display')!.getElementsByTagName('div');
+    for (let i = 0; i < displayOptions.length; i++) {
+        const displayOption = displayOptions[i];
+        const attribute = displayOption.getAttribute('enablesupplyarea');
+        if (attribute && attribute !== enableSupplyArea.toString()) {
+            displayOption.remove();
         }
     }
 }
