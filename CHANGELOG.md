@@ -4,7 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.4.8] - 2021/10/15 - Latest
+## [0.5.0] - 2021/12/13 - Latest
+
+### Added
+* Preview new supply system based on railway.
+* New setting `hoi4ModUtilities.enableSupplyArea` to switch to old version development.
+
+## [0.4.8] - 2021/10/15
 
 ### Fixed
 * Remove context menu from preview panels.

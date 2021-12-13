@@ -135,7 +135,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.topbar.display.fastrendering": "Fast rendering",
     "worldmap.topbar.display.label": "Show label",
     "worldmap.topbar.display.mousehighlight": "Mouse highlight",
-    "worldmap.topbar.display.supply": "Show Supply",
+    "worldmap.topbar.display.supply": "Show supply",
     "worldmap.topbar.display.tooltip": "Show tooltip",
     "worldmap.topbar.open.title": "Open in workspace",
     "worldmap.topbar.refresh.title": "Refresh",
