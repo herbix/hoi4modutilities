@@ -35,6 +35,9 @@ export function arrayToMap<T, K extends keyof T, V = T>(items: T[], key: K, valu
 
 export function hsvToRgb(h: number, s: number, v: number): Record<'r'|'g'|'b', number> {
     var r: number, g: number, b: number, i: number, f: number, p: number, q: number, t: number;
+    h = clipNumber(h, 0, 1);
+    s = clipNumber(s, 0, 1);
+    v = clipNumber(v, 0, 1);
     i = Math.floor(h * 6);
     f = h * 6 - i;
     p = v * (1 - s);
@@ -104,6 +107,12 @@ export function randomString(length: number, charset: string | undefined = undef
        result += characters.charAt(Math.floor(Math.random() * charactersLength));
     }
     return result;
+}
+
+export function clipNumber(value: number, min: number, max: number): number {
+    if (value < min) { return min; }
+    if (value > max) { return max; }
+    return value;
 }
 
 export class UserError extends Error {

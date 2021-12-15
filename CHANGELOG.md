@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.5.0] - 2021/12/13 - Latest
+## [0.5.1] - 2021/12/15 - Latest
+
+### Fixed
+* Support negative value of country colour.
+
+## [0.5.0] - 2021/12/13
 
 ### Added
 * Preview new supply system based on railway.

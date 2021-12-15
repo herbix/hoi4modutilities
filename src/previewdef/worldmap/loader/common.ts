@@ -1,6 +1,6 @@
 import { Zone, Point, Region, MapLoaderExtra } from "../definitions";
 import { DetailValue, Enum } from '../../../hoiformat/schema';
-import { hsvToRgb } from '../../../util/common';
+import { clipNumber, hsvToRgb } from '../../../util/common';
 import { Loader as CommonLoader, FileLoader as CommonFileLoader, FolderLoader as CommonFolderLoader, mergeInLoadResult as commonMergeInLoadResult, LoadResult as CommonLoadResult, LoadResultOD as CommonLoadResultOD } from '../../../util/loader/loader';
 import { maxBy } from "lodash";
 
@@ -28,7 +28,11 @@ export function convertColor(color: DetailValue<Enum> | undefined): number {
     }
 
     if (!color._attachment || color._attachment.toLowerCase() === 'rgb') {
-        return (vec[0] << 16) | (vec[1] << 8) | vec[2];
+        let [ r, g, b ] = vec;
+        r = clipNumber(r, 0, 255);
+        g = clipNumber(g, 0, 255);
+        b = clipNumber(b, 0, 255);
+        return (r << 16) | (g << 8) | b;
     }
 
     if (color._attachment.toLowerCase() === 'hsv') {
