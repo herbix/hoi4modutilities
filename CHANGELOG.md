@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.5.1] - 2021/12/15 - Latest
+## [0.5.2] - 2021/12/20 - Latest
+
+### Added
+* Russian translation (Contributor: [Ivan-Corporation(Koma Human)](https://github.com/Ivan-Corporation)).
+
+## [0.5.1] - 2021/12/15
 
 ### Fixed
 * Support negative value of country colour.
