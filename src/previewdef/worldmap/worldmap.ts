@@ -7,7 +7,7 @@ import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
 import { writeFile, matchPathEnd, mkdirs, isSamePath } from '../../util/nodecommon';
-import { slice, debounceByInput } from '../../util/common';
+import { slice, debounceByInput, forceError } from '../../util/common';
 import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
@@ -168,7 +168,7 @@ export class WorldMap {
 
             await this.postMessageToWebview({
                 command: 'error',
-                data: localize('worldmap.failedtoload', 'Failed to load world map: {0}.', e.toString()),
+                data: localize('worldmap.failedtoload', 'Failed to load world map: {0}.', forceError(e).toString()),
             } as WorldMapMessage);
         }
     }
@@ -221,7 +221,7 @@ export class WorldMap {
             });
 
         } catch (e) {
-            await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open {0} file: {1}.', typeName, e.toString()));
+            await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open {0} file: {1}.', typeName, forceError(e).toString()));
         }
     }
 

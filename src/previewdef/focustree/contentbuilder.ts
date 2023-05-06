@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { FocusTree, Focus, FocusWarning } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize, i18nTableAsScript } from '../../util/i18n';
-import { randomString } from '../../util/common';
+import { forceError, randomString } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { html, htmlEscape } from '../../util/html';
 import { GridBoxType } from '../../hoiformat/gui';
@@ -55,7 +55,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         );
 
     } catch (e) {
-        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
         return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
 }

@@ -121,3 +121,15 @@ export class UserError extends Error {
       this.name = 'UserError';
     }
 }
+
+export function forceError(e: unknown): Error {
+    if (e instanceof Error || e instanceof UserError) {
+        return e;
+    }
+
+    if (typeof e === 'string') {
+        return new Error(e.toString());
+    }
+
+    return new Error();
+}

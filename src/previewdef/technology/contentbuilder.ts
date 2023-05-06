@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { localize } from '../../util/i18n';
 import { Technology, TechnologyTree, TechnologyFolder } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap, UserError } from '../../util/common';
+import { arrayToMap, forceError, UserError } from '../../util/common';
 import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
@@ -55,7 +55,7 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
         );
 
     } catch (e) {
-        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
         return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
 }

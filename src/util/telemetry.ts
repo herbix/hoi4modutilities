@@ -1,4 +1,4 @@
-import TelemetryReporter from 'vscode-extension-telemetry';
+import TelemetryReporter from '@vscode/extension-telemetry';
 
 interface TelemetryReporterInterface {
     sendTelemetryEvent(eventName: string, properties?: {
@@ -30,7 +30,7 @@ export interface TelemetryMessage {
 export function registerTelemetryReporter() {
     const isDev = process.env.NODE_ENV !== 'production';
     if (!isDev) {
-        telemetryReporter = new TelemetryReporter(EXTENSION_ID, VERSION, '41a5f5b6-f4f0-4707-96ba-c895a2dabf17');
+        telemetryReporter = new TelemetryReporter('41a5f5b6-f4f0-4707-96ba-c895a2dabf17');
     } else {
         telemetryReporter = new DevTelemetryReporter();
     }
@@ -47,8 +47,8 @@ export const sendEvent: TelemetryReporter['sendTelemetryEvent'] = (eventName, pr
     telemetryReporter?.sendTelemetryEvent(eventName, properties, mesurements);
 };
 
-export const sendError: TelemetryReporter['sendTelemetryErrorEvent'] = (eventName, properties, mesurements, errorProps) => {
-    telemetryReporter?.sendTelemetryErrorEvent(eventName, properties, mesurements, errorProps);
+export const sendError: TelemetryReporter['sendTelemetryErrorEvent'] = (eventName, properties, mesurements) => {
+    telemetryReporter?.sendTelemetryErrorEvent(eventName, properties, mesurements);
 };
 
 export const sendException: TelemetryReporter['sendTelemetryException'] = (error, properties, mesurements) => {

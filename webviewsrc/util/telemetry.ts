@@ -1,4 +1,4 @@
-import TelemetryReporter from "vscode-extension-telemetry";
+import TelemetryReporter from "@vscode/extension-telemetry";
 import { vscode } from "./vscode";
 import { TelemetryMessage } from "../../src/util/telemetry";
 

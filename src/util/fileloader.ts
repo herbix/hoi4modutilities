@@ -255,7 +255,7 @@ async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
     const dlcFolders = await fs.promises.readdir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
         const dlcZipFolder = path.join(dlcPath, dlcFolder);
-        if (isDirectory(dlcZipFolder)) {
+        if (await isDirectory(dlcZipFolder)) {
             const files = await fs.promises.readdir(dlcZipFolder);
             const zipFile = files.find(file => file.endsWith('.zip'));
             if (zipFile) {
@@ -276,14 +276,14 @@ async function getDlcPaths(installPath: string): Promise<string[] | null> {
     }
 
     const dlcFolders = await fs.promises.readdir(dlcPath);
-    const paths = dlcFolders.map((dlcFolder) => {
+    const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
         const dlcZipFolder = path.join(dlcPath, dlcFolder);
-        if (isDirectory(dlcZipFolder) && dlcFolder.startsWith("dlc")) {
+        if (await isDirectory(dlcZipFolder) && dlcFolder.startsWith("dlc")) {
             return dlcZipFolder;
         }
 
         return null;
-    });
+    }));
 
     return paths.filter((path): path is string => path !== null);
 }

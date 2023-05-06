@@ -7,6 +7,7 @@ import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
 import * as path from 'path';
 import { mkdirs, writeFile, isSamePath } from '../util/nodecommon';
 import { sendByMessage } from '../util/telemetry';
+import { forceError } from '../util/common';
 
 export abstract class PreviewBase {
     private cachedDependencies: string[] | undefined = undefined;
@@ -132,7 +133,7 @@ export abstract class PreviewBase {
             });
 
         } catch (e) {
-            await vscode.window.showErrorMessage(localize('preview.failedtoopen', 'Failed to open file "{0}": {1}.', file, e.toString()));
+            await vscode.window.showErrorMessage(localize('preview.failedtoopen', 'Failed to open file "{0}": {1}.', file, forceError(e).toString()));
         }
     }
 

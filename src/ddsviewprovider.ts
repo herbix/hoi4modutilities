@@ -8,6 +8,7 @@ import { html, htmlEscape } from './util/html';
 import { StyleTable } from './util/styletable';
 import { sendEvent } from './util/telemetry';
 import { ensureFileScheme } from './util/vsccommon';
+import { forceError } from './util/common';
 
 abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider {
     public async openCustomDocument(uri: vscode.Uri) {
@@ -42,7 +43,7 @@ abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider
                 [styleTable]
             );
         } catch (e) {
-            webviewPanel.webview.html = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+            webviewPanel.webview.html = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
         }
     }
 

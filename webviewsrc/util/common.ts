@@ -2,6 +2,7 @@ import { enableDropdowns } from './dropdown';
 import { enableCheckboxes } from './checkbox';
 import { vscode } from './vscode';
 import { sendException } from './telemetry';
+import { forceError } from '../../src/util/common';
 export { arrayToMap } from '../../src/util/common';
 
 export function setState(obj: Record<string, any>): void {
@@ -50,7 +51,7 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
             if (result instanceof Promise) {
                 return result.catch(e => {
                     console.error(e);
-                    sendException(e);
+                    sendException(forceError(e));
                 }) as ReturnType<T>;
             }
 
@@ -58,7 +59,7 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
 
         } catch (e) {
             console.error(e);
-            sendException(e);
+            sendException(forceError(e));
         }
 
         return undefined;

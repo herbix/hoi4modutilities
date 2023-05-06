@@ -1,5 +1,5 @@
 import { sendException } from "./telemetry";
-import { UserError } from "./common";
+import { forceError, UserError } from "./common";
 import { YAMLException } from 'js-yaml';
 
 export function debug(message: any, ...args: any[]): void {
@@ -8,13 +8,11 @@ export function debug(message: any, ...args: any[]): void {
     }
 }
 
-export function error(error: Error | string): void {
+export function error(error: unknown): void {
     console.error(error);
-    if (typeof error === 'string') {
-        error = new Error(error);
-    }
+    let realError = forceError(error);
 
     if (!(error instanceof UserError) && !(error instanceof YAMLException)) {
-        sendException(error, { callerStack: new Error().stack ?? '' });
+        sendException(realError, { callerStack: new Error().stack ?? '' });
     }
 }

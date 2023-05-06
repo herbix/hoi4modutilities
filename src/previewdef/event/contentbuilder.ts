@@ -7,7 +7,7 @@ import { localize } from '../../util/i18n';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { HOIEvent, HOIEventType } from './schema';
 import { flatten, repeat, max } from 'lodash';
-import { arrayToMap } from '../../util/common';
+import { arrayToMap, forceError } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
@@ -41,7 +41,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
         );
 
     } catch (e) {
-        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(e.toString())}</pre>`;
+        const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
         return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
 
