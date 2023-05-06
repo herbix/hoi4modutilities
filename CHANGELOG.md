@@ -4,6 +4,10 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+* Update the way to read DLC content.
+
 ## [0.5.2] - 2021/12/20 - Latest
 
 ### Added

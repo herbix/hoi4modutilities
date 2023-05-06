@@ -17,6 +17,11 @@ const dlcZipPathsCache = new PromiseCache({
     life: 10 * 60 * 1000,
 });
 
+const dlcPathsCache = new PromiseCache({
+    factory: getDlcPaths,
+    life: 10 * 60 * 1000,
+});
+
 const dlcZipCache = new Cache({
     factory: getDlcZip,
     expireWhenChange: getLastModified,
@@ -90,6 +95,16 @@ export async function getFilePathFromModOrHOI4(relativePath: string): Promise<st
                 const entry = dlcZip.getEntry(relativePath);
                 if (entry !== null) {
                     return `${dlc}?${relativePath}`;
+                }
+            }
+        }
+
+        const dlcFolders = await dlcPathsCache.get(installPath);
+        if (dlcFolders !== null) {
+            for (const dlc of dlcFolders) {
+                const findPath = path.join(dlc, relativePath);
+                if (await isFile(findPath)) {
+                    return findPath;
                 }
             }
         }
@@ -214,6 +229,18 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
                 }
             }
         }
+
+        const dlcFolders = await dlcPathsCache.get(installPath);
+        if (dlcFolders !== null) {
+            for (const dlc of dlcFolders) {
+                const findPath = path.join(dlc, relativePath);
+                if (await isDirectory(findPath)) {
+                    try {
+                        result.push(...await readdirfiles(findPath));
+                    } catch(e) {}
+                }
+            }
+        }
     }
 
     return result.filter((v, i, a) => i === a.indexOf(v));
@@ -238,6 +265,25 @@ async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
 
         return null;
     }));
+
+    return paths.filter((path): path is string => path !== null);
+}
+
+async function getDlcPaths(installPath: string): Promise<string[] | null> {
+    const dlcPath = path.join(installPath, 'dlc');
+    if (!await isDirectory(dlcPath)) {
+        return null;
+    }
+
+    const dlcFolders = await fs.promises.readdir(dlcPath);
+    const paths = dlcFolders.map((dlcFolder) => {
+        const dlcZipFolder = path.join(dlcPath, dlcFolder);
+        if (isDirectory(dlcZipFolder) && dlcFolder.startsWith("dlc")) {
+            return dlcZipFolder;
+        }
+
+        return null;
+    });
 
     return paths.filter((path): path is string => path !== null);
 }
