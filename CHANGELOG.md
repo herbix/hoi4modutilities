@@ -4,11 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Develop
+## [0.6.0] - 2023/05/07 - Latest
 
+### Fixed
 * Update the way to read DLC content.
+* Fix doctrine tree preview.
 
-## [0.5.2] - 2021/12/20 - Latest
+## [0.5.2] - 2021/12/20
 
 ### Added
 * Russian translation (Contributor: [Ivan-Corporation(Koma Human)](https://github.com/Ivan-Corporation)).
