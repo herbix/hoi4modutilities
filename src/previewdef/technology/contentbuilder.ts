@@ -19,6 +19,7 @@ import { StyleTable } from '../../util/styletable';
 import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 
 const techTreeViewName = 'countrytechtreeview';
+const doctrineTreeViewName = 'countrydoctrineview';
 
 export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -65,13 +66,13 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     const guiTypes = flatMap(loadResult.guiFiles, f => f.data.guitypes);
 
     const containerWindowTypes = flatMap(guiTypes, t => t.containerwindowtype);
-    const techTreeView = containerWindowTypes.find(c => c.name?.toLowerCase() === techTreeViewName);
-    if (!techTreeView) {
-        throw new UserError(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName, guiFiles));
+    const techTreeViews = containerWindowTypes.filter(c => c.name?.toLowerCase() === techTreeViewName || c.name?.toLowerCase() === doctrineTreeViewName);
+    if (techTreeViews.length === 0) {
+        throw new UserError(localize('techtree.cantfindviewin', "Can't find {0} in {1}.", techTreeViewName + "," + doctrineTreeViewName, guiFiles));
     }
 
     const gfxFiles = loadResult.gfxFiles;
-    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeView, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
+    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeViews, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
 
     return `
     ${renderFolderSelector(folders, styleTable)}
@@ -130,13 +131,13 @@ function renderFolderSelector(folders: string[], styleTable: StyleTable): string
 async function renderTechnologyFolder(
     technologyTrees: TechnologyTree[],
     folder: string,
-    techTreeView: HOIPartial<ContainerWindowType>,
+    techTreeViews: HOIPartial<ContainerWindowType>[],
     allContainerWindowTypes: HOIPartial<ContainerWindowType>[],
     styleTable: StyleTable,
     guiFiles: string[],
     gfxFiles: string[],
 ): Promise<string> {
-    const folderTreeView = techTreeView.containerwindowtype.find(c => c.name === folder);
+    const folderTreeView = flatMap(techTreeViews, tv => tv.containerwindowtype).find(c => c.name === folder);
     let children: string;
     if (!folderTreeView) {
         children = `<div>${localize('techtree.cantfindtechfolderin', "Can't find technology folder {0} in {1}.", folder, guiFiles)}</div>`;

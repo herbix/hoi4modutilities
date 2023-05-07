@@ -20,7 +20,7 @@ export interface GuiFileLoaderResult {
 const technologyUIGfxFiles = ['interface/countrytechtreeview.gfx', 'interface/countrytechnologyview.gfx'];
 const technologiesGFX = 'interface/technologies.gfx';
 const relatedGfxFiles = [...technologyUIGfxFiles, technologiesGFX];
-const guiFilePath = 'interface/countrytechtreeview.gui';
+const guiFilePath = ['interface/countrytechtreeview.gui', 'interface/countrydoctrinetreeview.gui'];
 
 export class TechnologyTreeLoader extends ContentLoader<TechnologyTreeLoaderResult> {
     protected async postLoad(content: string | undefined, dependencies: Dependency[], error: any, session: LoaderSession): Promise<LoadResultOD<TechnologyTreeLoaderResult>> {
@@ -30,7 +30,7 @@ export class TechnologyTreeLoader extends ContentLoader<TechnologyTreeLoaderResu
 
         const gfxDependencies = [...relatedGfxFiles, ...dependencies.filter(d => d.type === 'gfx').map(d => d.path)];
         const technologyTrees = getTechnologyTrees(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)));
-        const guiDependencies = [guiFilePath, ...dependencies.filter(d => d.type === 'gui').map(d => d.path)];
+        const guiDependencies = [...guiFilePath, ...dependencies.filter(d => d.type === 'gui').map(d => d.path)];
         
         const guiDepFiles = await this.loaderDependencies.loadMultiple(guiDependencies, session, GuiFileLoader);
 
