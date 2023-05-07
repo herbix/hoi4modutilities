@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+### Fixed
+* Keep focus tree condition after focus file change.
+
 ## [0.6.0] - 2023/05/07 - Latest
 
 ### Fixed
