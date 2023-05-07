@@ -8,6 +8,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Fixed
 * Keep focus tree condition after focus file change.
+* Allow prefix spaces in railways.txt.
 
 ## [0.6.0] - 2023/05/07 - Latest
 

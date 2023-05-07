@@ -38,7 +38,7 @@ export class RailwayLoader extends FileLoader<RailwayLoaderResult> {
 
 async function loadRailway(provinces: (Province | null | undefined)[], file: string, warnings: WorldMapWarning[]): Promise<Railway[]> {
     const [railwaysBuffer] = await readFileFromModOrHOI4(file);
-    const railwaysRaw = railwaysBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/\s+/).map(v => parseInt(v))).filter(v => v.length >= 3);
+    const railwaysRaw = railwaysBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.trimLeft().split(/\s+/).map(v => parseInt(v))).filter(v => v.length >= 3);
     const railways = railwaysRaw.map((line, index) => {
         if (line[1] + 2 > line.length) {
             warnings.push({
