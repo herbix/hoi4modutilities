@@ -95,7 +95,7 @@ async function buildContent() {
     subscribeNavigators();
 }
 
-function updateSelectedFocusTree() {
+function updateSelectedFocusTree(clearCondition: boolean) {
     const focusTree = focusTrees[selectedFocusTreeIndex];
     const continuousFocuses = document.getElementById('continuousFocuses') as HTMLDivElement;
 
@@ -118,7 +118,7 @@ function updateSelectedFocusTree() {
                 ${focusTree.conditionExprs.map(option =>
                     `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
                 ).join('')}`;
-            conditions.selectedValues$.next([]);
+            conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
         }
 
     } else {
@@ -238,7 +238,7 @@ window.addEventListener('load', tryRun(async function() {
         focusesElement.addEventListener('change', () => {
             selectedFocusTreeIndex = parseInt(focusesElement.value);
             setState({ selectedFocusTreeIndex });
-            updateSelectedFocusTree();
+            updateSelectedFocusTree(true);
         });
     }
 
@@ -322,8 +322,8 @@ window.addEventListener('load', tryRun(async function() {
                         };
                     } else {
                         return {
-                            scopeName: selection.substr(0, index),
-                            nodeContent: selection.substr(index + 2),
+                            scopeName: selection.substring(0, index),
+                            nodeContent: selection.substring(index + 2),
                         };
                     }
                 });
@@ -351,7 +351,7 @@ window.addEventListener('load', tryRun(async function() {
         });
     }
     
-    updateSelectedFocusTree();
+    updateSelectedFocusTree(false);
     await buildContent();
     scrollToState();
 }));
