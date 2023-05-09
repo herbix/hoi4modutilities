@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.6.1] - 2023/05/07 - Latest
+## [0.6.2] - 2023/05/09 - Latest
+
+### Fixed
+* Unable to load extension in older vscode versions.
+
+## [0.6.1] - 2023/05/07
 
 ### Fixed
 * Update the way to read DLC content.

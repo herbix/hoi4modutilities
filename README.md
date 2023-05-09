@@ -65,13 +65,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.6.1]
+## Release Notes - [0.6.2]
 
 ### Fixed
-* Update the way to read DLC content.
-* Fix doctrine tree preview.
-* Keep focus tree condition after focus file change.
-* Allow prefix spaces in railways.txt.
+* Unable to load extension in older vscode versions.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
