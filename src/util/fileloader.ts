@@ -371,7 +371,7 @@ async function getReplacePaths(): Promise<string[] | undefined> {
 }
 
 async function getReplacePathsFromModFile(absolutePath: string): Promise<string[]> {
-    const content = await readFile(vscode.Uri.parse(absolutePath)).toString();
+    const content = (await readFile(vscode.Uri.parse(absolutePath))).toString();
     const node = parseHoi4File(content, localize('infile', 'In file {0}:\n', absolutePath));
     const modFile = convertNodeToJson<ModFile>(node, modFileSchema);
     return modFile.replace_path.filter((v): v is string => typeof v === 'string');

@@ -218,7 +218,7 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
     await progressReporter(localize('worldmap.progress.loadingprovincebmp', 'Loading province bmp...',));
 
     const [provinceMapImageBuffer] = await readFileFromModOrHOI4(provincesFile);
-    const provinceMapImage = parseBmp(provinceMapImageBuffer.buffer);
+    const provinceMapImage = parseBmp(provinceMapImageBuffer.buffer, provinceMapImageBuffer.byteOffset);
     
     await progressReporter(localize('worldmap.progress.calculatingregion', 'Calculating province region...'));
 

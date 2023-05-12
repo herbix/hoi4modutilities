@@ -55,7 +55,7 @@ export class DDSViewProvider extends CommonViewProvider {
     }
 
     protected getPng(buffer: Buffer): PNG {
-        const dds = DDS.parse(buffer.buffer);
+        const dds = DDS.parse(buffer.buffer, buffer.byteOffset);
         return ddsToPng(dds);
     }
 }

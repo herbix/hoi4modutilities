@@ -13,6 +13,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
     * HOI4 install path must be set every time you open it.
 * Add command "Select HOI4 Install Path" to set HOI4 install path
 
+### Fixed
+* Latin extension characters is not supported in HOI format symbols.
+* A potential issue that some images can't be load.
+
 ## [0.6.2] - 2023/05/09 - Latest
 
 ### Fixed

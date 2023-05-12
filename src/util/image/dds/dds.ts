@@ -13,23 +13,23 @@ export class DDS {
     ) {
     }
 
-    public static parse(buffer: ArrayBuffer): DDS {
-        const headerArray = new Int32Array(buffer, 0, HEADER_LENGTH_INT);
+    public static parse(buffer: ArrayBuffer, byteOffset: number): DDS {
+        const headerArray = new Int32Array(buffer, byteOffset, HEADER_LENGTH_INT);
         if (headerArray[0] !== DDS_MAGIC) {
             throw new UserError('Invalid magic number in DDS header');
         }
 
         const header = extractHeader(headerArray);
         if (header.ddspf.dwFlags === DDPF_FOURCC && header.ddspf.dwFourCC === FOURCC_DX10) {
-            const dxt10HeaderArray = new Int32Array(buffer, HEADER_LENGTH_INT, HEADER_DXT10_LENGTH_INT);
+            const dxt10HeaderArray = new Int32Array(buffer, byteOffset + HEADER_LENGTH_INT * 4, HEADER_DXT10_LENGTH_INT);
             const dxt10Header = extractDxt10Header(dxt10HeaderArray);
-            return DDS.parseDxt10(buffer, header, dxt10Header);
+            return DDS.parseDxt10(buffer, byteOffset, header, dxt10Header);
         }
 
-        return DDS.parseStandard(buffer, header);
+        return DDS.parseStandard(buffer, byteOffset, header);
     }
 
-    private static parseStandard(buffer: ArrayBuffer, header: DDSHeader): DDS {
+    private static parseStandard(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader): DDS {
         const pixelFormat = convertPixelFormat(header.ddspf);
 
         const cubeMap = !!(header.dwCaps2 & DDSCAPS2_CUBEMAP);
@@ -40,7 +40,7 @@ export class DDS {
         }
         
         const mipmapCount = (header.dwCaps & DDSCAPS_MIPMAP) ? header.dwMipMapCount - 1 : 0;
-        const offset = HEADER_LENGTH_INT << 2;
+        const offset = byteOffset + HEADER_LENGTH_INT * 4;
 
         let images: Surface[];
         if (cubeMap) {
@@ -62,7 +62,7 @@ export class DDS {
         return new DDS(header, images, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', 1, mipmapCount);
     }
 
-    private static parseDxt10(buffer: ArrayBuffer, header: DDSHeader, dxt10Header: DDSHeaderDXT10): DDS {
+    private static parseDxt10(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader, dxt10Header: DDSHeaderDXT10): DDS {
         const pixelFormat = convertPixelFormat(header.ddspf);
 
         const cubeMap = !!(dxt10Header.miscFlag & DDS_RESOURCE_MISC_TEXTURECUBE);
@@ -73,7 +73,7 @@ export class DDS {
         }
 
         const mipmapCount = (header.dwCaps & DDSCAPS_MIPMAP) ? header.dwMipMapCount - 1 : 0;
-        let offset = (HEADER_LENGTH_INT + HEADER_DXT10_LENGTH_INT) << 2;
+        let offset = byteOffset + (HEADER_LENGTH_INT + HEADER_DXT10_LENGTH_INT) * 4;
 
         const allImages: Surface[] = [];
         const cubeMaps: string[] = ["X+", "X-", "Y+", "Y-", "Z+", "Z-"];

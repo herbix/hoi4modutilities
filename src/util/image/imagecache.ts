@@ -111,7 +111,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
 
         relativePath = relativePath.toLowerCase();
         if (relativePath.endsWith('.dds')) {
-            const dds = DDS.parse(buffer.buffer);
+            const dds = DDS.parse(buffer.buffer, buffer.byteOffset);
             png = ddsToPng(dds);
             pngBuffer = PNG.sync.write(png);
         
