@@ -1,16 +1,18 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
-import * as AdmZip from 'adm-zip';
-import { PromiseCache, Cache } from './cache';
-import { getLastModified, getLastModifiedAsync, readdirfiles, isFile, isDirectory, isSamePath } from './nodecommon';
+import { PromiseCache } from './cache';
+import { isSamePath } from './nodecommon';
+import { getLastModifiedAsync, readDirFiles, isFile, isDirectory, readFile, readDir, isSameUri, fileOrUriStringToUri, ensureFileScheme } from './vsccommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
-import { getConfiguration, isFileScheme } from './vsccommon';
+import { getConfiguration, getDocumentByUri } from './vsccommon';
 import { UserError } from './common';
+import type * as AdmZip from 'adm-zip';
+import { Hoi4FsSchema } from '../constants';
+import { trimStart } from 'lodash';
 
 const dlcZipPathsCache = new PromiseCache({
     factory: getDlcZipPaths,
@@ -22,23 +24,43 @@ const dlcPathsCache = new PromiseCache({
     life: 10 * 60 * 1000,
 });
 
-const dlcZipCache = new Cache({
-    factory: getDlcZip,
-    expireWhenChange: getLastModified,
-    life: 15 * 1000,
-});
+let dlcZipCache: PromiseCache<AdmZip> | null = null;
 
-export async function getFilePathFromMod(relativePath: string): Promise<string | undefined> {
-    let absolutePath: string | undefined = undefined;
+if (!IS_WEB_EXT) {
+    // adm-zip requires fs, which doesn't work on web.
+    function getDlcZip(dlcZipPath: string): Promise<AdmZip> {
+        const uri = vscode.Uri.parse(dlcZipPath);
+        if (uri.scheme === Hoi4FsSchema) {
+            dlcZipPath = path.join(getConfiguration().installPath, trimStart(uri.path, '/'));
+        } else {
+            ensureFileScheme(uri);
+            dlcZipPath = uri.fsPath;
+        }
+
+        const AdmZip = require('adm-zip');
+        return Promise.resolve(new AdmZip(dlcZipPath));
+    }
+
+    dlcZipCache = new PromiseCache({
+        factory: getDlcZip,
+        expireWhenChange: key => getLastModifiedAsync(vscode.Uri.parse(key)),
+        life: 15 * 1000,
+    });
+}
+
+export async function clearDlcZipCache() {
+    dlcPathsCache.clear();
+    dlcZipPathsCache.clear();
+    dlcZipCache?.clear();
+}
+
+export async function getFilePathFromMod(relativePath: string): Promise<vscode.Uri | undefined> {
+    let absolutePath: vscode.Uri | undefined = undefined;
 
     // Find in opened workspace folders
     if (vscode.workspace.workspaceFolders) {
         for (const folder of vscode.workspace.workspaceFolders) {
-            if (!isFileScheme(folder.uri)) {
-                continue;
-            }
-
-            const findPath = path.join(folder.uri.fsPath, relativePath);
+            const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
             if (await isFile(findPath)) {
                 absolutePath = findPath;
                 break;
@@ -47,10 +69,9 @@ export async function getFilePathFromMod(relativePath: string): Promise<string |
         
         if (absolutePath !== undefined) {
             // Opened document
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, absolutePath!));
+            const document = vscode.workspace.textDocuments.find(d => isSameUri(d.uri, absolutePath!));
             if (document) {
-                const openedPath = 'opened?' + document.uri.fsPath;
-                return openedPath;
+                return document.uri.with({ fragment: ':opened' });
             }
         }
     }
@@ -58,9 +79,9 @@ export async function getFilePathFromMod(relativePath: string): Promise<string |
     return absolutePath;
 }
 
-export async function getFilePathFromModOrHOI4(relativePath: string): Promise<string | undefined> {
+export async function getFilePathFromModOrHOI4(relativePath: string): Promise<vscode.Uri | undefined> {
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
-    let absolutePath: string | undefined = await getFilePathFromMod(relativePath);
+    let absolutePath = await getFilePathFromMod(relativePath);
 
     if (absolutePath !== undefined) {
         return absolutePath;
@@ -77,32 +98,32 @@ export async function getFilePathFromModOrHOI4(relativePath: string): Promise<st
     }
 
     // Find in HOI4 install path
-    const conf = getConfiguration();
-    const installPath: string = conf.installPath;
+    const installPath = vscode.Uri.parse(Hoi4FsSchema + ':/');
     if (!absolutePath) {
-        const findPath = path.join(installPath, relativePath);
+        const findPath = vscode.Uri.joinPath(installPath, relativePath);
         if (await isFile(findPath)) {
             absolutePath = findPath;
         }
     }
 
     // Find in HOI4 DLCs
+    const conf = getConfiguration();
     if (!absolutePath && conf.loadDlcContents) {
-        const dlcs = await dlcZipPathsCache.get(installPath);
-        if (dlcs !== null) {
+        const dlcs = await dlcZipPathsCache.get(installPath.toString());
+        if (dlcs !== null && dlcZipCache !== null) {
             for (const dlc of dlcs) {
-                const dlcZip = dlcZipCache.get(dlc);
+                const dlcZip = await dlcZipCache.get(dlc.toString());
                 const entry = dlcZip.getEntry(relativePath);
                 if (entry !== null) {
-                    return `${dlc}?${relativePath}`;
+                    return dlc.with({ fragment: relativePath });
                 }
             }
         }
 
-        const dlcFolders = await dlcPathsCache.get(installPath);
+        const dlcFolders = await dlcPathsCache.get(installPath.toString());
         if (dlcFolders !== null) {
             for (const dlc of dlcFolders) {
-                const findPath = path.join(dlc, relativePath);
+                const findPath = vscode.Uri.joinPath(dlc, relativePath);
                 if (await isFile(findPath)) {
                     return findPath;
                 }
@@ -113,51 +134,68 @@ export async function getFilePathFromModOrHOI4(relativePath: string): Promise<st
     return absolutePath;
 }
 
+export function isHoiFileOpened(path: vscode.Uri): boolean {
+    return path.fragment === ':opened';
+}
+
+export function getHoiOpenedFileOriginalUri(path: vscode.Uri): vscode.Uri {
+    return path.with({ fragment: '' });
+}
+
+export function isHoiFileFromDlc(path: vscode.Uri): boolean {
+    return path.fragment !== '' && path.path.endsWith('.zip');
+}
+
+export function getHoiDlcFileOriginalUri(path: vscode.Uri): { uri: vscode.Uri, entryPath: string } {
+    return { uri: path.with({ fragment: '' }), entryPath: path.fragment };
+}
+
 export async function hoiFileExpiryToken(relativePath: string): Promise<string> {
-    const realPath = await getFilePathFromModOrHOI4(relativePath);
+    return await expiryToken(await getFilePathFromModOrHOI4(relativePath));;
+}
+
+export async function expiryToken(realPath: vscode.Uri | undefined): Promise<string> {
     if (!realPath) {
         return '';
     }
 
-    if (realPath.includes("?")) {
-        const split = realPath.split('?');
-        if (split[0] === 'opened') {
-            return split[1] + '@' + Date.now();
-        } else {
-            return split[0] + '@' + await getLastModifiedAsync(split[0]);
-        }
+    if (isHoiFileOpened(realPath)) {
+        return realPath.toString() + '@' + Date.now();
+    } else if (isHoiFileFromDlc(realPath)) {
+        return realPath.with({ fragment: '' }).toString() + '@' + await getLastModifiedAsync(realPath);
     }
 
-    return realPath + '@' + await getLastModifiedAsync(realPath);
+    return realPath.toString() + '@' + await getLastModifiedAsync(realPath);
 }
 
-export async function readFileFromPath(realPath: string, relativePath?: string): Promise<[Buffer, string]> {
-    if (realPath.includes("?")) {
-        const split = realPath.split('?');
-        if (split[0] === 'opened') {
-            const absolutePath = split[1];
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, absolutePath));
-            if (document) {
-                return [Buffer.from(document.getText()), absolutePath];
-            }
-        } else {
-            const dlc = split[0];
-            const filePath = split[1];
-            
-            const dlcZip = dlcZipCache.get(dlc);
+export async function readFileFromPath(realPath: vscode.Uri, relativePath?: string): Promise<[Buffer, vscode.Uri]> {
+    if (isHoiFileOpened(realPath)) {
+        const realPathWithoutOpenMark = getHoiOpenedFileOriginalUri(realPath);
+        const document = getDocumentByUri(realPathWithoutOpenMark);
+        if (document) {
+            return [Buffer.from(document.getText()), realPath];
+        }
+
+        realPath = realPathWithoutOpenMark;
+
+    } else if (realPath.fragment !== '' && realPath.path.endsWith('.zip')) {
+        if (dlcZipCache !== null) {
+            const { uri: dlc, entryPath: filePath } = getHoiDlcFileOriginalUri(realPath);
+
+            const dlcZip = await dlcZipCache.get(dlc.toString());
             const entry = dlcZip.getEntry(filePath);
             if (entry !== null) {
                 return [await new Promise<Buffer>(resolve => entry.getDataAsync(resolve)), realPath];
             }
-
-            throw new UserError("Can't find file " + relativePath);
         }
+
+        throw new UserError("Can't find file " + relativePath);
     }
 
-    return [ await fs.promises.readFile(realPath), realPath ];
+    return [ await readFile(realPath), realPath ];
 }
 
-export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, string]> {
+export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, vscode.Uri]> {
     const realPath = await getFilePathFromModOrHOI4(relativePath);
 
     if (!realPath) {
@@ -179,14 +217,10 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
     // Find in opened workspace folders
     if (vscode.workspace.workspaceFolders) {
         for (const folder of vscode.workspace.workspaceFolders) {
-            if (!isFileScheme(folder.uri)) {
-                continue;
-            }
-
-            const findPath = path.join(folder.uri.fsPath, relativePath);
+            const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
             if (await isDirectory(findPath)) {
                 try {
-                    result.push(...await readdirfiles(findPath));
+                    result.push(...await readDirFiles(findPath));
                 } catch(e) {}
             }
         }
@@ -203,22 +237,22 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
 
     // Find in HOI4 install path
     const conf = getConfiguration();
-    const installPath: string = conf.installPath;
+    const installPath = vscode.Uri.parse(Hoi4FsSchema + ':/');
     {
-        const findPath = path.join(installPath, relativePath);
+        const findPath = vscode.Uri.joinPath(installPath, relativePath);
         if (await isDirectory(findPath)) {
             try {
-                result.push(...await readdirfiles(findPath));
+                result.push(...await readDirFiles(findPath));
             } catch(e) {}
         }
     }
 
     // Find in HOI4 DLCs
     if (conf.loadDlcContents) {
-        const dlcs = await dlcZipPathsCache.get(installPath);
-        if (dlcs !== null) {
+        const dlcs = await dlcZipPathsCache.get(installPath.toString());
+        if (dlcs !== null && dlcZipCache !== null) {
             for (const dlc of dlcs) {
-                const dlcZip = dlcZipCache.get(dlc);
+                const dlcZip = await dlcZipCache.get(dlc.toString());
                 const folderEntry = dlcZip.getEntry(relativePath);
                 if (folderEntry && folderEntry.isDirectory) {
                     for (const entry of dlcZip.getEntries()) {
@@ -230,13 +264,13 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
             }
         }
 
-        const dlcFolders = await dlcPathsCache.get(installPath);
+        const dlcFolders = await dlcPathsCache.get(installPath.toString());
         if (dlcFolders !== null) {
             for (const dlc of dlcFolders) {
-                const findPath = path.join(dlc, relativePath);
+                const findPath = vscode.Uri.joinPath(dlc, relativePath);
                 if (await isDirectory(findPath)) {
                     try {
-                        result.push(...await readdirfiles(findPath));
+                        result.push(...await readDirFiles(findPath));
                     } catch(e) {}
                 }
             }
@@ -246,38 +280,38 @@ export async function listFilesFromModOrHOI4(relativePath: string): Promise<stri
     return result.filter((v, i, a) => i === a.indexOf(v));
 }
 
-async function getDlcZipPaths(installPath: string): Promise<string[] | null> {
-    const dlcPath = path.join(installPath, 'dlc');
+async function getDlcZipPaths(installPath: string): Promise<vscode.Uri[] | null> {
+    const dlcPath = vscode.Uri.joinPath(vscode.Uri.parse(installPath), 'dlc');
     if (!await isDirectory(dlcPath)) {
         return null;
     }
 
-    const dlcFolders = await fs.promises.readdir(dlcPath);
+    const dlcFolders = await readDir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
-        const dlcZipFolder = path.join(dlcPath, dlcFolder);
+        const dlcZipFolder = vscode.Uri.joinPath(dlcPath, dlcFolder);
         if (await isDirectory(dlcZipFolder)) {
-            const files = await fs.promises.readdir(dlcZipFolder);
+            const files =  await readDir(dlcZipFolder);
             const zipFile = files.find(file => file.endsWith('.zip'));
             if (zipFile) {
-                return path.join(dlcZipFolder, zipFile);
+                return vscode.Uri.joinPath(dlcZipFolder, zipFile);
             }
         }
 
         return null;
     }));
 
-    return paths.filter((path): path is string => path !== null);
+    return paths.filter((path): path is vscode.Uri => path !== null);
 }
 
-async function getDlcPaths(installPath: string): Promise<string[] | null> {
-    const dlcPath = path.join(installPath, 'dlc');
+async function getDlcPaths(installPath: string): Promise<vscode.Uri[] | null> {
+    const dlcPath = vscode.Uri.joinPath(vscode.Uri.parse(installPath), 'dlc');
     if (!await isDirectory(dlcPath)) {
         return null;
     }
 
-    const dlcFolders = await fs.promises.readdir(dlcPath);
+    const dlcFolders = await readDir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
-        const dlcZipFolder = path.join(dlcPath, dlcFolder);
+        const dlcZipFolder = vscode.Uri.joinPath(dlcPath, dlcFolder);
         if (await isDirectory(dlcZipFolder) && dlcFolder.startsWith("dlc")) {
             return dlcZipFolder;
         }
@@ -285,16 +319,12 @@ async function getDlcPaths(installPath: string): Promise<string[] | null> {
         return null;
     }));
 
-    return paths.filter((path): path is string => path !== null);
-}
-
-function getDlcZip(path: string): AdmZip {
-    return new AdmZip(path);
+    return paths.filter((path): path is vscode.Uri => path !== null);
 }
 
 const replacePathsCache = new PromiseCache({
     factory: getReplacePathsFromModFile,
-    expireWhenChange: getLastModifiedAsync,
+    expireWhenChange: key => getLastModifiedAsync(vscode.Uri.parse(key)),
     life: 60 * 1000,
 });
 
@@ -311,17 +341,13 @@ const modFileSchema: SchemaDef<ModFile> = {
 
 async function getReplacePaths(): Promise<string[] | undefined> {
     const conf = getConfiguration();
-    let modFile = conf.modFile;
+    let modFile = fileOrUriStringToUri(conf.modFile);
 
-    if (modFile === "") {
+    if (conf.modFile === "") {
         if (vscode.workspace.workspaceFolders) {
             for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-                if (!isFileScheme(workspaceFolder.uri)) {
-                    continue;
-                }
-
-                const workspaceFolderPath = workspaceFolder.uri.fsPath;
-                const mods = await workspaceModFilesCache.get(workspaceFolderPath);
+                const workspaceFolderPath = workspaceFolder.uri;
+                const mods = await workspaceModFilesCache.get(workspaceFolderPath.toString());
                 if (mods.length > 0) {
                     modFile = mods[0];
                     break;
@@ -331,8 +357,8 @@ async function getReplacePaths(): Promise<string[] | undefined> {
     }
 
     try {
-        if (await isFile(modFile)) {
-            const result = await replacePathsCache.get(modFile);
+        if (modFile && await isFile(modFile)) {
+            const result = await replacePathsCache.get(modFile.toString());
             updateSelectedModFileStatus(modFile);
             return result;
         }
@@ -345,7 +371,7 @@ async function getReplacePaths(): Promise<string[] | undefined> {
 }
 
 async function getReplacePathsFromModFile(absolutePath: string): Promise<string[]> {
-    const content = (await fs.promises.readFile(absolutePath)).toString();
+    const content = await readFile(vscode.Uri.parse(absolutePath)).toString();
     const node = parseHoi4File(content, localize('infile', 'In file {0}:\n', absolutePath));
     const modFile = convertNodeToJson<ModFile>(node, modFileSchema);
     return modFile.replace_path.filter((v): v is string => typeof v === 'string');

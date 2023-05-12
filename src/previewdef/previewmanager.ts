@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { focusTreePreviewDef } from './focustree';
 import { localize } from '../util/i18n';
 import { gfxPreviewDef } from './gfx';
@@ -10,7 +9,7 @@ import { arrayToMap, debounceByInput } from '../util/common';
 import { debug, error } from '../util/debug';
 import { PreviewBase } from './previewbase';
 import { contextContainer, setVscodeContext } from '../context';
-import { getDocumentByUri } from '../util/vsccommon';
+import { basename, getDocumentByUri } from '../util/vsccommon';
 import { worldMapPreviewDef } from './worldmap';
 import { eventPreviewDef } from './event';
 import { chain } from 'lodash';
@@ -158,7 +157,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             sendEvent('preview.show.' + previewProvider.type);
         }
 
-        const filename = path.basename(uri.path);
+        const filename = basename(uri);
         panel = panel ?? vscode.window.createWebviewPanel(
             WebviewType.Preview,
             localize('preview.viewtitle', "HOI4: {0}", filename),
@@ -170,8 +169,8 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
 
         if (contextContainer.current) {
             panel.iconPath = {
-                light: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-light.svg')),
-                dark: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-dark.svg')),
+                light: vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/preview-right-light.svg'),
+                dark: vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/preview-right-dark.svg'),
             };
         }
 

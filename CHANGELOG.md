@@ -4,6 +4,15 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+### Added
+* Support web based vscode.
+  * Known issues:
+    * `.zip` based DLCs can't be loaded.
+    * HOI4 install path must be set every time you open it.
+* Add command "Select HOI4 Install Path" to set HOI4 install path
+
 ## [0.6.2] - 2023/05/09 - Latest
 
 ### Fixed

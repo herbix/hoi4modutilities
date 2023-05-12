@@ -1,6 +1,7 @@
 // This file contains constants that may be used in package.json
 
 export const ConfigurationKey = 'hoi4ModUtilities';
+export const Hoi4FsSchema = 'hoi4installpath';
 
 export namespace ViewType {
     export const DDS = 'hoi4modutilities.dds';
@@ -20,6 +21,7 @@ export namespace Commands {
     export const PreviewWorld = 'hoi4modutilities.previewworld';
     export const ScanReferences = 'hoi4modutilities.scanreferences';
     export const SelectModFile = 'hoi4modutilities.selectmodfile';
+    export const SelectHoiFolder = 'hoi4modutilities.selecthoifolder';
 }
 
 export namespace WebviewType {

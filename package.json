@@ -2,7 +2,7 @@
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.6.2",
+	"version": "0.7.0",
 	"author": "Chaofan Yang",
 	"publisher": "chaofan",
 	"icon": "icon.png",
@@ -38,6 +38,7 @@
 		"workspaceContains:map/default.map"
 	],
 	"main": "./dist/extension.js",
+	"browser": "./dist/web-extension.js",
 	"capabilities": {
 		"untrustedWorkspaces": {
 			"supported": true
@@ -57,7 +58,7 @@
 					"hoi4ModUtilities.loadDlcContents": {
 						"title": "%hoi4modutilities.loadDlcContents.title%",
 						"type": "boolean",
-						"default": false,
+						"default": true,
 						"description": "%hoi4modutilities.loadDlcContents.desc%"
 					},
 					"hoi4ModUtilities.modFile": {
@@ -105,6 +106,11 @@
 				"command": "hoi4modutilities.scanreferences",
 				"title": "%hoi4modutilities.scanreferences.title%",
 				"icon": "$(references)",
+				"category": "%hoi4modutilities.category%"
+			},
+			{
+				"command": "hoi4modutilities.selecthoifolder",
+				"title": "%hoi4modutilities.selecthoifolder.title%",
 				"category": "%hoi4modutilities.category%"
 			},
 			{
@@ -172,6 +178,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch --progress",
+		"web-ext": "vscode-test-web --extensionDevelopmentPath=. ",
 		"compile-ts": "tsc -d -p ./ --module commonjs",
 		"lint": "eslint src --ext ts",
 		"watch": "tsc -watch -p ./",
@@ -200,22 +207,31 @@
 		"mocha": "^9.1.2",
 		"raw-loader": "^4.0.1",
 		"rimraf": "^3.0.2",
+		"serve": "^14.2.0",
 		"terser-webpack-plugin": "^4.2.3",
 		"ts-loader": "^9.4.1",
 		"tslib": "^2.2.0",
 		"typescript": "^4.9.0",
-		"vscode-codicons": "git+https://github.com/microsoft/vscode-codicons.git",
 		"vscode-test": "^1.3.0",
 		"webpack": "^5.37.1",
 		"webpack-cli": "^4.7.0"
 	},
 	"dependencies": {
+		"@vscode/codicons": "^0.0.33",
 		"@vscode/extension-telemetry": "^0.4.6",
 		"adm-zip": "^0.4.14",
+		"assert": "^2.0.0",
+		"browserify-zlib": "^0.2.0",
+		"buffer": "^6.0.3",
 		"js-yaml": "^3.14.0",
 		"lodash": "^4.17.21",
+		"path-browserify": "^1.0.1",
 		"pngjs": "^5.0.0",
+		"process": "^0.11.10",
 		"rxjs": "^6.6.3",
-		"tga": "^1.0.4"
+		"stream-browserify": "^3.0.0",
+		"tga": "^1.0.4",
+		"url": "^0.11.0",
+		"util": "^0.12.5"
 	}
 }

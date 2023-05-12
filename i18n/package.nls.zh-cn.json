@@ -6,7 +6,7 @@
     "hoi4modutilities.featureFlags.title": "功能开关",
     "hoi4modutilities.featureFlags.desc": "使用功能开关来启用禁用一些功能，需要重启VSCode。详情见Github上的Wiki页面。",
     "hoi4modutilities.installPath.title": "安装路径",
-    "hoi4modutilities.installPath.desc": "钢铁雄心四的安装路径",
+    "hoi4modutilities.installPath.desc": "钢铁雄心四的安装路径。如果你在使用网页版VSCode，请使用Ctrl+Shift+P，然后“选择钢四安装路径”命令。",
     "hoi4modutilities.loadDlcContents.title": "加载DLC内容",
     "hoi4modutilities.loadDlcContents.desc": "预览时加载DLC内容，会使用更多内存。",
     "hoi4modutilities.modFile.title": "模组定义文件",
@@ -14,6 +14,7 @@
     "hoi4modutilities.preview.title": "预览钢四文件",
     "hoi4modutilities.previewworld.title": "预览世界地图",
     "hoi4modutilities.scanreferences.title": "扫描引用",
+    "hoi4modutilities.selecthoifolder.title": "选择钢四安装路径",
     "hoi4modutilities.selectmodfile.title": "选择模组定义文件",
     "hoi4modutilities.enableSupplyArea.title": "启用补给区域",
     "hoi4modutilities.enableSupplyArea.desc": "如果你在给钢4 1.10以下的版本做Mod。勾选这个选项以启用补给区域。"

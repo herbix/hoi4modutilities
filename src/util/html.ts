@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { contextContainer } from '../context';
 import { StyleTable } from './styletable';
 import { randomString } from './common';
@@ -15,7 +14,9 @@ export interface NonceOnly {
 export function html(webview: vscode.Webview, body: string, scripts: (string | DynamicScript)[], styles?: (string | StyleTable | DynamicScript | NonceOnly)[]): string {
     const preparedScripts = scripts.map<[string, string]>(script => {
         if (typeof script === 'string') {
-            const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + script)));
+            const uri = contextContainer.current ?
+                webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/' + script)) :
+                "";
             return [
                 `<script src="${uri}"></script>`,
                 '',
@@ -50,7 +51,9 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
                     ];
                 }
             } else {
-                const uri = webview.asWebviewUri(vscode.Uri.file(path.join(contextContainer.current?.extensionPath || '', 'static/' + style)));
+                const uri = contextContainer.current ?
+                    webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/' + style)) :
+                    "";
                 return [
                     `<link rel="stylesheet" href="${uri}"/>`,
                     ''

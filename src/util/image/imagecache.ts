@@ -1,7 +1,8 @@
+import * as vscode from 'vscode';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
-import { readFileFromModOrHOI4, hoiFileExpiryToken } from '../fileloader';
+import { readFileFromModOrHOI4, hoiFileExpiryToken, expiryToken } from '../fileloader';
 import { PromiseCache } from '../cache';
 import { ddsToPng, tgaToPng } from './converter';
 import { SpriteType, CorneredTileSpriteType } from '../../hoiformat/spritetype';
@@ -9,7 +10,6 @@ import { Sprite, Image, CorneredTileSprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
-import { getLastModifiedAsync } from '../nodecommon';
 import { UserError } from '../common';
 export { Sprite, Image };
 
@@ -56,7 +56,7 @@ async function spriteCacheExpiryToken(key: string, spritePromise: Promise<Sprite
     const gfxToken = await hoiFileExpiryToken(gfxFilePath);
     const sprite = await spritePromise;
     if (sprite) {
-        return `${gfxToken}:${sprite.image.path}@${await getLastModifiedAsync(sprite.image.path)}`;
+        return `${gfxToken}:${expiryToken(sprite.image.path)}`;
     }
     return gfxToken;
 }
@@ -87,7 +87,7 @@ async function getSpriteByGfxNameImpl(name: string, gfxFilePath: string): Promis
 }
 
 async function getImage(relativePath: string): Promise<Image | undefined> {
-    let readFileResult: [Buffer, string] | undefined = undefined;
+    let readFileResult: [Buffer, vscode.Uri] | undefined = undefined;
     try {
         readFileResult = await readFileFromModOrHOI4(relativePath);
     } catch(e) {

@@ -4,11 +4,10 @@ import { sendEvent } from "./telemetry";
 import { localize } from "./i18n";
 import { contextContainer } from "../context";
 import { error } from "./debug";
-import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from "./fileloader";
+import { getHoiOpenedFileOriginalUri, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from "./fileloader";
 import { parseHoi4File } from "../hoiformat/hoiparser";
 import { getEvents, HOIEvents, HOIEvent } from "../previewdef/event/schema";
-import { isFileScheme, getRelativePathInWorkspace } from "./vsccommon";
-import { isSamePath } from "./nodecommon";
+import { getRelativePathInWorkspace, isSameUri } from "./vsccommon";
 import { flatMap, flatten } from "lodash";
 import { parseYaml } from "./yaml";
 
@@ -66,7 +65,8 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         try {
             const filePath = 'events/' + file;
             const [buffer, realPath] = await readFileFromModOrHOI4(filePath);
-            if (isFileScheme(document.uri) && isSamePath(document.uri.fsPath, realPath)) {
+            const realPathUri = getHoiOpenedFileOriginalUri(realPath);
+            if (isSameUri(document.uri, realPathUri)) {
                 return undefined;
             }
             return getEvents(parseHoi4File(buffer.toString()), filePath);
@@ -134,7 +134,8 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         try {
             const filePath = 'localisation/' + file;
             const [buffer, realPath] = await readFileFromModOrHOI4(filePath);
-            if (isFileScheme(document.uri) && isSamePath(document.uri.fsPath, realPath)) {
+            const realPathUri = getHoiOpenedFileOriginalUri(realPath);
+            if (isSameUri(document.uri, realPathUri)) {
                 return undefined;
             }
             return { file: filePath, result: parseYaml(buffer.toString()) };

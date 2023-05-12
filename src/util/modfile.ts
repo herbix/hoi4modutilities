@@ -1,10 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as fs from 'fs';
 import { ConfigurationKey, Commands } from '../constants';
 import { PromiseCache } from './cache';
 import { localize } from './i18n';
-import { getConfiguration, isFileScheme } from './vsccommon';
+import { basename, fileOrUriStringToUri, getConfiguration, uriToFilePathWhenPossible } from './vsccommon';
+import { isFile, readDir } from './vsccommon';
 
 export const modFileStatusContainer: { current: vscode.StatusBarItem | null } = {
     current: null,
@@ -23,18 +23,18 @@ export function registerModFile(): vscode.Disposable {
     disposables.push(new vscode.Disposable(() => { modFileStatusContainer.current = null; }));
 
     // Initial status bar
-    checkAndUpdateModFileStatus(getConfiguration().modFile);
+    checkAndUpdateModFileStatus(fileOrUriStringToUri(getConfiguration().modFile));
     return vscode.Disposable.from(...disposables);
 }
 
-export function updateSelectedModFileStatus(modFile: string | undefined, error: boolean = false): void {
+export function updateSelectedModFileStatus(modFile: vscode.Uri | undefined, error: boolean = false): void {
     if (modFileStatusContainer.current) {
         const modName = modFileStatusContainer.current;
         if (modFile) {
-            const modFileName = path.basename(modFile, ".mod");
+            const modFileName = basename(modFile, ".mod");
             modName.command = Commands.SelectModFile;
             modName.text = (error ? "$(error) " : "$(file-code) ") + modFileName;
-            modName.tooltip = (error ? localize('modfile.errorreading', "Error reading this file: ") : '') + modFile;
+            modName.tooltip = (error ? localize('modfile.errorreading', "Error reading this file: ") : '') + uriToFilePathWhenPossible(modFile);
             modName.show();
         } else {
             modName.command = Commands.SelectModFile;
@@ -47,17 +47,18 @@ export function updateSelectedModFileStatus(modFile: string | undefined, error: 
 
 function onChangeWorkspaceConfiguration(e: vscode.ConfigurationChangeEvent): void {
     if (e.affectsConfiguration(`${ConfigurationKey}.modFile`)) {
-        checkAndUpdateModFileStatus(getConfiguration().modFile);
+        checkAndUpdateModFileStatus(fileOrUriStringToUri(getConfiguration().modFile));
     }
 }
 
-function checkAndUpdateModFileStatus(modFile: string | undefined): void {
-    if (modFile === undefined || modFile.trim() === '') {
+async function checkAndUpdateModFileStatus(modFile: vscode.Uri | undefined): Promise<void> {
+    if (modFile === undefined) {
         updateSelectedModFileStatus(undefined);
         return;
     }
 
-    const error = !fs.existsSync(modFile);
+    const error = !(await isFile(modFile));
+
     updateSelectedModFileStatus(modFile, error);
     if (error) {
         vscode.window.showErrorMessage(localize('modfile.filenotexist', 'Mod file not exist: {0}', modFile));
@@ -78,19 +79,15 @@ async function selectModFile(): Promise<void> {
     workspaceModFilesCache.clear();
     if (vscode.workspace.workspaceFolders) {
         for (const workspaceFolder of vscode.workspace.workspaceFolders) {
-            if (!isFileScheme(workspaceFolder.uri)) {
-                continue;
-            }
-
-            const workspaceFolderPath = workspaceFolder.uri.fsPath;
-            const mods = await workspaceModFilesCache.get(workspaceFolderPath);
+            const workspaceFolderPath = workspaceFolder.uri;
+            const mods = await workspaceModFilesCache.get(workspaceFolderPath.toString());
             if (selected === '' && mods.length > 0) {
-                selected = mods[0];
+                selected = uriToFilePathWhenPossible(mods[0]);
             }
             modsList.push(...mods.map(mod => ({
-                label: path.basename(mod, '.mod'),
-                description: localize('modfile.infolder', 'In folder {0}', path.basename(workspaceFolderPath)),
-                detail: mod,
+                label: basename(mod, '.mod'),
+                description: localize('modfile.infolder', 'In folder {0}', basename(workspaceFolderPath)),
+                detail: uriToFilePathWhenPossible(mod),
             })));
         }
     }
@@ -119,11 +116,7 @@ async function selectModFile(): Promise<void> {
         if (selectResult.selectModFile) {
             const result = await vscode.window.showOpenDialog({ filters: { [localize('modfile.type', 'Mod file')]: ['mod'] } });
             if (result) {
-                if (isFileScheme(result[0])) {
-                    modPath = result[0].fsPath;
-                } else {
-                    vscode.window.showErrorMessage(localize('modfile.selectedfilenotondisk', 'Selected file is not on disk: {0}.', result[0].toString()));
-                }
+                modPath = uriToFilePathWhenPossible(result[0]);
             } else {
                 return;
             }
@@ -135,11 +128,12 @@ async function selectModFile(): Promise<void> {
             conf.update('modFile', modPath, vscode.ConfigurationTarget.Workspace);
         }
 
-        checkAndUpdateModFileStatus(modPath);
+        checkAndUpdateModFileStatus(modPath ? fileOrUriStringToUri(modPath): undefined);
     }
 }
 
-async function getWorkspaceModFiles(absolutePath: string): Promise<string[]> {
-    const items = await fs.promises.readdir(absolutePath);
-    return items.filter(i => i.endsWith('.mod')).map(i => path.join(absolutePath, i));
+async function getWorkspaceModFiles(uriString: string): Promise<vscode.Uri[]> {
+    const uri = vscode.Uri.parse(uriString);
+    const items = await readDir(uri);
+    return items.filter(i => i.endsWith('.mod')).map(i => vscode.Uri.joinPath(uri, i));
 }

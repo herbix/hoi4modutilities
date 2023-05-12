@@ -1,21 +1,19 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import worldmapview from './worldmapview.html';
 import worldmapviewstyles from './worldmapview.css';
 import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
-import { writeFile, matchPathEnd, mkdirs, isSamePath } from '../../util/nodecommon';
+import { matchPathEnd } from '../../util/nodecommon';
+import { writeFile, mkdirs, getDocumentByUri, dirUri } from '../../util/vsccommon';
 import { slice, debounceByInput, forceError } from '../../util/common';
-import { getFilePathFromMod, readFileFromModOrHOI4 } from '../../util/fileloader';
+import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
-import { getConfiguration, isFileScheme } from '../../util/vsccommon';
-import * as fs from 'fs';
-import { URL } from 'url';
+import { getConfiguration } from '../../util/vsccommon';
 
 export class WorldMap {
     public panel: vscode.WebviewPanel | undefined;
@@ -177,9 +175,8 @@ export class WorldMap {
         // TODO duplicate with previewbase.ts
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const filePathInModWithoutOpened = filePathInMod.replace('opened?', '');
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, filePathInModWithoutOpened))
-                ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
+            const filePathInModWithoutOpened = getHoiOpenedFileOriginalUri(filePathInMod);
+            const document = getDocumentByUri(filePathInModWithoutOpened) ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
             });
@@ -202,17 +199,11 @@ export class WorldMap {
 
             targetFolderUri = folder.uri;
         }
-        
-        if (!isFileScheme(targetFolderUri)) {
-            await vscode.window.showErrorMessage(localize('preview.selectedfoldernotondisk', 'Selected target folder is not on disk: "{0}".', targetFolderUri.toString()));
-            return;
-        }
 
         try {
-            const targetFolder = targetFolderUri.fsPath;
             const [buffer] = await readFileFromModOrHOI4(file);
-            const targetPath = path.join(targetFolder, file);
-            await mkdirs(path.dirname(targetPath));
+            const targetPath = vscode.Uri.joinPath(targetFolderUri, file);
+            await mkdirs(dirUri(targetPath));
             await writeFile(targetPath, buffer);
 
             const document = await vscode.workspace.openTextDocument(targetPath);
@@ -364,10 +355,10 @@ export class WorldMap {
         }
 
         try {
-            const base64 = dataUrl.substr(prefix.length);
+            const base64 = dataUrl.substring(prefix.length);
             const buffer = Buffer.from(base64, 'base64');
 
-            await fs.promises.writeFile(new URL(uri.toString()), buffer);
+            await writeFile(uri, buffer);
 
             vscode.window.showInformationMessage(localize('worldmap.export.success', 'Successfully exported world map.'));
 

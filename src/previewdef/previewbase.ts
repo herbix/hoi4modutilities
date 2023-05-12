@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import { localize } from '../util/i18n';
 import { error, debug } from '../util/debug';
-import { getDocumentByUri, isFileScheme } from '../util/vsccommon';
+import { dirUri, getDocumentByUri } from '../util/vsccommon';
 import { isEqual } from 'lodash';
-import { getFilePathFromMod, readFileFromModOrHOI4 } from '../util/fileloader';
-import * as path from 'path';
-import { mkdirs, writeFile, isSamePath } from '../util/nodecommon';
+import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../util/fileloader';
+import { mkdirs, writeFile } from '../util/vsccommon';
 import { sendByMessage } from '../util/telemetry';
 import { forceError } from '../util/common';
 
@@ -89,9 +88,8 @@ export abstract class PreviewBase {
     protected async openOrCopyFile(file: string, start: number | undefined, end: number | undefined): Promise<void> {
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
-            const filePathInModWithoutOpened = filePathInMod.replace('opened?', '');
-            const document = vscode.workspace.textDocuments.find(d => isFileScheme(d.uri) && isSamePath(d.uri.fsPath, filePathInModWithoutOpened))
-                ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
+            const filePathInModWithoutOpened = getHoiOpenedFileOriginalUri(filePathInMod);
+            const document = getDocumentByUri(filePathInModWithoutOpened) ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
             await vscode.window.showTextDocument(document, {
                 selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
                 viewColumn: vscode.ViewColumn.One,
@@ -114,16 +112,11 @@ export abstract class PreviewBase {
             targetFolderUri = folder.uri;
         }
 
-        if (!isFileScheme(targetFolderUri)) {
-            await vscode.window.showErrorMessage(localize('preview.selectedfoldernotondisk', 'Selected target folder is not on disk: "{0}".', targetFolderUri.toString()));
-            return;
-        }
-
         try {
-            const targetFolder = targetFolderUri.fsPath;
+            const targetFolder = targetFolderUri;
             const [buffer] = await readFileFromModOrHOI4(file);
-            const targetPath = path.join(targetFolder, file);
-            await mkdirs(path.dirname(targetPath));
+            const targetPath = vscode.Uri.joinPath(targetFolder, file);
+            await mkdirs(dirUri(targetPath));
             await writeFile(targetPath, buffer);
 
             const document = await vscode.workspace.openTextDocument(targetPath);

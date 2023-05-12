@@ -52,8 +52,8 @@ export class WorldMapContainer implements vscode.WebviewPanelSerializer {
 
         if (contextContainer.current) {
             panel.iconPath = {
-                light: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-light.svg')),
-                dark: vscode.Uri.file(contextContainer.current.asAbsolutePath('static/preview-right-dark.svg')),
+                light: vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/preview-right-light.svg'),
+                dark: vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/preview-right-dark.svg'),
             };
         }
 

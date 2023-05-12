@@ -1,5 +1,4 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import { ddsToPng, tgaToPng } from './util/image/converter';
 import { PNG } from 'pngjs';
 import { localize } from './util/i18n';
@@ -7,8 +6,8 @@ import { DDS } from './util/image/dds';
 import { html, htmlEscape } from './util/html';
 import { StyleTable } from './util/styletable';
 import { sendEvent } from './util/telemetry';
-import { ensureFileScheme } from './util/vsccommon';
 import { forceError } from './util/common';
+import { readFile } from './util/vsccommon';
 
 abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider {
     public async openCustomDocument(uri: vscode.Uri) {
@@ -18,11 +17,10 @@ abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider
 
     public async resolveCustomEditor(document: vscode.CustomDocument, webviewPanel: vscode.WebviewPanel, token: vscode.CancellationToken): Promise<void> {
         try {
-            ensureFileScheme(document.uri);
             this.onOpen();
 
             const buffer = await Promise.race([
-                fs.promises.readFile(document.uri.fsPath),
+                readFile(document.uri),
                 new Promise<null>(resolve => token.onCancellationRequested(resolve)),
             ]);
 
@@ -30,7 +28,7 @@ abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider
                 return;
             }
 
-            const png = this.getPng(buffer);
+            const png = this.getPng(Buffer.from(buffer));
             const pngBuffer = PNG.sync.write(png);
             const styleTable = new StyleTable();
 

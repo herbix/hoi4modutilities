@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 import { PNG } from "pngjs";
 import { NumberPosition } from "../common";
 
@@ -7,7 +8,7 @@ export class Image {
         readonly pngBuffer: Buffer,
         readonly width: number,
         readonly height: number,
-        readonly path: string) {
+        readonly path: vscode.Uri) {
     }
 
     public get uri(): string {
@@ -118,7 +119,7 @@ function toDataUrl(buffer: Buffer): string {
     return 'data:image/png;base64,' + buffer.toString('base64');
 }
 
-function extractImageFromPng(png: PNG, x: number, y: number, w: number, h: number, path: string): Image {
+function extractImageFromPng(png: PNG, x: number, y: number, w: number, h: number, path: vscode.Uri): Image {
     const resultPng = new PNG({ width: w, height: h });
     if (w > 0 && h > 0) {
         png.bitblt(resultPng, x, y, w, h, 0, 0);
