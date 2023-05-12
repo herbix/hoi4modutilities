@@ -166,7 +166,6 @@ const webviewJsConfig = {
   output: {
     path: path.resolve(__dirname, 'static'),
     filename: '[name].js',
-    library: 'window',
   },
 
   devtool: 'source-map',
