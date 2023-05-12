@@ -18,15 +18,17 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 ## Steps to start
 
 1. Install and enable this extension in VSCode.
-2. Update setting `hoi4ModUtilities.installPath` (you can open settings page of VSCode using `Ctrl+,`) to the folder that installed Heart of Iron IV.
+2. Set Heart of Iron IV install path. You can:
+    * (Since v0.7.0, or on [vscode web](https://vscode.dev)) Open command palette using `Ctrl+Shift+P`. Use command `Select HOI4 install path` to browse the folder that installed Heart of Iron IV.
+    * Update setting `hoi4ModUtilities.installPath` (you can open settings page of VSCode using `Ctrl+,`) to the folder that installed Heart of Iron IV.
 3. Open your mod develop folder.
-4. (*Optional*) Open command palette using `Ctrl+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
+4. (*Optional*) Open command palette using `Ctrl+Shift+P`. Use command `Select mod file` to set working mod descriptor (the `.mod` file).
 5. Use these entries:
     * Command palette (`Ctrl+Shift+P`) commands: `Preview World Map` and `Preview HOI4 file`*.
     * `Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png))* button on right-top tool bar of text editor.
-    * Open a `.dds` file.
+    * Open a `.dds` or `.tga` file.
 
-\* *`Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png)) button/command is invisible, except on `.gfx`, technology tree or national focus tree files.*
+\* *`Preview HOI4 file` (![Preview HOI4 file button](demo/preview-icon.png)) button/command is invisible, except on `.gfx`, `map/default.map`, technology tree or national focus tree files.*
 
 ## Demos
 
@@ -65,10 +67,18 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.6.2]
+## Release Notes - [0.7.0]
+
+### Added
+* Support web based vscode.
+  * Known issues:
+    * `.zip` based DLCs can't be loaded.
+    * HOI4 install path must be set every time you open it.
+* Add command `Select HOI4 Install Path` to set HOI4 install path
 
 ### Fixed
-* Unable to load extension in older vscode versions.
+* Latin extension characters is not supported in HOI format symbols.
+* A potential issue that some images can't be load.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

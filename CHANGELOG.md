@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Develop
+## [0.7.0] - 2023/05/13 - Latest
 
 ### Added
 * Support web based vscode.
@@ -17,7 +17,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Latin extension characters is not supported in HOI format symbols.
 * A potential issue that some images can't be load.
 
-## [0.6.2] - 2023/05/09 - Latest
+## [0.6.2] - 2023/05/09
 
 ### Fixed
 * Unable to load extension in older vscode versions.
