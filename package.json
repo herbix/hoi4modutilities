@@ -44,6 +44,7 @@
 			"supported": true
 		}
 	},
+	"locale": "%hoi4modutilities.locale%",
 	"contributes": {
 		"configuration": [
 			{
@@ -178,7 +179,7 @@
 		"vscode:prepublish": "webpack --mode production",
 		"webpack": "webpack --mode development",
 		"webpack-dev": "webpack --mode development --watch --progress",
-		"web-ext": "vscode-test-web --extensionDevelopmentPath=. ",
+		"web-ext": "serve --cors -l 5000 --ssl-cert \"%CERT_PATH%/localhost.cer\" --ssl-key \"%CERT_PATH%/localhost.key\"",
 		"compile-ts": "tsc -d -p ./ --module commonjs",
 		"lint": "eslint src --ext ts",
 		"watch": "tsc -watch -p ./",

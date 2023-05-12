@@ -7,10 +7,17 @@ import { worldMap } from './previewdef/worldmap';
 import { ViewType, ContextName } from './constants';
 import { registerTelemetryReporter, sendEvent } from './util/telemetry';
 import { registerScanReferencesCommand } from './util/dependency';
-import { locale } from './util/i18n';
 import { registerHoiFs } from './util/hoifs';
+import { loadI18n } from './util/i18n';
 
 export function activate(context: vscode.ExtensionContext) {
+    let locale = (context as any).extension?.packageJSON.locale;
+    if (locale === "%hoi4modutilities.locale%") {
+        locale = 'en';
+    }
+
+    loadI18n(locale);
+
     // Must register this first because other component may use it.
     context.subscriptions.push(registerContextContainer(context));
     context.subscriptions.push(registerTelemetryReporter());

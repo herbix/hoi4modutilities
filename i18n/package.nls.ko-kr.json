@@ -1,5 +1,6 @@
   
 {
+    "hoi4modutilities.locale": "ko-kr",
     "hoi4modutilities.category": "HOI4 모드 개발용 유틸리티",
     "hoi4modutilities.dds.editorName": "DDS 미리보기",
     "hoi4modutilities.tga.editorName": "TGA 미리보기",
