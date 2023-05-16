@@ -26,8 +26,8 @@ export class Surface {
         if (valueType === PixelValueType.typeless) {
             throw new UserError("Can't get rgba from typeless pixel value");
         }
-        if (valueType === PixelValueType.shardedexp || valueType === PixelValueType.unorm_srgb) {
-            throw new UserError("Pixel value type shardedexp and unorm_srgb are not supported to get rgba");
+        if (valueType === PixelValueType.shardedexp) {
+            throw new UserError("Pixel value type shardedexp are not supported to get rgba");
         }
         if (pixelFormat.channelLengthInPixel.some(l => l > 32)) {
             throw new UserError("Some channel length larger than 32");
@@ -129,6 +129,9 @@ export class Surface {
                     const indexInBlock = (yi * 4 + xi) << 2;
                     for (let j = 0; j < 4; j++) {
                         result[index + j] = block[indexInBlock + j];
+                        if (pixelFormat.alphaPremultiplied && j !== 3 && block[indexInBlock + 3] !== 0) {
+                            result[index + j] /= (block[indexInBlock + 3] / 255);
+                        }
                     }
                 }
             }
@@ -329,6 +332,7 @@ type PixelNormalizer = (value: number, max: number) => number;
 const pixelNormalizers: Partial<Record<PixelValueType, PixelNormalizer>> = {
     [PixelValueType.uint]: uintNormalizer,
     [PixelValueType.unorm]: uintNormalizer,
+    [PixelValueType.unorm_srgb]: unormSrgbNormalizer,
     [PixelValueType.sint]: sintNormalizer,
     [PixelValueType.snorm]: sintNormalizer,
     [PixelValueType.float]: floatNormalizer,
@@ -346,6 +350,10 @@ function sintNormalizer(value: number, max: number): number {
 
 function floatNormalizer(value: number, max: number): number {
     return value;
+}
+
+function unormSrgbNormalizer(value: number, max: number): number {
+    return Math.pow(value / max, 2.2);
 }
 
 // Don't use js clossure for better performance

@@ -53,6 +53,7 @@ export interface PixelFormatBase {
 export interface CompressedPixelFormat extends PixelFormatBase {
     compressed: true;
     compressFormat: CompressFormat;
+    alphaPremultiplied: boolean;
 }
 
 export interface RawPixelFormat extends PixelFormatBase {
@@ -113,12 +114,21 @@ export function pixelFormatToString(pixelFormat: PixelFormat): string {
 
 function convertFourCCPixelFormat(fourCC: number): PixelFormat {
     let compressFormat: CompressFormat;
+    let alphaPremultiplied: boolean = false;
     switch (fourCC) {
-        case FOURCC_DXT1: compressFormat = CompressFormat.bc1; break;
+        case FOURCC_DXT1:
+            compressFormat = CompressFormat.bc1;
+            break;
         case FOURCC_DXT2:
-        case FOURCC_DXT3: compressFormat = CompressFormat.bc2; break;
+        case FOURCC_DXT3:
+            compressFormat = CompressFormat.bc2;
+            alphaPremultiplied = fourCC === FOURCC_DXT2;
+            break;
         case FOURCC_DXT4:
-        case FOURCC_DXT5: compressFormat = CompressFormat.bc3; break;
+        case FOURCC_DXT5:
+            alphaPremultiplied = fourCC === FOURCC_DXT4;
+            compressFormat = CompressFormat.bc3;
+            break;
         default: throw new UserError("fourCC value not supported: " + fourCC);
     }
 
@@ -126,6 +136,7 @@ function convertFourCCPixelFormat(fourCC: number): PixelFormat {
         compressed: true,
         valueType: PixelValueType.uint,
         compressFormat,
+        alphaPremultiplied,
     };
 }
 
@@ -258,6 +269,7 @@ function compressedPixelFormat(format: CompressFormat, valueType: PixelValueType
         compressed: true,
         compressFormat: format,
         valueType,
+        alphaPremultiplied: false,
     };
 }
 

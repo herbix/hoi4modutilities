@@ -6,6 +6,7 @@ import { UserError } from '../../common';
 export class DDS {
     private constructor(
         readonly header: DDSHeader,
+        readonly headerDxt10: DDSHeaderDXT10 | undefined,
         readonly images: Surface[],
         readonly type: 'texture' | 'cubemap' | 'volume',
         readonly arraySize: number,
@@ -24,9 +25,9 @@ export class DDS {
             const dxt10HeaderArray = new Int32Array(buffer, byteOffset + HEADER_LENGTH_INT * 4, HEADER_DXT10_LENGTH_INT);
             const dxt10Header = extractDxt10Header(dxt10HeaderArray);
             return DDS.parseDxt10(buffer, byteOffset, header, dxt10Header);
+        } else {
+            return DDS.parseStandard(buffer, byteOffset, header);
         }
-
-        return DDS.parseStandard(buffer, byteOffset, header);
     }
 
     private static parseStandard(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader): DDS {
@@ -59,11 +60,11 @@ export class DDS {
             [images] = parseTexture(buffer, offset, pixelFormat, header.dwWidth, header.dwHeight, mipmapCount);
         }
 
-        return new DDS(header, images, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', 1, mipmapCount);
+        return new DDS(header, undefined, images, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', 1, mipmapCount);
     }
 
     private static parseDxt10(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader, dxt10Header: DDSHeaderDXT10): DDS {
-        const pixelFormat = convertPixelFormat(header.ddspf);
+        const pixelFormat = convertPixelFormat(header.ddspf, dxt10Header);
 
         const cubeMap = !!(dxt10Header.miscFlag & DDS_RESOURCE_MISC_TEXTURECUBE);
         const volume = dxt10Header.resourceDimension === ResourceDimension.DDS_DIMENSION_TEXTURE3D;
@@ -93,7 +94,7 @@ export class DDS {
             allImages.push(...images);
         }
 
-        return new DDS(header, allImages, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', arraySize, mipmapCount);
+        return new DDS(header, dxt10Header, allImages, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', arraySize, mipmapCount);
     }
 }
 
