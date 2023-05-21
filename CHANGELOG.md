@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+### Fixed
+* Add more support to `.dds` format.
+
 ## [0.7.0] - 2023/05/13 - Latest
 
 ### Added
