@@ -29,8 +29,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(worldMap.register());
     context.subscriptions.push(registerScanReferencesCommand());
     context.subscriptions.push(registerHoiFs());
-
-    // Use proposed vscode API
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
 

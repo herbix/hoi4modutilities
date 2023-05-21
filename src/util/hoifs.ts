@@ -12,7 +12,7 @@ const installPathContainer: { current: vscode.Uri | null } = {
 export function registerHoiFs(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
     disposables.push(vscode.commands.registerCommand(Commands.SelectHoiFolder, selectHoiFolder));
-    disposables.push(vscode.workspace.registerFileSystemProvider(Hoi4FsSchema, new Hoi4UtilsFsProvider()));
+    disposables.push(vscode.workspace.registerFileSystemProvider(Hoi4FsSchema, new Hoi4UtilsFsProvider(), { isReadonly: true }));
 
     if (!IS_WEB_EXT) {
         disposables.push(vscode.workspace.onDidChangeConfiguration(onChangeWorkspaceConfiguration));
@@ -22,7 +22,10 @@ export function registerHoiFs(): vscode.Disposable {
 }
 
 async function selectHoiFolder(): Promise<void> {
-    const result = await vscode.window.showOpenDialog({ canSelectFolders: true, canSelectFiles: false, canSelectMany: false });
+    const dialogOptions: vscode.OpenDialogOptions = { canSelectFolders: true, canSelectFiles: false, canSelectMany: false };
+    // TODO proposed API
+    // dialogOptions.allowUIResources = true;
+    const result = await vscode.window.showOpenDialog(dialogOptions);
     if (!result) {
         return;
     }

@@ -21,7 +21,7 @@ abstract class CommonViewProvider implements vscode.CustomReadonlyEditorProvider
 
             const buffer = await Promise.race([
                 readFile(document.uri),
-                new Promise<null>(resolve => token.onCancellationRequested(resolve)),
+                new Promise<null>(resolve => token.onCancellationRequested(_ => resolve(null))),
             ]);
 
             if (buffer === null) {
