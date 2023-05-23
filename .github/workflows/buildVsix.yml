@@ -1,0 +1,43 @@
+name: Build VSIX
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [14.x, 16.x, 18.x]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: Get version
+      uses: pchynoweth/action-get-npm-version@1.1.1
+      with:
+        file: package.json
+        
+    - name: Npm Install
+      run: |
+        npm install
+        npm install vsce
+
+    - name: Build
+      run: |
+        node_modules/.bin/vsce package
+
+    - name: Output Artifact
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: VSIX
+        path: hoi4modutilities-${{ steps.package-version.outputs.current-version }}.vsix
