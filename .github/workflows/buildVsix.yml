@@ -41,4 +41,4 @@ jobs:
       uses: actions/upload-artifact@v3.1.2
       with:
         name: VSIX
-        path: hoi4modutilities-${{ steps.package-version.outputs.current-version }}.vsix
+        path: hoi4modutilities-${{ steps.package-version.outputs.current-version }}-dev.vsix
