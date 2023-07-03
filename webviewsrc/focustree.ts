@@ -114,8 +114,8 @@ function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Re
 
             let allow = true;
             for (const andPrerequests of focus.prerequisite) {
-                allow = allow && andPrerequests.some(p => allowBranchOptionsValue[p] === true);
-                const deny = andPrerequests.every(p => allowBranchOptionsValue[p] === false);
+                allow = allow && (andPrerequests.length === 0 || andPrerequests.some(p => allowBranchOptionsValue[p] === true));
+                const deny = andPrerequests.length > 0 && andPrerequests.every(p => allowBranchOptionsValue[p] === false);
                 if (deny) {
                     allowBranchOptionsValue[focus.id] = false;
                     changed = true;

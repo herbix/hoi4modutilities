@@ -2,7 +2,7 @@ import { Node, Token } from "../../hoiformat/hoiparser";
 import { HOIPartial, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
 import { flatten, chain, isEqual } from 'lodash';
-import { extractConditionValue, ConditionItem, ConditionComplexExpr } from "../../hoiformat/condition";
+import { ConditionItem, ConditionComplexExpr, extractConditionValues } from "../../hoiformat/condition";
 import { countryScope } from "../../hoiformat/scope";
 import { useConditionInFocus } from "../../util/featureflags";
 import { randomString, Warning } from "../../util/common";
@@ -60,7 +60,7 @@ interface FocusDef {
     prerequisite: FocusOrORList[];
     mutually_exclusive: FocusOrORList[];
     relative_position_id: string;
-    allow_branch: Raw; /* FIXME not symbol node */
+    allow_branch: Raw[]; /* FIXME not symbol node */
     offset: OffsetDef[];
     _token: Token;
 }
@@ -68,7 +68,7 @@ interface FocusDef {
 interface OffsetDef {
     x: number;
     y: number;
-    trigger: Raw;
+    trigger: Raw[];
 }
 
 interface FocusOrORList {
@@ -106,12 +106,18 @@ const focusSchema: SchemaDef<FocusDef> = {
         _type: 'array',
     },
     relative_position_id: "string",
-    allow_branch: 'raw',
+    allow_branch: {
+        _innerType: 'raw',
+        _type: 'array',
+    },
     offset: {
         _innerType: {
             x: "number",
             y: "number",
-            trigger: "raw",
+            trigger: {
+                _innerType: 'raw',
+                _type: 'array',
+            },
         },
         _type: 'array',
     }
@@ -267,12 +273,12 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
     const prerequisite = hoiFocus.prerequisite
         .map(p => p.focus.concat(p.OR).filter((s): s is string => s !== undefined));
     const icon = hoiFocus.icon;
-    const hasAllowBranch = hoiFocus.allow_branch !== undefined;
-    const allowBranchCondition = hoiFocus.allow_branch ? extractConditionValue(hoiFocus.allow_branch._raw.value, countryScope, conditionExprs).condition : undefined;
+    const hasAllowBranch = hoiFocus.allow_branch.length > 0;
+    const allowBranchCondition = extractConditionValues(hoiFocus.allow_branch.filter((v): v is Raw => v !== undefined).map(v => v._raw.value), countryScope, conditionExprs).condition;
     const offset: Offset[] = hoiFocus.offset.map(o => ({
         x: o.x ?? 0,
         y: o.y ?? 0,
-        trigger: o.trigger ? extractConditionValue(o.trigger._raw.value, countryScope, conditionExprs).condition : false,
+        trigger: o.trigger ? extractConditionValues(o.trigger.filter((v): v is Raw => v !== undefined).map(v => v._raw.value), countryScope, conditionExprs).condition : false,
     }));
 
     return {

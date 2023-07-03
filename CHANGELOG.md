@@ -6,7 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
-## [0.7.1] - 2023/07/03 - Latest
+## [0.7.3] - 2023/07/04 - Latest
+
+### Fixed
+* A bug that focus condition doesn't work correctly.
+
+
+## [0.7.1] - 2023/07/03
 
 ### Fixed
 * Add more support to `.dds` format.

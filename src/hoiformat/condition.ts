@@ -36,6 +36,15 @@ export function extractConditionValue(nodeValue: NodeValue, scope: Scope, exprs:
     };
 }
 
+export function extractConditionValues(nodeValue: NodeValue[], scope: Scope, exprs: ConditionItem[] = []): ConditionValue {
+    const condition = simplifyCondition({ type: 'and', items: nodeValue.map(nv => extractConditionFolder(nv, [scope])) });
+    exprs = extractConditionalExprs(condition, exprs);
+    return {
+        condition,
+        exprs,
+    };
+}
+
 export function extractConditionFolder(
     nodeValue: NodeValue,
     scopeStack: Scope[],
@@ -293,7 +302,7 @@ export function simplifyCondition(condition: ConditionComplexExpr): ConditionCom
 
     if (simplifiedItems.length === 1) {
         if (condition.type === 'and' || condition.type === 'or') {
-            return simplifiedItems[0];
+            return simplifyCondition(simplifiedItems[0]);
         }
 
         if (condition.type === 'andnot') {
