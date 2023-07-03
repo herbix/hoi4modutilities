@@ -50,6 +50,7 @@ export function extractConditionFolder(
     const items: ConditionComplexExpr[] = [];
     const currentScope = scopeStack[scopeStack.length - 1];
     let ifItem: ConditionFolder | undefined = undefined;
+    let ifItemHasElse = false;
 
     for (const child of nodeValue) {
         let keepIfItem = false;
@@ -78,6 +79,7 @@ export function extractConditionFolder(
                 if (limit) {
                     ifItem = handleIf(child, limit, scopeStack);
                     keepIfItem = true;
+                    ifItemHasElse = false;
 
                     const elseifs = child.value.filter(v => v.name === 'else_if');
                     for (const elseif of elseifs) {
@@ -89,6 +91,7 @@ export function extractConditionFolder(
                     if (els) {
                         handleElse(els, ifItem, scopeStack);
                         keepIfItem = false;
+                        ifItemHasElse = true;
                     }
                 }
             }
@@ -103,6 +106,7 @@ export function extractConditionFolder(
             if (ifItem) {
                 handleElse(child, ifItem, scopeStack);
                 keepIfItem = false;
+                ifItemHasElse = true;
             }
 
         } else if (childName === 'always') {
@@ -133,6 +137,9 @@ export function extractConditionFolder(
 
         if (!keepIfItem) {
             if (ifItem) {
+                if (!ifItemHasElse) {
+                    handleElse(null, ifItem, []);
+                }
                 items.push(ifItem);
             }
             ifItem = undefined;
@@ -140,6 +147,9 @@ export function extractConditionFolder(
     }
     
     if (ifItem) {
+        if (!ifItemHasElse) {
+            handleElse(null, ifItem, []);
+        }
         items.push(ifItem);
     }
 
@@ -217,17 +227,19 @@ function handleElseIf(elseIfNode: Node, ifItem: ConditionFolder, scopeStack: Sco
     }
 }
 
-function handleElse(elseNode: Node, ifItem: ConditionFolder, scopeStack: Scope[]) {
-    if (Array.isArray(elseNode.value)) {
+function handleElse(elseNode: Node | null, ifItem: ConditionFolder, scopeStack: Scope[]) {
+    if (elseNode === null || Array.isArray(elseNode.value)) {
         const lastItemItems = (ifItem.items[ifItem.items.length - 1] as ConditionFolder).items;
         const newItem: ConditionComplexExpr[] = [
-            ...lastItemItems.slice(0, ifItem.items.length - 2),
+            ...lastItemItems.slice(0, lastItemItems.length - 2),
             {
-                ...(lastItemItems[ifItem.items.length - 2] as ConditionFolder),
+                ...(lastItemItems[lastItemItems.length - 2] as ConditionFolder),
                 type: 'andnot',
-            },
-            extractConditionFolder(elseNode.value, scopeStack, 'and', ['limit', 'else_if', 'else']),
+            }
         ];
+        if (elseNode !== null) {
+            newItem.push(extractConditionFolder(elseNode.value, scopeStack, 'and', ['limit', 'else_if', 'else']));
+        }
         ifItem.items.push({
             type: 'and',
             items: newItem,

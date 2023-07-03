@@ -6,10 +6,13 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+## [0.7.1] - 2023/07/03 - Latest
+
 ### Fixed
 * Add more support to `.dds` format.
+* A bug that focus condition doesn't work correctly for those who have two optional prerequisites.
 
-## [0.7.0] - 2023/05/13 - Latest
+## [0.7.0] - 2023/05/13
 
 ### Added
 * Support web based vscode.

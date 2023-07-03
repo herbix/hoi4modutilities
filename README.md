@@ -67,18 +67,11 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.7.0]
-
-### Added
-* Support web based vscode.
-  * Known issues:
-    * `.zip` based DLCs can't be loaded.
-    * HOI4 install path must be set every time you open it.
-* Add command `Select HOI4 Install Path` to set HOI4 install path
+## Release Notes - [0.7.1]
 
 ### Fixed
-* Latin extension characters is not supported in HOI format symbols.
-* A potential issue that some images can't be load.
+* Add more support to `.dds` format.
+* A bug that focus condition doesn't work correctly for those who have two optional prerequisites.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

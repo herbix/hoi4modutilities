@@ -50,7 +50,7 @@ function search(searchContent: string, navigate: boolean = true) {
     return searchedFocus;
 }
 
-const useConditionInFocus = (window as any).useConditionInFocus;
+const useConditionInFocus: boolean = (window as any).useConditionInFocus;
 const focusTrees: FocusTree[] = (window as any).focusTrees;
 
 let selectedExprs: ConditionItem[] = getState().selectedExprs ?? [];
@@ -75,6 +75,7 @@ async function buildContent() {
     const gridbox: GridBoxType = (window as any).gridBox;
 
     const focusPosition: Record<string, NumberPosition> = {};
+    calculateFocusAllowed(focusTree, allowBranchOptionsValue);
     const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focusTree, allowBranchOptionsValue, focusPosition)).filter((v): v is GridBoxItem => !!v);
     
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
@@ -93,6 +94,40 @@ async function buildContent() {
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
     subscribeNavigators();
+}
+
+function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Record<string, boolean>) {
+    const focuses = focusTree.focuses;
+
+    let changed = true;
+    while (changed) {
+        changed = false;
+        for (const key in focuses) {
+            const focus = focuses[key];
+            if (focus.prerequisite.length === 0) {
+                continue;
+            }
+
+            if (focus.id in allowBranchOptionsValue) {
+                continue;
+            }
+
+            let allow = true;
+            for (const andPrerequests of focus.prerequisite) {
+                allow = allow && andPrerequests.some(p => allowBranchOptionsValue[p] === true);
+                const deny = andPrerequests.every(p => allowBranchOptionsValue[p] === false);
+                if (deny) {
+                    allowBranchOptionsValue[focus.id] = false;
+                    changed = true;
+                    break;
+                }
+            }
+            if (allow) {
+                allowBranchOptionsValue[focus.id] = true;
+                changed = true;
+            }
+        }
+    }
 }
 
 function updateSelectedFocusTree(clearCondition: boolean) {
@@ -177,10 +212,8 @@ function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<st
 
 function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsValue: Record<string, boolean>, positionByFocusId: Record<string, NumberPosition>): GridBoxItem | undefined {
     if (useConditionInFocus) {
-        for (const allowBranch of focus.inAllowBranch) {
-            if (allowBranchOptionsValue[allowBranch] === false) {
-                return undefined;
-            }
+        if (allowBranchOptionsValue[focus.id] === false) {
+            return undefined;
         }
     }
 
