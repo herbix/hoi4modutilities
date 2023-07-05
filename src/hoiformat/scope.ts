@@ -2,7 +2,7 @@ import { arrayToMap } from "../util/common";
 import { Node } from "./hoiparser";
 import { variableRegexForScope } from "./schema";
 
-export type ScopeType = 'country' | 'state' | 'leader' | 'operative' | 'unknown';
+export type ScopeType = 'country' | 'state' | 'leader' | 'operative' | 'division' | 'character' | 'unknown';
 
 export interface Scope {
     scopeName: string;
@@ -29,6 +29,14 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
         scopeStack.push({
             scopeName: nodeName,
             scopeType: 'country',
+        });
+        return true;
+    }
+
+    if (nodeName.match(/^[A-Z][A-Z0-9]{2}_/)) {
+        scopeStack.push({
+            scopeName: nodeName,
+            scopeType: 'character',
         });
         return true;
     }
@@ -129,6 +137,7 @@ export const scopeDefs = arrayToMap([
     scopeDef("every_navy_leader", false, true, 'country', 'leader'),
     scopeDef("global_every_army_leader", false, true, '*', 'leader'),
     scopeDef("overlord", true, true, 'country', 'country'),
+    scopeDef("faction_leader", true, true, 'country', 'country'),
     // scoepDef("TAG"),
     scopeDef("any_country", true, false, '*', 'country'),
     scopeDef("any_country_with_original_tag", true, false, '*', 'country'),
@@ -155,6 +164,15 @@ export const scopeDefs = arrayToMap([
     scopeDef("all_controlled_state", true, false, 'country', 'state'),
     scopeDef("all_owned_state", true, false, 'country', 'state'),
     scopeDef("all_neighbor_state", true, false, 'state', 'state'),
+    scopeDef("any_country_with_core", true, false, 'state', 'country'),
+    scopeDef("any_country_division", true, false, 'country', 'division'),
+    scopeDef("any_state_division", true, false, 'state', 'division'),
+    scopeDef("all_subject_countries", true, false, 'country', 'country'),
+    scopeDef("any_subject_country", true, false, 'country', 'country'),
+    scopeDef("all_core_state", true, false, 'country', 'state'),
+    scopeDef("any_core_state", true, false, 'country', 'state'),
+    scopeDef("all_character", true, false, 'country', 'character'),
+    scopeDef("any_character", true, false, 'country', 'character'),
     scopeDef("every_country", false, true, '*', 'country'),
     scopeDef("every_country_with_original_tag", false, true, '*', 'country'),
     scopeDef("every_other_country", false, true, 'country', 'country'),
@@ -182,4 +200,15 @@ export const scopeDefs = arrayToMap([
     scopeDef("any_operative_leader", true, false, 'country', 'operative'),
     scopeDef("every_operative", false, true, 'country', 'operative'),
     scopeDef("random_operative", false, true, 'country', 'operative'),
+    scopeDef("every_country_division", false, true, 'country', 'division'),
+    scopeDef("random_country_division", false, true, 'country', 'division'),
+    scopeDef("every_state_division", false, true, 'state', 'division'),
+    scopeDef("random_state_division", false, true, 'state', 'division'),
+    scopeDef("every_possible_country", false, true, '*', 'country'),
+    scopeDef("every_subject_country", false, true, 'country', 'country'),
+    scopeDef("random_subject_country", false, true, 'country', 'country'),
+    scopeDef("every_core_state", false, true, 'country', 'state'),
+    scopeDef("random_core_state", false, true, 'country', 'state'),
+    scopeDef("every_character", false, true, 'country', 'character'),
+    scopeDef("random_character", false, true, 'country', 'character'),
 ], 'name');
