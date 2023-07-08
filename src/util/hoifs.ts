@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import { Commands, ConfigurationKey, Hoi4FsSchema } from '../constants';
 import { UserError } from './common';
 import { clearDlcZipCache } from './fileloader';
+import { sendEvent } from './telemetry';
 import { getConfiguration, isFileScheme } from './vsccommon';
 
 const installPathContainer: { current: vscode.Uri | null } = {
@@ -22,6 +23,8 @@ export function registerHoiFs(): vscode.Disposable {
 }
 
 async function selectHoiFolder(): Promise<void> {
+    sendEvent('selectHoiFolder');
+
     const dialogOptions: vscode.OpenDialogOptions = { canSelectFolders: true, canSelectFiles: false, canSelectMany: false };
     // TODO proposed API
     // dialogOptions.allowUIResources = true;

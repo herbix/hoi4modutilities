@@ -3,6 +3,7 @@ import { FocusTree, getFocusTree } from "./schema";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten, chain } from "lodash";
+import { getGfxContainerFiles } from "../../util/gfxindex";
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
@@ -29,7 +30,8 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
 
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
-            ...flatten(focusTreeDepFiles.map(f => f.result.gfxFiles))
+            ...flatten(focusTreeDepFiles.map(f => f.result.gfxFiles)),
+            ...await getGfxContainerFiles(flatten(focusTrees.map(ft => Object.values(ft.focuses))).map(f => f.icon)),
         ];
 
         return {

@@ -1,10 +1,10 @@
 import { HOIEvents, getEvents } from "./schema";
-import { ContentLoader, Dependency, LoadResultOD, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
-import { debug } from "../../util/debug";
+import { ContentLoader, Dependency, LoadResultOD, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten } from "lodash";
 import { YamlLoader } from "../../util/loader/yaml";
+import { getGfxContainerFiles } from "../../util/gfxindex";
 
 export interface EventsLoaderResult {
     events: HOIEvents;
@@ -35,7 +35,8 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
-            ...flatten(eventsDepFiles.map(f => f.result.gfxFiles))
+            ...flatten(eventsDepFiles.map(f => f.result.gfxFiles)),
+            ...await getGfxContainerFiles(flatten(Object.values(events.eventItemsByNamespace)).map(e => e.picture)),
         ];
 
         return {

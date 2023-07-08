@@ -54,47 +54,51 @@ export async function clearDlcZipCache() {
     dlcZipCache?.clear();
 }
 
-export async function getFilePathFromMod(relativePath: string): Promise<vscode.Uri | undefined> {
-    let absolutePath: vscode.Uri | undefined = undefined;
-
-    // Find in opened workspace folders
-    if (vscode.workspace.workspaceFolders) {
-        for (const folder of vscode.workspace.workspaceFolders) {
-            const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
-            if (await isFile(findPath)) {
-                absolutePath = findPath;
-                break;
-            }
-        }
-        
-        if (absolutePath !== undefined) {
-            // Opened document
-            const document = vscode.workspace.textDocuments.find(d => isSameUri(d.uri, absolutePath!));
-            if (document) {
-                return document.uri.with({ fragment: ':opened' });
-            }
-        }
-    }
-
-    return absolutePath;
+export function getFilePathFromMod(relativePath: string): Promise<vscode.Uri | undefined> {
+    return getFilePathFromModOrHOI4(relativePath, { hoi4: false });
 }
 
-export async function getFilePathFromModOrHOI4(relativePath: string): Promise<vscode.Uri | undefined> {
+export async function getFilePathFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<vscode.Uri | undefined> {
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
-    let absolutePath = await getFilePathFromMod(relativePath);
+    let absolutePath: vscode.Uri | undefined = undefined;
 
-    if (absolutePath !== undefined) {
-        return absolutePath;
-    }
-
-    const replacePaths = await getReplacePaths();
-    if (replacePaths) {
-        const relativePathDir = path.dirname(relativePath);
-        for (const replacePath of replacePaths) {
-            if (isSamePath(relativePathDir, replacePath)) {
-                return absolutePath;
+    if (options?.mod !== false) {
+        // Find in opened workspace folders
+        if (vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
+                if (await isFile(findPath)) {
+                    absolutePath = findPath;
+                    break;
+                }
+            }
+            
+            if (absolutePath !== undefined) {
+                // Opened document
+                const document = vscode.workspace.textDocuments.find(d => isSameUri(d.uri, absolutePath!));
+                if (document) {
+                    return document.uri.with({ fragment: ':opened' });
+                }
             }
         }
+
+        if (absolutePath !== undefined) {
+            return absolutePath;
+        }
+
+        const replacePaths = await getReplacePaths();
+        if (replacePaths) {
+            const relativePathDir = path.dirname(relativePath);
+            for (const replacePath of replacePaths) {
+                if (isSamePath(relativePathDir, replacePath)) {
+                    return absolutePath;
+                }
+            }
+        }
+    }
+
+    if (options?.hoi4 === false) {
+        return absolutePath;
     }
 
     // Find in HOI4 install path
@@ -195,8 +199,8 @@ export async function readFileFromPath(realPath: vscode.Uri, relativePath?: stri
     return [ await readFile(realPath), realPath ];
 }
 
-export async function readFileFromModOrHOI4(relativePath: string): Promise<[Buffer, vscode.Uri]> {
-    const realPath = await getFilePathFromModOrHOI4(relativePath);
+export async function readFileFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<[Buffer, vscode.Uri]> {
+    const realPath = await getFilePathFromModOrHOI4(relativePath, options);
 
     if (!realPath) {
         throw new UserError("Can't find file " + relativePath);
@@ -211,28 +215,35 @@ export async function readFileFromModOrHOI4AsJson<T>(relativePath: string, schem
     return convertNodeToJson<T>(nodes, schema);
 }
 
-export async function listFilesFromModOrHOI4(relativePath: string): Promise<string[]> {
+export async function listFilesFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<string[]> {
+    relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     const result: string[] = [];
 
-    // Find in opened workspace folders
-    if (vscode.workspace.workspaceFolders) {
-        for (const folder of vscode.workspace.workspaceFolders) {
-            const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
-            if (await isDirectory(findPath)) {
-                try {
-                    result.push(...await readDirFiles(findPath));
-                } catch(e) {}
+    if (options?.mod !== false) {
+        // Find in opened workspace folders
+        if (vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
+                if (await isDirectory(findPath)) {
+                    try {
+                        result.push(...await readDirFiles(findPath));
+                    } catch(e) {}
+                }
+            }
+        }
+
+        const replacePaths = await getReplacePaths();
+        if (replacePaths) {
+            for (const replacePath of replacePaths) {
+                if (isSamePath(relativePath, replacePath)) {
+                    return result.filter((v, i, a) => i === a.indexOf(v));
+                }
             }
         }
     }
 
-    const replacePaths = await getReplacePaths();
-    if (replacePaths) {
-        for (const replacePath of replacePaths) {
-            if (isSamePath(relativePath, replacePath)) {
-                return result.filter((v, i, a) => i === a.indexOf(v));
-            }
-        }
+    if (options?.hoi4 === false) {
+        return result;
     }
 
     // Find in HOI4 install path
