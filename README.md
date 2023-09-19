@@ -71,6 +71,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ### Added
 * GFX index (under feature flag).
+* Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
 
 ### Fixed
 * NSB tank tech tree (NSB_armor.txt) doesn't preview (#71).
