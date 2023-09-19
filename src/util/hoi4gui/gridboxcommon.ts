@@ -67,7 +67,7 @@ function getLeftUpPosition(gridX: number, gridY: number, format: Format['_name']
         gridY = t;
     }
 
-    const offset = offsetMap[format];
+    const offset = offsetMap[format] ?? { x: 0, y: 0 };
     return {
         x: gridX * slotSize.width + offset.x * gridSize.width - offset.x * slotSize.width,
         y: gridY * slotSize.height + offset.y * gridSize.height - offset.y * slotSize.height,

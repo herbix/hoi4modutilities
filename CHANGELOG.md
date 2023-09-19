@@ -6,10 +6,15 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+## [0.7.4] - 2023/09/20 - Latest
+
 ### Added
 * GFX index (under feature flag).
 
-## [0.7.3] - 2023/07/04 - Latest
+### Fixed
+* NSB tank tech tree (NSB_armor.txt) doesn't preview (#71).
+
+## [0.7.3] - 2023/07/04
 
 ### Fixed
 * A bug that focus condition doesn't work correctly.
