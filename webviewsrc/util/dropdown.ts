@@ -4,6 +4,7 @@ import { Checkbox } from "./checkbox";
 import { BehaviorSubject, fromEvent, Observable, Subject, Subscription } from 'rxjs';
 
 const dropdowns: Dropdown[] = [];
+export const numDropDownOpened$ = new BehaviorSubject<number>(0);
 
 export function enableDropdowns() {
     dropdowns.forEach(s => s.dispose());
@@ -81,10 +82,12 @@ class Dropdown extends Subscriber {
             this.closeDropdown?.apply(this);
         })));
 
+        numDropDownOpened$.next(numDropDownOpened$.value + 1);
         this.closeDropdown = () => {
             this.select.classList.remove('dropdown-opened');
             dropdownMenu.hide();
             dropdownMenuSubscriptions.forEach(d => d.dispose());
+            numDropDownOpened$.next(numDropDownOpened$.value - 1);
             this.closeDropdown = undefined;
         };
 
@@ -165,10 +168,12 @@ export class DivDropdown extends Subscriber {
             this.closeDropdown?.apply(this);
         })));
 
+        numDropDownOpened$.next(numDropDownOpened$.value + 1);
         this.closeDropdown = () => {
             this.select.classList.remove('dropdown-opened');
             dropdownMenu.hide();
             dropdownMenuSubscriptions.forEach(d => d.dispose());
+            numDropDownOpened$.next(numDropDownOpened$.value - 1);
             this.closeDropdown = undefined;
         };
 

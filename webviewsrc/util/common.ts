@@ -1,4 +1,4 @@
-import { enableDropdowns } from './dropdown';
+import { enableDropdowns, numDropDownOpened$ } from './dropdown';
 import { enableCheckboxes } from './checkbox';
 import { vscode } from './vscode';
 import { sendException } from './telemetry';
@@ -66,11 +66,16 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
     };
 }
 
+let shouldDisableZoom = false;
 export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOffset: number): void {
     let scale = getState().scale || 1;
     contentElement.style.transform = `scale(${scale})`;
     contentElement.style.transformOrigin = '0 0';
     window.addEventListener('wheel', function(e) {
+        if (shouldDisableZoom) {
+            return;
+        }
+
         e.preventDefault();
         const oldScale = scale;
 
@@ -80,8 +85,8 @@ export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOff
             scale = Math.min(1, scale + 0.2);
         }
 
-        const oldScrollX = window.pageXOffset;
-        const oldScrollY = window.pageYOffset;
+        const oldScrollX = window.scrollX;
+        const oldScrollY = window.scrollY;
         
         contentElement.style.transform = `scale(${scale})`;
         setState({ scale });
@@ -164,4 +169,8 @@ window.addEventListener('load', function() {
 
     enableDropdowns();
     enableCheckboxes();
+
+    numDropDownOpened$.subscribe(num => {
+        shouldDisableZoom = num > 0;
+    });
 });

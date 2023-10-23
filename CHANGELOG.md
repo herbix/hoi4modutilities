@@ -6,6 +6,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+### Added
+* Support joint_focus.
+
+### Fixed
+* Cannot scroll dropdown via mouse wheel in preview UI.
+
 ## [0.7.4] - 2023/09/20 - Latest
 
 ### Added

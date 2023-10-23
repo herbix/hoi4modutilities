@@ -79,6 +79,7 @@ interface FocusOrORList {
 interface FocusFile {
     focus_tree: FocusTreeDef[];
     shared_focus: FocusDef[];
+    joint_focus: FocusDef[];
 }
 
 const focusOrORListSchema: SchemaDef<FocusOrORList> = {
@@ -145,6 +146,10 @@ const focusFileSchema: SchemaDef<FocusFile> = {
         _innerType: focusSchema,
         _type: "array",
     },
+    joint_focus: {
+        _innerType: focusSchema,
+        _type: "array",
+    },
 };
 
 export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath: string): FocusTree[] {
@@ -154,7 +159,7 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
     if (file.shared_focus.length > 0) {
         const conditionExprs: ConditionItem[] = [];
         const warnings: FocusWarning[] = [];
-        const focuses = getFocuses(file.shared_focus, conditionExprs, filePath, warnings);
+        const focuses = getFocuses([...file.shared_focus, ...file.joint_focus], conditionExprs, filePath, warnings);
         const sharedFocusTree = {
             id: localize('focustree.sharedfocuses', '<Shared focuses>'),
             focuses,

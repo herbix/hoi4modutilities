@@ -67,9 +67,10 @@ async function buildContent() {
     const focuses = Object.values(focusTree.focuses);
 
     const allowBranchOptionsValue: Record<string, boolean> = {};
+    const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...selectedExprs];
     focusTree.allowBranchOptions.forEach(option => {
         const focus = focusTree.focuses[option];
-        allowBranchOptionsValue[option] = !focus || focus.allowBranch === undefined || applyCondition(focus.allowBranch, selectedExprs);
+        allowBranchOptionsValue[option] = !focus || focus.allowBranch === undefined || applyCondition(focus.allowBranch, exprs);
     });
 
     const gridbox: GridBoxType = (window as any).gridBox;
@@ -153,7 +154,7 @@ function updateSelectedFocusTree(clearCondition: boolean) {
 
         if (conditions) {
             conditions.select.innerHTML = `<span class="value"></span>
-                ${focusTree.conditionExprs.map(option =>
+                ${focusTree.conditionExprs.filter(e => e.scopeName !== '' || !e.nodeContent.startsWith('has_focus_tree = ')).map(option =>
                     `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
                 ).join('')}`;
             conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
@@ -201,9 +202,10 @@ function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<st
         position.x += relativeFocusPosition.x;
         position.y += relativeFocusPosition.y;
     }
-
+    
+    const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...selectedExprs];
     for (const offset of focus.offset) {
-        if (offset.trigger !== undefined && applyCondition(offset.trigger, selectedExprs)) {
+        if (offset.trigger !== undefined && applyCondition(offset.trigger, exprs)) {
             position.x += offset.x;
             position.y += offset.y;
         }
