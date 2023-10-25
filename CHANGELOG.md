@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+### Fixed
+* Warning message of "Terrain "ocean" is not defined".
+
 ## [0.8.0] - 2023/10/25 - Latest
 
 ### Added

@@ -706,7 +706,7 @@ function validateProvinceTerrains(provinces: Province[], terrains: Terrain[], re
     for (const province of provinces) {
         const terrain = province.terrain;
         const terrainObj = terrainMap[terrain];
-        if (!terrainObj || terrainObj.isNaval) {
+        if (!terrainObj) {
             warnings.push({
                 source: [{
                     type: 'province',
