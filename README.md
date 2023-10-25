@@ -67,14 +67,17 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.7.4]
+## Release Notes - [0.8.0]
 
 ### Added
-* GFX index (under feature flag).
-* Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
+* Support joint_focus.
+* Support focus icon with condition.
+
+### Changed
+* Move `has_completed_focus` condition from dropdown to left-top corner of focus icon.
 
 ### Fixed
-* NSB tank tech tree (NSB_armor.txt) doesn't preview (#71).
+* Cannot scroll dropdown via mouse wheel in preview UI.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

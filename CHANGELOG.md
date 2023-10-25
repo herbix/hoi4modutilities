@@ -6,6 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+## [0.8.0] - 2023/10/25 - Latest
+
 ### Added
 * Support joint_focus.
 * Support focus icon with condition.
@@ -16,7 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Fixed
 * Cannot scroll dropdown via mouse wheel in preview UI.
 
-## [0.7.4] - 2023/09/20 - Latest
+## [0.7.4] - 2023/09/20
 
 ### Added
 * GFX index (under feature flag).
