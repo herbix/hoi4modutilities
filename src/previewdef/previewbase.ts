@@ -130,5 +130,14 @@ export abstract class PreviewBase {
         }
     }
 
+    protected reload() {        
+        const document = getDocumentByUri(this.uri);
+        if (document === undefined) {
+            return;
+        }
+
+        this.onDocumentChange(document);
+    }
+
     protected abstract getContent(document: vscode.TextDocument): Promise<string>;
 }

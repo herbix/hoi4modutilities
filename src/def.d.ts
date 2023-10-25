@@ -6,6 +6,7 @@ declare module 'vscode' {
             readonly modFile: string;
             readonly featureFlags: string[];
             readonly enableSupplyArea: boolean;
+            readonly previewLocalisation: 'Brazilian Portuguese' | 'English' | 'French' | 'German' | 'Japanese' | 'Polish' | 'Russian' | 'Simplified Chinese' | 'Spanish';
         };
     }
 }

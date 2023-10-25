@@ -6,6 +6,9 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+### Added
+* Language settings for event localization.
+
 ### Fixed
 * Warning message of "Terrain "ocean" is not defined".
 

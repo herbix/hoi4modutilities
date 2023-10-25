@@ -6,6 +6,7 @@ import { PreviewProviderDef } from '../previewmanager';
 import { EventsLoader } from './loader';
 import { getRelativePathInWorkspace } from '../../util/vsccommon';
 import { eventTreePreview } from '../../util/featureflags';
+import { ConfigurationKey } from '../../constants';
 
 function canPreviewEvent(document: vscode.TextDocument) {
     if (!eventTreePreview) {
@@ -24,11 +25,17 @@ function canPreviewEvent(document: vscode.TextDocument) {
 class EventPreview extends PreviewBase {
     private eventsLoader: EventsLoader;
     private content: string | undefined;
+    private configurationHandler: vscode.Disposable;
 
     constructor(uri: vscode.Uri, panel: vscode.WebviewPanel) {
         super(uri, panel);
         this.eventsLoader = new EventsLoader(getRelativePathInWorkspace(this.uri), () => Promise.resolve(this.content ?? ''));
         this.eventsLoader.onLoadDone(r => this.updateDependencies(r.dependencies));
+        this.configurationHandler = vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration(`${ConfigurationKey}.previewLocalisation`)) {
+                this.reload();
+            }
+        });
     }
 
     protected async getContent(document: vscode.TextDocument): Promise<string> {
@@ -36,6 +43,11 @@ class EventPreview extends PreviewBase {
         const result = await renderEventFile(this.eventsLoader, document.uri, this.panel.webview);
         this.content = undefined;
         return result;
+    }
+
+    public dispose(): void {
+        super.dispose();
+        this.configurationHandler.dispose();
     }
 }
 

@@ -110,3 +110,18 @@ export function uriToFilePathWhenPossible(uri: vscode.Uri): string {
     return uri.toString();
 }
 
+const languageYmlDict = {
+    ['Brazilian Portuguese']: 'l_braz_por',
+    English: 'l_english',
+    French: 'l_french',
+    German: 'l_german',
+    Japanese: 'l_japanese',
+    Polish: 'l_polish',
+    Russian: 'l_russian',
+    ['Simplified Chinese']: 'l_simp_chinese',
+    Spanish: 'l_spanish',
+};
+
+export function getLanguageIdInYml(): string {
+    return languageYmlDict[vscode.workspace.getConfiguration('hoi4ModUtilities').previewLocalisation ?? 'English'] ?? languageYmlDict['English'];
+}

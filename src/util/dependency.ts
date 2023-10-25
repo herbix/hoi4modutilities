@@ -7,7 +7,7 @@ import { error } from "./debug";
 import { getHoiOpenedFileOriginalUri, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from "./fileloader";
 import { parseHoi4File } from "../hoiformat/hoiparser";
 import { getEvents, HOIEvents, HOIEvent } from "../previewdef/event/schema";
-import { getRelativePathInWorkspace, isSameUri } from "./vsccommon";
+import { getLanguageIdInYml, getRelativePathInWorkspace, isSameUri } from "./vsccommon";
 import { flatMap, flatten } from "lodash";
 import { parseYaml } from "./yaml";
 
@@ -130,6 +130,7 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
     const moreEventDependencyContent = includedEventFiles.filter(f => !existingEventDependency.includes(f)).map(f => `#!event:${f}\n`).join('');
 
     const localizationFiles = await listFilesFromModOrHOI4('localisation');
+    const language = getLanguageIdInYml();
     const localizations = (await Promise.all(localizationFiles.map(async (file) => {
         try {
             const filePath = 'localisation/' + file;
@@ -142,8 +143,8 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         } catch (e) {
             return undefined;
         }
-    }))).filter((e): e is ({ file: string, result: { l_english: Record<string, string>; }}) =>
-        e && e.result && e.result.l_english && typeof e.result.l_english === 'object' && !Array.isArray(e.result.l_english));
+    }))).filter((e): e is ({ file: string, result: Record<string, Record<string, string>>; }) =>
+        e && e.result && e.result[language] && typeof e.result[language] === 'object' && !Array.isArray(e.result[language]));
     
     const existingLocalizationDependency = existingDependency.filter(d => d.type.match(/^locali[zs]ation$/)).map(d => d.path.replace(/\\+/g, '/'));
     const moreLocalizationDependencyContent = localizations.filter(lf => {
@@ -151,7 +152,7 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
             return false;
         }
         for (const event of searchedEvents) {
-            if ([event.title, ...event.options.map(o => o.name)].some(n => n && n in lf.result.l_english)) {
+            if ([event.title, ...event.options.map(o => o.name)].some(n => n && n in lf.result[language])) {
                 return true;
             }
         }

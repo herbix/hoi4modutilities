@@ -19,5 +19,7 @@
     "hoi4modutilities.selecthoifolder.desc": "Heart of Iron IV install path.",
     "hoi4modutilities.selectmodfile.title": "Select Mod File",
     "hoi4modutilities.enableSupplyArea.title": "Enable Supply Area",
-    "hoi4modutilities.enableSupplyArea.desc": "If you are developing mod for HOI4(version<=1.10). Use this to check enable supply area."
+    "hoi4modutilities.enableSupplyArea.desc": "If you are developing mod for HOI4(version<=1.10). Use this to check enable supply area.",
+    "hoi4modutilities.previewLocalisation.title": "Preview Localization",
+    "hoi4modutilities.previewLocalisation.desc": "Language of content in event tree preview."
 }

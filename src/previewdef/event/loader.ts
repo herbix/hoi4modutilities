@@ -5,6 +5,7 @@ import { localize } from "../../util/i18n";
 import { uniq, flatten } from "lodash";
 import { YamlLoader } from "../../util/loader/yaml";
 import { getGfxContainerFiles } from "../../util/gfxindex";
+import { getLanguageIdInYml } from "../../util/vsccommon";
 
 export interface EventsLoaderResult {
     events: HOIEvents;
@@ -16,10 +17,18 @@ export interface EventsLoaderResult {
 const eventsGFX = 'interface/eventpictures.gfx';
 
 export class EventsLoader extends ContentLoader<EventsLoaderResult> {
+    private languageKey: string = '';
+
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await super.shouldReloadImpl(session) || this.languageKey !== getLanguageIdInYml();
+    }
+
     protected async postLoad(content: string | undefined, dependencies: Dependency[], error: any, session: LoaderSession): Promise<LoadResultOD<EventsLoaderResult>> {
         if (error || (content === undefined)) {
             throw error;
         }
+
+        this.languageKey = getLanguageIdInYml();
 
         const eventsDependencies = dependencies.filter(d => d.type === 'event').map(d => d.path);
         const eventsDepFiles = await this.loaderDependencies.loadMultiple(eventsDependencies, session, EventsLoader);
@@ -30,7 +39,7 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         const localizationDependencies = dependencies.filter(d => d.type.match(/^locali[sz]ation$/) && d.path.endsWith('.yml')).map(d => d.path);
         const localizationDepFiles = await this.loaderDependencies.loadMultiple(localizationDependencies, session, YamlLoader);
 
-        const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'));
+        const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'), this.languageKey);
         Object.assign(localizationDict, ...eventsDepFiles.map(f => f.result.localizationDict));
         
         const gfxDependencies = [
@@ -67,11 +76,11 @@ function mergeEvents(...events: HOIEvents[]): HOIEvents {
     };
 }
 
-function makeLocalizationDict(dicts: any[]): Record<string, string> {
+function makeLocalizationDict(dicts: any[], language: string): Record<string, string> {
     const result: Record<string, string> = {};
     for (const dict of dicts) {
-        if (dict.l_english && typeof dict.l_english === 'object' && !Array.isArray(dict.l_english)) {
-            Object.assign(result, dict.l_english);
+        if (dict[language] && typeof dict[language] === 'object' && !Array.isArray(dict[language])) {
+            Object.assign(result, dict[language]);
         }
     }
 

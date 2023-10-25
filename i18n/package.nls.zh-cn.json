@@ -18,5 +18,7 @@
     "hoi4modutilities.selecthoifolder.title": "选择钢四安装路径",
     "hoi4modutilities.selectmodfile.title": "选择模组定义文件",
     "hoi4modutilities.enableSupplyArea.title": "启用补给区域",
-    "hoi4modutilities.enableSupplyArea.desc": "如果你在给钢4 1.10以下的版本做Mod。勾选这个选项以启用补给区域。"
+    "hoi4modutilities.enableSupplyArea.desc": "如果你在给钢4 1.10以下的版本做Mod。勾选这个选项以启用补给区域。",
+    "hoi4modutilities.previewLocalisation.title": "预览内容语言",
+    "hoi4modutilities.previewLocalisation.desc": "事件预览中显示的语言。"
 }

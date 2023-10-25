@@ -88,7 +88,6 @@ export abstract class Loader<T, E = {}> {
         if (this.cachedValue === undefined || (!session.isLoaded(this) && (session.force || await this.shouldReload(session)))) {
             const loadStartTime = Date.now();
 
-            session.setLoaded(this);
             session.loadingLoader.push(this);
             try {
                 this.beforeLoadImpl(session);
@@ -97,6 +96,7 @@ export abstract class Loader<T, E = {}> {
                 } else {
                     this.cachedValue = await this.loadingPromise;
                 }
+                session.setLoaded(this);
             } finally {
                 this.loadingPromise = undefined;
                 if (session.loadingLoader.pop() !== this) {

@@ -74,6 +74,13 @@
 						"default": false,
 						"description": "%hoi4modutilities.enableSupplyArea.desc%"
 					},
+					"hoi4ModUtilities.previewLocalisation": {
+						"title": "%hoi4modutilities.previewLocalisation.title%",
+						"type": "string",
+						"default": "English",
+						"enum": ["Brazilian Portuguese", "English", "French", "German", "Japanese", "Polish", "Russian", "Simplified Chinese", "Spanish"],
+						"description": "%hoi4modutilities.previewLocalisation.desc%"
+					},
 					"hoi4ModUtilities.featureFlags": {
 						"title": "%hoi4modutilities.featureFlags.title%",
 						"type": "array",
