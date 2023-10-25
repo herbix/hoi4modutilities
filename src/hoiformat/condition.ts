@@ -350,3 +350,14 @@ function extractConditionalExprs(condition: ConditionComplexExpr, result: Condit
     return result;
 }
 
+export function conditionToString(condition: ConditionComplexExpr): string {
+    if (typeof condition === 'boolean') {
+        return condition.toString();
+    }
+
+    if (!('items' in condition)) {
+        return (condition.scopeName !== '' ? '[' + condition.scopeName + ']' : '') + condition.nodeContent;
+    }
+
+    return condition.type + '(' + condition.items.map(conditionToString).join(', ') + ')' + (condition.type === 'count' ? ' == ' + condition.amount : '');
+}

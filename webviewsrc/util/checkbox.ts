@@ -74,6 +74,7 @@ export class Checkbox extends Subscriber {
 
         this.addSubscription(fromEvent<MouseEvent>(checkboxContainer, 'click').subscribe((e) => {
             e.preventDefault();
+            e.stopPropagation();
             toggleValue();
         }));
 

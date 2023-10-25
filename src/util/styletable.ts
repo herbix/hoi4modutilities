@@ -5,7 +5,7 @@ export class StyleTable {
     public style(name: string, callback: () => string, fakeClass?: string): string
     public style(name: string, callback: () => Promise<string>, fakeClass?: string): Promise<string>
     public style(name: string, callback: (() => string) | (() => Promise<string>), fakeClass: string = ''): string | Promise<string> {
-        name = 'st-' + name;
+        name = this.name(name);
         const key = name + fakeClass;
         const result = this.records[key];
         if (result !== undefined) {
@@ -33,6 +33,10 @@ export class StyleTable {
 
     public toStyleElement(nonce: string): string {
         return `<style nonce="${nonce}">${Object.entries(this.records).map(([k, v]) => `.${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}</style>`;
+    }
+
+    public name(name: string) {
+        return 'st-' + name;
     }
 }
 

@@ -31,7 +31,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
             ...flatten(focusTreeDepFiles.map(f => f.result.gfxFiles)),
-            ...await getGfxContainerFiles(flatten(focusTrees.map(ft => Object.values(ft.focuses))).map(f => f.icon)),
+            ...await getGfxContainerFiles(chain(focusTrees).flatMap(ft => Object.values(ft.focuses)).flatMap(f => f.icon).map(i => i.icon).value()),
         ];
 
         return {

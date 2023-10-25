@@ -8,6 +8,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Added
 * Support joint_focus.
+* Support focus icon with condition.
+
+### Changed
+* Move `has_completed_focus` condition from dropdown to left-top corner of focus icon.
 
 ### Fixed
 * Cannot scroll dropdown via mouse wheel in preview UI.

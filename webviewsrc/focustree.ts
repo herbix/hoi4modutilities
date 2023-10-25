@@ -2,13 +2,14 @@ import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, try
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
-import { StyleTable } from "../src/util/styletable";
+import { StyleTable, normalizeForStyle } from "../src/util/styletable";
 import { FocusTree, Focus } from "../src/previewdef/focustree/schema";
 import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
 import { NumberPosition } from "../src/util/common";
 import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
 import { feLocalize } from './util/i18n';
+import { Checkbox } from "./util/checkbox";
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -57,8 +58,15 @@ let selectedExprs: ConditionItem[] = getState().selectedExprs ?? [];
 let selectedFocusTreeIndex: number = Math.min(focusTrees.length - 1, getState().selectedFocusTreeIndex ?? 0);
 let allowBranches: DivDropdown | undefined = undefined;
 let conditions: DivDropdown | undefined = undefined;
+let checkedFocuses: Record<string, Checkbox> = {};
 
 async function buildContent() {
+    const focusCheckState = getState().checkedFocuses ?? {};
+    const checkedFocusesExprs = Object.keys(focusCheckState)
+        .filter(fid => focusCheckState[fid])
+        .map(fid => ({ scopeName: '', nodeContent: 'has_completed_focus = ' + fid }));
+    clearCheckedFocuses();
+
     const focustreeplaceholder = document.getElementById('focustreeplaceholder') as HTMLDivElement;
     
     const styleTable = new StyleTable();
@@ -67,7 +75,7 @@ async function buildContent() {
     const focuses = Object.values(focusTree.focuses);
 
     const allowBranchOptionsValue: Record<string, boolean> = {};
-    const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...selectedExprs];
+    const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...checkedFocusesExprs, ...selectedExprs];
     focusTree.allowBranchOptions.forEach(option => {
         const focus = focusTree.focuses[option];
         allowBranchOptionsValue[option] = !focus || focus.allowBranch === undefined || applyCondition(focus.allowBranch, exprs);
@@ -77,7 +85,7 @@ async function buildContent() {
 
     const focusPosition: Record<string, NumberPosition> = {};
     calculateFocusAllowed(focusTree, allowBranchOptionsValue);
-    const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focusTree, allowBranchOptionsValue, focusPosition)).filter((v): v is GridBoxItem => !!v);
+    const focusGrixBoxItems = focuses.map(focus => focusToGridItem(focus, focusTree, allowBranchOptionsValue, focusPosition, exprs)).filter((v): v is GridBoxItem => !!v);
     
     const minX = minBy(Object.values(focusPosition), 'x')?.x ?? 0;
     const leftPadding = gridbox.position.x._value - Math.min(minX * (window as any).xGridSize, 0);
@@ -88,13 +96,18 @@ async function buildContent() {
     }, {
         styleTable,
         items: arrayToMap(focusGrixBoxItems, 'id'),
-        onRenderItem: item => Promise.resolve(renderedFocus[item.id].replace('{{position}}', item.gridX + ', ' + item.gridY)),
+        onRenderItem: item => Promise.resolve(
+            renderedFocus[item.id]
+                .replace('{{position}}', item.gridX + ', ' + item.gridY)
+                .replace('{{iconClass}}', getFocusIcon(focusTree.focuses[item.id], exprs, styleTable))
+            ),
         cornerPosition: 0.5,
     });
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
     subscribeNavigators();
+    setupCheckedFocuses(focuses, focusTree);
 }
 
 function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Record<string, boolean>) {
@@ -147,14 +160,17 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     }
 
     if (useConditionInFocus) {
+        const conditionExprs = focusTree.conditionExprs.filter(e => e.scopeName !== '' ||
+            (!e.nodeContent.startsWith('has_focus_tree = ') && !e.nodeContent.startsWith('has_completed_focus = ')));
+
         const conditionContainerElement = document.getElementById('condition-container') as HTMLDivElement | null;
         if (conditionContainerElement) {
-            conditionContainerElement.style.display = focusTree.conditionExprs.length > 0 ? 'block' : 'none';
+            conditionContainerElement.style.display = conditionExprs.length > 0 ? 'block' : 'none';
         }
 
         if (conditions) {
             conditions.select.innerHTML = `<span class="value"></span>
-                ${focusTree.conditionExprs.filter(e => e.scopeName !== '' || !e.nodeContent.startsWith('has_focus_tree = ')).map(option =>
+                ${conditionExprs.map(option =>
                     `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
                 ).join('')}`;
             conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
@@ -180,7 +196,13 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     }
 }
 
-function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<string, NumberPosition>, focusTree: FocusTree, focusStack: Focus[] = []): NumberPosition {
+function getFocusPosition(
+    focus: Focus | undefined,
+    positionByFocusId: Record<string, NumberPosition>,
+    focusTree: FocusTree,
+    focusStack: Focus[] = [],
+    exprs: ConditionItem[],
+): NumberPosition {
     if (focus === undefined) {
         return { x: 0, y: 0 };
     }
@@ -197,13 +219,12 @@ function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<st
     let position: NumberPosition = { x: focus.x, y: focus.y };
     if (focus.relativePositionId !== undefined) {
         focusStack.push(focus);
-        const relativeFocusPosition = getFocusPosition(focusTree.focuses[focus.relativePositionId], positionByFocusId, focusTree, focusStack);
+        const relativeFocusPosition = getFocusPosition(focusTree.focuses[focus.relativePositionId], positionByFocusId, focusTree, focusStack, exprs);
         focusStack.pop();
         position.x += relativeFocusPosition.x;
         position.y += relativeFocusPosition.y;
     }
-    
-    const exprs = [{ scopeName: '', nodeContent: 'has_focus_tree = ' + focusTree.id }, ...selectedExprs];
+
     for (const offset of focus.offset) {
         if (offset.trigger !== undefined && applyCondition(offset.trigger, exprs)) {
             position.x += offset.x;
@@ -215,7 +236,24 @@ function getFocusPosition(focus: Focus | undefined, positionByFocusId: Record<st
     return position;
 }
 
-function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsValue: Record<string, boolean>, positionByFocusId: Record<string, NumberPosition>): GridBoxItem | undefined {
+function getFocusIcon(focus: Focus, exprs: ConditionItem[], styleTable: StyleTable): string {
+    for (const icon of focus.icon) {
+        if (applyCondition(icon.condition, exprs)) {
+            const iconName = icon.icon;
+            return styleTable.name('focus-icon-' + normalizeForStyle(iconName ?? '-empty'));
+        }
+    }
+
+    return styleTable.name('focus-icon-' + normalizeForStyle('-empty'));
+}
+
+function focusToGridItem(
+    focus: Focus,
+    focustree: FocusTree,
+    allowBranchOptionsValue: Record<string, boolean>,
+    positionByFocusId: Record<string, NumberPosition>,
+    exprs: ConditionItem[],
+): GridBoxItem | undefined {
     if (useConditionInFocus) {
         if (allowBranchOptionsValue[focus.id] === false) {
             return undefined;
@@ -256,7 +294,7 @@ function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsV
         });
     });
 
-    const position = getFocusPosition(focus, positionByFocusId, focustree);
+    const position = getFocusPosition(focus, positionByFocusId, focustree, [], exprs);
 
     return {
         id: focus.id,
@@ -267,6 +305,58 @@ function focusToGridItem(focus: Focus, focustree: FocusTree, allowBranchOptionsV
         connections,
     };
 }
+
+function clearCheckedFocuses() {
+    for (const focusId in checkedFocuses) {
+        checkedFocuses[focusId].dispose();
+    }
+    checkedFocuses = {};
+}
+
+function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
+    const focusCheckState = getState().checkedFocuses ?? {};
+    for (const focus of focuses) {
+        const checkbox = document.getElementById(`checkbox-${normalizeForStyle(focus.id)}`) as HTMLInputElement;
+        if (checkbox) {
+            if (focusTree.conditionExprs.some(e => e.scopeName === '' && e.nodeContent === 'has_completed_focus = ' + focus.id)) {
+                checkbox.checked = !!focusCheckState[focus.id];
+                const checkboxItem = new Checkbox(checkbox);
+                checkedFocuses[focus.id] = checkboxItem;
+                checkbox.addEventListener('change', async () => {
+                    if (checkbox.checked) {
+                        for (const exclusiveFocus of focus.exclusive) {
+                            const exclusiveCheckbox = checkedFocuses[exclusiveFocus];
+                            if (exclusiveCheckbox) {
+                                exclusiveCheckbox.input.checked = false;
+                                focusCheckState[exclusiveFocus] = false;
+                            }
+                        }
+                    }
+                    focusCheckState[focus.id] = checkbox.checked;
+                    setState({ checkedFocuses: focusCheckState });
+
+                    const rect = checkbox.getBoundingClientRect();
+                    const oldLeft = rect.left, oldTop = rect.top;
+                    await buildContent();
+
+                    const newCheckbox = document.getElementById(`checkbox-${normalizeForStyle(focus.id)}`) as HTMLInputElement;
+                    if (newCheckbox) {
+                        const rect = newCheckbox.getBoundingClientRect();
+                        const newLeft = rect.left, newTop = rect.top;
+                        window.scrollBy(newLeft - oldLeft, newTop - oldTop);
+                        //newCheckbox.closest(".navigator")?.scrollIntoView({ block: "center", inline: "center" });
+                    }
+                    
+                    retriggerSearch();
+                });
+            } else {
+                checkbox.parentElement?.remove();
+            }
+        }
+    }
+}
+
+let retriggerSearch: () => void = () => {};
 
 window.addEventListener('load', tryRun(async function() {
     // Focuses
@@ -343,6 +433,8 @@ window.addEventListener('load', tryRun(async function() {
     searchbox.addEventListener('paste', searchboxChangeFunc);
     searchbox.addEventListener('cut', searchboxChangeFunc);
 
+    retriggerSearch = () => { searchedFocus = search(oldSearchboxValue, false); };
+
     // Conditions
     if (useConditionInFocus) {
         const conditionsElement = document.getElementById('conditions') as HTMLDivElement | null;
@@ -369,7 +461,7 @@ window.addEventListener('load', tryRun(async function() {
                 setState({ selectedExprs });
                 
                 await buildContent();
-                searchedFocus = search(oldSearchboxValue, false);
+                retriggerSearch();
             });
         }
     }

@@ -197,15 +197,21 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 }
 
 async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[], file: string): Promise<string> {
-    const icon = focus.icon ? await getFocusIcon(focus.icon, gfxFiles) : null;
+    for (const focusIcon of focus.icon) {
+        const iconName = focusIcon.icon;
+        const iconObject = iconName ? await getFocusIcon(iconName, gfxFiles) : null;
+        styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () => 
+            `${iconObject ? `background-image: url(${iconObject.uri});` : 'background: grey;'}
+            background-size: ${iconObject ? iconObject.width: 0}px;`
+        );
+    }
+    
+    styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
 
     return `<div
     class="
         navigator
-        ${styleTable.style('focus-icon-' + normalizeForStyle(focus.icon ?? '-empty'), () => `
-            ${icon ? `background-image: url(${icon.uri});` : 'background: grey;'}
-            background-size: ${icon ? icon.width: 0}px;
-        `)}
+        {{iconClass}}
         ${styleTable.style('focus-common', () => `
             background-position-x: center;
             background-position-y: calc(50% - 18px);
@@ -220,13 +226,17 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     end="${focus.token?.end}"
     ${file === focus.file ? '' : `file="${focus.file}"`}
     title="${focus.id}\n({{position}})">
+        <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px;`)}">
+            <input id="checkbox-${normalizeForStyle(focus.id)}" type="checkbox"/>
+        </div>
         <span
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;
             margin-top: 85px;
             text-align: center;
             display: inline-block;
-        `)}">${focus.id}
+        `)}">
+        ${focus.id}
         </span>
     </div>`;
 }
