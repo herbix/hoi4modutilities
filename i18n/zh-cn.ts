@@ -38,6 +38,7 @@ const table: Partial<typeof __table> = {
     "gfxindex.workspace.building": "构建工作区图片索引……",
     "guipreview.containerWindow": "窗口：",
     "guipreview.nocontainerwindows": "界面文件中没有containerwindowtype。",
+    "guipreview.topbar.toggleVisibility.title": "显示或隐藏窗口",
     "hours": "小时",
     "infile": "在文件 {0} 中：\n",
     "loading": "加载中……",

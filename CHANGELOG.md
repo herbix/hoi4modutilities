@@ -6,6 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## Develop
 
+-
+
+## [0.9.0] - 2023/10/29 - Latest
+
 ### Added
 * GUI preview.
 * Language settings for event localization.
@@ -14,7 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Warning message of "Terrain "ocean" is not defined".
 * In some cases the tech tree item in preview may be missing.
 
-## [0.8.0] - 2023/10/25 - Latest
+## [0.8.0] - 2023/10/25
 
 ### Added
 * Support joint_focus.

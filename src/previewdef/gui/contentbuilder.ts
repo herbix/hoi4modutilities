@@ -113,7 +113,7 @@ function renderTopBar(folders: string[], styleTable: StyleTable): string {
         <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
             <i class="codicon codicon-refresh"></i>
         </button>
-        <button id="toggleVisibility" title="${localize('gui.topbar.toggleVisibility.title', 'Show or Hide Container Windows')}">
+        <button id="toggleVisibility" title="${localize('guipreview.topbar.toggleVisibility.title', 'Show or Hide Container Windows')}">
             <i class="codicon codicon-eye"></i>
         </button>
     </div>

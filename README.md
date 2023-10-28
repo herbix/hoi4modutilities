@@ -10,6 +10,7 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 * Focus tree preview
 * Event tree preview
 * Technology tree preview
+* GUI preview
 * `.gfx` file preview (sprites used by HOI4 are defined here)
 * `.dds`, `.tga` file preview (images files used by HOI4)
 
@@ -59,6 +60,8 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 |`hoi4ModUtilities.installPath`|`string`|Hearts of Iron IV install path. Without this, most features are broken.|
 |`hoi4ModUtilities.loadDlcContents`|`boolean`|Whether to load DLC images when previewing files. Enabling this will use more memory (All DLCs are around 600MB).|
 |`hoi4ModUtilities.modFile`|`string`|Path to the working `.mod` file. This file is used to read replace_path. If not specified, will use first `.mod` file in first folder of the workspace.|
+|`hoi4ModUtilities.enableSupplyArea`|`boolean`|If you are developing mod for HOI4(version<=1.10). Use this to check enable supply area.|
+|`hoi4ModUtilities.previewLocalisation`|`enum`|Language of content in event tree preview.|
 |`hoi4ModUtilities.featureFlags`|`array` of `string`|Feature flags are used to disable or enable features. Reloading is required after changing this. Please refer to [Wiki](https://github.com/herbix/hoi4modutilities/wiki/Feature-flags) on Github for details.|
 
 ## Known Issues
@@ -67,17 +70,15 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.8.0]
+## Release Notes - [0.9.0]
 
 ### Added
-* Support joint_focus.
-* Support focus icon with condition.
-
-### Changed
-* Move `has_completed_focus` condition from dropdown to left-top corner of focus icon.
+* GUI preview.
+* Language settings for event localization.
 
 ### Fixed
-* Cannot scroll dropdown via mouse wheel in preview UI.
+* Warning message of "Terrain "ocean" is not defined".
+* In some cases the tech tree item in preview may be missing.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

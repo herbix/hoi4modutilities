@@ -38,6 +38,7 @@ const table: Partial<typeof __table> = {
     "gfxindex.workspace.building": "Building workspace GFX index...",
     "guipreview.containerWindow": "Container Window: ",
     "guipreview.nocontainerwindows": "No containerwindowtype in gui file.",
+    "guipreview.topbar.toggleVisibility.title": "Show or Hide Container Windows",
     "hours": "hour(s)",
     "infile": "In file {0}:\n",
     "loading": "Loading...",
