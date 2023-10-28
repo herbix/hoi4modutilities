@@ -36,6 +36,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "gfxindex.building": "Building GFX index...",
     "gfxindex.workspace.builddone": "Building workspace GFX index done.",
     "gfxindex.workspace.building": "Building workspace GFX index...",
+    "gui.topbar.toggleVisibility.title": "Show or Hide Container Windows",
     "guipreview.containerWindow": "Container Window: ",
     "guipreview.nocontainerwindows": "No containerwindowtype in gui file.",
     "hours": "hour(s)",

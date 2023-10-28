@@ -161,6 +161,7 @@ const webviewJsConfig = {
     techtree: './webviewsrc/techtree.ts',
     worldmap: './webviewsrc/worldmap/index.ts',
     eventtree: './webviewsrc/eventtree.ts',
+    guipreview: './webviewsrc/guipreview.ts',
   },
   
   output: {

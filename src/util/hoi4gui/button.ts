@@ -16,6 +16,10 @@ export async function renderButton(button: HOIPartial<ButtonType>, parentInfo: P
     }
 
     let [x, y] = calculateBBox(button, parentInfo);
+    if (button.centerposition) {
+        x -= image.width / 2;
+        y -= image.height / 2;
+    }
 
     const scale = button.scale ?? 1;
     return `<div

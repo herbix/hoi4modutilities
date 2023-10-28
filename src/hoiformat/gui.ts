@@ -109,6 +109,7 @@ export interface ButtonType {
     buttontext: string;
     buttonfont: string;
     scale: number;
+    centerposition: boolean;
     _index: number;
     _token: Token;
 }
@@ -188,6 +189,7 @@ const buttonTypeSchema: SchemaDef<ButtonType> = {
     buttontext: "string",
     buttonfont: "string",
     scale: "number",
+    centerposition: 'boolean',
 };
 
 const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {

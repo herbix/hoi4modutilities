@@ -39,7 +39,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         technologyPreviewDef,
         worldMapPreviewDef,
         eventPreviewDef,
-        guiPreviewDef
+        guiPreviewDef,
     ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = arrayToMap(this._previewProviders, 'type');
 

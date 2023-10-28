@@ -344,7 +344,6 @@ function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
                         const rect = newCheckbox.getBoundingClientRect();
                         const newLeft = rect.left, newTop = rect.top;
                         window.scrollBy(newLeft - oldLeft, newTop - oldTop);
-                        //newCheckbox.closest(".navigator")?.scrollIntoView({ block: "center", inline: "center" });
                     }
                     
                     retriggerSearch();

@@ -2,16 +2,16 @@ import { chain } from 'lodash';
 import * as vscode from 'vscode';
 import { ContainerWindowType } from '../../hoiformat/gui';
 import { HOIPartial, NumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
-import { forceError } from '../../util/common';
+import { arrayToMap, forceError } from '../../util/common';
 import { debug } from '../../util/debug';
 import { getHeight, getWidth } from '../../util/hoi4gui/common';
-import { renderContainerWindow } from '../../util/hoi4gui/containerwindow';
+import { RenderContainerWindowOptions, renderContainerWindow } from '../../util/hoi4gui/containerwindow';
 import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { getSpriteByGfxName } from '../../util/image/imagecache';
 import { LoaderSession } from '../../util/loader/loader';
-import { StyleTable } from '../../util/styletable';
+import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { GuiFileLoader, GuiFileLoaderResult } from "./loader";
 
 export async function renderGuiFile(loader: GuiFileLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
@@ -38,8 +38,9 @@ export async function renderGuiFile(loader: GuiFileLoader, uri: vscode.Uri, webv
             baseContent,
             [
                 setPreviewFileUriScript,
+                { content: 'window.containerWindowToggles = ' + JSON.stringify(makeToggleContainerWindowCheckboxes(containerWindows, styleTable)) + ';' },
                 'common.js',
-                'techtree.js',
+                'guipreview.js',
             ],
             [
                 'common.css',
@@ -68,15 +69,15 @@ async function renderGuiContainerWindows(containerWindows: HOIPartial<ContainerW
         position: fixed;
         left:0;
         top:0;
-        background:#101010;
+        background: var(--vscode-editor-background);
     `)}">
     </div>
     <div
+    id="mainContent"
     class="${styleTable.oneTimeStyle('mainContent', () => `
         position: absolute;
         left: 0;
         top: 0;
-        /*pointer-events: none;*/
         margin-top: 40px;
     `)}">
         ${renderedWindows}
@@ -87,7 +88,7 @@ function renderTopBar(folders: string[], styleTable: StyleTable): string {
     return `<div
     class="${styleTable.oneTimeStyle('folderSelectorBar', () => `
         position: fixed;
-        padding-top: 10px;
+        padding-top: 9px;
         padding-left: 20px;
         width: 100%;
         height: 30px;
@@ -106,12 +107,35 @@ function renderTopBar(folders: string[], styleTable: StyleTable): string {
                 type="text"
                 class="${styleTable.oneTimeStyle('folderSelector', () => `min-width:200px`)}"
             >
-                ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
+                ${folders.map(folder => `<option value="containerwindow_${folder}">${folder}</option>`)}
             </select>
         </div>
         <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
             <i class="codicon codicon-refresh"></i>
         </button>
+        <button id="toggleVisibility" title="${localize('gui.topbar.toggleVisibility.title', 'Show or Hide Container Windows')}">
+            <i class="codicon codicon-eye"></i>
+        </button>
+    </div>
+    <div
+    id="toggleVisibilityContent"
+    class="${styleTable.oneTimeStyle('toggleVisibilityContent', () => `
+        position: fixed;
+        margin-top: 10px;
+        width: 100%;
+        height: 200px;
+        top: 30px;
+        left: 0;
+        background: var(--vscode-editor-background);
+        border-bottom: 1px solid var(--vscode-panel-border);
+        z-index: 10;
+        overflow: auto;
+        display: none;
+    `)}">
+        <div id="toggleVisibilityContentInner" class="${styleTable.oneTimeStyle('toggleVisibilityContentInner', () => `
+            padding-left: 20px;
+        `)}">
+        </div>
     </div>`;
 }
 
@@ -144,6 +168,18 @@ async function renderSingleContainerWindow(
         position.y = { ...position.y, _value: 0 };
     }
 
+    const onRenderChild: RenderContainerWindowOptions['onRenderChild'] = async (type, child, parentInfo) => {
+        if (type === 'containerwindow') {
+            const childContainerWindow = child as HOIPartial<ContainerWindowType>;
+            return await renderContainerWindow(childContainerWindow, parentInfo, {
+                ...commonOptions,
+                classNames: 'childcontainerwindow_' + normalizeForStyle(childContainerWindow.name ?? ''),
+                enableNavigator: true,
+                onRenderChild,
+            });
+        }
+    };
+
     children = await renderContainerWindow(
         {
             ...containerWindow,
@@ -159,15 +195,42 @@ async function renderSingleContainerWindow(
             ...commonOptions,
             ignorePosition: false,
             enableNavigator: true,
+            onRenderChild,
         },
     );
 
     return `<div
-        id="techfolder_${containerWindow.name}"
-        class="techfolder ${styleTable.style('displayNone', () => `display:none;`)}"
+        id="containerwindow_${containerWindow.name}"
+        class="
+            containerwindow
+            containerwindow_${normalizeForStyle(containerWindow.name ?? '')}
+            ${styleTable.style('displayNone', () => `display:none;`)}"
     >
         ${children}
     </div>`;
+}
+
+function makeToggleContainerWindowCheckboxes(containerWindows: HOIPartial<ContainerWindowType>[], styleTable: StyleTable) {
+    return arrayToMap(containerWindows.map(cw => {
+        return { name: cw.name ?? '', content: makeToggleContainerWindowCheckboxesRecursively(cw, styleTable, '', 0) };
+    }), 'name');
+}
+
+function makeToggleContainerWindowCheckboxesRecursively(containerWindow: HOIPartial<ContainerWindowType>, styleTable: StyleTable, prefix: string, level: number): string {
+    const childWindows = [...containerWindow.containerwindowtype, ...containerWindow.windowtype];
+    childWindows.sort((a, b) => (a._index ?? 0) - (b._index ?? 0));
+    return childWindows.map(cw => {
+        const normalizedName = normalizeForStyle(cw.name ?? '');
+        return `<div class="${styleTable.oneTimeStyle('level-' + level, () => 'padding-left: ' + (level * 20) + 'px;')}">
+            <input
+                type="checkbox"
+                id="toggleContainerWindow_${prefix}${normalizedName}"
+                containerWindowName="${cw.name}"
+                checked="checked"
+                class="toggleContainerWindowCheckbox"
+            />
+        </div>` + makeToggleContainerWindowCheckboxesRecursively(cw, styleTable, prefix + normalizedName + '_', level + 1);
+    }).join('');
 }
 
 function defaultGetSprite(gfxFiles: string[]) {
