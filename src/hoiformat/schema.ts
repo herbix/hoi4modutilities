@@ -115,7 +115,9 @@ function convertString(node: Node): HOIPartial<string> {
         }
         return node.value.name;
     }
-    return typeof node.value === 'string' ? node.value : undefined;
+    return typeof node.value === 'string' ? node.value : (
+        typeof node.value === 'number' ? node.value.toString() : undefined
+    );
 }
 
 function convertNumber(node: Node): HOIPartial<number> {

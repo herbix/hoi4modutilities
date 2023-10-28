@@ -14,6 +14,7 @@ import { worldMapPreviewDef } from './worldmap';
 import { eventPreviewDef } from './event';
 import { chain } from 'lodash';
 import { sendEvent } from '../util/telemetry';
+import { guiPreviewDef } from './gui';
 
 export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
 
@@ -32,7 +33,14 @@ interface PreviewProviderDefAlternative {
 export class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewBase> = {};
 
-    private _previewProviders: PreviewProviderDef[] = [ focusTreePreviewDef, gfxPreviewDef, technologyPreviewDef, worldMapPreviewDef, eventPreviewDef ];
+    private _previewProviders: PreviewProviderDef[] = [
+        focusTreePreviewDef,
+        gfxPreviewDef,
+        technologyPreviewDef,
+        worldMapPreviewDef,
+        eventPreviewDef,
+        guiPreviewDef
+    ];
     private _previewProvidersMap: Record<string, PreviewProviderDef> = arrayToMap(this._previewProviders, 'type');
 
     private _updateSubscriptions: Map<string[], PreviewBase[]> = new Map();

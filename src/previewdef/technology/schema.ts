@@ -1,5 +1,6 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
 import { HOIPartial, Position, CustomMap, Enum, SchemaDef, positionSchema, convertNodeToJson } from "../../hoiformat/schema";
+import { arrayToMap } from "../../util/common";
 
 export interface TechnologyFolder {
     name: string;
@@ -114,26 +115,43 @@ function getTechnologiesByFolder(allTechnologies: Record<string, Technology>): R
 }
 
 function getTechnologiesByTree(technologiesInOneFolder: Technology[]): Record<string, Technology[]> {
+    const techIdToTech: Record<string, Technology> = arrayToMap(technologiesInOneFolder, 'id');
     const trees: Record<string, Technology[]> = {};
-    const ancestorMap: Record<string, string> = {};
+    const treeRootMap: Record<string, string> = {};
 
-    // TODO one node have two ancestors
     for (const technology of technologiesInOneFolder) {
-        const ancestor = ancestorMap[technology.id] || technology.id;
-        const theTree = trees[ancestor] || [];
+        const treeRoot = treeRootMap[technology.id] ?? technology.id;
+        const tree = trees[treeRoot] ?? [];
 
-        theTree.push(technology);
+        tree.push(technology);
         for (const child of technology.leadsToTechs) {
+            // the node is already in another tree
+            if (treeRootMap[child] && treeRootMap[child] !== treeRoot) {
+                continue;
+            }
+
+            if (!techIdToTech[child]) {
+                continue;
+            }
+
+            treeRootMap[child] = treeRoot;
+            tree.push(techIdToTech[child]);
+
             const childTree = trees[child];
             if (childTree) {
-                theTree.push(...childTree);
+                for (const childTech of childTree) {
+                    treeRootMap[childTech.id] = treeRoot;
+                    tree.push(childTech);
+                }
                 delete trees[child];
-            } else {
-                ancestorMap[child] = ancestor;
             }
         }
 
-        trees[ancestor] = theTree;
+        trees[treeRoot] = tree;
+    }
+
+    for (const rootTechId in trees) {
+        trees[rootTechId].push(techIdToTech[rootTechId]);
     }
 
     return trees;

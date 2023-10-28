@@ -52,22 +52,30 @@ export abstract class PreviewBase {
 
     protected registerEvents(panel: vscode.WebviewPanel): void {
         panel.webview.onDidReceiveMessage((msg) => {
-            if (msg.command === 'navigate' && msg.start !== undefined) {
-                if (msg.file === undefined) {
-                    const document = getDocumentByUri(this.uri);
-                    if (document === undefined) {
-                        return;
+            switch (msg.command) {
+                case 'navigate':
+                    if (msg.start !== undefined) {
+                        if (msg.file === undefined) {
+                            const document = getDocumentByUri(this.uri);
+                            if (document === undefined) {
+                                return;
+                            }
+        
+                            vscode.window.showTextDocument(this.uri, {
+                                selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
+                                viewColumn: vscode.ViewColumn.One
+                            });
+                        } else {
+                            this.openOrCopyFile(msg.file, msg.start, msg.end);
+                        }
                     }
-
-                    vscode.window.showTextDocument(this.uri, {
-                        selection: new vscode.Range(document.positionAt(msg.start), document.positionAt(msg.end)),
-                        viewColumn: vscode.ViewColumn.One
-                    });
-                } else {
-                    this.openOrCopyFile(msg.file, msg.start, msg.end);
-                }
-            } else if (msg.command === 'telemetry') {
-                sendByMessage(msg);
+                    break;
+                case 'telemetry':
+                    sendByMessage(msg);
+                    break;
+                case 'reload':
+                    this.reload();
+                    break;
             }
         });
         

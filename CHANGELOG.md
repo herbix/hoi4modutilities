@@ -7,10 +7,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## Develop
 
 ### Added
+* GUI preview.
 * Language settings for event localization.
 
 ### Fixed
 * Warning message of "Terrain "ocean" is not defined".
+* In some cases the tech tree item in preview may be missing.
 
 ## [0.8.0] - 2023/10/25 - Latest
 

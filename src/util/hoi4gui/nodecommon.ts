@@ -8,7 +8,7 @@ export interface RenderNodeCommonOptions extends RenderCommonOptions {
     getSprite?(sprite: string, callerType: 'bg' | 'icon', callerName: string | undefined): Promise<Sprite | undefined>;
 }
 
-export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, options: RenderCommonOptions): string {
+export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, scale: number, options: RenderCommonOptions): string {
     if (sprite instanceof CorneredTileSprite) {
         return renderCorneredTileSprite(position, size, sprite, frame, options);
     }
@@ -21,12 +21,12 @@ export function renderSprite(position: NumberPosition, size: NumberSize, sprite:
         ${options.styleTable.oneTimeStyle('sprite', () => `
             left: ${position.x}px;
             top: ${position.y}px;
-            width: ${sprite.width}px;
-            height: ${sprite.height}px;
+            width: ${sprite.width * scale}px;
+            height: ${sprite.height * scale}px;
         `)}
         ${options.styleTable.style(`sprite-img-${sprite.id}-${frame}`, () => `
             background-image: url(${sprite.frames[frame]?.uri});
-            background-size: ${sprite.width}px ${sprite.height}px;
+            background-size: ${sprite.width * scale}px ${sprite.height * scale}px;
         `)}
     "></div>`;
 }
@@ -108,5 +108,5 @@ export async function renderBackground(background: HOIPartial<Background> | unde
         size: { width: parseNumberLike('100%%'), height: parseNumberLike('100%%') }
     }, parentInfo);
     
-    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0, commonOptions);
+    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0, 1, commonOptions);
 }

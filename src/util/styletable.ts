@@ -4,9 +4,9 @@ export class StyleTable {
 
     public style(name: string, callback: () => string, fakeClass?: string): string
     public style(name: string, callback: () => Promise<string>, fakeClass?: string): Promise<string>
-    public style(name: string, callback: (() => string) | (() => Promise<string>), fakeClass: string = ''): string | Promise<string> {
+    public style(name: string, callback: (() => string) | (() => Promise<string>), pseudoClass: string = ''): string | Promise<string> {
         name = this.name(name);
-        const key = name + fakeClass;
+        const key = name + pseudoClass;
         const result = this.records[key];
         if (result !== undefined) {
             return name;

@@ -1,5 +1,5 @@
 import { HOIPartial } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions } from "./common";
+import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions, getWidth, getHeight } from "./common";
 import { NumberSize, NumberPosition } from "../common";
 import { StyleTable } from '../styletable';
 import { GridBoxType, Format, Background } from "../../hoiformat/gui";
@@ -91,8 +91,8 @@ export async function renderGridBoxCommon(
     const format = gridBox.format?._name ?? 'up';
 
     const size = { width, height };
-    const xSlotSize = normalizeNumberLike(gridBox.slotsize?.width, 0) ?? 50;
-    const ySlotSize = normalizeNumberLike(gridBox.slotsize?.height, 0) ?? 50;
+    const xSlotSize = normalizeNumberLike(getWidth(gridBox.slotsize), 0) ?? 50;
+    const ySlotSize = normalizeNumberLike(getHeight(gridBox.slotsize), 0) ?? 50;
     const slotSize = { width: xSlotSize, height: ySlotSize };
     const childrenParentInfo: ParentInfo = { size: slotSize, orientation };
     const cornerPosition = options.cornerPosition ?? 1;
@@ -124,6 +124,8 @@ export async function renderGridBoxCommon(
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
+    start="${gridBox._token?.start}"
+    end="${gridBox._token?.end}"
     class="
         ${options?.classNames ? options.classNames : ''}
         ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
@@ -133,6 +135,7 @@ export async function renderGridBoxCommon(
             width: ${width}px;
             height: ${height}px;
         `)}
+        ${options.enableNavigator ? 'navigator navigator-highlight' : ''}
     ">
         ${background}
         ${renderedConnections}

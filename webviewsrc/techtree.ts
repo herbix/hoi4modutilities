@@ -1,4 +1,4 @@
-import { setState, getState, scrollToState, tryRun } from "./util/common";
+import { setState, getState, scrollToState, tryRun, subscribeRefreshButton } from "./util/common";
 
 function folderChange(folder: string) {
     const elements = document.getElementsByClassName('techfolder');
@@ -16,6 +16,8 @@ window.addEventListener('load', tryRun(function() {
     element.value = folder;
     folderChange(folder);
     scrollToState();
+
+    subscribeRefreshButton();
 
     element.addEventListener('change', function() {
         folderChange(this.value);

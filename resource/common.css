@@ -224,3 +224,18 @@ button[disabled] {
 button[disabled]:active {
     transform: none;
 }
+
+.navigator {
+    cursor: pointer;
+}
+
+.navigator.navigator-highlight:hover:not(:has(.navigator.navigator-highlight:hover)):after {
+    width: 100%;
+    height: 100%;
+    background: rgba(200, 30, 30, 0.3);
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+}

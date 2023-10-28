@@ -109,6 +109,14 @@ function navigateText(start: number | undefined, end: number | undefined, file: 
     });
 };
 
+export function subscribeRefreshButton() {
+    const button = document.getElementById('refresh') as HTMLButtonElement;
+    button?.addEventListener('click', function() {
+        vscode.postMessage({ command: 'reload' });
+        button.disabled = true;
+    });
+}
+
 if (window.previewedFileUri) {
     setState({ uri: window.previewedFileUri });
 }
