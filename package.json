@@ -2,7 +2,7 @@
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.9.0",
+	"version": "0.9.1",
 	"author": "Chaofan Yang",
 	"publisher": "chaofan",
 	"icon": "icon.png",

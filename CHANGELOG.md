@@ -8,7 +8,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 -
 
-## [0.9.0] - 2023/10/29 - Latest
+## [0.9.1] - 2023/10/30 - Latest
+
+### Fixed
+* Korean localization.
+
+## [0.9.0] - 2023/10/29
 
 ### Added
 * GUI preview.

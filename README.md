@@ -70,15 +70,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.9.0]
-
-### Added
-* GUI preview.
-* Language settings for event localization.
+## Release Notes - [0.9.1]
 
 ### Fixed
-* Warning message of "Terrain "ocean" is not defined".
-* In some cases the tech tree item in preview may be missing.
+* Korean localization.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

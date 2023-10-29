@@ -13,4 +13,6 @@ function generate(name) {
 }
 
 generate('zh-cn');
+generate('ko');
+generate('ru');
 generate('template');
