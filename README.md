@@ -49,9 +49,9 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ![Technology tree preview demo](demo/4.gif)
 
-### GFX file preview
+### GUI Preview
 
-![GFX file preview demo](demo/2.gif)
+![GUI preview demo](demo/7.gif)
 
 ## Extension Settings
 
