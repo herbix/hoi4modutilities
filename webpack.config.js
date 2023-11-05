@@ -162,6 +162,7 @@ const webviewJsConfig = {
     worldmap: './webviewsrc/worldmap/index.ts',
     eventtree: './webviewsrc/eventtree.ts',
     guipreview: './webviewsrc/guipreview.ts',
+    miopreview: './webviewsrc/miopreview.ts',
   },
   
   output: {

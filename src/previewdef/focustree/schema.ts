@@ -1,8 +1,8 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, SchemaDef, Position, convertNodeToJson, positionSchema, Raw, isSymbolNode } from "../../hoiformat/schema";
+import { HOIPartial, SchemaDef, Position, convertNodeToJson, positionSchema, Raw } from "../../hoiformat/schema";
 import { normalizeNumberLike } from "../../util/hoi4gui/common";
-import { flatten, chain, isEqual } from 'lodash';
-import { ConditionItem, ConditionComplexExpr, extractConditionValues, extractConditionValue } from "../../hoiformat/condition";
+import { flatten, chain } from 'lodash';
+import { ConditionItem, ConditionComplexExpr, extractConditionValues, extractConditionValue, extractConditionalExprs } from "../../hoiformat/condition";
 import { countryScope } from "../../hoiformat/scope";
 import { useConditionInFocus } from "../../util/featureflags";
 import { randomString, Warning } from "../../util/common";
@@ -383,34 +383,17 @@ function addSharedFocus(focuses: Record<string, Focus>, filePath: string, shared
 
 function updateConditionExprsByFocus(focus: Focus, conditionExprs: ConditionItem[]) {
     if (focus.allowBranch) {
-        updateConditionExprs(focus.allowBranch, conditionExprs);
+        extractConditionalExprs(focus.allowBranch, conditionExprs);
     }
 
     for (const offset of focus.offset) {
         if (offset.trigger) {
-            updateConditionExprs(offset.trigger, conditionExprs);
+            extractConditionalExprs(offset.trigger, conditionExprs);
         }
     }
 
     for (const icon of focus.icon) {
-        updateConditionExprs(icon.condition, conditionExprs);
-    }
-}
-
-function updateConditionExprs(expr: ConditionComplexExpr, conditionExprs: ConditionItem[]) {
-    if (typeof expr === 'boolean') {
-        return;
-    }
-
-    if (!('items' in expr)) {
-        if (!conditionExprs.some(e => isEqual(expr, e))) {
-            conditionExprs.push(expr);
-        }
-        return;
-    }
-
-    for (const item of expr.items) {
-        updateConditionExprs(item, conditionExprs);
+        extractConditionalExprs(icon.condition, conditionExprs);
     }
 }
 

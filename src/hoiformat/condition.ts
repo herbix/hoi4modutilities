@@ -331,7 +331,7 @@ export function simplifyCondition(condition: ConditionComplexExpr): ConditionCom
     };
 }
 
-function extractConditionalExprs(condition: ConditionComplexExpr, result: ConditionItem[] = []): ConditionItem[] {
+export function extractConditionalExprs(condition: ConditionComplexExpr, result: ConditionItem[] = []): ConditionItem[] {
     if (typeof condition === 'boolean') {
         return result;
     }

@@ -1,5 +1,6 @@
 export class StyleTable {
-    readonly records: Record<string, string> = {};
+    private readonly records: Record<string, string> = {};
+    private readonly rawRecords: Record<string, string> = {};
     private id: number = 0;
 
     public style(name: string, callback: () => string, fakeClass?: string): string
@@ -32,11 +33,18 @@ export class StyleTable {
     }
 
     public toStyleElement(nonce: string): string {
-        return `<style nonce="${nonce}">${Object.entries(this.records).map(([k, v]) => `.${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}</style>`;
+        return `<style nonce="${nonce}">
+            ${Object.entries(this.records).map(([k, v]) => `.${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}
+            ${Object.entries(this.rawRecords).map(([k, v]) => `${k} { ${v.replace(/^\s+/gm, '')} }\n`).join('')}
+            </style>`;
     }
 
     public name(name: string) {
         return 'st-' + name;
+    }
+
+    public raw(selector: string, content: string) {
+        this.rawRecords[selector] = content;
     }
 }
 

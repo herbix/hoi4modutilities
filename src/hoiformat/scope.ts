@@ -2,7 +2,7 @@ import { arrayToMap } from "../util/common";
 import { Node } from "./hoiparser";
 import { variableRegexForScope } from "./schema";
 
-export type ScopeType = 'country' | 'state' | 'leader' | 'operative' | 'division' | 'character' | 'unknown';
+export type ScopeType = 'country' | 'state' | 'leader' | 'operative' | 'division' | 'character' | 'mio' | 'purchaseContract' | 'unknown';
 
 export interface Scope {
     scopeName: string;
@@ -41,6 +41,14 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
         return true;
     }
 
+    if (nodeName.match(/^mio:/)) {
+        scopeStack.push({
+            scopeName: nodeName.substring(4),
+            scopeType: 'mio',
+        });
+        return true;
+    }
+
     if (nodeName.match(/^[0-9]+$/)) {
         scopeStack.push({
             scopeName: nodeName,
@@ -49,6 +57,7 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
         return true;
     }
 
+    const originalNodeName = nodeName;
     nodeName = nodeName.toLowerCase();
     const currentScope = scopeStack[scopeStack.length - 1];
     if (nodeName === 'this') {
@@ -68,9 +77,17 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
         return true;
     }
 
+    if (nodeName.match(/^from$/) && currentScope?.scopeType === 'mio') {
+        scopeStack.push({
+            scopeName: originalNodeName,
+            scopeType: 'country',
+        });
+        return true;
+    }
+
     if (nodeName.match(/^from(?:\.from)*$/)) {
         scopeStack.push({
-            scopeName: nodeName,
+            scopeName: originalNodeName,
             scopeType: 'unknown',
         });
         return true;
@@ -211,4 +228,12 @@ export const scopeDefs = arrayToMap([
     scopeDef("random_core_state", false, true, 'country', 'state'),
     scopeDef("every_character", false, true, 'country', 'character'),
     scopeDef("random_character", false, true, 'country', 'character'),
+    scopeDef("all_military_industrial_organization", true, false, 'country', 'mio'),
+    scopeDef("any_military_industrial_organization", true, false, 'country', 'mio'),
+    scopeDef("every_military_industrial_organization", false, true, 'country', 'mio'),
+    scopeDef("random_military_industrial_organization", false, true, 'country', 'mio'),
+    scopeDef("all_military_purchase_contract", true, false, 'country', 'purchaseContract'),
+    scopeDef("any_military_purchase_contract", true, false, 'country', 'purchaseContract'),
+    scopeDef("every_military_purchase_contract", false, true, 'country', 'purchaseContract'),
+    scopeDef("random_military_purchase_contract", false, true, 'country', 'purchaseContract'),
 ], 'name');

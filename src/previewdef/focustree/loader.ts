@@ -1,4 +1,4 @@
-import { ContentLoader, LoadResultOD, Dependency, LoaderSession, LoadResult, mergeInLoadResult } from "../../util/loader/loader";
+import { ContentLoader, LoadResultOD, Dependency, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
 import { FocusTree, getFocusTree } from "./schema";
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
