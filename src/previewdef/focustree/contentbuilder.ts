@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { FocusTree, Focus, FocusWarning } from './schema';
+import { FocusTree, Focus } from './schema';
 import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
 import { localize, i18nTableAsScript } from '../../util/i18n';
 import { forceError, randomString } from '../../util/common';

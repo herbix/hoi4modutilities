@@ -2,12 +2,17 @@ import { ConditionComplexExpr, ConditionItem, extractConditionValue, extractCond
 import { Node, Token } from "../../hoiformat/hoiparser";
 import { CustomMap, Enum, HOIPartial, Raw, SchemaDef, convertNodeToJson } from "../../hoiformat/schema";
 import { Warning, randomString } from "../../util/common";
+import { localize } from "../../util/i18n";
 
 export interface Mio {
     id: string;
     traits: Record<string, MioTrait>;
     conditionExprs: ConditionItem[];
-    warnings: Warning<string>[];
+    warnings: MioWarning[];
+}
+
+export interface MioWarning extends Warning<string> {
+    navigations?: { file: string, start: number, end: number }[];
 }
 
 export type TraitEffect = 'equiment' | 'production' | 'organization';
@@ -141,26 +146,99 @@ function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, depend
     const baseMio = mioDef.include ? dependentMios.find(m => m.id === mioDef.include) : undefined;
     const traits = baseMio?.traits ? {...baseMio.traits} : {};
     const conditionExprs = baseMio?.conditionExprs ? [...baseMio.conditionExprs] : [];
+    const warnings: MioWarning[] = [];
+
+    if (mioDef.include && mioDef.trait.length > 0) {
+        warnings.push({
+            source: id,
+            text: localize('miopreview.warnings.traitAndIncludeCheck1', 'Military industrial organization {0} has include property. It should use add_trait or override_trait instead of trait.', id),
+        });
+    }
+
+    if (!mioDef.include && (mioDef.add_trait.length > 0 || mioDef.override_trait.length > 0)) {
+        warnings.push({
+            source: id,
+            text: localize('miopreview.warnings.traitAndIncludeCheck2', 'Military industrial organization {0} doesn\'t have include property. It should use trait instead of add_trait or override_trait.', id),
+        });
+    }
 
     for (const traitDef of [...mioDef.trait, ...mioDef.add_trait]) {
-        const trait = getTrait(traitDef, filePath, conditionExprs);
+        const trait = getTrait(traitDef, filePath, warnings, conditionExprs);
+        if (traits[trait.id]) {
+            warnings.push({
+                source: id,
+                text: localize('miopreview.warnings.traitConflict', 'There\'re more than one trait with ID {0} in military industrial organization {1} in files: {2}, {3}.', trait.id, id, traits[trait.id].file, filePath),
+            });
+        }
         traits[trait.id] = trait;
     }
 
     for (const traitDef of mioDef.override_trait) {
-        overrideTrait(traitDef, traits, filePath, conditionExprs);
+        overrideTrait(traitDef, traits, filePath, warnings, conditionExprs);
     }
+
+    validateRelativePositionId(traits, warnings);
 
     return {
         id,
         traits,
         conditionExprs,
-        warnings: [],
+        warnings,
     };
 }
 
-function getTrait(traitDef: HOIPartial<MioTraitDef>, filePath: string, conditionExprs: ConditionItem[]): MioTrait {
+function validateRelativePositionId(traits: Record<string, MioTrait>, warnings: MioWarning[]) {
+    const relativePositionId: Record<string, MioTrait | undefined> = {};
+    const relativePositionIdChain: string[] = [];
+    const circularReported: Record<string, boolean> = {};
+
+    for (const trait of Object.values(traits)) {
+        if (trait.relativePositionId === undefined) {
+            continue;
+        }
+
+        if (!(trait.relativePositionId in traits)) {
+            warnings.push({
+                text: localize('miopreview.warnings.relativepositionidnotexist', 'Relative position ID of trait {0} not exist: {1}.', trait.id, trait.relativePositionId),
+                source: trait.id,
+            });
+            continue;
+        }
+
+        relativePositionIdChain.length = 0;
+        relativePositionId[trait.id] = traits[trait.relativePositionId];
+        let currentTrait: MioTrait | undefined = trait;
+        while (currentTrait) {
+            if (circularReported[currentTrait.id]) {
+                break;
+            }
+
+            relativePositionIdChain.push(currentTrait.id);
+            const nextFocus: MioTrait | undefined = relativePositionId[currentTrait.id];
+            if (nextFocus && relativePositionIdChain.includes(nextFocus.id)) {
+                relativePositionIdChain.forEach(r => circularReported[r] = true);
+                relativePositionIdChain.push(nextFocus.id);
+                warnings.push({
+                    text: localize('miopreview.warnings.relativepositioncircularref', "There're circular reference in relative position ID of these traits: {0}.", relativePositionIdChain.join(' -> ')),
+                    source: trait.id,
+                });
+                break;
+            }
+            currentTrait = nextFocus;
+        }
+    }
+}
+
+function getTrait(traitDef: HOIPartial<MioTraitDef>, filePath: string, warnings: MioWarning[], conditionExprs: ConditionItem[]): MioTrait {
     const id = traitDef.token ?? `[missing_token_${randomString(8)}]`;
+
+    if (!traitDef.token) {
+        warnings.push({
+            text: localize('miopreview.warnings.traitnoid', "A trait defined in this file don't have token property: {0}.", filePath),
+            source: id,
+        });
+    }
+
     const x = traitDef.position?.x ?? 0;
     const y = traitDef.position?.y ?? 0;
     const name = traitDef.name ?? '';
@@ -201,14 +279,22 @@ function getTrait(traitDef: HOIPartial<MioTraitDef>, filePath: string, condition
     };
 }
 
-function overrideTrait(traitDef: HOIPartial<MioTraitDef>, traits: Record<string, MioTrait>, filePath: string, conditionExprs: ConditionItem[]) {
+function overrideTrait(traitDef: HOIPartial<MioTraitDef>, traits: Record<string, MioTrait>, filePath: string, warnings: MioWarning[], conditionExprs: ConditionItem[]) {
     const id = traitDef.token;
     if (!id) {
+        warnings.push({
+            text: localize('miopreview.warnings.overridetraitnoid', "An override_trait defined in this file don't have token property: {0}.", filePath),
+            source: `unknown`,
+        });
         return;
     }
 
     const trait = traits[id];
     if (!trait) {
+        warnings.push({
+            text: localize('miopreview.warnings.overridetraitidnotexist', "An override_trait referenced a trait that doesn't exist: {0}.", id),
+            source: id,
+        });
         return;
     }
 
