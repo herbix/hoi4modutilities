@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { PromiseCache } from './cache';
 import { isSamePath } from './nodecommon';
-import { getLastModifiedAsync, readDirFiles, isFile, isDirectory, readFile, readDir, isSameUri, fileOrUriStringToUri, ensureFileScheme } from './vsccommon';
+import { getLastModifiedAsync, readDirFiles, isFile, isDirectory, readFile, readDir, isSameUri, fileOrUriStringToUri, ensureFileScheme, readDirFilesRecursively } from './vsccommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
 import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
@@ -215,7 +215,8 @@ export async function readFileFromModOrHOI4AsJson<T>(relativePath: string, schem
     return convertNodeToJson<T>(nodes, schema);
 }
 
-export async function listFilesFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<string[]> {
+export async function listFilesFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean, recursively?: boolean }): Promise<string[]> {
+    const readFunction = options?.recursively ? readDirFilesRecursively : readDirFiles;
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     const result: string[] = [];
 
@@ -226,7 +227,7 @@ export async function listFilesFromModOrHOI4(relativePath: string, options?: { m
                 const findPath = vscode.Uri.joinPath(folder.uri, relativePath);
                 if (await isDirectory(findPath)) {
                     try {
-                        result.push(...await readDirFiles(findPath));
+                        result.push(...await readFunction(findPath));
                     } catch(e) {}
                 }
             }
@@ -253,7 +254,7 @@ export async function listFilesFromModOrHOI4(relativePath: string, options?: { m
         const findPath = vscode.Uri.joinPath(installPath, relativePath);
         if (await isDirectory(findPath)) {
             try {
-                result.push(...await readDirFiles(findPath));
+                result.push(...await readFunction(findPath));
             } catch(e) {}
         }
     }
@@ -281,7 +282,7 @@ export async function listFilesFromModOrHOI4(relativePath: string, options?: { m
                 const findPath = vscode.Uri.joinPath(dlc, relativePath);
                 if (await isDirectory(findPath)) {
                     try {
-                        result.push(...await readDirFiles(findPath));
+                        result.push(...await readFunction(findPath));
                     } catch(e) {}
                 }
             }

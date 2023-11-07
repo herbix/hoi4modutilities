@@ -4,11 +4,16 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Develop
+## [0.10.0] - 2023/11/07 - Latest
 
--
+### Added
+* Military industrial organization preview.
 
-## [0.9.1] - 2023/10/30 - Latest
+### Changed
+* GFX index now searches `.gfx` recursively in `interface` folder.
+* Icons and buttons in preview GUI uses the first frame if the frame specified is not found.
+
+## [0.9.1] - 2023/10/30
 
 ### Fixed
 * Korean localization.

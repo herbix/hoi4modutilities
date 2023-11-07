@@ -51,13 +51,13 @@ export async function getGfxContainerFiles(gfxNames: (string | undefined)[]): Pr
 }
 
 async function buildGlobalGfxIndex(estimatedSize: [number]): Promise<void> {
-    const options = { mod: false };
+    const options = { mod: false, recursively: true };
     const gfxFiles = (await listFilesFromModOrHOI4('interface', options)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
     await Promise.all(gfxFiles.map(f => fillGfxItems('interface/' + f, globalGfxIndex, options, estimatedSize)));
 }
 
 async function buildWorkspaceGfxIndex(estimatedSize: [number]): Promise<void> {
-    const options = { hoi4: false };
+    const options = { hoi4: false, recursively: true };
     const gfxFiles = (await listFilesFromModOrHOI4('interface', options)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
     await Promise.all(gfxFiles.map(f => fillGfxItems('interface/' + f, workspaceGfxIndex, options, estimatedSize)));
 }

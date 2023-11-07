@@ -10,6 +10,7 @@ This extension add tools for Heart of Iron IV modding. Some of the tools may wor
 * Focus tree preview
 * Event tree preview
 * Technology tree preview
+* Military industrial organization (MIO) preview.
 * GUI preview
 * `.gfx` file preview (sprites used by HOI4 are defined here)
 * `.dds`, `.tga` file preview (images files used by HOI4)
@@ -70,10 +71,14 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.9.1]
+## Release Notes - [0.10.0]
 
-### Fixed
-* Korean localization.
+### Added
+* Military industrial organization preview.
+
+### Changed
+* GFX index now searches `.gfx` recursively in `interface` folder.
+* Icons and buttons in preview GUI uses the first frame if the frame specified is not found.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

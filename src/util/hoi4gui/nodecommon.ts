@@ -13,6 +13,11 @@ export function renderSprite(position: NumberPosition, size: NumberSize, sprite:
         return renderCorneredTileSprite(position, size, sprite, frame, options);
     }
 
+    // Use first frame if frame is not found
+    if (!sprite.frames[frame] && frame > 0) {
+        frame = 0;
+    }
+
     return `<div
     ${options?.id ? `id="${options.id}"` : ''}
     class="

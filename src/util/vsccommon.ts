@@ -49,6 +49,23 @@ export async function readDirFiles(dir: vscode.Uri): Promise<string[]> {
     return (await vscode.workspace.fs.readDirectory(dir)).filter(f => f[1] === vscode.FileType.File).map(f => f[0]);
 }
 
+export async function readDirFilesRecursively(dir: vscode.Uri): Promise<string[]> {
+    const result: string[] = [];
+    await readDirFilesRecursivelyImpl(dir, '', result);
+    return result;
+}
+
+async function readDirFilesRecursivelyImpl(dir: vscode.Uri, prefix: string, result: string[]): Promise<void> {
+    const items = await vscode.workspace.fs.readDirectory(dir);
+    for (const [name, type] of items) {
+        if (type === vscode.FileType.File) {
+            result.push(prefix + name);
+        } else if (type === vscode.FileType.Directory) {
+            await readDirFilesRecursivelyImpl(dir.with({ path: path.join(dir.path, name) }), prefix + name + '/', result);
+        }
+    }
+}
+
 export async function readFile(path: vscode.Uri): Promise<Buffer> {
     return Buffer.from(await vscode.workspace.fs.readFile(path));
 }
