@@ -713,8 +713,9 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
         if (this.loader.worldMap.width > 0 && mapX >= this.loader.worldMap.width) {
             mapX -= this.loader.worldMap.width;
         }
+        const mapY = this.viewPoint.convertBackY(cursorY);
 
-        tooltip = `(${mapX}, ${this.viewPoint.convertBackY(cursorY)})\n` + tooltip;
+        tooltip = `(${mapX}, ${mapY})\nX=${mapX}, Z=${this.loader.worldMap.height - 1 - mapY}\n` + tooltip;
 
         const colorPrefix = /^\|r\|/;
         const regex = /(\n)|((?:\|r\|)?(?:.{40,59}[, ]|.{60}))/g;
@@ -766,7 +767,7 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
             backCanvasContext.fillStyle = 'black';
             if (t.startsWith('|r|')) {
                 backCanvasContext.fillStyle = 'red';
-                t = t.substr(3);
+                t = t.substring(3);
             }
             t = t.trim();
             backCanvasContext.fillText(t, cursorX + toolTipOffsetX + marginX, cursorY + toolTipOffsetY + marginY + i * (fontSize + linePadding));

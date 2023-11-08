@@ -61,4 +61,13 @@ function hideBySupplyAreaFlag(enableSupplyArea: boolean) {
             displayOption.remove();
         }
     }
+
+    const warningFilterOptions = document.getElementById('warningfilter')!.getElementsByTagName('div');
+    for (let i = 0; i < warningFilterOptions.length; i++) {
+        const warningFilterOption = warningFilterOptions[i];
+        const attribute = warningFilterOption.getAttribute('enablesupplyarea');
+        if (attribute && attribute !== enableSupplyArea.toString()) {
+            warningFilterOption.remove();
+        }
+    }
 }

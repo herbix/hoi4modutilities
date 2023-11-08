@@ -4,6 +4,14 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+### Added
+* Preview map shows X and Z from HOI4 coordinate system.
+
+### Fixed
+* Remove supply value if supply area is not enabled.
+
 ## [0.10.0] - 2023/11/07 - Latest
 
 ### Added
