@@ -239,6 +239,10 @@ export class WorldMap {
             changeMessages.push({ command: 'terrains', data: JSON.stringify(worldMap.terrains), start: 0, end: 0 });
         }
 
+        if (!isEqual(cachedWorldMap.resources, worldMap.resources)) {
+            changeMessages.push({ command: 'resources', data: JSON.stringify(worldMap.resources), start: 0, end: 0 });
+        }
+
         if (!this.fillMessageForItem(changeMessages, worldMap.provinces, cachedWorldMap.provinces, 'provinces', worldMap.badProvincesCount, worldMap.provincesCount)) {
             return false;
         }

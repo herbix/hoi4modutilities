@@ -11,7 +11,7 @@ import { sendEvent } from '../util/telemetry';
 
 export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' |
-    'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue';
+    'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue' | 'resources';
 
 export const topBarHeight = 40;
 

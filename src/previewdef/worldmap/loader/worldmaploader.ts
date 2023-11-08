@@ -9,6 +9,7 @@ import { SupplyAreasLoader } from "./supplyarea";
 import { LoaderSession } from "../../../util/loader/loader";
 import { getConfiguration } from "../../../util/vsccommon";
 import { RailwayLoader, SupplyNodeLoader } from "./railway";
+import { ResourceDefinitionLoader } from "./resource";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -18,6 +19,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     private supplyAreasLoader: SupplyAreasLoader;
     private railwayLoader: RailwayLoader;
     private supplyNodeLoader: SupplyNodeLoader;
+    private resourcesLoader: ResourceDefinitionLoader;
     private shouldReloadValue: boolean = false;
 
     constructor() {
@@ -25,7 +27,10 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         this.defaultMapLoader = new DefaultMapLoader();
         this.defaultMapLoader.onProgress(e => this.onProgressEmitter.fire(e));
 
-        this.statesLoader = new StatesLoader(this.defaultMapLoader);
+        this.resourcesLoader = new ResourceDefinitionLoader();
+        this.resourcesLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.statesLoader = new StatesLoader(this.defaultMapLoader, this.resourcesLoader);
         this.statesLoader.onProgress(e => this.onProgressEmitter.fire(e));
 
         this.countriesLoader = new CountriesLoader();
@@ -79,10 +84,13 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             await this.supplyNodeLoader.load(session);
         session.throwIfCancelled();
 
+        const resources = await this.resourcesLoader.load(session);
+        session.throwIfCancelled();
+
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
 
-        const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes ];
+        const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
 
         const worldMap: WorldMapData = {
@@ -92,6 +100,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             ...supplyAreas.result,
             ...railways.result,
             ...supplyNodes.result,
+            resources: resources.result,
             provincesCount: provinceMap.result.provinces.length,
             statesCount: stateMap.result.states.length,
             countriesCount: countries.result.length,

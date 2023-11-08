@@ -45,6 +45,8 @@ export class Renderer extends Subscriber {
     private cursorX = 0;
     private cursorY = 0;
 
+    private static resourceImages: Record<string, HTMLImageElement> = {};
+
     constructor(private mainCanvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, private topBar: TopBar) {
         super();
 
@@ -58,6 +60,7 @@ export class Renderer extends Subscriber {
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
 
+        this.addSubscription(loader.worldMap$.subscribe(this.reloadImages));
         this.addSubscription(loader.worldMap$.subscribe(this.renderCanvas));
         this.addSubscription(
             combineLatest([
@@ -80,6 +83,16 @@ export class Renderer extends Subscriber {
             ).subscribe(this.renderCanvas)
         );
     }
+
+    private reloadImages = () => {
+        for (const resource of this.loader.worldMap.resources) {
+            const image = new Image();
+            image.onload = () => {
+                Renderer.resourceImages[resource.name] = image;
+            };
+            image.src = resource.imageUri;
+        }
+    };
 
     public renderCanvas = () => {
         if (this.canvasWidth <= 0 && this.canvasHeight <= 0) {
@@ -325,6 +338,10 @@ export class Renderer extends Subscriber {
                         const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                         context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
+                        if (viewMode === 'state' && colorSet === 'resources') {
+                            const { width } = Renderer.getResourcesSize(region as State, 0.7, 16);
+                            Renderer.renderResources(context, region as State, viewPoint.convertX(labelPosition.x + xOffset) - width / 2, viewPoint.convertY(labelPosition.y) + 5, 0.7, 16);
+                        }
                     }
                 }
             }
@@ -682,7 +699,14 @@ ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
 ` : ''}
 ${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${state.provinces.join(',')}
-${worldMap.getStateWarnings(state, supplyArea).map(v => '|r|' + v).join('\n')}`);
+${worldMap.getStateWarnings(state, supplyArea).map(v => '|r|' + v).join('\n')}`,
+            (width, height) => {
+                const { width: w, height: h } = Renderer.getResourcesSize(state);
+                return { width: Math.max(width, w), height: height + h };
+            },
+            (x, y) => {
+                Renderer.renderResources(this.backCanvasContext, state, x, y);
+            });
     }
 
     private renderStrategicRegionTooltip(strategicRegion: StrategicRegion, worldMap: FEWorldMap) {
@@ -704,7 +728,7 @@ ${feLocalize('worldmap.tooltip.states', 'States')}=${supplyArea.states.join(',')
 ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
     }
 
-    private renderTooltip(tooltip: string) {
+    private renderTooltip(tooltip: string, sizeCallback?: (width: number, height: number) => {width: number, height: number}, renderCallback?: (x: number, y: number) => void) {
         const backCanvasContext = this.backCanvasContext;
         const cursorX = this.cursorX;
         const cursorY = this.cursorY;
@@ -746,8 +770,9 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
         const linePadding = 3;
 
         backCanvasContext.font = `${fontSize}px sans-serif`;
-        const width = max(text.map(t => backCanvasContext.measureText(t).width)) ?? 0;
-        const height = fontSize * text.length + linePadding * (text.length - 1);
+        backCanvasContext.textAlign = 'start';
+        let width = max(text.map(t => backCanvasContext.measureText(t).width)) ?? 0;
+        let height = fontSize * text.length + linePadding * (text.length - 1);
 
         if (cursorX + toolTipOffsetX + width + 2 * marginX > this.canvasWidth) {
             toolTipOffsetX = -10 - (width + 2 * marginX);
@@ -759,6 +784,12 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
         backCanvasContext.strokeStyle = '#7F7F7F';
         backCanvasContext.fillStyle = 'white';
         backCanvasContext.textBaseline = 'top';
+
+        if (sizeCallback) {
+            const result = sizeCallback(width, height);
+            width = result.width;
+            height = result.height;
+        }
 
         backCanvasContext.fillRect(cursorX + toolTipOffsetX, cursorY + toolTipOffsetY, width + 2 * marginX, height + 2 * marginY);
         backCanvasContext.strokeRect(cursorX + toolTipOffsetX, cursorY + toolTipOffsetY, width + 2 * marginX, height + 2 * marginY);
@@ -772,6 +803,11 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
             t = t.trim();
             backCanvasContext.fillText(t, cursorX + toolTipOffsetX + marginX, cursorY + toolTipOffsetY + marginY + i * (fontSize + linePadding));
         });
+
+        backCanvasContext.fillStyle = 'black';
+        if (renderCallback) {
+            renderCallback(cursorX + toolTipOffsetX + marginX, cursorY + toolTipOffsetY + marginY + text.length * (fontSize + linePadding));
+        }
     }
 
     private static renderAllOffsets(viewPoint: ViewPoint, boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
@@ -793,6 +829,39 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
 
     private renderAllOffsets(boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
         Renderer.renderAllOffsets(this.viewPoint, boundingBox, step, callback, minimalRenderCount);
+    }
+
+    private static getResourcesSize(state: State, scale: number = 1, labelWidth: number = 30): { width: number, height: number } {
+        let fullWidth = 0;
+        let maxHeight = 0;
+        for (const resource in state.resources) {
+            if (!state.resources[resource]) {
+                continue;
+            }
+            const image = Renderer.resourceImages[resource];
+            if (image) {
+                maxHeight = Math.max(maxHeight, image.naturalHeight * scale);
+                fullWidth += image.naturalWidth * scale;
+            }
+            fullWidth += labelWidth;
+        }
+        return { width: fullWidth, height: maxHeight };
+    }
+
+    private static renderResources(context: CanvasRenderingContext2D, state: State, x: number, y: number, scale: number = 1, labelWidth: number = 30) {
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        for (const resource in state.resources) {
+            const resourceNumber = state.resources[resource];
+            if (!resourceNumber) {
+                continue;
+            }
+
+            const image = Renderer.resourceImages[resource];
+            context.drawImage(image, x, y, image.naturalWidth * scale, image.naturalHeight * scale);
+            context.fillText(resourceNumber.toString(), x + (image?.naturalWidth ?? 0) * scale + labelWidth / 2, y + Math.max(0, image?.naturalHeight ?? 0) * scale / 2);
+            x += (image?.naturalWidth ?? 0) * scale + labelWidth;
+        }
     }
 }
 
@@ -935,6 +1004,30 @@ function getColorByColorSet(
                 const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(renderContext.extraState);
                 return valueToColorGreyScale(value);
             }
+        case 'resources':
+            {
+                if (province.type === 'sea') {
+                    return defaultColor(province);
+                }
+
+                if (renderContext.extraState === undefined) {
+                    let maxResources = 0;
+                    worldMap.forEachState(state => {
+                        const numResources = Object.values(state.resources).reduce<number>((p, c) => p + (c ?? 0), 0);
+                        if (numResources > maxResources) {
+                            maxResources = numResources;
+                        }
+                        return false;
+                    });
+                    renderContext.extraState = maxResources;
+                }
+
+                const stateId = provinceToState[province.id];
+                const state = worldMap.getStateById(stateId);
+                const numResources = state ? Object.values(state.resources).reduce<number>((p, c) => p + (c ?? 0), 0) : 0;
+                const value = resourcesHandler(numResources) / resourcesHandler(renderContext.extraState);
+                return valueToColorGYR(value);
+            }
         case 'strategicregionid':
             {
                 if (renderContext.extraState === undefined) {
@@ -987,6 +1080,13 @@ function victoryPointsHandler(victoryPoints: number): number {
         victoryPoints = 0;
     }
     return Math.pow(victoryPoints, 0.5);
+}
+
+function resourcesHandler(resources: number): number {
+    if (resources < 0) {
+        resources = 0;
+    }
+    return Math.pow(resources, 0.2);
 }
 
 function valueToColorRYG(value: number): number {

@@ -24,6 +24,7 @@ export interface WorldMapData {
     badSupplyAreasCount: number;
     continents: string[];
     terrains: Terrain[];
+    resources: Resource[];
     warnings: WorldMapWarning[];
 }
 
@@ -92,6 +93,7 @@ export interface State extends Region, TokenInFile {
     cores: string[];
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
+    resources: Record<string, number | undefined>;
 }
 
 export interface Railway {
@@ -139,6 +141,13 @@ export interface Terrain {
     name: string;
     color: number;
     isNaval: boolean;
+    file: string;
+}
+
+export interface Resource {
+    name: string;
+    iconFrame: number;
+    imageUri: string;
     file: string;
 }
 
@@ -199,7 +208,7 @@ export interface RequestMapItemMessage {
 }
 
 export interface MapItemMessage {
-    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas' | 'railways' | 'supplynodes';
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas' | 'railways' | 'supplynodes' | 'resources';
     data: string;
     start: number;
     end: number;

@@ -1,4 +1,4 @@
-import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory } from "../definitions";
+import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Resource } from "../definitions";
 import { Enum, SchemaDef, CustomMap, DetailValue } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
@@ -9,6 +9,7 @@ import { DefaultMapLoader } from "./provincemap";
 import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
+import { ResourceDefinitionLoader } from "./resource";
 
 interface StateFile {
     state: StateDefinition[];
@@ -22,6 +23,7 @@ interface StateDefinition {
     history: StateHistory;
     provinces: Enum;
     impassable: boolean;
+    resources: CustomMap<number>;
     _token: Token;
 }
 
@@ -51,6 +53,10 @@ const stateFileSchema: SchemaDef<StateFile> = {
             },
             provinces: "enum",
             impassable: "boolean",
+            resources: {
+                _innerType: "number",
+                _type: "map",
+            },
         },
         _type: "array",
     },
@@ -82,14 +88,15 @@ type StateLoaderResult = { states: State[], badStatesCount: number };
 export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
     private categoriesLoader: StateCategoriesLoader;
 
-    constructor(private defaultMapLoader: DefaultMapLoader) {
+    constructor(private defaultMapLoader: DefaultMapLoader, private resourcesLoader: ResourceDefinitionLoader) {
         super('history/states', StateLoader);
         this.categoriesLoader = new StateCategoriesLoader();
         this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
-        return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session) || await this.categoriesLoader.shouldReload(session);
+        return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session)
+            || await this.categoriesLoader.shouldReload(session) || await this.resourcesLoader.shouldReload(session);
     }
 
     protected async loadImpl(session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
@@ -100,6 +107,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
     protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
         const provinceMap = await this.defaultMapLoader.load(session);
         const stateCategories = await this.categoriesLoader.load(session);
+        const resources = arrayToMap((await this.resourcesLoader.load(session)).result, 'name');
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
@@ -122,6 +130,16 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
                         relatedFiles: [ state.file ],
                         text: localize('worldmap.warnings.statecategorynotexist', "State category of state {0} is not defined: {1}.", i, state.category),
                     });
+                }
+
+                for (const key in state.resources) {
+                    if (state.resources[key] !== undefined && !(key in resources)) {
+                        warnings.push({
+                            source: [{ type: 'state', id: i }],
+                            relatedFiles: [ state.file ],
+                            text: localize('worldmap.warnings.resourcenotexist', "Resource {0} used in state {1} is not defined.", key, i),
+                        });
+                    }
                 }
             }
         }
@@ -227,6 +245,8 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
             const impassable = state.impassable ?? false;
             const victoryPointsArray = state.history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
             const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
+            const resources = arrayToMap(
+                Object.values(state.resources._map), '_key', v => v._value);
 
             if (provinces.length === 0) {
                 globalWarnings.push({
@@ -249,7 +269,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
             })));
 
             result.push({
-                id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints,
+                id, name, manpower, category, owner, provinces, cores, impassable, victoryPoints, resources,
                 file: stateFile,
                 token: state._token ?? null,
             });

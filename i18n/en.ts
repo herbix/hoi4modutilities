@@ -188,6 +188,8 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.warnings.provincenothere": "Province {0} not included in this state. But victory points defined here.",
     "worldmap.warnings.provincetoolarge": "The province is too large: {0}x{1}.",
     "worldmap.warnings.railwaylinecountnotenough": "Not enough provinces in railway: {0}",
+    "worldmap.warnings.resourcedefinedtwice": "Resource {0} is defined in two files: {1}, {2}.",
+    "worldmap.warnings.resourcenotexist": "Resource {0} used in state {1} is not defined.",
     "worldmap.warnings.statecategoryconflict": "There're multiple state categories have name \"{0}\".",
     "worldmap.warnings.statecategorynotexist": "State category of state {0} is not defined: {1}.",
     "worldmap.warnings.statehassea": "Sea province {0} shouldn't belong to a state.",
