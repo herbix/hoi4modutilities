@@ -25,6 +25,7 @@ export interface WorldMapData {
     continents: string[];
     terrains: Terrain[];
     resources: Resource[];
+    rivers: River[];
     warnings: WorldMapWarning[];
 }
 
@@ -44,6 +45,7 @@ export interface ProvinceMap {
     badProvincesCount: number;
     continents: string[];
     terrains: Terrain[];
+    rivers: River[];
 }
 
 export interface ProvinceGraph extends Region {
@@ -110,7 +112,7 @@ export interface WorldMapWarning extends Warning<WorldMapWarningSource[]> {
     relatedFiles: string[];
 }
 
-export type WorldMapWarningSource = WarningSourceProvince | WarningSourceIdOnly | WarningSourceName;
+export type WorldMapWarningSource = WarningSourceProvince | WarningSourceIdOnly | WarningSourceName | WarningRiver;
 
 interface WarningSourceBase {
     type: string;
@@ -130,6 +132,13 @@ interface WarningSourceIdOnly extends WarningSourceBase {
 interface WarningSourceName extends WarningSourceBase {
     type: 'statecategory';
     name: string;
+}
+
+interface WarningRiver extends WarningSourceBase {
+    type: 'river';
+    name: string;
+    zone?: Zone;
+    source?: Point;
 }
 
 export interface Country {
@@ -169,6 +178,18 @@ export interface StateCategory {
     name: string;
     color: number;
     file: string;
+}
+
+export interface RiverBmp {
+    width: number;
+    height: number;
+    rivers: River[];
+}
+
+export interface River {
+    colors: Record<number, number>;
+    ends: number[];
+    boundingBox: Zone;
 }
 
 export interface Point {

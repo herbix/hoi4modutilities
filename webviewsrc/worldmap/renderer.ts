@@ -157,6 +157,7 @@ export class Renderer extends Subscriber {
             adaptZooming: displayOptions.includes('adaptzooming'),
             fastRendering: displayOptions.includes('fastrending'),
             supplyVisible: displayOptions.includes('supply'),
+            riverVisible: displayOptions.includes('river'),
             ...this.viewPoint.toJson(),
         };
 
@@ -241,11 +242,15 @@ export class Renderer extends Subscriber {
     private static renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
 
+        if (Renderer.isRiverVisible(topBar, viewPoint)) {
+            Renderer.renderRivers(renderContext, worldMap, context, xOffset);
+        }
+
         if (Renderer.isEdgeVisible(topBar, viewPoint)) {
             Renderer.renderAllEdges(renderContext, worldMap, context, xOffset);
         }
 
-        if (topBar.display.selectedValues$.value.includes('supply')) {
+        if (Renderer.isSupplyVisible(topBar)) {
             Renderer.renderSupplyRelated(renderContext, worldMap, context, xOffset);
         }
 
@@ -284,6 +289,18 @@ export class Renderer extends Subscriber {
         return this.topBar.display.selectedValues$.value.includes('tooltip');
     }
 
+    private static isSupplyVisible(topBar: TopBar) {
+        return topBar.display.selectedValues$.value.includes('supply');
+    }
+
+    private static isRiverVisible(topBar: TopBar, viewPoint: ViewPoint) {
+        if (topBar.display.selectedValues$.value.includes('adaptzooming')) {
+            return 1 <= viewPoint.scale && topBar.display.selectedValues$.value.includes('river');
+        }
+
+        return topBar.display.selectedValues$.value.includes('river');
+    }
+
     private static renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const preciseEdge = renderContext.preciseEdge;
@@ -308,7 +325,7 @@ export class Renderer extends Subscriber {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const viewMode = topBar.viewMode$.value;
         const colorSet = topBar.colorSet$.value;
-        const showSupply = topBar.display.selectedValues$.value.includes('supply');
+        const showSupply = Renderer.isSupplyVisible(topBar);
 
         context.font = '10px sans-serif';
         context.textAlign = 'center';
@@ -476,6 +493,44 @@ export class Renderer extends Subscriber {
                 context.fillRect(x - size / 2, y - size / 2, size, size);
             }
         });
+    }
+
+    private static renderRivers(
+        renderContext: RenderContext,
+        worldMap: FEWorldMap,
+        context: CanvasRenderingContext2D,
+        xOffset: number
+    ): void {
+        const { viewPoint } = renderContext;
+
+        const riverColors: string[] = [
+            'rgb(0, 255, 0)',
+            'rgb(255, 0, 0)',
+            'rgb(255, 252, 0)',
+            'rgb(0, 225, 255)',
+            'rgb(0, 200, 255)',
+            'rgb(0, 150, 255)',
+            'rgb(0, 100, 255)',
+            'rgb(0, 0, 255)',
+            'rgb(0, 0, 255)',
+            'rgb(0, 0, 200)',
+            'rgb(0, 0, 150)',
+            'rgb(0, 0, 100)',
+        ];
+
+        for (const river of worldMap.rivers) {
+            if (!viewPoint.bboxInView(river.boundingBox, xOffset)) {
+                continue;
+            }
+
+            for (const key in river.colors) {
+                const index = parseInt(key, 10);
+                const x = index % river.boundingBox.w + river.boundingBox.x;
+                const y = Math.floor(index / river.boundingBox.w) + river.boundingBox.y;
+                context.fillStyle = riverColors[river.colors[key]];
+                context.fillRect(viewPoint.convertX(x + xOffset), viewPoint.convertY(y), viewPoint.scale, viewPoint.scale);
+            }
+        }
     }
 
     private static renderProvince(

@@ -174,3 +174,19 @@ export function mergeRegions(regions: (Zone | Region)[], width: number): Region 
         mass,
     };
 }
+
+export function addPointToZone(zone: Zone, point: Point): void {
+    if (point.x < zone.x) {
+        zone.w += zone.x - point.x;
+        zone.x = point.x;
+    } else if (point.x >= zone.x + zone.w) {
+        zone.w = point.x - zone.x + 1;
+    }
+
+    if (point.y < zone.y) {
+        zone.h += zone.y - point.y;
+        zone.y = point.y;
+    } else if (point.y >= zone.y + zone.h) {
+        zone.h = point.y - zone.y + 1;
+    }
+}

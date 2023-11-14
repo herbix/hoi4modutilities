@@ -2,7 +2,7 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { Subscriber } from "../util/event";
-import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
 import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
 
@@ -239,6 +239,7 @@ class FEWorldMapClass implements FEWorldMap {
     continents!: string[];
     terrains!: Terrain[];
     resources!: Resource[];
+    rivers!: River[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
@@ -251,7 +252,7 @@ class FEWorldMapClass implements FEWorldMap {
         Object.assign(this, worldMap ?? ({
             width: 0, height: 0,
             provinces: [], states: [], countries: [], warnings: [], continents: [], strategicRegions: [], supplyAreas: [], terrains: [],
-            railways: [], supplyNodes: [], resources: [],
+            railways: [], supplyNodes: [], resources: [], rivers: [],
             provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
             badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
             railwaysCount: 0, supplyNodesCount: 0,

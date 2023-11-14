@@ -9,6 +9,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Added
 * Preview map shows X and Z from HOI4 coordinate system.
 * Show resources of each state on previewed map.
+* Show river on previewed map.
 
 ### Fixed
 * Remove supply value if supply area is not enabled.
