@@ -71,14 +71,15 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.10.0]
+## Release Notes - [0.11.0]
 
 ### Added
-* Military industrial organization preview.
+* Preview map shows X and Z from HOI4 coordinate system.
+* Show resources of each state on previewed map.
+* Show river on previewed map.
 
-### Changed
-* GFX index now searches `.gfx` recursively in `interface` folder.
-* Icons and buttons in preview GUI uses the first frame if the frame specified is not found.
+### Fixed
+* Remove supply value if supply area is not enabled.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

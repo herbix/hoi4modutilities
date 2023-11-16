@@ -137,8 +137,7 @@ interface WarningSourceName extends WarningSourceBase {
 interface WarningRiver extends WarningSourceBase {
     type: 'river';
     name: string;
-    zone?: Zone;
-    source?: Point;
+    index: number;
 }
 
 export interface Country {

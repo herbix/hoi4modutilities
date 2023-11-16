@@ -96,6 +96,16 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
     
         const { sortedProvinces, badProvinceId } = sortProvinces(provinces, badProvinceIdForMerge, ['map/' + defaultMap.definitions], warnings);
     
+        if (rivers.result.width !== provinceBmp.result.width || rivers.result.height !== provinceBmp.result.height) {
+            warnings.push({
+                relatedFiles: [this.provinceBmpLoader.file, this.riverLoader.file],
+                text: localize('worldmap.warning.riversizenotmatch',
+                    'Size of the rivers image ({0}x{1}) doesn\'t match size of province map image ({2}x{3}).',
+                    rivers.result.width, rivers.result.height, provinceBmp.result.width, provinceBmp.result.height),
+                source: [{ type: 'river', name: '', index: -1 }]
+            });
+        }
+
         return {
             result: {
                 width: provinceBmp.result.width,

@@ -10,6 +10,11 @@ import { chain, max, padStart } from "lodash";
 import { combineLatest, fromEvent } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 
+const landWarning = 0xE02020;
+const landNoWarning = 0x7FFF7F;
+const waterWarning = 0xC00000;
+const waterNoWarning = 0x20E020;
+
 const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> = {
     province: { edge: 2, labels: 3 },
     state: { edge: 1, labels: 1 },
@@ -501,7 +506,8 @@ export class Renderer extends Subscriber {
         context: CanvasRenderingContext2D,
         xOffset: number
     ): void {
-        const { viewPoint } = renderContext;
+        const { viewPoint, topBar } = renderContext;
+        const showRiverWarning = topBar.colorSet$.value === 'warnings' && topBar.warningFilter.selectedValues$.value.includes('river');
 
         const riverColors: string[] = [
             'rgb(0, 255, 0)',
@@ -518,16 +524,21 @@ export class Renderer extends Subscriber {
             'rgb(0, 0, 100)',
         ];
 
-        for (const river of worldMap.rivers) {
+        const warningColor = toColor(waterWarning);
+
+        for (let i = 0; i < worldMap.rivers.length; i++) {
+            const river = worldMap.rivers[i];
             if (!viewPoint.bboxInView(river.boundingBox, xOffset)) {
                 continue;
             }
 
+            const hasWarning = showRiverWarning && worldMap.getRiverWarnings(i).length > 0;
             for (const key in river.colors) {
                 const index = parseInt(key, 10);
                 const x = index % river.boundingBox.w + river.boundingBox.x;
                 const y = Math.floor(index / river.boundingBox.w) + river.boundingBox.y;
-                context.fillStyle = riverColors[river.colors[key]];
+                const color = river.colors[key];
+                context.fillStyle = hasWarning && color >= 3 ? warningColor : riverColors[color];
                 context.fillRect(viewPoint.convertX(x + xOffset), viewPoint.convertY(y), viewPoint.scale, viewPoint.scale);
             }
         }
@@ -1025,8 +1036,8 @@ function getColorByColorSet(
                         viewMode !== "warnings" || warningFilter.includes('strategicregion') ? strategicRegion : undefined,
                         viewMode !== "warnings" || warningFilter.includes('supplyarea') ? supplyArea : undefined
                     ).length > 0 ?
-                    (isLand ? 0xE02020 : 0xC00000) :
-                    (isLand ? 0x7FFF7F : 0x20E020);
+                    (isLand ? landWarning : waterWarning) :
+                    (isLand ? landNoWarning : waterNoWarning);
             }
         case 'manpower':
             {

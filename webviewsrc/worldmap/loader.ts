@@ -39,6 +39,7 @@ interface FEWorldMapClassExtra {
     getStateWarnings(state: State, supplyArea?: SupplyArea): string[];
     getStrategicRegionWarnings(strategicRegion: StrategicRegion): string[];
     getSupplyAreaWarnings(supplyArea: SupplyArea): string[];
+    getRiverWarnings(riverIndex: number): string[];
 
     forEachProvince(callback: (province: Province) => boolean | void): void;
     forEachState(callback: (state: State) => boolean | void): void;
@@ -463,5 +464,9 @@ class FEWorldMapClass implements FEWorldMap {
     
     public getSupplyAreaWarnings(supplyArea: SupplyArea): string[] {
         return this.warnings.filter(v => v.source.some(s => s.type === 'supplyarea' && s.id === supplyArea.id)).map(v => v.text);
+    }
+
+    public getRiverWarnings(riverIndex: number): string[] {
+        return this.warnings.filter(v => v.source.some(s => s.type === 'river' && s.index === riverIndex)).map(v => v.text);
     }
 }

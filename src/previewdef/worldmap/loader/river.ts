@@ -40,15 +40,17 @@ async function loadRivers(file: string, progressReporter: ProgressReporter, warn
         warnings.push({
             relatedFiles: [file],
             text: localize('worldmap.warning.riverimagebpp', 'The rivers image should be 8 bits per pixel, but it is {0}.', riversImage.bitsPerPixel),
-            source: [{ type: 'river', name: '' }]
+            source: [{ type: 'river', name: '', index: -1 }]
         });
 
         return result;
     }
 
     const rivers = findRiverPointsList(riversImage);
-
     result.rivers = rivers;
+
+    validateRivers(file, rivers, warnings);
+
     return result;
 }
 
@@ -131,4 +133,124 @@ function findRiverPoints(startX: number, startY: number, riversImage: BMP): Rive
         ends: convertedEnds,
         boundingBox,
     };
+}
+
+function validateRivers(file: string, rivers: River[], warnings: WorldMapWarning[]) {
+    for (let i = 0; i < rivers.length; i++) {
+        validateRiver(file, i, rivers[i], warnings);
+    }
+}
+
+function validateRiver(file: string, index: number, river: River, warning: WorldMapWarning[]) {
+    if (river.ends.length === 0) {
+        warning.push({
+            relatedFiles: [file],
+            text: localize('worldmap.warning.rivernoends', 'River has no end points.'),
+            source: [{ type: 'river', name: riverToString(river), index: index }]
+        });
+    }
+
+    const sources = river.ends.filter(end => river.colors[end] === 0);
+    if (sources.length === 0) {
+        warning.push({
+            relatedFiles: [file],
+            text: localize('worldmap.warning.rivernosource', 'River has no source. Its end points are: {0}.', river.ends.map(e => riverToString(river, e)).join(', ')),
+            source: [{ type: 'river', name: riverToString(river, river.ends[0]), index: index }]
+        });
+    }
+
+    if (sources.length > 1) {
+        warning.push({
+            relatedFiles: [file],
+            text: localize('worldmap.warning.rivermultiplesource', 'River has multiple sources: {0}.', sources.map(s => riverToString(river, s)).join(', ')),
+            source: [{ type: 'river', name: riverToString(river, sources[0]), index: index }]
+        });
+    }
+
+    if (sources.length > 0) {
+        const nonSourceEnds = river.ends.filter(end => river.colors[end] !== 0);
+        for (const end of nonSourceEnds) {
+            validateJoiningRiver(file, index, river, end, warning);
+        }
+    }
+}
+
+function validateJoiningRiver(file: string, index: number, river: River, end: number, warning: WorldMapWarning[]) {
+    if (river.colors[end] === undefined || river.colors[end] <= 2 || river.colors[end] > 11) {
+        return;
+    }
+
+    let current = end;
+    const searched: Record<number, boolean> = {};
+
+    const candidates = [];
+    while (true) {
+        candidates.length = 0;
+        if (current % river.boundingBox.w > 0) {
+            candidates.push(current - 1);
+        }
+        if (current % river.boundingBox.w < river.boundingBox.w - 1) {
+            candidates.push(current + 1);
+        }
+        if (current >= river.boundingBox.w) {
+            candidates.push(current - river.boundingBox.w);
+        }
+        if (current < river.boundingBox.w * (river.boundingBox.h - 1)) {
+            candidates.push(current + river.boundingBox.w);
+        }
+
+        searched[current] = true;
+
+        let next = -1;
+        let adjecentToMark = false;
+        for (const candidate of candidates) {
+            if (searched[candidate]) {
+                continue;
+            }
+
+            const candidateColor = river.colors[candidate];
+            if (candidateColor === undefined) {
+                continue;
+            }
+
+            if (candidateColor <= 2) {
+                adjecentToMark = true;
+                continue;
+            }
+
+            if (next === -1) {
+                next = candidate;
+            } else {
+                warning.push({
+                    relatedFiles: [file],
+                    text: localize('worldmap.warning.rivernoflowinorout', 'River doesn\'t have flow-in or flow-out mark at {0}.', riverToString(river, current)),
+                    source: [{ type: 'river', name: riverToString(river, end), index: index }]
+                });
+                return;
+            }
+        }
+
+        if (next === -1) {
+            if (!adjecentToMark) {
+                warning.push({
+                    relatedFiles: [file],
+                    text: localize('worldmap.warning.rivermayloop', 'River may contain a loop at {0} ~ {1}.', riverToString(river, end), riverToString(river, current)),
+                    source: [{ type: 'river', name: riverToString(river, end), index: index }]
+                });
+            }
+            return;
+        }
+
+        current = next;
+    }
+}
+
+function riverToString(river: River, point?: number) {
+    if (point === undefined) {
+        point = parseInt(Object.keys(river.colors)[0], 10);
+    }
+
+    const x = point % river.boundingBox.w + river.boundingBox.x;
+    const y = Math.floor(point / river.boundingBox.w) + river.boundingBox.y;
+    return `(${x}, ${y})`;
 }
