@@ -71,7 +71,7 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.11.0]
+## Release Notes - [0.11.1]
 
 ### Added
 * Preview map shows X and Z from HOI4 coordinate system.

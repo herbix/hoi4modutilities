@@ -50,7 +50,7 @@ export class Renderer extends Subscriber {
     private cursorX = 0;
     private cursorY = 0;
 
-    private static resourceImages: Record<string, HTMLImageElement> = {};
+    private static resourceImages: Record<string, HTMLImageElement | undefined> = {};
 
     constructor(private mainCanvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, private topBar: TopBar) {
         super();
@@ -908,6 +908,9 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
             if (image) {
                 maxHeight = Math.max(maxHeight, image.naturalHeight * scale);
                 fullWidth += image.naturalWidth * scale;
+            } else {
+                maxHeight = Math.max(maxHeight, 24 * scale)
+                fullWidth += 24 * scale;
             }
             fullWidth += labelWidth;
         }
@@ -924,9 +927,16 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
             }
 
             const image = Renderer.resourceImages[resource];
-            context.drawImage(image, x, y, image.naturalWidth * scale, image.naturalHeight * scale);
-            context.fillText(resourceNumber.toString(), x + (image?.naturalWidth ?? 0) * scale + labelWidth / 2, y + Math.max(0, image?.naturalHeight ?? 0) * scale / 2);
-            x += (image?.naturalWidth ?? 0) * scale + labelWidth;
+            if (image) {
+                context.drawImage(image, x, y, image.naturalWidth * scale, image.naturalHeight * scale);
+                context.fillText(resourceNumber.toString(), x + (image?.naturalWidth ?? 0) * scale + labelWidth / 2, y + Math.max(0, image?.naturalHeight ?? 0) * scale / 2);
+                x += (image?.naturalWidth ?? 0) * scale + labelWidth;
+            } else {
+                context.fillStyle = 'gray';
+                context.fillRect(x, y, 24 * scale, 24 * scale);
+                context.fillText(resourceNumber.toString(), x + 24 * scale + labelWidth / 2, y + 24 * scale / 2);
+                x += 24 * scale + labelWidth;
+            }
         }
     }
 }

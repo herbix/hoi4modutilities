@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.11.0] - 2023/11/17 - Latest
+## [0.11.1] - 2023/11/17 - Latest
+
+### Fixed
+* Preview world map will stuck if resource icons are not available.
+
+## [0.11.0] - 2023/11/17
 
 ### Added
 * Preview map shows X and Z from HOI4 coordinate system.
