@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Develop
+
+### Fixed
+* Fix a bug that some conditions are treated as scope.
+
 ## [0.11.1] - 2023/11/17 - Latest
 
 ### Fixed

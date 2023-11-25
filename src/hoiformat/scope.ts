@@ -24,6 +24,10 @@ export function tryMoveScope(node: Node, scopeStack: Scope[], type: 'condition' 
         return false;
     }
 
+    if (typeof node.value !== 'object' || !Array.isArray(node.value)) {
+        return false;
+    }
+
     let nodeName = node.name.trim();
     if (nodeName.match(/^[A-Z][A-Z0-9]{2}$/)) {
         scopeStack.push({
