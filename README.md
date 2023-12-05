@@ -71,15 +71,13 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.11.1]
+## Release Notes - [0.11.2]
 
 ### Added
-* Preview map shows X and Z from HOI4 coordinate system.
-* Show resources of each state on previewed map.
-* Show river on previewed map.
+* Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
 
 ### Fixed
-* Remove supply value if supply area is not enabled.
+* Fix a bug that some conditions are treated as scope.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

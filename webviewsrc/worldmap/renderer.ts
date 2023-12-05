@@ -909,7 +909,7 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
                 maxHeight = Math.max(maxHeight, image.naturalHeight * scale);
                 fullWidth += image.naturalWidth * scale;
             } else {
-                maxHeight = Math.max(maxHeight, 24 * scale)
+                maxHeight = Math.max(maxHeight, 24 * scale);
                 fullWidth += 24 * scale;
             }
             fullWidth += labelWidth;

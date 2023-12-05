@@ -4,12 +4,15 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Develop
+## [0.11.2] - 2023/12/06 - Latest
+
+### Added
+* Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
 
 ### Fixed
 * Fix a bug that some conditions are treated as scope.
 
-## [0.11.1] - 2023/11/17 - Latest
+## [0.11.1] - 2023/11/17
 
 ### Fixed
 * Preview world map will stuck if resource icons are not available.
