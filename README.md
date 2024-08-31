@@ -1,8 +1,44 @@
-# HOI4 Mod Utilities
+# HOI4 Mod Utilities Updated
 
+## Fork Features
+
+* add preview auto localisation (need be turned on with `localisationIndex` feature flag)
+* preview localisation is controlled by `hoi4ModUtilities.previewLocalisation` setting
+* fix buggy readDirFilesRecursivelyImpl in `vsccommon.ts`
+
+## Example Full Function Settings.json
+
+```json
+{
+ "hoi4ModUtilities.installPath": "d:\\SteamLibrary\\steamapps\\common\\Hearts of Iron IV",
+ "hoi4ModUtilities.previewLocalisation": "Simplified Chinese",
+ "hoi4ModUtilities.featureFlags": [
+     "gfxIndex",
+     "localisationIndex"
+ ]
+}
+```
+
+## Fork Demos
+### National Focus
+![](fork-demo\focus.png)
+
+### Event
+![](fork-demo\event.png)
+### Gui
+![](fork-demo\gui.png)
+### Tech
+![](fork-demo\tech.png)
+### MIO
+#### Normal
+![](fork-demo\mio1.png)
+#### On Hover
+![](fork-demo\mio2.png)
+
+# Original ReadMe
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
 
-**[Support me on Patreon](https://www.patreon.com/chaofan)**
+**[Support original author on Patreon](https://www.patreon.com/chaofan)**
 
 ## Features
 

@@ -61,7 +61,7 @@ async function readDirFilesRecursivelyImpl(dir: vscode.Uri, prefix: string, resu
         if (type === vscode.FileType.File) {
             result.push(prefix + name);
         } else if (type === vscode.FileType.Directory) {
-            await readDirFilesRecursivelyImpl(dir.with({ path: path.join(dir.path, name) }), prefix + name + '/', result);
+            await readDirFilesRecursivelyImpl(vscode.Uri.joinPath(dir, name), prefix + name + '/', result);
         }
     }
 }

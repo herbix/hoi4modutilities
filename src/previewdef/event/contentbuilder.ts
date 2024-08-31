@@ -1,22 +1,24 @@
 import * as vscode from 'vscode';
-import { EventsLoader, EventsLoaderResult } from './loader';
-import { LoaderSession } from '../../util/loader/loader';
-import { debug } from '../../util/debug';
-import { html, htmlEscape } from '../../util/html';
-import { localize } from '../../util/i18n';
-import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { HOIEvent, HOIEventType } from './schema';
-import { flatten, repeat, max } from 'lodash';
-import { arrayToMap, forceError } from '../../util/common';
-import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
-import { GridBoxType } from '../../hoiformat/gui';
-import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
-import { Token } from '../../hoiformat/hoiparser';
-import { getSpriteByGfxName } from '../../util/image/imagecache';
+import {EventsLoader, EventsLoaderResult} from './loader';
+import {LoaderSession} from '../../util/loader/loader';
+import {debug} from '../../util/debug';
+import {html, htmlEscape} from '../../util/html';
+import {localize} from '../../util/i18n';
+import {StyleTable, normalizeForStyle} from '../../util/styletable';
+import {HOIEvent, HOIEventType} from './schema';
+import {flatten, repeat, max} from 'lodash';
+import {arrayToMap, forceError} from '../../util/common';
+import {HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase} from '../../hoiformat/schema';
+import {GridBoxType} from '../../hoiformat/gui';
+import {renderGridBox, GridBoxItem, GridBoxConnection} from '../../util/hoi4gui/gridbox';
+import {Token} from '../../hoiformat/hoiparser';
+import {getSpriteByGfxName} from '../../util/image/imagecache';
+import {getLocalisedTextQuick} from "../../util/localisationIndex";
+import {localisationIndex} from "../../util/featureflags";
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
-    const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
-    
+    const setPreviewFileUriScript = {content: `window.previewedFileUri = "${uri.toString()}";`};
+
     try {
         const session = new LoaderSession(false);
         const loadResult = await loader.load(session);
@@ -42,7 +44,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
 
     } catch (e) {
         const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
-        return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+        return html(webview, baseContent, [setPreviewFileUriScript], []);
     }
 
 }
@@ -57,19 +59,19 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     const topPadding = topPaddingBase;
 
     const gridBox: HOIPartial<GridBoxType> = {
-        position: { x: toNumberLike(leftPadding), y: toNumberLike(topPadding) },
+        position: {x: toNumberLike(leftPadding), y: toNumberLike(topPadding)},
         format: toStringAsSymbolIgnoreCase('up'),
-        size: { width: toNumberLike(xGridSize), height: undefined },
-        slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
+        size: {width: toNumberLike(xGridSize), height: undefined},
+        slotsize: {width: toNumberLike(xGridSize), height: toNumberLike(yGridSize)},
     } as HOIPartial<GridBoxType>;
-    
+
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
     const graph = eventsToGraph(eventIdToEvent, eventsLoaderResult.mainNamespaces);
     const idToContentMap: Record<string, string> = {};
     const gridBoxItems = await graphToGridBoxItems(graph, idToContentMap, eventsLoaderResult, styleTable);
 
     const renderedGridBox = await renderGridBox(gridBox, {
-        size: { width: 0, height: 0 },
+        size: {width: 0, height: 0},
         orientation: 'upper_left'
     }, {
         styleTable,
@@ -127,7 +129,7 @@ function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces:
     for (const event of Object.values(eventIdToEvent)) {
         eventToNode(event, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
     }
-    
+
     const result: EventNode[] = [];
     for (const event of Object.values(eventIdToEvent)) {
         if (!eventHasParent[event.id]) {
@@ -206,7 +208,7 @@ function eventToNode(
                 randomDays: childEvent.randomDays,
                 randomHours: childEvent.randomHours,
             };
-            
+
             if (isImmediate) {
                 eventNode.children.push(eventEdge);
             } else {
@@ -238,7 +240,7 @@ async function graphToGridBoxItems(
         starts: [],
         ends: [],
     };
-    const idContainer = { id: 0 };
+    const idContainer = {id: 0};
 
     for (const eventNode of graph) {
         const scopeContext: ScopeContext = {
@@ -287,7 +289,7 @@ async function eventNodeToGridBoxItems(
     const isOption = typeof node === 'object' && !('event' in node);
     const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
     if (isOption) {
-        idToContentMap[id] = makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
+        idToContentMap[id] = await makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
     } else {
         idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
             typeof node === 'object' ? node as EventNode : node, edge, eventsLoaderResult, styleTable);
@@ -343,7 +345,7 @@ function nextScope(scopeContext: ScopeContext, toScope: string): ScopeContext {
     }
 
     return {
-        fromStack: [ ...scopeContext.fromStack, scopeContext.currentScopeName ],
+        fromStack: [...scopeContext.fromStack, scopeContext.currentScopeName],
         currentScopeName,
     };
 }
@@ -365,7 +367,7 @@ const flagIcons: string[] = [
 
 async function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
     if (typeof eventNode === 'object') {
-        const { localizationDict, gfxFiles } = eventsLoaderResult;
+        const {localizationDict, gfxFiles} = eventsLoaderResult;
         const event = eventNode.event;
         const eventId = event.id;
         const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
@@ -374,12 +376,12 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
             (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
             (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
-            (edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ? 
+            (edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ?
                 localize('eventtree.delay', 'Delay: ') + (edge.days > 0 || edge.hours > 0 ?
                     `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
                     `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
                 '') +
-            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizationDict[event.title] ?? event.title}`;
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localisationIndex ? await getLocalisedTextQuick(event.title) : event.title}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
@@ -390,26 +392,26 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                 ${eventId}
                 ${flags.includes(true) ? '<br/>' + flags.map((v, i) => v ? makeIcon(flagIcons[i], styleTable) : '').join(' ') : ''}
                 ${!event.isTriggeredOnly ?
-                    `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}` :
-                    ''}
+            `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}` :
+            ''}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
                 ${edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ?
-                    `<br/>${makeIcon('watch', styleTable)} ${edge.days > 0 || edge.hours > 0 ?
-                        `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
-                        `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`}`
-                    : ''}
+            `<br/>${makeIcon('watch', styleTable)} ${edge.days > 0 || edge.hours > 0 ?
+                `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
+                `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`}`
+            : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
-                ${localizationDict[event.title] ?? event.title}
+                ${localisationIndex? await getLocalisedTextQuick(event.title) : event.title}
             </p>`;
-        
+
         const extraAttributes = [];
         const extraClasses = [
             styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
             styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
         ];
-        if (event.token) { 
+        if (event.token) {
             extraAttributes.push(`
                 start="${event.token.start}"
                 end="${event.token.end}"
@@ -443,6 +445,18 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
     } else {
         const eventId = eventNode;
         const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
+        let contentText = '';
+        if (localisationIndex) {
+            let localizedTitle = await getLocalisedTextQuick(eventId);
+            if (localizedTitle !== eventId && localizedTitle != null) {
+                contentText += `<br/>${localizedTitle}`;
+            } else {
+                localizedTitle = await getLocalisedTextQuick(`${eventId}.t`);
+                if (localizedTitle !== `${eventId}.t` && localizedTitle != null) {
+                    contentText += `<br/>${localizedTitle}`;
+                }
+            }
+        }
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
@@ -451,8 +465,9 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                 ${eventId}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
+                ${contentText}
             </p>`;
-    
+
         return makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'));
     }
 }
@@ -461,9 +476,15 @@ function makeIcon(type: string, styleTable: StyleTable): string {
     return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
 }
 
-function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): string {
-    const content = `${eventsLoaderResult.localizationDict[option.optionName] ?? option.optionName}`;
-    
+async function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+    let content = option.optionName;
+    let title = option.optionName;
+    if (localisationIndex){
+        const optionName = await getLocalisedTextQuick(option.optionName);
+        content = `${option.optionName} <br/> ${optionName}`;
+        title = `${option.optionName} \n ${optionName}`;
+    }
+
     const extraAttributes = option.token ? `
         start="${option.token.start}"
         end="${option.token.end}"
@@ -472,10 +493,10 @@ function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResu
 
     return makeNode(
         content,
-        content,
+        title,
         styleTable,
         styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
-            + (option.token ? ' navigator' : ''),
+        + (option.token ? ' navigator' : ''),
         extraAttributes);
 }
 

@@ -1,22 +1,23 @@
 import * as vscode from 'vscode';
-import { FocusTree, Focus } from './schema';
-import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
-import { localize, i18nTableAsScript } from '../../util/i18n';
-import { forceError, randomString } from '../../util/common';
-import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
-import { html, htmlEscape } from '../../util/html';
-import { GridBoxType } from '../../hoiformat/gui';
-import { FocusTreeLoader } from './loader';
-import { LoaderSession } from '../../util/loader/loader';
-import { debug } from '../../util/debug';
-import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { useConditionInFocus } from '../../util/featureflags';
-import { flatMap } from 'lodash';
+import {FocusTree, Focus} from './schema';
+import {getSpriteByGfxName, Image, getImageByPath} from '../../util/image/imagecache';
+import {localize, i18nTableAsScript} from '../../util/i18n';
+import {forceError, randomString} from '../../util/common';
+import {HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase} from '../../hoiformat/schema';
+import {html, htmlEscape} from '../../util/html';
+import {GridBoxType} from '../../hoiformat/gui';
+import {FocusTreeLoader} from './loader';
+import {LoaderSession} from '../../util/loader/loader';
+import {debug} from '../../util/debug';
+import {StyleTable, normalizeForStyle} from '../../util/styletable';
+import {localisationIndex, useConditionInFocus} from '../../util/featureflags';
+import {flatMap} from 'lodash';
+import {getLocalisedTextQuick} from "../../util/localisationIndex";
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
 export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
-    const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
+    const setPreviewFileUriScript = {content: `window.previewedFileUri = "${uri.toString()}";`};
 
     try {
         const session = new LoaderSession(false);
@@ -28,7 +29,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
 
         if (focustrees.length === 0) {
             const baseContent = localize('focustree.nofocustree', 'No focus tree.');
-            return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+            return html(webview, baseContent, [setPreviewFileUriScript], []);
         }
 
         const styleTable = new StyleTable();
@@ -42,7 +43,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
             baseContent,
             [
                 setPreviewFileUriScript,
-                ...jsCodes.map(c => ({ content: c })),
+                ...jsCodes.map(c => ({content: c})),
                 'common.js',
                 'focustree.js',
             ],
@@ -50,13 +51,13 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
                 'codicon.css',
                 'common.css',
                 styleTable,
-                { nonce: styleNonce },
+                {nonce: styleNonce},
             ],
         );
 
     } catch (e) {
         const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
-        return html(webview, baseContent, [ setPreviewFileUriScript ], []);
+        return html(webview, baseContent, [setPreviewFileUriScript], []);
     }
 }
 
@@ -70,10 +71,10 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
     const topPadding = topPaddingBase;
 
     const gridBox: HOIPartial<GridBoxType> = {
-        position: { x: toNumberLike(leftPadding), y: toNumberLike(topPadding) },
+        position: {x: toNumberLike(leftPadding), y: toNumberLike(topPadding)},
         format: toStringAsSymbolIgnoreCase('up'),
-        size: { width: toNumberLike(xGridSize), height: undefined },
-        slotsize: { width: toNumberLike(xGridSize), height: toNumberLike(yGridSize) },
+        size: {width: toNumberLike(xGridSize), height: undefined},
+        slotsize: {width: toNumberLike(xGridSize), height: toNumberLike(yGridSize)},
     } as HOIPartial<GridBoxType>;
 
     const renderedFocus: Record<string, string> = {};
@@ -180,7 +181,7 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
                 </div>
             </div>
         </div>`;
-    
+
     const warningsButton = focusTrees.every(ft => ft.warnings.length === 0) ? '' : `
         <button id="show-warnings" title="${localize('focustree.warnings', 'Toggle warnings')}">
             <i class="codicon codicon-warning"></i>
@@ -200,13 +201,28 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     for (const focusIcon of focus.icon) {
         const iconName = focusIcon.icon;
         const iconObject = iconName ? await getFocusIcon(iconName, gfxFiles) : null;
-        styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () => 
+        styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () =>
             `${iconObject ? `background-image: url(${iconObject.uri});` : 'background: grey;'}
-            background-size: ${iconObject ? iconObject.width: 0}px;`
+            background-size: ${iconObject ? iconObject.width : 0}px;`
         );
     }
-    
+
     styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
+
+    let textContent = focus.id;
+    if (localisationIndex){
+        let localizedText = await getLocalisedTextQuick(focus.id);
+        if (localizedText === focus.id || !localizedText){
+            if (focus.text){
+                localizedText = await getLocalisedTextQuick(focus.text);
+                if (localizedText !== focus.text && localizedText != null){
+                    textContent += `<br/>${localizedText}`;
+                }
+            }
+        }else {
+            textContent += `<br/>${localizedText}`;
+        }
+    }
 
     return `<div
     class="
@@ -236,7 +252,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
             text-align: center;
             display: inline-block;
         `)}">
-        ${focus.id}
+        ${textContent}
         </span>
     </div>`;
 }
