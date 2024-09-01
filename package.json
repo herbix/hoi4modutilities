@@ -2,10 +2,10 @@
 	"name": "hoi4modutilitiesupdated",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers. This fork updates the dynamic preview localization feature.",
-	"version": "0.12.0",
-	"author": "Shirai_Kuroko",
+	"version": "0.12.1",
+	"author": "IShiraiKurokoI",
 	"contributors": ["Chaofan Yang"],
-	"publisher": "Shirai_Kuroko",
+	"publisher": "IShiraiKurokoI",
 	"icon": "icon.png",
 	"repository": {
 		"type": "git",
