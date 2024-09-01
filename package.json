@@ -1,14 +1,15 @@
 {
-	"name": "hoi4modutilities",
+	"name": "hoi4modutilitiesupdated",
 	"displayName": "%hoi4modutilities.displayName%",
-	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.11.2",
-	"author": "Chaofan Yang",
-	"publisher": "chaofan",
+	"description": "Utilities for Heart of Iron IV mods developers. This fork updates the dynamic preview localization feature.",
+	"version": "0.12.0",
+	"author": "Shirai_Kuroko",
+	"contributors": ["Chaofan Yang"],
+	"publisher": "Shirai_Kuroko",
 	"icon": "icon.png",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/herbix/hoi4modutilities"
+		"url": "https://github.com/IShiraiKurokoI/hoi4modutilities"
 	},
 	"engines": {
 		"vscode": "^1.52.0"
@@ -78,7 +79,17 @@
 						"title": "%hoi4modutilities.previewLocalisation.title%",
 						"type": "string",
 						"default": "English",
-						"enum": ["Brazilian Portuguese", "English", "French", "German", "Japanese", "Polish", "Russian", "Simplified Chinese", "Spanish"],
+						"enum": [
+							"Brazilian Portuguese",
+							"English",
+							"French",
+							"German",
+							"Japanese",
+							"Polish",
+							"Russian",
+							"Simplified Chinese",
+							"Spanish"
+						],
 						"description": "%hoi4modutilities.previewLocalisation.desc%"
 					},
 					"hoi4ModUtilities.featureFlags": {
@@ -234,7 +245,7 @@
 		"assert": "^2.0.0",
 		"browserify-zlib": "^0.2.0",
 		"buffer": "^6.0.3",
-		"js-yaml": "^3.14.0",
+		"js-yaml": "^3.14.1",
 		"lodash": "^4.17.21",
 		"path-browserify": "^1.0.1",
 		"pngjs": "^5.0.0",
