@@ -21,19 +21,19 @@
 
 ## Fork Demos
 ### National Focus
-![](fork-demo\focus.png)
+![](fork-demo/focus.png)
 
 ### Event
-![](fork-demo\event.png)
+![](fork-demo/event.png)
 ### Gui
-![](fork-demo\gui.png)
+![](fork-demo/gui.png)
 ### Tech
-![](fork-demo\tech.png)
+![](fork-demo/tech.png)
 ### MIO
 #### Normal
-![](fork-demo\mio1.png)
+![](fork-demo/mio1.png)
 #### On Hover
-![](fork-demo\mio2.png)
+![](fork-demo/mio2.png)
 
 # Original ReadMe
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
