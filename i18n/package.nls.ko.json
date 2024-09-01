@@ -4,7 +4,7 @@
     "hoi4modutilities.category": "HOI4 모드 개발용 유틸리티",
     "hoi4modutilities.dds.editorName": "DDS 미리보기",
     "hoi4modutilities.tga.editorName": "TGA 미리보기",
-    "hoi4modutilities.displayName": "HOI4 모드 개발용 유틸리티 업데이트됨",
+    "hoi4modutilities.displayName": "HOI4 모드 개발용 유틸리티",
     "hoi4modutilities.featureFlags.title": "플래그",
     "hoi4modutilities.featureFlags.desc": "기능을 활성화하거나 비활성화 하는데 사용됩니다. 이 항목을 변경한 후에는 다시 로드해야 합니다. 자세한 내용은 깃허브의 위키를 참조하시기 바랍니다.",
     "hoi4modutilities.installPath.title": "저장 위치",
