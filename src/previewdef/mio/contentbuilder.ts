@@ -10,6 +10,8 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { Mio, MioTrait, TraitEffect } from './schema';
+import { getLocalisedTextQuick } from "../../util/localisationIndex";
+import { localisationIndex } from "../../util/featureflags";
 
 const defaultTraitIcon = 'gfx/interface/goals/goal_unknown.dds';
 const traitEffectIconMap: Record<TraitEffect, string> = {
@@ -105,7 +107,7 @@ async function renderMios(mios: Mio[], styleTable: StyleTable, gfxFiles: string[
             <div id="miopreviewplaceholder"></div>
         </div>` +
         renderWarningContainer(styleTable) +
-        renderToolBar(mios, styleTable)
+        await renderToolBar(mios, styleTable)
     );
 }
 
@@ -138,12 +140,15 @@ function renderWarningContainer(styleTable: StyleTable) {
     </div>`;
 }
 
-function renderToolBar(mios: Mio[], styleTable: StyleTable): string {
+async function renderToolBar(mios: Mio[], styleTable: StyleTable): Promise<string> {
     const mioSelect = mios.length <= 1 ? '' : `
         <label for="mios" class="${styleTable.style('miosLabel', () => `margin-right:5px`)}">${localize('miopreview.mio', 'Military Industrial Organization: ')}</label>
         <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <select id="mios" class="select multiple-select" tabindex="0" role="combobox">
-                ${mios.map((mio, i) => `<option value="${i}">${mio.id}</option>`).join('')}
+                ${await Promise.all(mios.map(async (mio, i) => {
+                    const localizedText = localisationIndex ? `(${mio.id}) ${await getLocalisedTextQuick(mio.id)}` : mio.id;
+                    return `<option value="${i}">${localizedText}</option>`;
+                })).then(options => options.join(''))}
             </select>
         </div>`;
 
@@ -183,6 +188,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
     
     styleTable.style('trait-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
     styleTable.raw(`.${styleTable.name('trait-common')}:hover .${styleTable.name('trait-span')}`, `display:inline-block;`);
+    styleTable.raw(`.${styleTable.name('trait-common')}:hover .${styleTable.name('trait-span-display')}`, `margin-top: -12px;`);
 
     const traitBg = await getSpriteByGfxName(trait.specialTraitBackground ? 'GFX_country_spefific_org_trait_button' : 'GFX_industrial_org_trait_button', gfxFiles);
 
@@ -217,7 +223,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
         start="${trait.token?.start}"
         end="${trait.token?.end}"
         ${file === trait.file ? '' : `file="${trait.file}"`}
-        title="${trait.id}\n({{position}})">
+        title="${trait.id}${localisationIndex ? `\n${await getLocalisedTextQuick(trait.name)}` : ''}\n({{position}})">
             <div class="
                 ${styleTable.style('effect-host', () => `
                     text-align: center;
@@ -250,6 +256,18 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
                 z-index: 5;
             `)}">
             ${trait.id}
+            </span>
+            <br/>
+            <span
+            class="${styleTable.style('trait-span-display', () => `
+                margin: 10px -400px;
+                margin-top: 84px;
+                text-align: center;
+                display: inline-block;
+                position: relative;
+                z-index: 5;
+            `)}">
+            ${localisationIndex ? `${await getLocalisedTextQuick(trait.name)}` : ''}
             </span>
         </div>
     </div>`;

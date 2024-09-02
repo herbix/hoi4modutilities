@@ -143,8 +143,9 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
         } catch (e) {
             return undefined;
         }
-    }))).filter((e): e is ({ file: string, result: Record<string, Record<string, string>>; }) =>
-        e && e.result && e.result[language] && typeof e.result[language] === 'object' && !Array.isArray(e.result[language]));
+    }))).filter((e): e is { file: string, result: Record<string, Record<string, string>> } =>
+        e !== undefined && e.result !== undefined && typeof e.result[language] === 'object' && !Array.isArray(e.result[language])
+    );
     
     const existingLocalizationDependency = existingDependency.filter(d => d.type.match(/^locali[zs]ation$/)).map(d => d.path.replace(/\\+/g, '/'));
     const moreLocalizationDependencyContent = localizations.filter(lf => {

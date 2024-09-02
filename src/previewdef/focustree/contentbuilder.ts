@@ -12,6 +12,8 @@ import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { useConditionInFocus } from '../../util/featureflags';
 import { flatMap } from 'lodash';
+import { getLocalisedTextQuick } from "../../util/localisationIndex";
+import { localisationIndex } from "../../util/featureflags";
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -208,6 +210,21 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     
     styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
 
+    let textContent = focus.id;
+    if (localisationIndex){
+        let localizedText = await getLocalisedTextQuick(focus.id);
+        if (localizedText === focus.id || !localizedText){
+            if (focus.text){
+                localizedText = await getLocalisedTextQuick(focus.text);
+                if (localizedText !== focus.text && localizedText != null){
+                    textContent += `<br/>${localizedText}`;
+                }
+            }
+        }else {
+            textContent += `<br/>${localizedText}`;
+        }
+    }
+
     return `<div
     class="
         navigator
@@ -236,7 +253,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
             text-align: center;
             display: inline-block;
         `)}">
-        ${focus.id}
+        ${textContent}
         </span>
     </div>`;
 }

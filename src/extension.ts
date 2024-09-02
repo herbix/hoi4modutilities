@@ -10,12 +10,17 @@ import { registerScanReferencesCommand } from './util/dependency';
 import { registerHoiFs } from './util/hoifs';
 import { loadI18n } from './util/i18n';
 import { registerGfxIndex } from './util/gfxindex';
+import { Logger } from "./util/logger";
+import { registerLocalisationIndex } from "./util/localisationIndex";
 
 export function activate(context: vscode.ExtensionContext) {
     let locale = (context as any).extension?.packageJSON.locale;
     if (locale === "%hoi4modutilities.locale%") {
         locale = 'en';
     }
+
+    Logger.initialize();
+    Logger.show();
 
     loadI18n(locale);
 
@@ -33,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
     context.subscriptions.push(registerGfxIndex());
+    context.subscriptions.push(registerLocalisationIndex());
 
     if (process.env.NODE_ENV !== 'production') {
         vscode.commands.registerCommand('hoi4modutilities.test', () => {

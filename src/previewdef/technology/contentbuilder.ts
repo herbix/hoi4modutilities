@@ -17,6 +17,8 @@ import { debug } from '../../util/debug';
 import { flatMap, sumBy, min, flatten, chain, uniq } from 'lodash';
 import { StyleTable } from '../../util/styletable';
 import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
+import { getLocalisedTextQuick } from "../../util/localisationIndex";
+import { localisationIndex } from "../../util/featureflags";
 
 const techTreeViewName = 'countrytechtreeview';
 const doctrineTreeViewName = 'countrydoctrineview';
@@ -75,7 +77,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeViews, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
 
     return `
-    ${renderFolderSelector(folders, styleTable)}
+    ${await renderFolderSelector(folders, styleTable)}
     <div
     id="dragger"
     class="${styleTable.oneTimeStyle('dragger', () => `
@@ -99,7 +101,14 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     </div>`;
 }
 
-function renderFolderSelector(folders: string[], styleTable: StyleTable): string {
+async function renderFolderSelector(folders: string[], styleTable: StyleTable): Promise<string> {
+    const folderOptions = await Promise.all(
+        folders.map(async (folder) => {
+            const localizedText = localisationIndex ? `${await getLocalisedTextQuick(folder)} (${folder})` : folder;
+            return `<option value="techfolder_${folder}">${localizedText}</option>`;
+        })
+    );
+
     return `<div
     class="${styleTable.oneTimeStyle('folderSelectorBar', () => `
         position: fixed;
@@ -122,7 +131,7 @@ function renderFolderSelector(folders: string[], styleTable: StyleTable): string
                 type="text"
                 class="${styleTable.oneTimeStyle('folderSelector', () => `min-width:200px`)}"
             >
-                ${folders.map(folder => `<option value="techfolder_${folder}">${folder}</option>`)}
+                ${folderOptions.join('')}
             </select>
         </div>
     </div>`;
@@ -371,7 +380,7 @@ async function renderTechnology(
     return `<div
         start="${technology.token?.start}"
         end="${technology.token?.end}"
-        title="${technology.id}\n(${folder.x}, ${folder.y})"
+        title="${technology.id}${localisationIndex ? `\n${await getLocalisedTextQuick(technology.id)}` : ''}\n(${folder.x}, ${folder.y})"
         class="
             navigator 
             ${commonOptions.styleTable.style('navigator', () => `
@@ -439,7 +448,7 @@ async function renderSubTechnology(
     return `<div
         start="${subTechnology.token?.start}"
         end="${subTechnology.token?.end}"
-        title="${subTechnology.id}\n(${folder.x}, ${folder.y})"
+        title="${subTechnology.id}${localisationIndex ? `\n${await getLocalisedTextQuick(subTechnology.id)}` : ''}\n(${folder.x}, ${folder.y})"
         class="
             navigator
             ${commonOptions.styleTable.style('navigator', () => `
