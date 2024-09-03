@@ -71,13 +71,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.11.2]
+## Release Notes - [0.12.0]
 
 ### Added
-* Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
-
-### Fixed
-* Fix a bug that some conditions are treated as scope.
+* Reading text from localisation files and show them in previews (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.11.2] - 2023/12/06 - Latest
+## [0.12.0] - 2024/09/03 - Latest
+
+### Added
+* Reading text from localisation files and show them in previews (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
+
+## [0.11.2] - 2023/12/06
 
 ### Added
 * Updated Korean translation (Contributor: [gyhs(NIKA)](https://github.com/gyhs)).
