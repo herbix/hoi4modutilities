@@ -38,6 +38,7 @@ export interface Focus {
     offset: Offset[];
     token: Token | undefined;
     file: string;
+    text?: string;
 }
 
 export interface FocusWarning extends Warning<string> {
@@ -68,6 +69,7 @@ interface FocusDef {
     allow_branch: Raw[]; /* FIXME not symbol node */
     offset: OffsetDef[];
     _token: Token;
+    text?: string;
 }
 
 interface FocusIconDef {
@@ -134,7 +136,8 @@ const focusSchema: SchemaDef<FocusDef> = {
             },
         },
         _type: 'array',
-    }
+    },
+    text: "string",
 };
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
@@ -305,6 +308,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         trigger: o.trigger ? extractConditionValues(o.trigger.filter((v): v is Raw => v !== undefined).map(v => v._raw.value), countryScope, conditionExprs).condition : false,
     }));
 
+    const text = hoiFocus.text;
+
     return {
         id,
         icon,
@@ -319,6 +324,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         offset,
         token: hoiFocus._token,
         file: filePath,
+        text,
     };
 }
 

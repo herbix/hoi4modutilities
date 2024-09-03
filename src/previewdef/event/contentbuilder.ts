@@ -13,6 +13,8 @@ import { GridBoxType } from '../../hoiformat/gui';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { Token } from '../../hoiformat/hoiparser';
 import { getSpriteByGfxName } from '../../util/image/imagecache';
+import { getLocalisedTextQuick } from "../../util/localisationIndex";
+import { localisationIndex } from "../../util/featureflags";
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -287,7 +289,7 @@ async function eventNodeToGridBoxItems(
     const isOption = typeof node === 'object' && !('event' in node);
     const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
     if (isOption) {
-        idToContentMap[id] = makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
+        idToContentMap[id] = await makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
     } else {
         idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
             typeof node === 'object' ? node as EventNode : node, edge, eventsLoaderResult, styleTable);
@@ -379,7 +381,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
                     `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
                 '') +
-            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizationDict[event.title] ?? event.title}`;
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localisationIndex ? await getLocalisedTextQuick(event.title) : event.title}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
@@ -401,7 +403,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
-                ${localizationDict[event.title] ?? event.title}
+                ${localisationIndex? await getLocalisedTextQuick(event.title) : event.title}
             </p>`;
         
         const extraAttributes = [];
@@ -443,6 +445,18 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
     } else {
         const eventId = eventNode;
         const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
+        let contentText = '';
+        if (localisationIndex) {
+            let localizedTitle = await getLocalisedTextQuick(eventId);
+            if (localizedTitle !== eventId && localizedTitle != null) {
+                contentText += `<br/>${localizedTitle}`;
+            } else {
+                localizedTitle = await getLocalisedTextQuick(`${eventId}.t`);
+                if (localizedTitle !== `${eventId}.t` && localizedTitle != null) {
+                    contentText += `<br/>${localizedTitle}`;
+                }
+            }
+        }
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
@@ -451,6 +465,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                 ${eventId}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
+                ${contentText}
             </p>`;
     
         return makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'));
@@ -461,9 +476,15 @@ function makeIcon(type: string, styleTable: StyleTable): string {
     return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
 }
 
-function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): string {
-    const content = `${eventsLoaderResult.localizationDict[option.optionName] ?? option.optionName}`;
-    
+async function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+    let content = option.optionName;
+    let title = option.optionName;
+    if (localisationIndex){
+        const optionName = await getLocalisedTextQuick(option.optionName);
+        content = `${option.optionName} <br/> ${optionName}`;
+        title = `${option.optionName} \n ${optionName}`;
+    }
+
     const extraAttributes = option.token ? `
         start="${option.token.start}"
         end="${option.token.end}"
@@ -472,7 +493,7 @@ function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResu
 
     return makeNode(
         content,
-        content,
+        title,
         styleTable,
         styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
             + (option.token ? ' navigator' : ''),
