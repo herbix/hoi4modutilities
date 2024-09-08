@@ -12,6 +12,7 @@ import { loadI18n } from './util/i18n';
 import { registerGfxIndex } from './util/gfxindex';
 import { Logger } from "./util/logger";
 import { registerLocalisationIndex } from "./util/localisationIndex";
+import { registerSharedFocusIndex } from "./util/sharedFocusIndex";
 
 export function activate(context: vscode.ExtensionContext) {
     let locale = (context as any).extension?.packageJSON.locale;
@@ -37,6 +38,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(registerHoiFs());
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
+    context.subscriptions.push(registerSharedFocusIndex());
     context.subscriptions.push(registerGfxIndex());
     context.subscriptions.push(registerLocalisationIndex());
 
