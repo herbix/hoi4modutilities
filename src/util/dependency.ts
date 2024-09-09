@@ -10,8 +10,6 @@ import { getEvents, HOIEvents, HOIEvent } from "../previewdef/event/schema";
 import { getLanguageIdInYml, getRelativePathInWorkspace, isSameUri } from "./vsccommon";
 import { flatMap, flatten } from "lodash";
 import { parseYaml } from "./yaml";
-import { findFileByFocusKey } from "./sharedFocusIndex";
-import { sharedFocusIndex } from "./featureflags";
 
 export type Dependency = { type: string, path: string };
 
@@ -30,27 +28,6 @@ export function getDependenciesFromText(text: string): Dependency[] {
         }
 
         match = regex.exec(text);
-    }
-
-    if (sharedFocusIndex){
-        // Regex to match "shared_focus = focus_key" with variable length spaces, where focus_key does not start with "{"
-        const sharedFocusRegex = /\s*shared_focus\s*=\s*(?!\{)(\S+)/g;
-        let sharedFocusMatch = sharedFocusRegex.exec(text);
-
-        while (sharedFocusMatch) {
-            const focusKey = sharedFocusMatch[1].trim(); // The focus key after '='
-
-            // Use the Index (e.g., findFileByFocusKey) to get the file path
-            const filePath = findFileByFocusKey(focusKey);
-
-            if (filePath) {
-                dependencies.push({ type: 'focus', path: filePath });
-            } else {
-                console.warn(`Focus key "${focusKey}" could not be found in the index.`);
-            }
-
-            sharedFocusMatch = sharedFocusRegex.exec(text);
-        }
     }
 
     return dependencies;
