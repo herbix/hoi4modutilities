@@ -20,18 +20,20 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             throw error;
         }
 
-        const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)),{});
+        const constants = {};
 
-        if (sharedFocusIndex){
+        const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), constants);
+
+        if (sharedFocusIndex) {
             for (const focusTree of file.focus_tree) {
                 for (const sharedFocus of focusTree.shared_focus) {
                     if (!sharedFocus) {
                         continue;
                     }
                     const filePath = findFileByFocusKey(sharedFocus);
-                    if (filePath){
-                        if(dependencies.findIndex((item) => item.path === filePath) === -1){
-                            dependencies.push({ type: 'focus', path: filePath });
+                    if (filePath) {
+                        if (dependencies.findIndex((item) => item.path === filePath) === -1) {
+                            dependencies.push({type: 'focus', path: filePath});
                         }
                     }
                 }
@@ -46,7 +48,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             .filter(ft => ft.isSharedFocues)
             .value();
 
-        const focusTrees = getFocusTreeWithFocusFile(file, sharedFocusTrees, this.file, {});
+        const focusTrees = getFocusTreeWithFocusFile(file, sharedFocusTrees, this.file, constants);
 
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
