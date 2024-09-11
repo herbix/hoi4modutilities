@@ -4,7 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.12.0] - 2024/09/03 - Latest
+## [0.12.1] - 2024/09/11 - Latest
+
+### Added
+* Add shared focus dependency parsing for focus preview (#97) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
+* Add support for `remove_trait` in MIO preview (#96).
+
+## [0.12.0] - 2024/09/03
 
 ### Added
 * Reading text from localisation files and show them in previews (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).

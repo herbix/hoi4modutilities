@@ -44,6 +44,7 @@ interface MioDef {
     trait: MioTraitDef[];
     add_trait: MioTraitDef[];
     override_trait: MioTraitDef[];
+    remove_trait: Enum;
 }
 
 interface MioTraitDef {
@@ -109,6 +110,7 @@ const mioSchema: SchemaDef<MioDef> = {
         _innerType: mioTraitSchema,
         _type: "array",
     },
+    remove_trait: "enum",
 };
 
 const mioFileSchema: SchemaDef<MioFile> = {
@@ -151,14 +153,14 @@ function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, depend
     if (mioDef.include && mioDef.trait.length > 0) {
         warnings.push({
             source: id,
-            text: localize('miopreview.warnings.traitAndIncludeCheck1', 'Military industrial organization {0} has include property. It should use add_trait or override_trait instead of trait.', id),
+            text: localize('miopreview.warnings.traitAndIncludeCheck1', 'Military industrial organization {0} has include property. It should use add_trait, remove_trait or override_trait instead of trait.', id),
         });
     }
 
-    if (!mioDef.include && (mioDef.add_trait.length > 0 || mioDef.override_trait.length > 0)) {
+    if (!mioDef.include && (mioDef.add_trait.length > 0 || mioDef.override_trait.length > 0 || mioDef.remove_trait._values.length > 0)) {
         warnings.push({
             source: id,
-            text: localize('miopreview.warnings.traitAndIncludeCheck2', 'Military industrial organization {0} doesn\'t have include property. It should use trait instead of add_trait or override_trait.', id),
+            text: localize('miopreview.warnings.traitAndIncludeCheck2', 'Military industrial organization {0} doesn\'t have include property. It should use trait instead of add_trait, remove_trait or override_trait.', id),
         });
     }
 
@@ -175,6 +177,16 @@ function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, depend
 
     for (const traitDef of mioDef.override_trait) {
         overrideTrait(traitDef, traits, filePath, warnings, conditionExprs);
+    }
+
+    for (const traitId of mioDef.remove_trait._values) {
+        if (traitId && traits[traitId]) {
+            traits[traitId] = {
+                ...traits[traitId],
+                hasVisible: true,
+                visible: false,
+            };
+        }
     }
 
     validateRelativePositionId(traits, warnings);
