@@ -173,10 +173,12 @@ const focusIconSchema: SchemaDef<FocusIconDef> = {
     value: "string",
 };
 
-export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath: string): FocusTree[] {
+export function convertFocusFileNodeToJson(node: Node, constants: {}): HOIPartial<FocusFile> {
+    return convertNodeToJson<FocusFile>(node, focusFileSchema, constants);
+}
+
+export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFocusTrees: FocusTree[], filePath: string, constants: {} ): FocusTree[] {
     const focusTrees: FocusTree[] = [];
-    const constants = {};
-    const file = convertNodeToJson<FocusFile>(node, focusFileSchema, constants);
 
     if (file.shared_focus.length > 0) {
         const conditionExprs: ConditionItem[] = [];
@@ -223,6 +225,13 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
     }
 
     return focusTrees;
+}
+
+export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath: string): FocusTree[] {
+    const constants = {};
+    const file = convertFocusFileNodeToJson(node, constants);
+
+    return getFocusTreeWithFocusFile(file, sharedFocusTrees, filePath, constants);
 }
 
 function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: ConditionItem[], filePath: string, warnings: FocusWarning[], constants: {}): Record<string, Focus> {
