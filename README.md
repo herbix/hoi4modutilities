@@ -71,11 +71,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.12.1]
+## Release Notes - [0.12.2]
 
-### Added
-* Add shared focus dependency parsing for focus preview (#97) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
-* Add support for `remove_trait` in MIO preview (#96).
+### Fixed
+* Allow `|` in symbol type (to support the case `localization_key = building_state_modifier|dam`) (#105) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

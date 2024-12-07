@@ -4,7 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.12.1] - 2024/09/11 - Latest
+## [0.12.2] - 2024/12/07 - Latest
+
+### Fixed
+* Allow `|` in symbol type (to support the case `localization_key = building_state_modifier|dam`) (#105) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
+
+## [0.12.1] - 2024/09/11
 
 ### Added
 * Add shared focus dependency parsing for focus preview (#97) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
