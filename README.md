@@ -2,8 +2,6 @@
 
 This extension add tools for Heart of Iron IV modding. Some of the tools may work on other Paradox games.
 
-> I'm disappointed by Paradox because of the Silk Road thing. I'll pause this project until they fix it.
-
 ## Features
 
 * World map preview
@@ -71,10 +69,12 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.12.2]
+## Release Notes - [0.12.3]
 
 ### Fixed
-* Allow `|` in symbol type (to support the case `localization_key = building_state_modifier|dam`) (#105) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
+* Show `joint_focus` in focus tree preview like `shared_focus` (#116).
+* Loose parser syntax check to allow missing `}` or redundant `}` at the end of a file (#107).
+* Support new focus icon format and `alternate_icon` (#106).
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

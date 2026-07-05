@@ -1,4 +1,5 @@
 import { UserError } from '../util/common';
+import { Logger } from '../util/logger';
 
 export type NodeValue = string | number | Node[] | SymbolNode | null;
 
@@ -119,7 +120,7 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
     const value = parseBlockContent(tokens);
 
     if (tokens.peek().type !== 'eof') {
-        tokens.throw("File content can't be completely parsed");
+        Logger.warn("File content can't be completely parsed");
     }
 
     return {
@@ -234,7 +235,7 @@ function parseNodeValue(tokens: Tokenizer<HOITokenType>): [ NodeValue, Token<HOI
             if (nextToken.value === '{') {
                 const result = parseBlockContent(tokens);
                 const right = tokens.next();
-                if (right.value !== '}') {
+                if (right.value !== '}' && right.type !== 'eof') {
                     tokens.throw("Expect a '}'", true);
                 }
                 return [

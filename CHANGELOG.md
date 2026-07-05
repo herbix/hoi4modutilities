@@ -4,7 +4,14 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.12.2] - 2024/12/07 - Latest
+## [0.12.3] - 2026/07/05 - Latest
+
+### Fixed
+* Show `joint_focus` in focus tree preview like `shared_focus` (#116).
+* Loose parser syntax check to allow missing `}` or redundant `}` at the end of a file (#107).
+* Support new focus icon format and `alternate_icon` (#106).
+
+## [0.12.2] - 2024/12/07
 
 ### Fixed
 * Allow `|` in symbol type (to support the case `localization_key = building_state_modifier|dam`) (#105) (Contributor: [IShiraiKurokoI(Shirai_Kuroko)](https://github.com/IShiraiKurokoI)).
