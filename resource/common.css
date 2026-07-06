@@ -239,3 +239,21 @@ button[disabled]:active {
     left: 0;
     pointer-events: none;
 }
+
+.preview-label-mode {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.preview-label-mode button {
+    width: auto;
+    min-width: 36px;
+    padding: 0 8px;
+    border: 1px solid var(--vscode-panel-border);
+}
+
+.preview-label-mode button.active {
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+}

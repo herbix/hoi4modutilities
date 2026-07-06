@@ -117,6 +117,53 @@ export function subscribeRefreshButton() {
     });
 }
 
+export type PreviewLabelMode = 'id' | 'name';
+
+export function subscribePreviewLabelToggle(): void {
+    const controls = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-preview-label-mode-value]'));
+    if (controls.length === 0) {
+        return;
+    }
+
+    applyPreviewLabelMode('id');
+
+    for (const control of controls) {
+        control.addEventListener('click', () => {
+            const mode = control.dataset.previewLabelModeValue === 'name' ? 'name' : 'id';
+            applyPreviewLabelMode(mode);
+        });
+    }
+}
+
+export function refreshPreviewLabelMode(): void {
+    const mode = document.body.dataset.previewLabelMode === 'name' ? 'name' : 'id';
+    applyPreviewLabelMode(mode);
+}
+
+function applyPreviewLabelMode(mode: PreviewLabelMode): void {
+    document.body.dataset.previewLabelMode = mode;
+
+    for (const control of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-preview-label-mode-value]'))) {
+        const active = control.dataset.previewLabelModeValue === mode;
+        control.classList.toggle('active', active);
+        control.setAttribute('aria-pressed', active ? 'true' : 'false');
+    }
+
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>('[data-preview-label-id][data-preview-label-name]'))) {
+        element.textContent = mode === 'name'
+            ? element.dataset.previewLabelName ?? element.dataset.previewLabelId ?? ''
+            : element.dataset.previewLabelId ?? '';
+    }
+
+    for (const element of Array.from(document.querySelectorAll<HTMLElement>('[data-preview-title-id][data-preview-title-name]'))) {
+        const title = mode === 'name'
+            ? element.dataset.previewTitleName ?? element.dataset.previewTitleId ?? ''
+            : element.dataset.previewTitleId ?? '';
+        element.title = title;
+        element.setAttribute('title', title);
+    }
+}
+
 if (window.previewedFileUri) {
     setState({ uri: window.previewedFileUri });
 }

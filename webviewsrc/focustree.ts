@@ -1,4 +1,4 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
+import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
@@ -106,6 +106,7 @@ async function buildContent() {
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
+    refreshPreviewLabelMode();
     subscribeNavigators();
     setupCheckedFocuses(focuses, focusTree);
 }
@@ -358,6 +359,8 @@ function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
 let retriggerSearch: () => void = () => {};
 
 window.addEventListener('load', tryRun(async function() {
+    subscribePreviewLabelToggle();
+
     // Focuses
     const focusesElement = document.getElementById('focuses') as HTMLSelectElement | null;
     if (focusesElement) {
