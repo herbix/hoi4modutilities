@@ -55,10 +55,13 @@ export async function clearDlcZipCache() {
 }
 
 export function getFilePathFromMod(relativePath: string): Promise<vscode.Uri | undefined> {
-    return getFilePathFromModOrHOI4(relativePath, { hoi4: false });
+    return getFilePathFromModOrHOI4(relativePath, { hoi4: false, dlc: false });
 }
 
-export async function getFilePathFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<vscode.Uri | undefined> {
+export async function getFilePathFromModOrHOI4(
+    relativePath: string,
+    options?: { mod?: boolean, hoi4?: boolean, dlc?: boolean }): Promise<vscode.Uri | undefined> {
+
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     let absolutePath: vscode.Uri | undefined = undefined;
 
@@ -97,22 +100,10 @@ export async function getFilePathFromModOrHOI4(relativePath: string, options?: {
         }
     }
 
-    if (options?.hoi4 === false) {
-        return absolutePath;
-    }
-
-    // Find in HOI4 install path
     const installPath = vscode.Uri.parse(Hoi4FsSchema + ':/');
-    if (!absolutePath) {
-        const findPath = vscode.Uri.joinPath(installPath, relativePath);
-        if (await isFile(findPath)) {
-            absolutePath = findPath;
-        }
-    }
-
-    // Find in HOI4 DLCs
     const conf = getConfiguration();
-    if (!absolutePath && conf.loadDlcContents) {
+    if (options?.dlc !== false && !absolutePath && conf.loadDlcContents) {
+        // Find in HOI4 DLCs
         const dlcs = await dlcZipPathsCache.get(installPath.toString());
         if (dlcs !== null && dlcZipCache !== null) {
             for (const dlc of dlcs) {
@@ -134,6 +125,17 @@ export async function getFilePathFromModOrHOI4(relativePath: string, options?: {
             }
         }
     }
+
+    if (options?.hoi4 !== false) {
+        // Find in HOI4 install path
+        if (!absolutePath) {
+            const findPath = vscode.Uri.joinPath(installPath, relativePath);
+            if (await isFile(findPath)) {
+                absolutePath = findPath;
+            }
+        }
+    }
+
 
     return absolutePath;
 }
@@ -199,7 +201,7 @@ export async function readFileFromPath(realPath: vscode.Uri, relativePath?: stri
     return [ await readFile(realPath), realPath ];
 }
 
-export async function readFileFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean }): Promise<[Buffer, vscode.Uri]> {
+export async function readFileFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean, dlc?: boolean }): Promise<[Buffer, vscode.Uri]> {
     const realPath = await getFilePathFromModOrHOI4(relativePath, options);
 
     if (!realPath) {
@@ -215,7 +217,10 @@ export async function readFileFromModOrHOI4AsJson<T>(relativePath: string, schem
     return convertNodeToJson<T>(nodes, schema);
 }
 
-export async function listFilesFromModOrHOI4(relativePath: string, options?: { mod?: boolean, hoi4?: boolean, recursively?: boolean }): Promise<string[]> {
+export async function listFilesFromModOrHOI4(
+    relativePath: string,
+    options?: { mod?: boolean, hoi4?: boolean, recursively?: boolean, dlc?: boolean }): Promise<string[]> {
+
     const readFunction = options?.recursively ? readDirFilesRecursively : readDirFiles;
     relativePath = relativePath.replace(/\/\/+|\\+/g, '/');
     const result: string[] = [];
@@ -243,24 +248,10 @@ export async function listFilesFromModOrHOI4(relativePath: string, options?: { m
         }
     }
 
-    if (options?.hoi4 === false) {
-        return result;
-    }
-
-    // Find in HOI4 install path
-    const conf = getConfiguration();
     const installPath = vscode.Uri.parse(Hoi4FsSchema + ':/');
-    {
-        const findPath = vscode.Uri.joinPath(installPath, relativePath);
-        if (await isDirectory(findPath)) {
-            try {
-                result.push(...await readFunction(findPath));
-            } catch(e) {}
-        }
-    }
-
     // Find in HOI4 DLCs
-    if (conf.loadDlcContents) {
+    const conf = getConfiguration();
+    if (options?.dlc !== false && conf.loadDlcContents) {
         const dlcs = await dlcZipPathsCache.get(installPath.toString());
         if (dlcs !== null && dlcZipCache !== null) {
             for (const dlc of dlcs) {
@@ -286,6 +277,16 @@ export async function listFilesFromModOrHOI4(relativePath: string, options?: { m
                     } catch(e) {}
                 }
             }
+        }
+    }
+    
+    if (options?.hoi4 !== false) {
+        // Find in HOI4 install path
+        const findPath = vscode.Uri.joinPath(installPath, relativePath);
+        if (await isDirectory(findPath)) {
+            try {
+                result.push(...await readFunction(findPath));
+            } catch(e) {}
         }
     }
 

@@ -51,18 +51,23 @@ export async function getGfxContainerFiles(gfxNames: (string | undefined)[]): Pr
 }
 
 async function buildGlobalGfxIndex(estimatedSize: [number]): Promise<void> {
-    const options = { mod: false, recursively: true };
+    const options = { mod: false, dlc: false, recursively: true };
     const gfxFiles = (await listFilesFromModOrHOI4('interface', options)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
     await Promise.all(gfxFiles.map(f => fillGfxItems('interface/' + f, globalGfxIndex, options, estimatedSize)));
+
+    // Prefer DLC GFX files over base game GFX files
+    const optionsDlc = { mod: false, hoi4: false, recursively: true };
+    const gfxFilesDlc = (await listFilesFromModOrHOI4('interface', optionsDlc)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
+    await Promise.all(gfxFilesDlc.map(f => fillGfxItems('interface/' + f, workspaceGfxIndex, optionsDlc, estimatedSize)));
 }
 
 async function buildWorkspaceGfxIndex(estimatedSize: [number]): Promise<void> {
-    const options = { hoi4: false, recursively: true };
+    const options = { hoi4: false, dlc: false, recursively: true };
     const gfxFiles = (await listFilesFromModOrHOI4('interface', options)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
     await Promise.all(gfxFiles.map(f => fillGfxItems('interface/' + f, workspaceGfxIndex, options, estimatedSize)));
 }
 
-async function fillGfxItems(gfxFile: string, gfxIndex: Record<string, GfxIndexItem | undefined>, options: { mod?: boolean, hoi4?: boolean }, estimatedSize?: [number]): Promise<void> {
+async function fillGfxItems(gfxFile: string, gfxIndex: Record<string, GfxIndexItem | undefined>, options: { mod?: boolean, hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
     try {
         if (estimatedSize) {
             estimatedSize[0] += gfxFile.length;
@@ -156,7 +161,7 @@ function addWorkspaceGfxIndex(file: vscode.Uri) {
     if (wsFolder) {
         const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
         if (relative && relative.startsWith('interface/')) {
-            fillGfxItems(relative, workspaceGfxIndex, { hoi4: false });
+            fillGfxItems(relative, workspaceGfxIndex, { hoi4: false, dlc: false });
         }
     }
 }

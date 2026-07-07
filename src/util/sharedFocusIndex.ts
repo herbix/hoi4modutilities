@@ -45,18 +45,18 @@ export function registerSharedFocusIndex(): vscode.Disposable {
 }
 
 async function buildGlobalFocusIndex(estimatedSize: [number]): Promise<void> {
-    const options = { mod: false, hoi4: true, recursively: true };
+    const options = { mod: false, hoi4: true, dlc: true, recursively: true };
     const focusFiles = await listFilesFromModOrHOI4('common/national_focus', options);
     await Promise.all(focusFiles.map(f => fillFocusItems('common/national_focus/' + f, globalFocusIndex, options, estimatedSize)));
 }
 
 async function buildWorkspaceFocusIndex(estimatedSize: [number]): Promise<void> {
-    const options = { mod: true, hoi4: false, recursively: true };
+    const options = { mod: true, hoi4: false, dlc: false, recursively: true };
     const focusFiles = await listFilesFromModOrHOI4('common/national_focus', options);
     await Promise.all(focusFiles.map(f => fillFocusItems('common/national_focus/' + f, workspaceFocusIndex, options, estimatedSize)));
 }
 
-async function fillFocusItems(focusFile: string, focusIndex: FocusIndex, options: { mod?: boolean; hoi4?: boolean }, estimatedSize?: [number]): Promise<void> {
+async function fillFocusItems(focusFile: string, focusIndex: FocusIndex, options: { mod?: boolean; hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
     const [fileBuffer, uri] = await readFileFromModOrHOI4(focusFile, options);
     const fileContent = fileBuffer.toString();
 
@@ -184,7 +184,7 @@ function addWorkspaceFocusIndex(file: vscode.Uri) {
     if (wsFolder) {
         const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
         if (relative && relative.startsWith('common/national_focus/')) {
-            fillFocusItems(relative, workspaceFocusIndex, { hoi4: false });
+            fillFocusItems(relative, workspaceFocusIndex, { hoi4: false, dlc: false });
         }
     }
 }

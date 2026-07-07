@@ -96,20 +96,21 @@ export async function getLocalisedText(localisationKey: string | undefined, lang
 }
 
 async function buildGlobalLocalisationIndex(estimatedSize: [number]): Promise<void> {
-    const options = {mod: false, hoi4: true, recursively: true};
+    const options = {mod: false, hoi4: true, dlc: true, recursively: true};
     const localisationFiles = (await listFilesFromModOrHOI4('localisation', options)).filter(f => /.*_(l_english|l_braz_por|l_german|l_french|l_spanish|l_polish|l_russian|l_japanese|l_simp_chinese)\.yml$/i.test(f));
     await Promise.all(localisationFiles.map(f => fillLocalisationItems('localisation/' + f, globalLocalisationIndex, options, estimatedSize)));
 }
 
 async function buildWorkspaceLocalisationIndex(estimatedSize: [number]): Promise<void> {
-    const options = {mod: true, hoi4: false, recursively: true};
+    const options = {mod: true, hoi4: false, dlc: false, recursively: true};
     const localisationFiles = (await listFilesFromModOrHOI4('localisation', options)).filter(f => /.*_(l_english|l_braz_por|l_german|l_french|l_spanish|l_polish|l_russian|l_japanese|l_simp_chinese)\.yml$/i.test(f));
     await Promise.all(localisationFiles.map(f => fillLocalisationItems('localisation/' + f, workspaceLocalisationIndex, options, estimatedSize)));
 }
 
 async function fillLocalisationItems(localisationFile: string, localisationIndex: LocalisationData, options: {
     mod?: boolean,
-    hoi4?: boolean
+    hoi4?: boolean,
+    dlc?: boolean
 }, estimatedSize?: [number]): Promise<void> {
     const [fileBuffer, uri] = await readFileFromModOrHOI4(localisationFile, options);
     const processedContent = preprocessYamlContent(fileBuffer.toString());
@@ -267,7 +268,7 @@ function addWorkspaceLocalisationIndex(file: vscode.Uri) {
     if (wsFolder) {
         const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
         if (relative && relative.startsWith('localisation/')) {
-            fillLocalisationItems(relative, workspaceLocalisationIndex, {hoi4: false});
+            fillLocalisationItems(relative, workspaceLocalisationIndex, {hoi4: false, dlc: false});
         }
     }
 }
