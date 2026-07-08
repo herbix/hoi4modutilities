@@ -87,6 +87,7 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
     jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
     jsCodes.push('window.useConditionInFocus = ' + useConditionInFocus);
     jsCodes.push('window.xGridSize = ' + xGridSize);
+    jsCodes.push('window.yGridSize = ' + yGridSize);
 
     const continuousFocusContent =
         `<div id="continuousFocuses" class="${styleTable.oneTimeStyle('continuousFocuses', () => `

@@ -125,7 +125,8 @@ export function subscribePreviewLabelToggle(): void {
         return;
     }
 
-    applyPreviewLabelMode('id');
+    const initialMode = getState().previewLabelMode === 'name' ? 'name' : 'id';
+    applyPreviewLabelMode(initialMode);
 
     for (const control of controls) {
         control.addEventListener('click', () => {
@@ -142,6 +143,7 @@ export function refreshPreviewLabelMode(): void {
 
 function applyPreviewLabelMode(mode: PreviewLabelMode): void {
     document.body.dataset.previewLabelMode = mode;
+    setState({ previewLabelMode: mode });
 
     for (const control of Array.from(document.querySelectorAll<HTMLButtonElement>('[data-preview-label-mode-value]'))) {
         const active = control.dataset.previewLabelModeValue === mode;
@@ -198,6 +200,10 @@ window.addEventListener('load', function() {
         let mdy = -1;
         let pressed = false;
         dragger.addEventListener('mousedown', function(e) {
+            if (e.button !== 0) {
+                return;
+            }
+
             mdx = e.pageX;
             mdy = e.pageY;
             pressed = true;
