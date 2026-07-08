@@ -39,6 +39,7 @@ export interface Focus {
     token: Token | undefined;
     file: string;
     text?: string;
+    overlay?: string;
 }
 
 export interface FocusWarning extends Warning<string> {
@@ -71,6 +72,7 @@ interface FocusDef {
     offset: OffsetDef[];
     _token: Token;
     text?: string;
+    overlay?: string;
 }
 
 interface FocusIconDef {
@@ -142,6 +144,7 @@ const focusSchema: SchemaDef<FocusDef> = {
         _type: 'array',
     },
     text: "string",
+    overlay: "string",
 };
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
@@ -332,6 +335,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
     }));
 
     const text = hoiFocus.text;
+    const overlay = hoiFocus.overlay;
 
     return {
         id,
@@ -348,6 +352,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         token: hoiFocus._token,
         file: filePath,
         text,
+        overlay,
     };
 }
 

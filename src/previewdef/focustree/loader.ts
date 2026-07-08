@@ -6,6 +6,7 @@ import { uniq, flatten, chain } from "lodash";
 import { getGfxContainerFiles } from "../../util/gfxindex";
 import { sharedFocusIndex } from "../../util/featureflags";
 import { findFileByFocusKey } from "../../util/sharedFocusIndex";
+import { listFilesFromModOrHOI4 } from "../../util/fileloader";
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
@@ -50,10 +51,19 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
 
         const focusTrees = getFocusTreeWithFocusFile(file, sharedFocusTrees, this.file, constants);
 
+        const focusGfxNames = chain(focusTrees)
+            .flatMap(ft => Object.values(ft.focuses))
+            .flatMap(f => [...f.icon.map(i => i.icon), f.overlay])
+            .value();
+        const workspaceGfxFiles = (await listFilesFromModOrHOI4('interface', { hoi4: false, recursively: true }))
+            .filter(f => f.toLocaleLowerCase().endsWith('.gfx'))
+            .map(f => 'interface/' + f);
+
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
             ...flatten(focusTreeDepFiles.map(f => f.result.gfxFiles)),
-            ...await getGfxContainerFiles(chain(focusTrees).flatMap(ft => Object.values(ft.focuses)).flatMap(f => f.icon).map(i => i.icon).value()),
+            ...workspaceGfxFiles,
+            ...await getGfxContainerFiles(focusGfxNames),
         ];
 
         return {

@@ -210,6 +210,18 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     
     styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
 
+    if (focus.overlay) {
+        const overlaySprite = await getSpriteByGfxName(focus.overlay, gfxFiles);
+        if (overlaySprite !== undefined) {
+            styleTable.style('focus-overlay-' + normalizeForStyle(focus.overlay), () =>
+                `background-image: url(${overlaySprite.image.uri});
+                background-size: ${overlaySprite.image.width}px;
+                background-position: center;
+                background-repeat: no-repeat;`
+            );
+        }
+    }
+
     let textContent = focus.id;
     if (localisationIndex){
         let localizedText = await getLocalisedTextQuick(focus.id);
@@ -233,6 +245,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
             background-position-x: center;
             background-position-y: calc(50% - 18px);
             background-repeat: no-repeat;
+            position: relative;
             width: 100%;
             height: 100%;
             text-align: center;
@@ -243,15 +256,29 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     end="${focus.token?.end}"
     ${file === focus.file ? '' : `file="${focus.file}"`}
     title="${focus.id}\n({{position}})">
-        <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px;`)}">
+        <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px; z-index: 1;`)}">
             <input id="checkbox-${normalizeForStyle(focus.id)}" type="checkbox"/>
         </div>
+        ${focus.overlay ? `<div class="
+            ${styleTable.style('focus-overlay-common', () => `
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                z-index: 0;
+            `)}
+            ${styleTable.name('focus-overlay-' + normalizeForStyle(focus.overlay))}
+        "></div>` : ''}
         <span
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;
             margin-top: 85px;
             text-align: center;
             display: inline-block;
+            position: relative;
+            z-index: 1;
         `)}">
         ${textContent}
         </span>
