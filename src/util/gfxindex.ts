@@ -17,6 +17,9 @@ interface GfxIndexItem {
 const globalGfxIndex: Record<string, GfxIndexItem | undefined> = {};
 let workspaceGfxIndex: Record<string, GfxIndexItem | undefined> = {};
 
+const gfxIndexInitializedEventEmitter = new vscode.EventEmitter<void>();
+export const onGfxIndexInitialized = gfxIndexInitializedEventEmitter.event;
+
 export function registerGfxIndex(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
     if (gfxIndex) {
@@ -25,6 +28,7 @@ export function registerGfxIndex(): vscode.Disposable {
         vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('gfxindex.building', 'Building GFX index...'), task);
         task.then(() => {
             vscode.window.showInformationMessage(localize('gfxindex.builddone', 'Building GFX index done.'));
+            gfxIndexInitializedEventEmitter.fire();
             sendEvent('gfxIndex', { size: estimatedSize[0].toString() });
         });
         disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(onChangeWorkspaceFolders));

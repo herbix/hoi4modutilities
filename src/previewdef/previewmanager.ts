@@ -16,6 +16,7 @@ import { chain } from 'lodash';
 import { sendEvent } from '../util/telemetry';
 import { guiPreviewDef } from './gui';
 import { mioPreviewDef } from './mio';
+import { onGfxIndexInitialized } from '../util/gfxindex';
 
 export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
 
@@ -54,6 +55,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
         disposables.push(vscode.window.onDidChangeActiveTextEditor(this.updateHoi4PreviewContextValue, this));
         disposables.push(vscode.window.registerWebviewPanelSerializer(WebviewType.Preview, this));
+        disposables.push(onGfxIndexInitialized(this.onGfxIndexInitialized, this));
 
         // Trigger context value setting
         this.updateHoi4PreviewContextValue(vscode.window.activeTextEditor);
@@ -119,6 +121,15 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         setVscodeContext(ContextName.ShouldShowHoi4Preview, shouldShowPreviewButton);
         setVscodeContext(ContextName.ShouldHideHoi4Preview, !shouldShowPreviewButton);
         setVscodeContext(ContextName.Hoi4PreviewType, hoi4PreviewType);
+    }
+
+    private onGfxIndexInitialized(): void {
+        for (const preview of Object.values(this._previews)) {
+            const document = getDocumentByUri(preview.uri);
+            if (document) {
+                preview.onDocumentChange(document);
+            }
+        }
     }
 
     private async showPreviewImpl(requestUri?: vscode.Uri, panel?: vscode.WebviewPanel): Promise<void> {

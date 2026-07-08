@@ -210,25 +210,37 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     
     styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
 
+    let overlay = '';
     if (focus.overlay) {
         const overlaySprite = await getSpriteByGfxName(focus.overlay, gfxFiles);
         if (overlaySprite !== undefined) {
-            styleTable.style('focus-overlay-' + normalizeForStyle(focus.overlay), () =>
+            overlay = `<div class="
+            ${styleTable.style('focus-overlay-common', () => `
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                width: ${overlaySprite.image.width}px;
+                height: ${overlaySprite.image.height}px;
+                pointer-events: none;
+                transform: translate(-50%, -50%);
+                z-index: 0;
+            `)}
+            ${styleTable.style('focus-overlay-' + normalizeForStyle(focus.overlay), () =>
                 `background-image: url(${overlaySprite.image.uri});
-                background-size: ${overlaySprite.image.width}px;
+                background-size: ${overlaySprite.image.width}px ${overlaySprite.image.height}px;
                 background-position: center;
                 background-repeat: no-repeat;`
-            );
+            )}"></div>`;
         }
     }
 
     let textContent = focus.id;
-    if (localisationIndex){
+    if (localisationIndex) {
         let localizedText = await getLocalisedTextQuick(focus.id);
         if (localizedText === focus.id || !localizedText){
             if (focus.text){
                 localizedText = await getLocalisedTextQuick(focus.text);
-                if (localizedText !== focus.text && localizedText != null){
+                if (localizedText !== focus.text && localizedText !== null && localizedText !== undefined) {
                     textContent += `<br/>${localizedText}`;
                 }
             }
@@ -259,18 +271,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px; z-index: 1;`)}">
             <input id="checkbox-${normalizeForStyle(focus.id)}" type="checkbox"/>
         </div>
-        ${focus.overlay ? `<div class="
-            ${styleTable.style('focus-overlay-common', () => `
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                pointer-events: none;
-                z-index: 0;
-            `)}
-            ${styleTable.name('focus-overlay-' + normalizeForStyle(focus.overlay))}
-        "></div>` : ''}
+        ${overlay}
         <span
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;

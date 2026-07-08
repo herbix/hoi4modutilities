@@ -171,7 +171,7 @@ function updateSelectedFocusTree(clearCondition: boolean) {
         if (conditions) {
             conditions.select.innerHTML = `<span class="value"></span>
                 ${conditionExprs.map(option =>
-                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}]` : ''}${option.nodeContent}</div>`
+                    `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}] ` : ''}${option.nodeContent}</div>`
                 ).join('')}`;
             conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
         }
