@@ -69,12 +69,14 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.12.3]
+## Release Notes - [0.12.4]
 
 ### Fixed
-* Show `joint_focus` in focus tree preview like `shared_focus` (#116).
-* Loose parser syntax check to allow missing `}` or redundant `}` at the end of a file (#107).
-* Support new focus icon format and `alternate_icon` (#106).
+* Reorder file loading logic to “workspace > dlc > base game”
+
+### Added
+* Support `overlay` in focus tree preview (#123) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Enabled GFX index by default.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
