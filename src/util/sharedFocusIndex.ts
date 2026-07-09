@@ -10,7 +10,7 @@ import { parseHoi4File } from "../hoiformat/hoiparser";
 import { sharedFocusIndex } from "./featureflags";
 
 interface FocusIndex {
-    [file: string]: string[]; // Filename -> array of focus keys
+    [focusKey: string]: string; // Focus key -> filename
 }
 
 const globalFocusIndex: FocusIndex = {};
@@ -67,8 +67,11 @@ async function fillFocusItems(focusFile: string, focusIndex: FocusIndex, options
         // Only store focus trees where isSharedFocues is true
         focusTrees.forEach(tree => {
             if (tree.isSharedFocues) {
-                const focusKeys = Object.keys(tree.focuses);
-                focusIndex[focusFile] = focusKeys;
+                for (const key of Object.keys(tree.focuses)) {
+                    if (focusIndex[key] === undefined) {
+                        focusIndex[key] = focusFile;
+                    }
+                }
             }
         });
 
@@ -89,25 +92,8 @@ async function fillFocusItems(focusFile: string, focusIndex: FocusIndex, options
 
 // Function to find the file name containing the specified focus key
 export function findFileByFocusKey(key: string): string | undefined {
-    let result: string | undefined;
-
-    // Search in globalFocusIndex first
-    for (const file in globalFocusIndex) {
-        if (globalFocusIndex[file].includes(key)) {
-            result = file;
-            break;
-        }
-    }
-
-    // Always search in workspaceFocusIndex, and if found, override the result
-    for (const file in workspaceFocusIndex) {
-        if (workspaceFocusIndex[file].includes(key)) {
-            result = file;
-            break;
-        }
-    }
-
-    return result;
+    // Search in workspace first, then fall back to global.
+    return workspaceFocusIndex[key] ?? globalFocusIndex[key];
 }
 
 function onChangeWorkspaceFolders(_: vscode.WorkspaceFoldersChangeEvent) {
@@ -174,7 +160,11 @@ function removeWorkspaceFocusIndex(file: vscode.Uri) {
     if (wsFolder) {
         const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
         if (relative && relative.startsWith('common/national_focus/')) {
-            delete workspaceFocusIndex[relative];
+            for (const key in workspaceFocusIndex) {
+                if (workspaceFocusIndex[key] === relative) {
+                    delete workspaceFocusIndex[key];
+                }
+            }
         }
     }
 }

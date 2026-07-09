@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Unreleased
+## [0.12.4] - 2026/07/08 - Latest
 
 ### Fixed
 * Reorder file loading logic to “workspace > dlc > base game”
@@ -13,7 +13,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Support `overlay` in focus tree preview (#123) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
 * Enabled GFX index by default.
 
-## [0.12.3] - 2026/07/05 - Latest
+## [0.12.3] - 2026/07/05
 
 ### Fixed
 * Show `joint_focus` in focus tree preview like `shared_focus` (#116).
