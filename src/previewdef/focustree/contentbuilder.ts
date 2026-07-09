@@ -13,7 +13,6 @@ import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { useConditionInFocus } from '../../util/featureflags';
 import { flatMap } from 'lodash';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { localisationIndex } from "../../util/featureflags";
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -88,6 +87,7 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
     jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
     jsCodes.push('window.useConditionInFocus = ' + useConditionInFocus);
     jsCodes.push('window.xGridSize = ' + xGridSize);
+    jsCodes.push('window.yGridSize = ' + yGridSize);
 
     const continuousFocusContent =
         `<div id="continuousFocuses" class="${styleTable.oneTimeStyle('continuousFocuses', () => `
@@ -190,11 +190,20 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
         <div class="toolbar">
+            ${renderPreviewLabelModeControl(styleTable)}
             ${focuses}
             ${searchbox}
             ${useConditionInFocus ? conditions : allowbranch}
             ${warningsButton}
         </div>
+    </div>`;
+}
+
+function renderPreviewLabelModeControl(styleTable: StyleTable): string {
+    return `<div class="preview-label-mode ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+        <span class="${styleTable.style('previewLabelModeLabel', () => `margin-right:5px`)}">Label: </span>
+        <button type="button" data-preview-label-mode-value="id" aria-pressed="true">ID</button>
+        <button type="button" data-preview-label-mode-value="name" aria-pressed="false">Name</button>
     </div>`;
 }
 
@@ -234,20 +243,10 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         }
     }
 
-    let textContent = focus.id;
-    if (localisationIndex) {
-        let localizedText = await getLocalisedTextQuick(focus.id);
-        if (localizedText === focus.id || !localizedText){
-            if (focus.text){
-                localizedText = await getLocalisedTextQuick(focus.text);
-                if (localizedText !== focus.text && localizedText !== null && localizedText !== undefined) {
-                    textContent += `<br/>${localizedText}`;
-                }
-            }
-        }else {
-            textContent += `<br/>${localizedText}`;
-        }
-    }
+    const localisedText = await getFocusLocalisedText(focus);
+    const textContent = htmlEscape(focus.id);
+    const labelAttributes = getPreviewLabelAttributes(focus.id, localisedText);
+    const titleAttributes = getPreviewTitleAttributes(focus.id, localisedText, '{{position}}');
 
     return `<div
     class="
@@ -267,12 +266,13 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     start="${focus.token?.start}"
     end="${focus.token?.end}"
     ${file === focus.file ? '' : `file="${focus.file}"`}
-    title="${focus.id}\n({{position}})">
+    ${titleAttributes}>
         <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px; z-index: 1;`)}">
             <input id="checkbox-${normalizeForStyle(focus.id)}" type="checkbox"/>
         </div>
         ${overlay}
         <span
+        ${labelAttributes}
         class="${styleTable.style('focus-span', () => `
             margin: 10px -400px;
             margin-top: 85px;
@@ -284,6 +284,32 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         ${textContent}
         </span>
     </div>`;
+}
+
+async function getFocusLocalisedText(focus: Focus): Promise<string | undefined> {
+    let localisedText = await getLocalisedTextQuick(focus.id);
+    if (localisedText && localisedText !== focus.id) {
+        return localisedText;
+    }
+
+    if (focus.text) {
+        localisedText = await getLocalisedTextQuick(focus.text);
+        if (localisedText && localisedText !== focus.text) {
+            return localisedText;
+        }
+    }
+
+    return undefined;
+}
+
+function getPreviewLabelAttributes(id: string, name: string | undefined): string {
+    return `data-preview-label-id="${htmlEscape(id)}" data-preview-label-name="${htmlEscape(name ?? id)}"`;
+}
+
+function getPreviewTitleAttributes(id: string, name: string | undefined, position: string): string {
+    const idTitle = `${id}\n(${position})`;
+    const nameTitle = `${name ?? id}\n(${position})`;
+    return `title="${htmlEscape(idTitle)}" data-preview-title-id="${htmlEscape(idTitle)}" data-preview-title-name="${htmlEscape(nameTitle)}"`;
 }
 
 export async function getFocusIcon(name: string, gfxFiles: string[]): Promise<Image | undefined> {

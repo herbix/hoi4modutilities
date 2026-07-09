@@ -1,4 +1,4 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
+import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
 import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
@@ -10,6 +10,7 @@ import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
 import { feLocalize } from './util/i18n';
 import { Checkbox } from "./util/checkbox";
+import { vscode } from "./util/vscode";
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -59,6 +60,7 @@ let selectedFocusTreeIndex: number = Math.min(focusTrees.length - 1, getState().
 let allowBranches: DivDropdown | undefined = undefined;
 let conditions: DivDropdown | undefined = undefined;
 let checkedFocuses: Record<string, Checkbox> = {};
+const selectedFocusIds = new Set<string>();
 
 async function buildContent() {
     const focusCheckState = getState().checkedFocuses ?? {};
@@ -106,8 +108,11 @@ async function buildContent() {
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
+    refreshPreviewLabelMode();
     subscribeNavigators();
     setupCheckedFocuses(focuses, focusTree);
+    setupFocusDragging(focuses);
+    refreshFocusSelection();
 }
 
 function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Record<string, boolean>) {
@@ -355,9 +360,225 @@ function setupCheckedFocuses(focuses: Focus[], focusTree: FocusTree) {
     }
 }
 
+function setupFocusDragging(focuses: Focus[]) {
+    const xGridSize = (window as any).xGridSize as number;
+    const yGridSize = (window as any).yGridSize as number;
+    const focusElements = getFocusElements(focuses);
+
+    for (const { focus, element: focusElement } of focusElements) {
+
+        let suppressNextClick = false;
+        focusElement.addEventListener('click', e => {
+            if (suppressNextClick) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                suppressNextClick = false;
+            }
+        }, true);
+
+        focusElement.addEventListener('mousedown', e => {
+            if (e.button !== 0 || isInteractiveTarget(e.target)) {
+                return;
+            }
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            if (!selectedFocusIds.has(focus.id)) {
+                selectedFocusIds.clear();
+                selectedFocusIds.add(focus.id);
+                refreshFocusSelection();
+            }
+
+            const draggedFocuses = focusElements.filter(f => selectedFocusIds.has(f.focus.id));
+            const movedFocuses = draggedFocuses.filter(f => !hasSelectedRelativeAncestor(f.focus, focuses));
+            const scale = getState().scale || 1;
+            const startClientX = e.clientX;
+            const startClientY = e.clientY;
+            let deltaGridX = 0;
+            let deltaGridY = 0;
+            let moved = false;
+
+            const onMouseMove = (moveEvent: MouseEvent) => {
+                deltaGridX = Math.round((moveEvent.clientX - startClientX) / scale / xGridSize);
+                deltaGridY = Math.round((moveEvent.clientY - startClientY) / scale / yGridSize);
+                moved = moved || deltaGridX !== 0 || deltaGridY !== 0;
+                for (const draggedFocus of draggedFocuses) {
+                    draggedFocus.element.style.transform = `translate(${deltaGridX * xGridSize}px, ${deltaGridY * yGridSize}px)`;
+                }
+                document.body.style.cursor = 'grabbing';
+            };
+
+            const onMouseUp = () => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                document.body.style.cursor = '';
+
+                if (!moved || (deltaGridX === 0 && deltaGridY === 0)) {
+                    for (const draggedFocus of draggedFocuses) {
+                        draggedFocus.element.style.transform = '';
+                    }
+                    return;
+                }
+
+                suppressNextClick = true;
+                vscode.postMessage({
+                    command: 'updateFocusPositions',
+                    focuses: movedFocuses.map(f => ({
+                        focusId: f.focus.id,
+                        file: f.navigator.attributes.getNamedItem('file')?.value,
+                        start: getNumberAttribute(f.navigator, 'start'),
+                        end: getNumberAttribute(f.navigator, 'end'),
+                        x: f.focus.x + deltaGridX,
+                        y: f.focus.y + deltaGridY,
+                    })),
+                });
+            };
+
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        });
+    }
+}
+
+function setupFocusBoxSelection(): void {
+    document.addEventListener('contextmenu', e => {
+        if (isFocusTreeCanvasTarget(e.target) && !isInteractiveTarget(e.target)) {
+            e.preventDefault();
+        }
+    });
+
+    document.addEventListener('mousedown', e => {
+        if (e.button !== 2 || isInteractiveTarget(e.target)) {
+            return;
+        }
+
+        if (!isFocusTreeCanvasTarget(e.target)) {
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        const selectionBox = document.createElement('div');
+        selectionBox.style.position = 'fixed';
+        selectionBox.style.border = '1px solid var(--vscode-focusBorder)';
+        selectionBox.style.background = 'rgba(80, 160, 255, 0.18)';
+        selectionBox.style.pointerEvents = 'none';
+        selectionBox.style.zIndex = '9999';
+        document.body.append(selectionBox);
+
+        const startX = e.clientX;
+        const startY = e.clientY;
+        let moved = false;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            moved = true;
+            const left = Math.min(startX, moveEvent.clientX);
+            const top = Math.min(startY, moveEvent.clientY);
+            const width = Math.abs(moveEvent.clientX - startX);
+            const height = Math.abs(moveEvent.clientY - startY);
+            selectionBox.style.left = `${left}px`;
+            selectionBox.style.top = `${top}px`;
+            selectionBox.style.width = `${width}px`;
+            selectionBox.style.height = `${height}px`;
+        };
+
+        const onMouseUp = (upEvent: MouseEvent) => {
+            window.removeEventListener('mousemove', onMouseMove);
+            window.removeEventListener('mouseup', onMouseUp);
+            selectionBox.remove();
+
+            if (!moved) {
+                return;
+            }
+
+            const selectionRect = normalizeRect(startX, startY, upEvent.clientX, upEvent.clientY);
+            selectedFocusIds.clear();
+            for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
+                if (focusElement.style.display === 'none') {
+                    continue;
+                }
+
+                if (rectsIntersect(selectionRect, focusElement.getBoundingClientRect())) {
+                    selectedFocusIds.add(focusElement.id.replace(/^focus_/, ''));
+                }
+            }
+
+            refreshFocusSelection();
+        };
+
+        window.addEventListener('mousemove', onMouseMove);
+        window.addEventListener('mouseup', onMouseUp);
+    }, true);
+}
+
+function isFocusTreeCanvasTarget(target: EventTarget | null): boolean {
+    return target instanceof HTMLElement && (!!target.closest('#focustreecontent') || target.id === 'dragger');
+}
+
+function refreshFocusSelection(): void {
+    for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
+        const selected = selectedFocusIds.has(focusElement.id.replace(/^focus_/, ''));
+        focusElement.style.boxShadow = selected ? '0 0 0 3px var(--vscode-focusBorder)' : '';
+    }
+}
+
+function getFocusElements(focuses: Focus[]): { focus: Focus, element: HTMLDivElement, navigator: HTMLDivElement }[] {
+    const result: { focus: Focus, element: HTMLDivElement, navigator: HTMLDivElement }[] = [];
+    for (const focus of focuses) {
+        const element = document.getElementById('focus_' + focus.id) as HTMLDivElement | null;
+        const navigator = element?.querySelector<HTMLDivElement>('.navigator') ?? null;
+        if (element && navigator) {
+            result.push({ focus, element, navigator });
+        }
+    }
+
+    return result;
+}
+
+function hasSelectedRelativeAncestor(focus: Focus, focuses: Focus[]): boolean {
+    let relativeId = focus.relativePositionId;
+    const visitedFocusIds = new Set<string>();
+    while (relativeId !== undefined) {
+        if (visitedFocusIds.has(relativeId)) {
+            return false;
+        }
+
+        visitedFocusIds.add(relativeId);
+        if (selectedFocusIds.has(relativeId)) {
+            return true;
+        }
+
+        relativeId = focuses.find(f => f.id === relativeId)?.relativePositionId;
+    }
+
+    return false;
+}
+
+function normalizeRect(x1: number, y1: number, x2: number, y2: number): DOMRect {
+    return new DOMRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x1 - x2), Math.abs(y1 - y2));
+}
+
+function rectsIntersect(a: DOMRect, b: DOMRect): boolean {
+    return a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top;
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+    return target instanceof HTMLElement && !!target.closest('input,button,select,textarea,label');
+}
+
+function getNumberAttribute(element: HTMLElement, name: string): number | undefined {
+    const value = element.attributes.getNamedItem(name)?.value;
+    return value && value !== 'undefined' ? parseInt(value) : undefined;
+}
+
 let retriggerSearch: () => void = () => {};
 
 window.addEventListener('load', tryRun(async function() {
+    subscribePreviewLabelToggle();
+    setupFocusBoxSelection();
+
     // Focuses
     const focusesElement = document.getElementById('focuses') as HTMLSelectElement | null;
     if (focusesElement) {
