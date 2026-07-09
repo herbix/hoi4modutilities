@@ -81,6 +81,14 @@ function getCenterPosition(gridX: number, gridY: number, format: Format['_name']
     return position;
 }
 
+export function getGridBoxCommonChildParentInfo(gridBox: HOIPartial<GridBoxType>, parentInfo: ParentInfo): ParentInfo {
+    const orientation = calculateBBox(gridBox, parentInfo)[4];
+    const xSlotSize = normalizeNumberLike(getWidth(gridBox.slotsize), 0) ?? 50;
+    const ySlotSize = normalizeNumberLike(getHeight(gridBox.slotsize), 0) ?? 50;
+    const slotSize = { width: xSlotSize, height: ySlotSize };
+    return { size: slotSize, orientation };
+}
+
 export async function renderGridBoxCommon(
     gridBox: HOIPartial<GridBoxType>,
     parentInfo: ParentInfo,

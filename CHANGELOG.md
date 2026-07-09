@@ -4,6 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Added
+* Support `force_use_small_tech_layout` in technology tree preview.
+* Add condition selection in technology tree preview.
+* Allow zooming in technology tree preview.
+
 ## [0.12.4] - 2026/07/08 - Latest
 
 ### Fixed

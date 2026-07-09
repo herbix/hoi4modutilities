@@ -1,6 +1,24 @@
 import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, Position, CustomMap, Enum, SchemaDef, positionSchema, convertNodeToJson } from "../../hoiformat/schema";
+import { HOIPartial, Position, CustomMap, Enum, SchemaDef, positionSchema, convertNodeToJson, Raw } from "../../hoiformat/schema";
 import { arrayToMap } from "../../util/common";
+import { ConditionComplexExpr, ConditionItem, extractConditionValues, extractConditionalExprs } from "../../hoiformat/condition";
+import { countryScope } from "../../hoiformat/scope";
+import { GridBoxType } from "../../hoiformat/gui";
+import { ParentInfo } from "../../util/hoi4gui/common";
+
+export interface RenderedTechnologyFolder {
+    template: string; // html
+    gridboxes: Record<string, RenderedTechnologyFolderGridBox>; // start tech id -> gridbox
+    renderedTechnologies: Record<string, string>; // tech id -> rendered html
+    renderedXor: { upDown: string; leftRight: string };
+    renderedLines: string[]; // (item.up ? 1 : 0) | (item.right ? 2 : 0) | (item.down ? 4 : 0) | (item.left ? 8 : 0) | (dot ? 16 : 0)
+}
+
+export interface RenderedTechnologyFolderGridBox {
+    gridbox: HOIPartial<GridBoxType>;
+    parentInfo: ParentInfo;
+    background: string;
+}
 
 export interface TechnologyFolder {
     name: string;
@@ -13,8 +31,11 @@ export interface Technology {
     folders: Record<string, TechnologyFolder>;
     leadsToTechs: string[];
     xor: string[];
+    inAllowBranch: string[];
+    allowBranch: ConditionComplexExpr | undefined;
     startYear: number;
     enableEquipments: boolean;
+    forceUseSmallTechLayout: boolean;
     subTechnologies: Technology[];
     token: Token | undefined;
 }
@@ -22,6 +43,7 @@ export interface Technology {
 export interface TechnologyTree {
     startTechnology: string;
     folder: string;
+    conditionExprs: ConditionItem[];
     technologies: Technology[];
 }
 
@@ -29,6 +51,8 @@ type TechnologiesDef = CustomMap<TechnologyDef>;
 
 interface TechnologyDef {
     enable_equipments: Enum;
+    force_use_small_tech_layout: boolean;
+    allow_branch: Raw[];
     path: TechnologyPath[];
     folder: Folder[];
     start_year: number;
@@ -52,6 +76,11 @@ interface TechnologyFile {
 
 const technologySchema: SchemaDef<TechnologyDef> = {
     enable_equipments: "enum",
+    force_use_small_tech_layout: "boolean",
+    allow_branch: {
+        _innerType: "raw",
+        _type: "array",
+    },
     path: {
         _innerType: {
             leads_to_tech: "string",
@@ -88,8 +117,16 @@ export function getTechnologyTrees(node: Node): TechnologyTree[] {
     for (const [folder, techs] of Object.entries(technologiesByFolder)) {
         const trees = getTechnologiesByTree(techs);
         for (const [startTechnology, techs2] of Object.entries(trees)) {
+            const conditionExprs: ConditionItem[] = [];
+            for (const technology of techs2) {
+                if (technology.allowBranch !== undefined) {
+                    extractConditionalExprs(technology.allowBranch, conditionExprs);
+                }
+            }
+
             result.push({
                 startTechnology: startTechnology,
+                conditionExprs,
                 technologies: techs2,
                 folder,
             });
@@ -167,7 +204,12 @@ function getTechnologies(technologies: HOIPartial<TechnologiesDef>['_map']): Rec
         const startYear = technology.start_year ?? 0;
         const leadsToTechs = technology.path.map(p => p.leads_to_tech).filter((p): p is string => p !== undefined);
         const xor = technology.xor._values;
+        const hasAllowBranch = technology.allow_branch.length > 0;
+        const allowBranch = hasAllowBranch ?
+            extractConditionValues(technology.allow_branch.filter((v): v is Raw => v !== undefined).map(v => v._raw.value), countryScope).condition :
+            undefined;
         const enableEquipments = technology.enable_equipments._values.length > 0;
+        const forceUseSmallTechLayout = technology.force_use_small_tech_layout ?? false;
         const folders: Record<string, TechnologyFolder> = {};
         
         for (const folder of technology.folder) {
@@ -181,9 +223,34 @@ function getTechnologies(technologies: HOIPartial<TechnologiesDef>['_map']): Rec
         }
 
         result[id] = {
-            id, token, startYear, leadsToTechs, xor, enableEquipments, folders,
+            id, token, startYear, leadsToTechs, xor, inAllowBranch: hasAllowBranch ? [id] : [], allowBranch, enableEquipments, folders,
             subTechnologies: [],
+            forceUseSmallTechLayout,
         };
+    }
+
+    let hasChangedInAllowBranch = true;
+    while (hasChangedInAllowBranch) {
+        hasChangedInAllowBranch = false;
+        for (const technology of Object.values(result)) {
+            if (technology.inAllowBranch.length === 0) {
+                continue;
+            }
+
+            for (const childTechName of technology.leadsToTechs) {
+                const childTechnology = result[childTechName];
+                if (!childTechnology) {
+                    continue;
+                }
+
+                for (const branchRoot of technology.inAllowBranch) {
+                    if (!childTechnology.inAllowBranch.includes(branchRoot)) {
+                        childTechnology.inAllowBranch.push(branchRoot);
+                        hasChangedInAllowBranch = true;
+                    }
+                }
+            }
+        }
     }
 
     for (const { _key, _value } of Object.values(technologies)) {

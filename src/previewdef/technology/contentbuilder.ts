@@ -1,12 +1,12 @@
 import * as vscode from 'vscode';
-import { localize } from '../../util/i18n';
-import { Technology, TechnologyTree, TechnologyFolder } from './schema';
+import { i18nTableAsScript, localize } from '../../util/i18n';
+import { Technology, TechnologyTree, TechnologyFolder, RenderedTechnologyFolder, RenderedTechnologyFolderGridBox } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap, forceError, UserError } from '../../util/common';
+import { arrayToMap, forceError, randomString, UserError } from '../../util/common';
 import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
-import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem } from '../../util/hoi4gui/gridbox';
+import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem, getGridBoxCommonChildParentInfo } from '../../util/hoi4gui/gridbox';
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { html, htmlEscape } from '../../util/html';
@@ -14,9 +14,9 @@ import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format 
 import { TechnologyTreeLoader, TechnologyTreeLoaderResult } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
-import { flatMap, sumBy, min, flatten, chain, uniq } from 'lodash';
+import { flatMap, sumBy, min, flatten, chain, uniq, range } from 'lodash';
 import { StyleTable } from '../../util/styletable';
-import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
+import { renderBackground, RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
 import { localisationIndex } from "../../util/featureflags";
 
@@ -40,13 +40,18 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
         }
 
         const styleTable = new StyleTable();
-        const baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result);
+        const jsCodes: string[] = [];
+        const styleNonce = randomString(32);
+        const baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result, jsCodes);
+        jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
+        jsCodes.push(i18nTableAsScript());
 
         return html(
             webview,
             baseContent,
             [
                 setPreviewFileUriScript,
+                ...jsCodes.map(c => ({ content: c })),
                 'common.js',
                 'techtree.js',
             ],
@@ -54,6 +59,7 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
                 'common.css',
                 'codicon.css',
                 styleTable,
+                { nonce: styleNonce },
             ],
         );
 
@@ -63,7 +69,12 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
     }
 }
 
-async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folders: string[], styleTable: StyleTable, loadResult: TechnologyTreeLoaderResult): Promise<string> {
+async function renderTechnologyFolders(
+    technologyTrees: TechnologyTree[],
+    folders: string[],
+    styleTable: StyleTable,
+    loadResult: TechnologyTreeLoaderResult,
+    jsCodes: string[]): Promise<string> {
     const guiFiles = loadResult.guiFiles.map(f => f.file);
     const guiTypes = flatMap(loadResult.guiFiles, f => f.data.guitypes);
 
@@ -74,10 +85,16 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     }
 
     const gfxFiles = loadResult.gfxFiles;
-    const techFolders = (await Promise.all(folders.map(folder => renderTechnologyFolder(technologyTrees, folder, techTreeViews, containerWindowTypes, styleTable, guiFiles, gfxFiles)))).join('');
+    const techFolders: Record<string, RenderedTechnologyFolder> = {};
+    await Promise.all(folders.map(async folder => {
+        techFolders[folder] = await renderTechnologyFolder(technologyTrees, folder, techTreeViews, containerWindowTypes, styleTable, guiFiles, gfxFiles);
+    }));
+    
+    jsCodes.push(`window.technologyTrees = ${JSON.stringify(technologyTrees)};`);
+    jsCodes.push(`window.renderedTechFolders = ${JSON.stringify(techFolders)};`);
 
     return `
-    ${await renderFolderSelector(folders, styleTable)}
+    ${await renderToolbar(folders, styleTable)}
     <div
     id="dragger"
     class="${styleTable.oneTimeStyle('dragger', () => `
@@ -90,6 +107,7 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
     `)}">
     </div>
     <div
+    id="mainContent"
     class="${styleTable.oneTimeStyle('mainContent', () => `
         position: absolute;
         left: 0;
@@ -97,35 +115,22 @@ async function renderTechnologyFolders(technologyTrees: TechnologyTree[], folder
         pointer-events: none;
         margin-top: 40px;
     `)}">
-        ${techFolders}
     </div>`;
 }
 
-async function renderFolderSelector(folders: string[], styleTable: StyleTable): Promise<string> {
+async function renderToolbar(folders: string[], styleTable: StyleTable): Promise<string> {
     const folderOptions = await Promise.all(
         folders.map(async (folder) => {
             const localizedText = localisationIndex ? `${await getLocalisedTextQuick(folder)} (${folder})` : folder;
-            return `<option value="techfolder_${folder}">${localizedText}</option>`;
+            return `<option value="${folder}">${localizedText}</option>`;
         })
     );
 
-    return `<div
-    class="${styleTable.oneTimeStyle('folderSelectorBar', () => `
-        position: fixed;
-        padding-top: 10px;
-        padding-left: 20px;
-        width: 100%;
-        height: 30px;
-        top: 0;
-        left: 0;
-        background: var(--vscode-editor-background);
-        border-bottom: 1px solid var(--vscode-panel-border);
-        z-index: 10;
-    `)}">
+    const folderSelect = `
         <label for="folderSelector" class="${styleTable.oneTimeStyle('folderSelectorLabel', () => `margin-right:5px`)}">
             ${localize('techtree.techfolder', 'Technology folder: ')}
         </label>
-        <div class="select-container">
+        <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <select
                 id="folderSelector"
                 type="text"
@@ -133,6 +138,22 @@ async function renderFolderSelector(folders: string[], styleTable: StyleTable): 
             >
                 ${folderOptions.join('')}
             </select>
+        </div>`;
+
+    const conditions = `
+        <div id="condition-container">
+            <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('miopreview.conditions', 'Conditions: ')}</label>
+            <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+                <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
+                    <span class="value"></span>
+                </div>
+            </div>
+        </div>`;
+
+    return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px; z-index: 10;`)}">
+        <div class="toolbar">
+            ${folderSelect}
+            ${conditions}
         </div>
     </div>`;
 }
@@ -144,9 +165,13 @@ async function renderTechnologyFolder(
     allContainerWindowTypes: HOIPartial<ContainerWindowType>[],
     styleTable: StyleTable,
     guiFiles: string[],
-    gfxFiles: string[],
-): Promise<string> {
+    gfxFiles: string[]): Promise<RenderedTechnologyFolder> {
     const folderTreeView = flatMap(techTreeViews, tv => tv.containerwindowtype).find(c => c.name === folder);
+    const gridboxes: Record<string, RenderedTechnologyFolderGridBox> = {};
+    const renderedTechnologies: Record<string, string> = {};
+    const renderedXor = { upDown: '', leftRight: '' };
+    const renderedLines: string[] = [];
+
     let children: string;
     if (!folderTreeView) {
         children = `<div>${localize('techtree.cantfindtechfolderin', "Can't find technology folder {0} in {1}.", folder, guiFiles)}</div>`;
@@ -156,7 +181,6 @@ async function renderTechnologyFolder(
         const folderSmallItem = allContainerWindowTypes.find(c => c.name === `techtree_${folder}_small_item`) || folderItem;
         const lineItem = allContainerWindowTypes.find(c => c.name === 'techtree_line_item');
         const xorItem = allContainerWindowTypes.find(c => c.name === 'techtree_xor_item');
-
         const commonOptions: RenderNodeCommonOptions = {
             getSprite: defaultGetSprite(gfxFiles),
             styleTable,
@@ -175,7 +199,35 @@ async function renderTechnologyFolder(
                         const tree = technologyTrees.find(t => t.startTechnology + '_tree' === child.name);
                         if (tree) {
                             const gridboxType = child as HOIPartial<GridBoxType>;
-                            return await renderTechnologyTreeGridBox(tree, gridboxType, folder, folderItem, folderSmallItem, lineItem, xorItem, parentInfo, commonOptions, guiFiles, gfxFiles);
+                            gridboxes[tree.startTechnology] = {
+                                gridbox: gridboxType,
+                                parentInfo,
+                                background: await renderBackground(gridboxType.background, parentInfo, commonOptions),
+                            };
+                            const childrenParentInfo = getGridBoxCommonChildParentInfo(gridboxType, parentInfo);
+                            
+                            await Promise.all(tree.technologies.map(async technology => {
+                                const technologyItem = technology.enableEquipments && !technology.forceUseSmallTechLayout ? folderItem : folderSmallItem;
+                                const renderedTechnology = await renderTechnology(technologyItem, technology, technology.folders[folder], childrenParentInfo, commonOptions, guiFiles, gfxFiles);
+                                renderedTechnologies[technology.id] = renderedTechnology;
+                            }));
+
+                            if (xorItem && renderedXor.upDown === '' && renderedXor.leftRight === '') {
+                                renderedXor.upDown = 'loading'; // Avoid other "threads" to render the same xorItem
+                                [renderedXor.upDown, renderedXor.leftRight] = await Promise.all([
+                                    renderXorItem(xorItem, 'up', childrenParentInfo, commonOptions),
+                                    renderXorItem(xorItem, 'left', childrenParentInfo, commonOptions)
+                                ]);
+                            }
+
+                            if (lineItem && renderedLines.length === 0) {
+                                renderedLines.length = 32; // Avoid other "threads" to render the same lineItem
+                                await Promise.all(range(0, 32)
+                                    .map(async i => renderedLines[i] = await renderLineItem(lineItem, i % 16, i > 16, childrenParentInfo, commonOptions)));
+                                    
+                            }
+
+                            return '{{gridbox-' + tree.startTechnology + '}}';
                         }
                     }
 
@@ -185,128 +237,14 @@ async function renderTechnologyFolder(
         );
     }
 
-    return `<div
-        id="techfolder_${folder}"
-        class="techfolder ${styleTable.style('displayNone', () => `display:none;`)}"
+    const template = `<div
+        id="${folder}"
+        class="techfolder"
     >
         ${children}
     </div>`;
-}
 
-async function renderTechnologyTreeGridBox(
-    tree: TechnologyTree,
-    gridboxType: HOIPartial<GridBoxType>,
-    folder: string,
-    folderItem: HOIPartial<ContainerWindowType> | undefined,
-    folderSmallItem: HOIPartial<ContainerWindowType> | undefined,
-    lineItem: HOIPartial<ContainerWindowType> | undefined,
-    xorItem: HOIPartial<ContainerWindowType> | undefined,
-    parentInfo: ParentInfo,
-    commonOptions: RenderCommonOptions,
-    guiFiles: string[],
-    gfxFiles: string[],
-): Promise<string> {
-    const xorJointKey = "#xorJoint#";
-    const treeMap = arrayToMap(tree.technologies, 'id');
-    const technologiesInFolder = tree.technologies.filter(t => folder in t.folders);
-    const technologyXorJoints = technologiesInFolder
-        .map<[Technology, Technology[][] | undefined]>(tech => [tech, findXorGroups(treeMap, tech, folder)])
-        .filter((t): t is [Technology, Technology[][]] => t[1] !== undefined && t[1].length > 0)
-        .map<[Technology, Technology[], Technology[][]]>(([t, tgs]) => [t, tgs[0], tgs.slice(1)]);
-    const technologyXorJointsMap: Record<string, [Technology[], Technology[][]]> = {};
-
-    technologyXorJoints.forEach(([t, tl, tgs]) => technologyXorJointsMap[t.id] = [tl, tgs]);
-
-    const technologyItemsArray = technologiesInFolder.map<GridBoxItem>(t => {
-        const jointsItem = technologyXorJointsMap[t.id];
-        const connections: GridBoxConnection[] = [];
-        let leadsToTechs: Technology[];
-        if (jointsItem) {
-            const [base, joints] = jointsItem;
-            leadsToTechs = base;
-            connections.push(...joints.map<GridBoxConnection>((_, i) => ({ target: xorJointKey + t.id + i, style: "1px solid #88aaff", targetType: "child" })));
-        } else {
-            leadsToTechs = t.leadsToTechs.map(t => treeMap[t]).filter(t => t !== undefined);
-        }
-
-        connections.push(...leadsToTechs.map<GridBoxConnection>(c => {
-            if (c.leadsToTechs.includes(t.id)) {
-                return { target: c.id, style: "1px dashed #88aaff", targetType: "related" };
-            }
-            return { target: c.id, style: "1px solid #88aaff", targetType: "child" };
-        }));
-
-        return {
-            id: t.id,
-            gridX: t.folders[folder].x,
-            gridY: t.folders[folder].y,
-            connections,
-        };
-    });
-
-    const technologyXorJointsItemsArray = flatMap(technologyXorJoints, ([t, _, tgs]) =>
-        tgs.map<GridBoxItem>((tl, i) => ({
-            id: xorJointKey + t.id + i,
-            gridX: Math.round(sumBy(tl, t => t.folders[folder].x) / tl.length),
-            gridY: (min(tl.map(t1 => t1.folders[folder].y)) ?? 0) - 1,
-            isJoint: true,
-            connections: tl.map<GridBoxConnection>(c => {
-                return { target: c.id, style: "1px solid red", targetType: "child" };
-            }),
-        }))
-    );
-
-    return await renderGridBox(gridboxType, parentInfo, {
-        ...commonOptions,
-        items: arrayToMap([...technologyItemsArray, ...technologyXorJointsItemsArray], 'id'),
-        lineRenderMode: lineItem ? 'control' : 'line',
-        onRenderItem: async (item, parent) => {
-            if (item.id.startsWith(xorJointKey)) {
-                if (xorItem === undefined) {
-                    return '';
-                }
-                return await renderXorItem(xorItem, gridboxType.format?._name ?? 'up', parent, commonOptions);
-            } else {
-                const technology = treeMap[item.id];
-                const technologyItem = technology.enableEquipments ? folderItem : folderSmallItem;
-                return await renderTechnology(technologyItem, technology, technology.folders[folder], parent, commonOptions, guiFiles, gfxFiles);
-            }
-        },
-        onRenderLineBox: async (item, parent) => {
-            if (!lineItem) {
-                return '';
-            }
-            return await renderLineItem(lineItem, item, parent, commonOptions);
-        },
-    });
-}
-
-function findXorGroups(treeMap: Record<string, Technology>, technology: Technology, folder: string): Technology[][] | undefined {
-    const techChildren = technology.leadsToTechs
-        .map(techName => treeMap[techName])
-        .filter(tech => tech && folder in technology.folders);
-    const xorGroupMap: Record<string, Technology[]> = {};
-
-    for (const xorChild of techChildren) {
-        const xorTechs = xorChild.xor
-            .map(techName => treeMap[techName])
-            .filter(tech => tech && folder in technology.folders && tech !== xorChild && tech.xor.includes(xorChild.id));
-        if (xorTechs.length === 0) {
-            continue;
-        }
-
-        const groups = xorTechs.map(tech => xorGroupMap[tech.id]).filter((v, i, a) => v !== undefined && i === a.indexOf(v));
-        const bigGroup = flatten(groups).concat([ xorChild ]);
-        bigGroup.forEach(tech => xorGroupMap[tech.id] = bigGroup);
-    }
-
-    const xorGroups = Object.values(xorGroupMap).filter((v, i, a) => i === a.indexOf(v));
-    if (xorGroups.length === 0) {
-        return undefined;
-    }
-
-    const nonXors = techChildren.filter(tech => !xorGroups.some(group => group.includes(tech)));
-    return [nonXors, ...xorGroups];
+    return { template, gridboxes, renderedTechnologies, renderedXor, renderedLines };
 }
 
 async function renderXorItem(xorItem: HOIPartial<ContainerWindowType>, format: Format['_name'], parentInfo: ParentInfo, commonOptions: RenderCommonOptions): Promise<string> {
@@ -400,7 +338,7 @@ async function renderTechnology(
 async function getTechnologySprite(sprite: string, technology: Technology, folder: string, callerType: 'bg' | 'icon', callerName: string | undefined, gfxFiles: string[]): Promise<Sprite | undefined> {
     let imageTryList: string[] = [sprite];
     if (sprite === 'GFX_technology_unavailable_item_bg' && callerType === 'bg') {
-        imageTryList = technology.enableEquipments ? [
+        imageTryList = technology.enableEquipments && !technology.forceUseSmallTechLayout ? [
             `GFX_technology_${folder}_available_item_bg`,
             `GFX_technology_available_item_bg`,
         ] : [
@@ -474,28 +412,12 @@ const centerNameTable = [
 
 async function renderLineItem(
     lineItem: HOIPartial<ContainerWindowType>,
-    item: GridBoxConnectionItem,
+    centerNameCode: number,
+    dotLine: boolean,
     parentInfo: ParentInfo,
     commonOptions: RenderCommonOptions,
 ): Promise<string> {
-    const centerNameCode = (item.up ? 1 : 0) | (item.right ? 2 : 0) | (item.down ? 4 : 0) | (item.left ? 8 : 0);
     const centerName: string | undefined = centerNameTable[centerNameCode];
-
-    const directionalItems = [ item.up, item.down, item.right, item.left ];
-    const inSet = chain(directionalItems).compact().flatMap(c => Object.keys(c.in)).uniq().value();
-    const outSet = chain(directionalItems).compact().flatMap(c => Object.keys(c.out)).uniq().value();
-    let sameInOut = false;
-
-    if (inSet.length === outSet.length) {
-        sameInOut = true;
-        for (const inItem of inSet) {
-            if (!outSet.includes(inItem)) {
-                sameInOut = false;
-                break;
-            }
-        }
-    }
-
     const containerWindow = await renderContainerWindow(lineItem, parentInfo, {
         ...commonOptions,
         noSize: true,
@@ -504,17 +426,20 @@ async function renderLineItem(
                 const icon = child as HOIPartial<IconType>;
                 const childName = child.name?.toLowerCase();
                 if (childName === 'left' || childName === 'right' || childName === 'up' || childName === 'down') {
-                    if (item[childName]) {
+                    if ((childName === 'left' && (centerNameCode & 8)) ||
+                        (childName === 'right' && (centerNameCode & 2)) ||
+                        (childName === 'up' && (centerNameCode & 1)) ||
+                        (childName === 'down' && (centerNameCode & 4))) {
                         return await renderIcon({
                             ...icon,
-                            spritetype: `GFX_techtree_line_${childName}_${sameInOut ? 'dot_' : ''}states`,
+                            spritetype: `GFX_techtree_line_${childName}_${dotLine ? 'dot_' : ''}states`,
                             frame: 2,
                         }, parent, commonOptions);
                     } else {
                         return '';
                     }
                 } else if (childName === 'center') {
-                    if (centerName && !sameInOut) {
+                    if (centerName && !dotLine) {
                         return await renderIcon({
                             ...icon,
                             spritetype: `GFX_techline_center_${centerName}_states`, frame: 2
