@@ -60,7 +60,7 @@ let selectedFocusTreeIndex: number = Math.min(focusTrees.length - 1, getState().
 let allowBranches: DivDropdown | undefined = undefined;
 let conditions: DivDropdown | undefined = undefined;
 let checkedFocuses: Record<string, Checkbox> = {};
-const selectedFocusIds = new Set<string>();
+let selectedFocusIds: string[] = getState().selectedFocusIds ?? [];
 
 async function buildContent() {
     const focusCheckState = getState().checkedFocuses ?? {};
@@ -198,6 +198,11 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     if (warnings) {
         warnings.value = focusTree.warnings.length === 0 ? feLocalize('worldmap.warnings.nowarnings', 'No warnings.') :
             focusTree.warnings.map(w => `[${w.source}] ${w.text}`).join('\n');
+    }
+
+    if (clearCondition) {
+        selectedFocusIds = [];
+        setState({ selectedFocusIds });
     }
 }
 
@@ -384,13 +389,13 @@ function setupFocusDragging(focuses: Focus[]) {
             e.preventDefault();
             e.stopPropagation();
 
-            if (!selectedFocusIds.has(focus.id)) {
-                selectedFocusIds.clear();
-                selectedFocusIds.add(focus.id);
+            if (!selectedFocusIds.includes(focus.id)) {
+                selectedFocusIds = [focus.id];
+                setState({ selectedFocusIds });
                 refreshFocusSelection();
             }
 
-            const draggedFocuses = focusElements.filter(f => selectedFocusIds.has(f.focus.id));
+            const draggedFocuses = focusElements.filter(f => selectedFocusIds.includes(f.focus.id));
             const movedFocuses = draggedFocuses.filter(f => !hasSelectedRelativeAncestor(f.focus, focuses));
             const scale = getState().scale || 1;
             const startClientX = e.clientX;
@@ -442,14 +447,16 @@ function setupFocusDragging(focuses: Focus[]) {
 }
 
 function setupFocusBoxSelection(): void {
-    document.addEventListener('contextmenu', e => {
+    const dragger = document.getElementById('dragger') as HTMLDivElement;
+
+    dragger.addEventListener('contextmenu', e => {
         if (isFocusTreeCanvasTarget(e.target) && !isInteractiveTarget(e.target)) {
             e.preventDefault();
         }
     });
 
-    document.addEventListener('mousedown', e => {
-        if (e.button !== 2 || isInteractiveTarget(e.target)) {
+    dragger.addEventListener('mousedown', e => {
+        if (e.button !== 0 || isInteractiveTarget(e.target)) {
             return;
         }
 
@@ -482,6 +489,7 @@ function setupFocusBoxSelection(): void {
             selectionBox.style.top = `${top}px`;
             selectionBox.style.width = `${width}px`;
             selectionBox.style.height = `${height}px`;
+            recalculateFocusBoxSelection(startX, startY, moveEvent);
         };
 
         const onMouseUp = (upEvent: MouseEvent) => {
@@ -489,23 +497,13 @@ function setupFocusBoxSelection(): void {
             window.removeEventListener('mouseup', onMouseUp);
             selectionBox.remove();
 
-            if (!moved) {
-                return;
+            if (moved) {
+                recalculateFocusBoxSelection(startX, startY, upEvent);
+            } else {
+                selectedFocusIds = [];
+                setState({ selectedFocusIds });
+                refreshFocusSelection();
             }
-
-            const selectionRect = normalizeRect(startX, startY, upEvent.clientX, upEvent.clientY);
-            selectedFocusIds.clear();
-            for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
-                if (focusElement.style.display === 'none') {
-                    continue;
-                }
-
-                if (rectsIntersect(selectionRect, focusElement.getBoundingClientRect())) {
-                    selectedFocusIds.add(focusElement.id.replace(/^focus_/, ''));
-                }
-            }
-
-            refreshFocusSelection();
         };
 
         window.addEventListener('mousemove', onMouseMove);
@@ -519,7 +517,7 @@ function isFocusTreeCanvasTarget(target: EventTarget | null): boolean {
 
 function refreshFocusSelection(): void {
     for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
-        const selected = selectedFocusIds.has(focusElement.id.replace(/^focus_/, ''));
+        const selected = selectedFocusIds.includes(focusElement.id.replace(/^focus_/, ''));
         focusElement.style.boxShadow = selected ? '0 0 0 3px var(--vscode-focusBorder)' : '';
     }
 }
@@ -546,7 +544,7 @@ function hasSelectedRelativeAncestor(focus: Focus, focuses: Focus[]): boolean {
         }
 
         visitedFocusIds.add(relativeId);
-        if (selectedFocusIds.has(relativeId)) {
+        if (selectedFocusIds.includes(relativeId)) {
             return true;
         }
 
@@ -554,6 +552,23 @@ function hasSelectedRelativeAncestor(focus: Focus, focuses: Focus[]): boolean {
     }
 
     return false;
+}
+
+function recalculateFocusBoxSelection(startX: number, startY: number, mouseEvent: MouseEvent): void {
+    const selectionRect = normalizeRect(startX, startY, mouseEvent.clientX, mouseEvent.clientY);
+    selectedFocusIds = [];
+    for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
+        if (focusElement.style.display === 'none') {
+            continue;
+        }
+
+        if (rectsIntersect(selectionRect, focusElement.getBoundingClientRect())) {
+            selectedFocusIds.push(focusElement.id.replace(/^focus_/, ''));
+        }
+    }
+
+    setState({ selectedFocusIds });
+    refreshFocusSelection();
 }
 
 function normalizeRect(x1: number, y1: number, x2: number, y2: number): DOMRect {

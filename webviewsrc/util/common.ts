@@ -198,7 +198,7 @@ window.addEventListener('load', function() {
         let mdy = -1;
         let pressed = false;
         dragger.addEventListener('mousedown', function(e) {
-            if (e.button !== 0) {
+            if (e.button !== 2) {
                 return;
             }
 
