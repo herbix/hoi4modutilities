@@ -152,7 +152,7 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px; z-index: 10;`)}">
         <div class="toolbar">
-            ${renderPreviewLabelModeControl(styleTable)}
+            ${localisationIndex ? renderPreviewLabelModeControl(styleTable) : ''}
             ${folderSelect}
             ${conditions}
         </div>
@@ -161,9 +161,9 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
 
 function renderPreviewLabelModeControl(styleTable: StyleTable): string {
     return `<div class="preview-label-mode ${styleTable.oneTimeStyle('previewLabelModeContainer', () => `margin-right:10px`)}">
-        <span class="${styleTable.oneTimeStyle('previewLabelModeLabel', () => `margin-right:5px`)}">Label: </span>
-        <button type="button" data-preview-label-mode-value="id" aria-pressed="true">ID</button>
-        <button type="button" data-preview-label-mode-value="name" aria-pressed="false">Name</button>
+        <span class="${styleTable.style('previewLabelModeLabel', () => `margin-right:5px`)}">${localize('preview.labelmode', 'Label: ')}</span>
+        <button type="button" data-preview-label-mode-value="id" aria-pressed="true">${localize('preview.labelmode.id', 'ID')}</button>
+        <button type="button" data-preview-label-mode-value="name" aria-pressed="false">${localize('preview.labelmode.name', 'Name')}</button>
     </div>`;
 }
 
