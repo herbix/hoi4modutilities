@@ -1,5 +1,5 @@
 import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Resource } from "../definitions";
-import { Enum, SchemaDef, CustomMap, DetailValue } from "../../../hoiformat/schema";
+import { Enum, SchemaDef, CustomMap, DetailValue, Raw, convertNodeToJson } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
 import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
@@ -10,6 +10,7 @@ import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 import { ResourceDefinitionLoader } from "./resource";
+import { BookmarksLoader } from "./bookmarks";
 
 interface StateFile {
     state: StateDefinition[];
@@ -20,7 +21,7 @@ interface StateDefinition {
     name: string;
     manpower: number;
     state_category: string;
-    history: StateHistory;
+    history: Raw;
     provinces: Enum;
     impassable: boolean;
     resources: CustomMap<number>;
@@ -40,17 +41,7 @@ const stateFileSchema: SchemaDef<StateFile> = {
             name: "string",
             manpower: "number",
             state_category: "string",
-            history: {
-                owner: "string",
-                victory_points: {
-                    _innerType: "enum",
-                    _type: "array",
-                },
-                add_core_of: {
-                    _innerType: "string",
-                    _type: "array",
-                },
-            },
+            history: "raw",
             provinces: "enum",
             impassable: "boolean",
             resources: {
@@ -58,6 +49,18 @@ const stateFileSchema: SchemaDef<StateFile> = {
                 _type: "map",
             },
         },
+        _type: "array",
+    },
+};
+
+const stateHistorySchema: SchemaDef<StateHistory> = {
+    owner: "string",
+    victory_points: {
+        _innerType: "enum",
+        _type: "array",
+    },
+    add_core_of: {
+        _innerType: "string",
         _type: "array",
     },
 };
@@ -87,16 +90,20 @@ type StateNoBoundingBox = Omit<State, keyof Region>;
 type StateLoaderResult = { states: State[], badStatesCount: number };
 export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
     private categoriesLoader: StateCategoriesLoader;
+    private bookmarkLoader: BookmarksLoader;
 
     constructor(private defaultMapLoader: DefaultMapLoader, private resourcesLoader: ResourceDefinitionLoader) {
         super('history/states', StateLoader);
         this.categoriesLoader = new StateCategoriesLoader();
         this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
+        this.bookmarkLoader = new BookmarksLoader();
+        this.bookmarkLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
         return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session)
-            || await this.categoriesLoader.shouldReload(session) || await this.resourcesLoader.shouldReload(session);
+            || await this.categoriesLoader.shouldReload(session) || await this.resourcesLoader.shouldReload(session)
+            || await this.bookmarkLoader.shouldReload(session);
     }
 
     protected async loadImpl(session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
@@ -107,11 +114,12 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
     protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
         const provinceMap = await this.defaultMapLoader.load(session);
         const stateCategories = await this.categoriesLoader.load(session);
+        const bookmarks = await this.bookmarkLoader.load(session);
         const resources = arrayToMap((await this.resourcesLoader.load(session)).result, 'name');
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
-        const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
+        const warnings = mergeInLoadResult([stateCategories, bookmarks, ...fileResults], 'warnings');
         const { provinces, width, height } = provinceMap.result;
 
         const states = flatMap(fileResults, c => c.result);
@@ -239,11 +247,12 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
             const name = state.name ? state.name : (warnings.push(localize('worldmap.warnings.statenoname', "The state doesn't have name field.")), '');
             const manpower = state.manpower ?? 0;
             const category = state.state_category ? state.state_category : (warnings.push(localize('worldmap.warnings.statenocategory', "The state doesn't have category field.")), '');
-            const owner = state.history?.owner;
+            const history = state.history?._raw ? convertNodeToJson<StateHistory>(state.history?._raw, stateHistorySchema) : undefined;
+            const owner = history?.owner;
             const provinces = state.provinces._values.map(v => parseInt(v));
-            const cores = state.history?.add_core_of.map(v => v).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
+            const cores = history?.add_core_of.map(v => v).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
             const impassable = state.impassable ?? false;
-            const victoryPointsArray = state.history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
+            const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
             const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
             const resources = arrayToMap(
                 Object.values(state.resources._map), '_key', v => v._value);

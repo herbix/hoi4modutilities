@@ -117,26 +117,31 @@ function convertString(node: Node): HOIPartial<string> {
         }
         return node.value.name;
     }
-    return typeof node.value === 'string' ? node.value : (
-        typeof node.value === 'number' ? node.value.toString() : undefined
-    );
+    return typeof node.value === 'string' ? node.value : undefined;
 }
 
 function convertNumber(node: Node): HOIPartial<number> {
     if (isSymbolNode(node.value)) {
-        return tryParseVariable(node.value.name, true);
+        const name = node.value.name;
+        let result: number = NaN;
+        if (name.startsWith('0x') && name.match(/^0x[0-9a-fA-F]+$/)) {
+            result = parseInt(name.substring(2), 16);
+        } else if (name.match(/^-?\d*\.\d+$|^-?\d+$/)) {
+            result = parseFloat(name);
+        }
+        if (!isNaN(result)) {
+            return result;
+        }
+        const variable = tryParseVariable(name, true);
+        if (variable !== undefined) {
+            return variable;
+        }
     }
-    return typeof node.value === 'number' ? node.value : undefined;
+    return undefined;
 }
 
 function convertNumberLike(node: Node): HOIPartial<NumberLike> {
-    if (typeof node.value === 'number') {
-        return {
-            _value: node.value,
-            _unit: undefined,
-            _token: undefined,
-        };
-    } else if (isSymbolNode(node.value)) {
+    if (isSymbolNode(node.value)) {
         return parseNumberLike(node.value.name);
     } else {
         return undefined;
@@ -277,7 +282,7 @@ function tryParseVariable(str: string, isNumber: boolean): number | string | und
         if (match.groups?.default) {
             return parseFloat(match.groups.default);
         }
-        return 0;
+        return undefined;
     } else {
         if (match.groups?.prefix) {
             return str;

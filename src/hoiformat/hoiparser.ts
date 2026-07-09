@@ -1,7 +1,7 @@
 import { UserError } from '../util/common';
 import { Logger } from '../util/logger';
 
-export type NodeValue = string | number | Node[] | SymbolNode | null;
+export type NodeValue = string | Node[] | SymbolNode | null;
 
 export interface Node {
     name: string | null;
@@ -104,14 +104,12 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
     };
 }
 
-type HOITokenType = 'comment' | 'symbol' | 'operator' | 'string' | 'number' | 'unitnumber' | 'eof';
+type HOITokenType = 'comment' | 'symbol' | 'operator' | 'string' | 'eof';
 const tokenRegexStrings: Record<HOITokenType, [string, number]> = {
     comment: ['#.*(?:[\\r\\n]|$)', 0],
-    symbol: ['(?:\\d+\\.)?[a-zA-Z_@\\[\\]][\\w:\\._@\\[\\]\\-\\?\\^\\/\\u00A0-\\u024F|]*', 40],
+    symbol: ['[-\\w@\\[\\]\\u00A0-\\u024F][\\w:\\._@\\[\\]\\-\\?\\^\\/\\u00A0-\\u024F|]*', 40],
     operator: ['[={}<>;,]|>=|<=|!=', 10],
     string: ['"(?:\\\\"|\\\\\\\\|[^"])*"', 10],
-    number: ['-?\\d*\\.\\d+|-?\\d+|0x\\d+', 50],
-    unitnumber: ['(?:-?\\d*\\.\\d+|-?\\d+)(?:%%?)', 49],
     eof: ['$', 1000],
 };
 
@@ -138,8 +136,8 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
 
 function parseNode(tokens: Tokenizer<HOITokenType>): Node {
     const name = tokens.next();
-    if (name.type !== 'string' && name.type !== 'symbol' && name.type !== 'number') {
-        tokens.throw("Expect name to be symbol, string or number", true);
+    if (name.type !== 'string' && name.type !== 'symbol') {
+        tokens.throw("Expect name to be symbol or string", true);
     }
 
     let nextToken = tokens.peek();
@@ -217,15 +215,7 @@ function parseNodeValue(tokens: Tokenizer<HOITokenType>): [ NodeValue, Token<HOI
                 nextToken,
                 nextToken,
             ];
-        case 'number':
-            const nextTokenValue = nextToken.value;
-            return [
-                nextTokenValue.startsWith('0x') ? parseInt(nextTokenValue.substr(2), 16) : parseFloat(nextTokenValue),
-                nextToken,
-                nextToken,
-            ];
         case 'symbol':
-        case 'unitnumber':
             return [
                 { name: nextToken.value },
                 nextToken,
