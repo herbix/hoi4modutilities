@@ -10,7 +10,7 @@ import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { useConditionInFocus } from '../../util/featureflags';
+import { localisationIndex, useConditionInFocus } from '../../util/featureflags';
 import { flatMap } from 'lodash';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
 
@@ -190,7 +190,7 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
         <div class="toolbar">
-            ${renderPreviewLabelModeControl(styleTable)}
+            ${localisationIndex ? renderPreviewLabelModeControl(styleTable) : ''}
             ${focuses}
             ${searchbox}
             ${useConditionInFocus ? conditions : allowbranch}
@@ -201,9 +201,9 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 
 function renderPreviewLabelModeControl(styleTable: StyleTable): string {
     return `<div class="preview-label-mode ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
-        <span class="${styleTable.style('previewLabelModeLabel', () => `margin-right:5px`)}">Label: </span>
-        <button type="button" data-preview-label-mode-value="id" aria-pressed="true">ID</button>
-        <button type="button" data-preview-label-mode-value="name" aria-pressed="false">Name</button>
+        <span class="${styleTable.style('previewLabelModeLabel', () => `margin-right:5px`)}">${localize('preview.labelmode', 'Label: ')}</span>
+        <button type="button" data-preview-label-mode-value="id" aria-pressed="true">${localize('preview.labelmode.id', 'ID')}</button>
+        <button type="button" data-preview-label-mode-value="name" aria-pressed="false">${localize('preview.labelmode.name', 'Name')}</button>
     </div>`;
 }
 

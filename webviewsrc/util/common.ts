@@ -158,11 +158,9 @@ function applyPreviewLabelMode(mode: PreviewLabelMode): void {
     }
 
     for (const element of Array.from(document.querySelectorAll<HTMLElement>('[data-preview-title-id][data-preview-title-name]'))) {
-        const title = mode === 'name'
+        element.title = mode === 'name'
             ? element.dataset.previewTitleName ?? element.dataset.previewTitleId ?? ''
             : element.dataset.previewTitleId ?? '';
-        element.title = title;
-        element.setAttribute('title', title);
     }
 }
 

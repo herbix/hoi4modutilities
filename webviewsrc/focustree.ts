@@ -100,7 +100,7 @@ async function buildContent() {
         items: arrayToMap(focusGrixBoxItems, 'id'),
         onRenderItem: item => Promise.resolve(
             renderedFocus[item.id]
-                .replace('{{position}}', item.gridX + ', ' + item.gridY)
+                .replace(/\{\{position\}\}/g, item.gridX + ', ' + item.gridY)
                 .replace('{{iconClass}}', getFocusIcon(focusTree.focuses[item.id], exprs, styleTable))
             ),
         cornerPosition: 0.5,
