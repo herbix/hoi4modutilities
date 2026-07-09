@@ -2,11 +2,10 @@ import { chain, flatMap, flatten, min, sumBy } from "lodash";
 import { RenderedTechnologyFolder, RenderedTechnologyFolderGridBox, Technology, TechnologyTree } from "../src/previewdef/technology/schema";
 import { RenderCommonOptions } from "../src/util/hoi4gui/common";
 import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from "../src/util/hoi4gui/gridboxcommon";
-import { setState, getState, scrollToState, tryRun, subscribeRefreshButton, subscribeNavigators, arrayToMap, enableZoom } from "./util/common";
+import { setState, getState, scrollToState, tryRun, subscribeRefreshButton, subscribeNavigators, arrayToMap, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
 import { StyleTable } from "../src/util/styletable";
 import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
 import { DivDropdown } from "./util/dropdown";
-
 const renderedTechFolders: Record<string, RenderedTechnologyFolder> = (window as any).renderedTechFolders;
 const technologyTrees: TechnologyTree[] = (window as any).technologyTrees;
 
@@ -35,6 +34,7 @@ async function buildContent() {
 
     mainContent.innerHTML = template + styleTable.toStyleElement((window as any).styleNonce);
     subscribeNavigators();
+    refreshPreviewLabelMode();
 }
 
 async function renderTechnologyTreeGridBox(
@@ -222,6 +222,8 @@ async function folderChange(folder: string, clearCondition: boolean) {
 }
 
 window.addEventListener('load', tryRun(async function() {
+    subscribePreviewLabelToggle();
+
     // Tech tree folder selector
     const element = document.getElementById('folderSelector') as HTMLSelectElement;
     const folder = getState().folder || element.value;

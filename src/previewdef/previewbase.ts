@@ -51,7 +51,7 @@ export abstract class PreviewBase {
     }
 
     protected registerEvents(panel: vscode.WebviewPanel): void {
-        panel.webview.onDidReceiveMessage((msg) => {
+        panel.webview.onDidReceiveMessage(async (msg) => {
             switch (msg.command) {
                 case 'navigate':
                     if (msg.start !== undefined) {
@@ -75,6 +75,9 @@ export abstract class PreviewBase {
                     break;
                 case 'reload':
                     this.reload();
+                    break;
+                default:
+                    await this.handleMessage(msg);
                     break;
             }
         });
@@ -145,6 +148,9 @@ export abstract class PreviewBase {
         }
 
         this.onDocumentChange(document);
+    }
+
+    protected handleMessage(_msg: any): Promise<void> | void {
     }
 
     protected abstract getContent(document: vscode.TextDocument): Promise<string>;
