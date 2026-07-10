@@ -10,6 +10,12 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Support `force_use_small_tech_layout` in technology tree preview.
 * Add condition selection in technology tree preview.
 * Allow zooming in technology tree preview.
+* When localisation index is enabled, you can choose to show ID or localised text for focus and technology labels (#124) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Focus position editing by dragging in focus tree preview (#124) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+
+### Updated
+* Scrolling in preview window is now by dragging right mouse button. 
+  * You can switch to left mouse button dragging by disabling feature flag `rightButtonDrag`.
 
 ## [0.12.4] - 2026/07/08 - Latest
 

@@ -467,7 +467,6 @@ function setupFocusBoxSelection(): void {
         }
 
         e.preventDefault();
-        e.stopPropagation();
 
         const selectionBox = document.createElement('div');
         selectionBox.style.position = 'fixed';
