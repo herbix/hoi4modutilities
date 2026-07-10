@@ -36,14 +36,26 @@ export interface Focus {
     allowBranch: ConditionComplexExpr | undefined;
     relativePositionId: string | undefined;
     offset: Offset[];
+    text: string | undefined;
+    overlay: string | undefined;
     token: Token | undefined;
+    xToken: Token | undefined;
+    yToken: Token | undefined;
     file: string;
-    text?: string;
-    overlay?: string;
 }
 
 export interface FocusWarning extends Warning<string> {
     navigations?: { file: string, start: number, end: number }[];
+}
+
+export interface UpdateFocusPositionsMessage {
+    command: 'updateFocusPositions';
+    focuses: {
+        focus: Focus;
+        file?: string;
+        x: number;
+        y: number;
+    }[];
 }
 
 interface Offset {
@@ -63,8 +75,8 @@ interface FocusDef {
     id: string;
     alternate_icon: string;
     icon: Raw[];
-    x: number;
-    y: number;
+    x: Raw;
+    y: Raw;
     prerequisite: FocusOrORList[];
     mutually_exclusive: FocusOrORList[];
     relative_position_id: string;
@@ -117,8 +129,8 @@ const focusSchema: SchemaDef<FocusDef> = {
         _innerType: 'raw',
         _type: 'array',
     },
-    x: "number",
-    y: "number",
+    x: "raw",
+    y: "raw",
     prerequisite: {
         _innerType: focusOrORListSchema,
         _type: 'array',
@@ -310,8 +322,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         });
     }
 
-    const x = hoiFocus.x ?? 0;
-    const y = hoiFocus.y ?? 0;
+    const x = hoiFocus.x?._raw ? convertNodeToJson<number>(hoiFocus.x._raw, "number", constants) ?? 0 : 0;
+    const y = hoiFocus.y?._raw ? convertNodeToJson<number>(hoiFocus.y._raw, "number", constants) ?? 0 : 0;
     const relativePositionId = hoiFocus.relative_position_id;
 
     const exclusive = chain(hoiFocus.mutually_exclusive)
@@ -353,6 +365,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         file: filePath,
         text,
         overlay,
+        xToken: hoiFocus.x?._valueStartToken === hoiFocus.x?._valueEndToken ? hoiFocus.x?._valueEndToken : undefined,
+        yToken: hoiFocus.y?._valueStartToken === hoiFocus.y?._valueEndToken ? hoiFocus.y?._valueEndToken : undefined,
     };
 }
 

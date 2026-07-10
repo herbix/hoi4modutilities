@@ -3,7 +3,7 @@ import { DivDropdown } from "./util/dropdown";
 import { difference, minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
 import { StyleTable, normalizeForStyle } from "../src/util/styletable";
-import { FocusTree, Focus } from "../src/previewdef/focustree/schema";
+import { FocusTree, Focus, UpdateFocusPositionsMessage } from "../src/previewdef/focustree/schema";
 import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
 import { NumberPosition } from "../src/util/common";
 import { GridBoxType } from "../src/hoiformat/gui";
@@ -427,17 +427,16 @@ function setupFocusDragging(focuses: Focus[]) {
                 }
 
                 suppressNextClick = true;
-                vscode.postMessage({
+                const message: UpdateFocusPositionsMessage = {
                     command: 'updateFocusPositions',
                     focuses: movedFocuses.map(f => ({
-                        focusId: f.focus.id,
+                        focus: f.focus,
                         file: f.navigator.attributes.getNamedItem('file')?.value,
-                        start: getNumberAttribute(f.navigator, 'start'),
-                        end: getNumberAttribute(f.navigator, 'end'),
                         x: f.focus.x + deltaGridX,
                         y: f.focus.y + deltaGridY,
                     })),
-                });
+                };
+                vscode.postMessage(message);
             };
 
             window.addEventListener('mousemove', onMouseMove);
