@@ -50,6 +50,7 @@ export interface FocusWarning extends Warning<string> {
 
 export interface UpdateFocusPositionsMessage {
     command: 'updateFocusPositions';
+    lastDocumentChangeTimestamp: number;
     focuses: {
         focus: Focus;
         file?: string;

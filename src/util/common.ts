@@ -78,10 +78,14 @@ export function slice<T>(array: T[] | undefined, start: number, end: number): T[
     }
 }
 
-export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO, keySelector: (...input: TI) => string, wait?: number, debounceSettings?: DebounceSettings): (...input: TI) => TO {
+export function debounceByInput<TI extends any[], TO>(func: (...input: TI) => TO, keySelector: (...input: TI) => string, wait?: number, debounceSettings?: DebounceSettings, funcImmediate?: (...input: TI) => TO): (...input: TI) => TO {
     const cachedMethods: Record<string, (input: TI) => TO> = {};
     
     function result(...input: TI): TO {
+        if (funcImmediate) {
+            funcImmediate(...input);
+        }
+
         const key = keySelector(...input);
         const method = cachedMethods[key];
         if (method) {

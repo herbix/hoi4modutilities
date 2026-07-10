@@ -429,6 +429,7 @@ function setupFocusDragging(focuses: Focus[]) {
                 suppressNextClick = true;
                 const message: UpdateFocusPositionsMessage = {
                     command: 'updateFocusPositions',
+                    lastDocumentChangeTimestamp: (window as any).lastDocumentChangeTimestamp,
                     focuses: movedFocuses.map(f => ({
                         focus: f.focus,
                         file: f.navigator.attributes.getNamedItem('file')?.value,
@@ -580,11 +581,6 @@ function rectsIntersect(a: DOMRect, b: DOMRect): boolean {
 
 function isInteractiveTarget(target: EventTarget | null): boolean {
     return target instanceof HTMLElement && !!target.closest('input,button,select,textarea,label');
-}
-
-function getNumberAttribute(element: HTMLElement, name: string): number | undefined {
-    const value = element.attributes.getNamedItem(name)?.value;
-    return value && value !== 'undefined' ? parseInt(value) : undefined;
 }
 
 let retriggerSearch: () => void = () => {};
