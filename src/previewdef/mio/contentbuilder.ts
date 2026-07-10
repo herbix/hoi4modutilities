@@ -11,7 +11,7 @@ import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { Mio, MioTrait, TraitEffect } from './schema';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { localisationIndex } from "../../util/featureflags";
+import { featureFlagsAsScript, localisationIndex } from "../../util/featureflags";
 
 const defaultTraitIcon = 'gfx/interface/goals/goal_unknown.dds';
 const traitEffectIconMap: Record<TraitEffect, string> = {
@@ -43,6 +43,7 @@ export async function renderMioFile(loader: MioLoader, uri: vscode.Uri, webview:
         const styleNonce = randomString(32);
         const baseContent = await renderMios(mios, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
         jsCodes.push(i18nTableAsScript());
+        jsCodes.push(featureFlagsAsScript());
 
         return html(
             webview,
@@ -96,7 +97,7 @@ async function renderMios(mios: Mio[], styleTable: StyleTable, gfxFiles: string[
     jsCodes.push('window.xGridSize = ' + xGridSize);
 
     return (
-        `<div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
+        `<div id="dragger" additionalDraggerHostId="miopreviewcontent" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
             height: 100vh;
             position: fixed;

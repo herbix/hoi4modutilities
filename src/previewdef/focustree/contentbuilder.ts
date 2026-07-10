@@ -10,7 +10,7 @@ import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { localisationIndex, useConditionInFocus } from '../../util/featureflags';
+import { featureFlagsAsScript, localisationIndex, useConditionInFocus } from '../../util/featureflags';
 import { flatMap } from 'lodash';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
 
@@ -37,6 +37,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         const styleNonce = randomString(32);
         const baseContent = await renderFocusTrees(focustrees, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
         jsCodes.push(i18nTableAsScript());
+        jsCodes.push(featureFlagsAsScript());
         jsCodes.push(`window.lastDocumentChangeTimestamp = ${lastDocumentChangeTimestamp};`);
 
         return html(
@@ -86,7 +87,6 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
     jsCodes.push('window.renderedFocus = ' + JSON.stringify(renderedFocus));
     jsCodes.push('window.gridBox = ' + JSON.stringify(gridBox));
     jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
-    jsCodes.push('window.useConditionInFocus = ' + useConditionInFocus);
     jsCodes.push('window.xGridSize = ' + xGridSize);
     jsCodes.push('window.yGridSize = ' + yGridSize);
 
@@ -102,7 +102,7 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
         `)}">Continuous focuses</div>`;
 
     return (
-        `<div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
+        `<div id="dragger" additionalDraggerHostId="focustreecontent" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
             height: 100vh;
             position: fixed;
