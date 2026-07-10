@@ -52,7 +52,8 @@ function search(searchContent: string, navigate: boolean = true) {
     return searchedFocus;
 }
 
-const useConditionInFocus: boolean = (window as any).useConditionInFocus;
+const useConditionInFocus: boolean = (window as any).__featureflags.useConditionInFocus;
+const rightButtonDrag: boolean = (window as any).__featureflags.rightButtonDrag;
 const focusTrees: FocusTree[] = (window as any).focusTrees;
 
 let selectedExprs: ConditionItem[] = getState().selectedExprs ?? [];
@@ -448,6 +449,7 @@ function setupFocusDragging(focuses: Focus[]) {
 
 function setupFocusBoxSelection(): void {
     const dragger = document.getElementById('dragger') as HTMLDivElement;
+    const button = rightButtonDrag ? 0 : 2;
 
     dragger.addEventListener('contextmenu', e => {
         if (isFocusTreeCanvasTarget(e.target) && !isInteractiveTarget(e.target)) {
@@ -456,7 +458,7 @@ function setupFocusBoxSelection(): void {
     });
 
     dragger.addEventListener('mousedown', e => {
-        if (e.button !== 0 || isInteractiveTarget(e.target)) {
+        if (e.button !== button || isInteractiveTarget(e.target)) {
             return;
         }
 

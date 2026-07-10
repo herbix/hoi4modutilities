@@ -18,7 +18,7 @@ import { flatMap, sumBy, min, flatten, chain, uniq, range } from 'lodash';
 import { StyleTable } from '../../util/styletable';
 import { renderBackground, RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { localisationIndex } from "../../util/featureflags";
+import { featureFlagsAsScript, localisationIndex } from "../../util/featureflags";
 
 const techTreeViewName = 'countrytechtreeview';
 const doctrineTreeViewName = 'countrydoctrineview';
@@ -45,6 +45,7 @@ export async function renderTechnologyFile(loader: TechnologyTreeLoader, uri: vs
         const baseContent = await renderTechnologyFolders(technologyTrees, folders, styleTable, loadResult.result, jsCodes);
         jsCodes.push('window.styleNonce = ' + JSON.stringify(styleNonce));
         jsCodes.push(i18nTableAsScript());
+        jsCodes.push(featureFlagsAsScript());
 
         return html(
             webview,
@@ -97,6 +98,7 @@ async function renderTechnologyFolders(
     ${await renderToolbar(folders, styleTable)}
     <div
     id="dragger"
+    additionalDraggerHostId="mainContent"
     class="${styleTable.oneTimeStyle('dragger', () => `
         width: 100vw;
         height: 100vh;

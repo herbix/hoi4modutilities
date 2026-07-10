@@ -186,26 +186,42 @@ window.addEventListener('load', function() {
 
     // Drag to scroll
     (function() {
-        // Dragger should be like this: <div id="dragger" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
+        // Dragger should be like this: <div id="dragger" additionalDraggerHostId="optionalid" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
         const dragger = document.getElementById("dragger");
         if (!dragger) {
             return;
         }
 
-        dragger.addEventListener('contextmenu', event => event.preventDefault());
+        const rightButtonDrag: boolean = (window as any).__featureflags.rightButtonDrag;
+
+        const hosts = [ dragger ];
+        if (rightButtonDrag) {
+            const hostId = dragger.getAttribute("additionalDraggerHostId");
+            if (hostId) {
+                const hostElement = document.getElementById(hostId);
+                if (hostElement) {
+                    hosts.push(hostElement);
+                }
+            }
+        }
 
         let mdx = -1;
         let mdy = -1;
         let pressed = false;
-        dragger.addEventListener('mousedown', function(e) {
-            if (e.button !== 2) {
-                return;
-            }
+        const button = rightButtonDrag ? 2 : 0;
+        const buttonMask = rightButtonDrag ? 2 : 1;
+        for (const host of hosts) {
+            host.addEventListener('contextmenu', event => event.preventDefault());
+            host.addEventListener('mousedown', function(e) {
+                if (e.button !== button) {
+                    return;
+                }
 
-            mdx = e.pageX;
-            mdy = e.pageY;
-            pressed = true;
-        });
+                mdx = e.pageX;
+                mdy = e.pageY;
+                pressed = true;
+            });
+        }
 
         document.body.addEventListener('mousemove', function(e) {
             if (pressed) {
@@ -218,7 +234,7 @@ window.addEventListener('load', function() {
         });
 
         document.body.addEventListener('mouseenter', function(e) {
-            if (pressed && (e.buttons & 1) !== 1) {
+            if (pressed && (e.buttons & buttonMask) !== buttonMask) {
                 pressed = false;
             }
         });

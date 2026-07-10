@@ -14,7 +14,7 @@ import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gu
 import { Token } from '../../hoiformat/hoiparser';
 import { getSpriteByGfxName } from '../../util/image/imagecache';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { localisationIndex } from "../../util/featureflags";
+import { featureFlagsAsScript, localisationIndex } from "../../util/featureflags";
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -33,6 +33,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             baseContent,
             [
                 setPreviewFileUriScript,
+                { content: featureFlagsAsScript() },
                 'common.js',
                 'eventtree.js',
             ],
@@ -81,7 +82,7 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     });
 
     return `
-        <div id="dragger" class="${styleTable.oneTimeStyle('dragger', () => `
+        <div id="dragger" additionalDraggerHostId="eventtreecontent" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
             height: 100vh;
             position: fixed;
