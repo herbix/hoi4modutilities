@@ -69,14 +69,18 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * Edge lines on world map not alway fit edge of colors.
 * Event tree preview will duplicate events even they are same event if they are from different option.
 
-## Release Notes - [0.12.4]
-
-### Fixed
-* Reorder file loading logic to “workspace > dlc > base game”
+## Release Notes - [0.13.0]
 
 ### Added
-* Support `overlay` in focus tree preview (#123) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
-* Enabled GFX index by default.
+* Support `force_use_small_tech_layout` in technology tree preview.
+* Add condition selection in technology tree preview.
+* Allow zooming in technology tree preview.
+* When localisation index is enabled, you can choose to show ID or localised text for focus and technology labels (#124) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Focus position editing by dragging in focus tree preview (#124) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+
+### Updated
+* Scrolling in preview window is now by dragging right mouse button. 
+  * You can switch to left mouse button dragging by disabling feature flag `rightButtonDrag`.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.13.0] - 2026/07/10 - Latest
 
 ### Added
 * Support `force_use_small_tech_layout` in technology tree preview.
@@ -17,7 +17,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Scrolling in preview window is now by dragging right mouse button. 
   * You can switch to left mouse button dragging by disabling feature flag `rightButtonDrag`.
 
-## [0.12.4] - 2026/07/08 - Latest
+## [0.12.4] - 2026/07/08
 
 ### Fixed
 * Reorder file loading logic to “workspace > dlc > base game”
