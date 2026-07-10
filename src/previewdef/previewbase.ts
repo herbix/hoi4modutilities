@@ -18,6 +18,9 @@ export abstract class PreviewBase {
     public onDispose = this.disposeEmitter.event;
 
     private disposed = false;
+    
+    protected lastDocumentChangeTimestamp: number = 0;
+    protected pendingChangeDocument: boolean = false;
 
     constructor(
         readonly uri: vscode.Uri,
@@ -26,12 +29,24 @@ export abstract class PreviewBase {
         this.registerEvents(panel);
     }
 
-    public async onDocumentChange(document: vscode.TextDocument): Promise<void> {
+    public onDocumentWillChange() {
+        this.pendingChangeDocument = true;
+    }
+
+    public async onDocumentChange(document: vscode.TextDocument, timestamp: number): Promise<void> {
+        if (timestamp <= this.lastDocumentChangeTimestamp && !this.pendingChangeDocument) {
+            return;
+        }
+
+        this.lastDocumentChangeTimestamp = timestamp;
+
         try {
             this.panel.webview.html = await this.getContent(document);
         } catch(e) {
             error(e);
         }
+
+        this.pendingChangeDocument = false;
     }
     
     public dispose(): void {
@@ -47,7 +62,7 @@ export abstract class PreviewBase {
 
     public async initializePanelContent(document: vscode.TextDocument): Promise<void> {
         this.panel.webview.html = localize('loading', 'Loading...');
-        await this.onDocumentChange(document);
+        await this.onDocumentChange(document, Date.now());
     }
 
     protected registerEvents(panel: vscode.WebviewPanel): void {
@@ -147,7 +162,7 @@ export abstract class PreviewBase {
             return;
         }
 
-        this.onDocumentChange(document);
+        this.onDocumentChange(document, Date.now());
     }
 
     protected handleMessage(_msg: any): Promise<void> | void {

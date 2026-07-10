@@ -37,20 +37,25 @@ class FocusTreePreview extends PreviewBase {
 
     protected async getContent(document: vscode.TextDocument): Promise<string> {
         this.content = document.getText();
-        const result = await renderFocusTreeFile(this.focusTreeLoader, document.uri, this.panel.webview);
+        const result = await renderFocusTreeFile(this.focusTreeLoader, document.uri, this.panel.webview, this.lastDocumentChangeTimestamp);
         this.content = undefined;
         return result;
     }
 
     protected async handleMessage(msg: UpdateFocusPositionsMessage): Promise<void> {
         if (msg.command === 'updateFocusPositions') {
-            await this.updateFocusPositions(Array.isArray(msg.focuses) ? msg.focuses : []);
+            await this.updateFocusPositions(msg);
         }
     }
 
-    private async updateFocusPositions(focuses: UpdateFocusPositionsMessage['focuses']): Promise<void> {
+    private async updateFocusPositions(msg: UpdateFocusPositionsMessage): Promise<void> {
+        const focuses = msg.focuses;
         if (focuses.length === 0) {
             await vscode.window.showErrorMessage(localize('preview.focusposition.invalidmessage', 'Cannot update focus position: invalid focus metadata.'));
+            return;
+        }
+
+        if (this.pendingChangeDocument || this.lastDocumentChangeTimestamp !== msg.lastDocumentChangeTimestamp) {
             return;
         }
 
@@ -87,7 +92,7 @@ class FocusTreePreview extends PreviewBase {
             return undefined;
         }
 
-        if (!xToken.value.match(/^\d+$/) || !yToken.value.match(/^\d+$/)) {
+        if (!xToken.value.match(/^-?\d+$/) || !yToken.value.match(/^-?\d+$/)) {
             await vscode.window.showErrorMessage(localize('preview.focusposition.unsupported', 'Cannot update focus position: x/y must be explicit numeric values in the focus block.'));
             return undefined;
         }

@@ -93,7 +93,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
             debug(`dispose panel ${key} because text document closed`);
         }
 
-        this.updatePreviewItemsInSubscription(document.uri);
+        this.updatePreviewItemsInSubscription(document.uri, Date.now());
     }
     
     private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
@@ -101,10 +101,10 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         const key = document.uri.toString();
         const preview = this._previews[key];
         if (preview !== undefined) {
-            this.updatePreviewItem(preview, document);
+            this.updatePreviewItem(preview, document, Date.now());
         }
 
-        this.updatePreviewItemsInSubscription(document.uri);
+        this.updatePreviewItemsInSubscription(document.uri, Date.now());
     }
 
     private updateHoi4PreviewContextValue(textEditor: vscode.TextEditor | undefined): void {
@@ -127,7 +127,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         for (const preview of Object.values(this._previews)) {
             const document = getDocumentByUri(preview.uri);
             if (document) {
-                preview.onDocumentChange(document);
+                preview.onDocumentChange(document, Date.now());
             }
         }
     }
@@ -261,30 +261,45 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
     }
 
     private updatePreviewItemsInSubscription = debounceByInput(
-        (uri: vscode.Uri): void => {
+        (uri: vscode.Uri, timestamp: number): void => {
             for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.toString())) {
                 if (uri.toString() === otherPreview.uri.toString()) {
                     continue;
                 }
                 const otherDocument = getDocumentByUri(otherPreview.uri);
                 if (otherDocument) {
-                    otherPreview.onDocumentChange(otherDocument);
+                    otherPreview.onDocumentChange(otherDocument, timestamp);
                 }
             }
         },
         uri => uri.toString(),
-        1000,
-        { trailing: true });
+        300,
+        { trailing: true },
+        (uri: vscode.Uri, timestamp: number) => {
+            for (const otherPreview of this.getPreviewItemsNeedsUpdate(uri.toString())) {
+                if (uri.toString() === otherPreview.uri.toString()) {
+                    continue;
+                }
+                if (!otherPreview.isDisposed) {
+                    otherPreview.onDocumentWillChange();
+                }
+            }
+        });
 
     private updatePreviewItem = debounceByInput(
-        (previewItem: PreviewBase, document: vscode.TextDocument) => {
+        (previewItem: PreviewBase, document: vscode.TextDocument, timestamp: number) => {
             if (!previewItem.isDisposed) {
-                previewItem.onDocumentChange(document);
+                previewItem.onDocumentChange(document, timestamp);
             }
         },
         (preview) => preview.uri.toString(),
-        1000,
-        { trailing: true });
+        300,
+        { trailing: true },
+        (previewItem: PreviewBase, document: vscode.TextDocument, timestamp: number) => {
+            if (!previewItem.isDisposed) {
+                previewItem.onDocumentWillChange();
+            }
+        });
 }
 
 export const previewManager = new PreviewManager();

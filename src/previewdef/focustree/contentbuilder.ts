@@ -16,7 +16,7 @@ import { getLocalisedTextQuick } from "../../util/localisationIndex";
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
-export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
+export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.Uri, webview: vscode.Webview, lastDocumentChangeTimestamp: number): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
 
     try {
@@ -37,6 +37,7 @@ export async function renderFocusTreeFile(loader: FocusTreeLoader, uri: vscode.U
         const styleNonce = randomString(32);
         const baseContent = await renderFocusTrees(focustrees, styleTable, loadResult.result.gfxFiles, jsCodes, styleNonce, loader.file);
         jsCodes.push(i18nTableAsScript());
+        jsCodes.push(`window.lastDocumentChangeTimestamp = ${lastDocumentChangeTimestamp};`);
 
         return html(
             webview,
