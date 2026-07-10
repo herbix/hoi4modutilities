@@ -4,7 +4,7 @@ import { normalizeNumberLike } from "../../util/hoi4gui/common";
 import { flatten, chain } from 'lodash';
 import { ConditionItem, ConditionComplexExpr, extractConditionValues, extractConditionValue, extractConditionalExprs } from "../../hoiformat/condition";
 import { countryScope } from "../../hoiformat/scope";
-import { useConditionInFocus } from "../../util/featureflags";
+import { isFeatureEnabled } from "../../util/featureflags";
 import { randomString, Warning } from "../../util/common";
 import { localize } from "../../util/i18n";
 
@@ -226,7 +226,7 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
         const warnings: FocusWarning[] = [];
         const focuses = getFocuses(focusTree.focus, conditionExprs, filePath, warnings, constants);
         
-        if (useConditionInFocus) {
+        if (isFeatureEnabled('useConditionInFocus')) {
             for (const sharedFocus of focusTree.shared_focus) {
                 if (!sharedFocus) {
                     continue;

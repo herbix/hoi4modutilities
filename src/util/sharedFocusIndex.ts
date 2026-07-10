@@ -7,7 +7,7 @@ import { sendEvent } from './telemetry';
 import { Logger } from "./logger";
 import { getFocusTree } from "../previewdef/focustree/schema";
 import { parseHoi4File } from "../hoiformat/hoiparser";
-import { sharedFocusIndex } from "./featureflags";
+import { isFeatureEnabled } from "./featureflags";
 
 interface FocusIndex {
     [focusKey: string]: string; // Focus key -> filename
@@ -19,7 +19,7 @@ let workspaceFocusIndex: FocusIndex = {};
 export function registerSharedFocusIndex(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
 
-    if (sharedFocusIndex) {
+    if (isFeatureEnabled('sharedFocusIndex')) {
         const estimatedSize: [number] = [0];
 
         const task = Promise.all([

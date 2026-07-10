@@ -96,6 +96,24 @@
 						"title": "%hoi4modutilities.featureFlags.title%",
 						"type": "array",
 						"default": [],
+						"uniqueItems": true,
+						"items": {
+							"type": "string",
+							"enum": [
+								"gfxIndex",
+								"useConditionInFocus",
+								"eventTreePreview",
+								"sharedFocusIndex",
+								"localisationIndex",
+								"rightButtonDrag",
+								"!gfxIndex",
+								"!useConditionInFocus",
+								"!eventTreePreview",
+								"!sharedFocusIndex",
+								"!localisationIndex",
+								"!rightButtonDrag"
+							]
+						},
 						"description": "%hoi4modutilities.featureFlags.desc%"
 					}
 				}

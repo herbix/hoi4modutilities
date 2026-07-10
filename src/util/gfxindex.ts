@@ -4,7 +4,7 @@ import { parseHoi4File } from '../hoiformat/hoiparser';
 import { getSpriteTypes } from '../hoiformat/spritetype';
 import { debounceByInput, forceError, UserError } from './common';
 import { error } from './debug';
-import { gfxIndex } from './featureflags';
+import { isFeatureEnabled } from './featureflags';
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from './fileloader';
 import { localize } from './i18n';
 import { uniq } from 'lodash';
@@ -22,7 +22,7 @@ export const onGfxIndexInitialized = gfxIndexInitializedEventEmitter.event;
 
 export function registerGfxIndex(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
-    if (gfxIndex) {
+    if (isFeatureEnabled('gfxIndex')) {
         const estimatedSize: [number] = [0];
         const task = Promise.all([ buildGlobalGfxIndex(estimatedSize), buildWorkspaceGfxIndex(estimatedSize) ]);
         vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('gfxindex.building', 'Building GFX index...'), task);
@@ -43,7 +43,7 @@ export function registerGfxIndex(): vscode.Disposable {
 }
 
 export async function getGfxContainerFile(gfxName: string | undefined): Promise<string | undefined> {
-    if (!gfxIndex || !gfxName) {
+    if (!isFeatureEnabled('gfxIndex') || !gfxName) {
         return undefined;
     }
 

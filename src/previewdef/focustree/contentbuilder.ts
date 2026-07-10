@@ -10,7 +10,7 @@ import { FocusTreeLoader } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { featureFlagsAsScript, localisationIndex, useConditionInFocus } from '../../util/featureflags';
+import { featureFlagsAsScript, isFeatureEnabled } from '../../util/featureflags';
 import { flatMap } from 'lodash';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
 
@@ -191,10 +191,10 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
         <div class="toolbar">
-            ${localisationIndex ? renderPreviewLabelModeControl(styleTable) : ''}
+            ${isFeatureEnabled('localisationIndex') ? renderPreviewLabelModeControl(styleTable) : ''}
             ${focuses}
             ${searchbox}
-            ${useConditionInFocus ? conditions : allowbranch}
+            ${isFeatureEnabled('useConditionInFocus') ? conditions : allowbranch}
             ${warningsButton}
         </div>
     </div>`;

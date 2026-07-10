@@ -3,7 +3,7 @@ import { ParentInfo, calculateBBox, RenderCommonOptions, normalizeNumberLike } f
 import { htmlEscape } from "../html";
 import { InstantTextBoxType } from "../../hoiformat/gui";
 import { getLocalisedTextQuick } from "../localisationIndex";
-import { localisationIndex } from "../featureflags";
+import { isFeatureEnabled } from "../featureflags";
 
 export interface RenderInstantTextBoxOptions extends RenderCommonOptions {
     localise?: boolean;
@@ -21,7 +21,7 @@ export async function renderInstantTextBox(textbox: HOIPartial<InstantTextBoxTyp
 
     const textContent = options.localise === false
         ? (textbox.text ?? '')
-        : (localisationIndex ? (await getLocalisedTextQuick(textbox.text) ?? ' ') : (textbox.text ?? ''));
+        : (isFeatureEnabled('localisationIndex') ? (await getLocalisedTextQuick(textbox.text) ?? ' ') : (textbox.text ?? ''));
     const renderedText = options.rawText ? textContent : htmlEscape(textContent);
 
     return `<div

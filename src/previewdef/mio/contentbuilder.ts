@@ -11,7 +11,7 @@ import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { Mio, MioTrait, TraitEffect } from './schema';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { featureFlagsAsScript, localisationIndex } from "../../util/featureflags";
+import { featureFlagsAsScript, isFeatureEnabled } from "../../util/featureflags";
 
 const defaultTraitIcon = 'gfx/interface/goals/goal_unknown.dds';
 const traitEffectIconMap: Record<TraitEffect, string> = {
@@ -147,7 +147,7 @@ async function renderToolBar(mios: Mio[], styleTable: StyleTable): Promise<strin
         <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <select id="mios" class="select multiple-select" tabindex="0" role="combobox">
                 ${await Promise.all(mios.map(async (mio, i) => {
-                    const localizedText = localisationIndex ? `(${mio.id}) ${await getLocalisedTextQuick(mio.id)}` : mio.id;
+                    const localizedText = isFeatureEnabled('localisationIndex') ? `(${mio.id}) ${await getLocalisedTextQuick(mio.id)}` : mio.id;
                     return `<option value="${i}">${localizedText}</option>`;
                 })).then(options => options.join(''))}
             </select>
@@ -224,7 +224,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
         start="${trait.token?.start}"
         end="${trait.token?.end}"
         ${file === trait.file ? '' : `file="${trait.file}"`}
-        title="${trait.id}${localisationIndex ? `\n${await getLocalisedTextQuick(trait.name)}` : ''}\n({{position}})">
+        title="${trait.id}${isFeatureEnabled('localisationIndex') ? `\n${await getLocalisedTextQuick(trait.name)}` : ''}\n({{position}})">
             <div class="
                 ${styleTable.style('effect-host', () => `
                     text-align: center;
@@ -268,7 +268,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
                 position: relative;
                 z-index: 5;
             `)}">
-            ${localisationIndex ? `${await getLocalisedTextQuick(trait.name)}` : ''}
+            ${isFeatureEnabled('localisationIndex') ? `${await getLocalisedTextQuick(trait.name)}` : ''}
             </span>
         </div>
     </div>`;

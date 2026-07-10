@@ -4,9 +4,8 @@ import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten, chain } from "lodash";
 import { getGfxContainerFiles } from "../../util/gfxindex";
-import { sharedFocusIndex } from "../../util/featureflags";
+import { isFeatureEnabled } from "../../util/featureflags";
 import { findFileByFocusKey } from "../../util/sharedFocusIndex";
-import { listFilesFromModOrHOI4 } from "../../util/fileloader";
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
@@ -25,7 +24,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
 
         const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), constants);
 
-        if (sharedFocusIndex) {
+        if (isFeatureEnabled('sharedFocusIndex')) {
             for (const focusTree of file.focus_tree) {
                 for (const sharedFocus of focusTree.shared_focus) {
                     if (!sharedFocus) {

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as yaml from 'js-yaml';
 import { debounceByInput } from './common';
-import { localisationIndex } from './featureflags';
+import { isFeatureEnabled } from './featureflags';
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from './fileloader';
 import { localize } from './i18n';
 import { sendEvent } from './telemetry';
@@ -42,7 +42,7 @@ const localeISOMapping: Record<string, string> = {
 
 export function registerLocalisationIndex(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
-    if (localisationIndex) {
+    if (isFeatureEnabled('localisationIndex')) {
         const estimatedSize: [number] = [0];
         const task = Promise.all([
             buildGlobalLocalisationIndex(estimatedSize),
@@ -77,7 +77,7 @@ export async function getLocalisedText(localisationKey: string | undefined, lang
         return localisationKey;
     }
 
-    if (!localisationIndex) {
+    if (!isFeatureEnabled('localisationIndex')) {
         return localisationKey ?? '';
     }
 

@@ -2,11 +2,11 @@ import * as vscode from 'vscode';
 import { i18nTableAsScript, localize } from '../../util/i18n';
 import { Technology, TechnologyTree, TechnologyFolder, RenderedTechnologyFolder, RenderedTechnologyFolderGridBox } from './schema';
 import { getSpriteByGfxName, Sprite } from '../../util/image/imagecache';
-import { arrayToMap, forceError, randomString, UserError } from '../../util/common';
+import { forceError, randomString, UserError } from '../../util/common';
 import { HOIPartial } from '../../hoiformat/schema';
 import { renderContainerWindow, renderContainerWindowChildren } from '../../util/hoi4gui/containerwindow';
 import { ParentInfo, RenderCommonOptions } from '../../util/hoi4gui/common';
-import { renderGridBox, GridBoxItem, GridBoxConnection, GridBoxConnectionItem, getGridBoxCommonChildParentInfo } from '../../util/hoi4gui/gridbox';
+import { getGridBoxCommonChildParentInfo } from '../../util/hoi4gui/gridbox';
 import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { html, htmlEscape } from '../../util/html';
@@ -14,11 +14,11 @@ import { ContainerWindowType, GridBoxType, IconType, InstantTextBoxType, Format 
 import { TechnologyTreeLoader, TechnologyTreeLoaderResult } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
-import { flatMap, sumBy, min, flatten, chain, uniq, range } from 'lodash';
+import { flatMap, uniq, range } from 'lodash';
 import { StyleTable } from '../../util/styletable';
 import { renderBackground, RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { featureFlagsAsScript, localisationIndex } from "../../util/featureflags";
+import { featureFlagsAsScript, isFeatureEnabled } from "../../util/featureflags";
 
 const techTreeViewName = 'countrytechtreeview';
 const doctrineTreeViewName = 'countrydoctrineview';
@@ -123,7 +123,7 @@ async function renderTechnologyFolders(
 async function renderToolbar(folders: string[], styleTable: StyleTable): Promise<string> {
     const folderOptions = await Promise.all(
         folders.map(async (folder) => {
-            const localizedText = localisationIndex ? `${await getLocalisedTextQuick(folder)} (${folder})` : folder;
+            const localizedText = isFeatureEnabled('localisationIndex') ? `${await getLocalisedTextQuick(folder)} (${folder})` : folder;
             return `<option value="${folder}">${localizedText}</option>`;
         })
     );
@@ -154,7 +154,7 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px; z-index: 10;`)}">
         <div class="toolbar">
-            ${localisationIndex ? renderPreviewLabelModeControl(styleTable) : ''}
+            ${isFeatureEnabled('localisationIndex') ? renderPreviewLabelModeControl(styleTable) : ''}
             ${folderSelect}
             ${conditions}
         </div>
