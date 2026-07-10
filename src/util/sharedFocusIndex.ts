@@ -27,9 +27,9 @@ export function registerSharedFocusIndex(): vscode.Disposable {
             buildWorkspaceFocusIndex(estimatedSize)
         ]);
 
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('sharedFocusIndex.building', 'Building Shared Focus index...'), task);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('sharedFocusIndex.building', 'Building shared focus index...'), task);
         task.then(() => {
-            vscode.window.showInformationMessage(localize('sharedFocusIndex.builddone', 'Building Shared Focus index done.'));
+            vscode.window.showInformationMessage(localize('sharedFocusIndex.builddone', 'Building shared focus index done.'));
             sendEvent('sharedFocusIndex', { size: estimatedSize[0].toString() });
         });
 

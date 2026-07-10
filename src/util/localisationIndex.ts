@@ -48,9 +48,9 @@ export function registerLocalisationIndex(): vscode.Disposable {
             buildGlobalLocalisationIndex(estimatedSize),
             buildWorkspaceLocalisationIndex(estimatedSize)
         ]);
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('localisationIndex.building', 'Building Localisation index...'), task);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('localisationIndex.building', 'Building localisation index...'), task);
         task.then(() => {
-            vscode.window.showInformationMessage(localize('localisationIndex.builddone', 'Building Localisation index done.'));
+            vscode.window.showInformationMessage(localize('localisationIndex.builddone', 'Localisation index building done.'));
             sendEvent('localisationIndex', {size: estimatedSize[0].toString()});
         });
         disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(onChangeWorkspaceFolders));
@@ -134,7 +134,7 @@ async function fillLocalisationItems(localisationFile: string, localisationIndex
 
         const baseMessage = options.hoi4
             ? localize('localisationIndex.vanilla','[Vanilla]')
-            : localize('localisationIndex.mod','[mod]');
+            : localize('localisationIndex.mod','[Mod]');
 
         const failureMessage = localize('localisationIndex.parseFailure','parsing failed! Please check if the file has issues!');
 
@@ -199,9 +199,9 @@ function onChangeWorkspaceFolders(_: vscode.WorkspaceFoldersChangeEvent) {
     workspaceLocalisationIndex = {};
     const estimatedSize: [number] = [0];
     const task = buildWorkspaceLocalisationIndex(estimatedSize);
-    vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('localisationIndex.workspace.building', 'Building workspace Localisation index...'), task);
+    vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('localisationIndex.workspace.building', 'Building workspace localisation index...'), task);
     task.then(() => {
-        vscode.window.showInformationMessage(localize('localisationIndex.workspace.builddone', 'Building workspace Localisation index done.'));
+        vscode.window.showInformationMessage(localize('localisationIndex.workspace.builddone', 'Workspace localisation index building done.'));
         sendEvent('localisationIndex.workspace', {size: estimatedSize[0].toString()});
     });
 }
