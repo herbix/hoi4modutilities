@@ -1,3 +1,4 @@
+import { ConditionComplexExpr, ConditionItem } from "../../hoiformat/condition";
 import { Token } from "../../hoiformat/hoiparser";
 import { Warning } from "../../util/common";
 
@@ -26,6 +27,8 @@ export interface WorldMapData {
     terrains: Terrain[];
     resources: Resource[];
     rivers: River[];
+    conditionExprs: ConditionItem[];
+    bookmarks: Bookmark[];
     warnings: WorldMapWarning[];
 }
 
@@ -85,17 +88,35 @@ export interface ProvinceEdgeAdjacency {
 
 export type ProvinceEdge = Omit<ProvinceEdgeGraph & ProvinceEdgeAdjacency, 'from' | 'row' | 'toColor'>;
 
+export interface Bookmark {
+    name: string;
+    date: BookmarkDate;
+};
+
+export interface BookmarkDate {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+}
+
 export interface State extends Region, TokenInFile {
     id: number;
     name: string;
     manpower: number;
     category: string;
-    owner: string | undefined;
+    owner: WithCondition<string>[]; // return the first matching country tag
+    controller: WithCondition<string>[]; // return the first matching country tag
     provinces: number[];
-    cores: string[];
+    cores: WithCondition<string>[];  // each item is a country tag with a condition, representing the core of the state
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
     resources: Record<string, number | undefined>;
+}
+
+export interface WithCondition<T> {
+    condition: ConditionComplexExpr;
+    value: T;
 }
 
 export interface Railway {
@@ -228,7 +249,7 @@ export interface RequestMapItemMessage {
 }
 
 export interface MapItemMessage {
-    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas' | 'railways' | 'supplynodes' | 'resources';
+    command: 'provinces' | 'states' | 'countries' | 'warnings' | 'continents' | 'terrains' | 'strategicregions' | 'supplyareas' | 'railways' | 'supplynodes' | 'resources' | 'rivers' | 'conditionexprs';
     data: string;
     start: number;
     end: number;
@@ -264,4 +285,7 @@ export interface ExportMapMessage {
 
 export type ProgressReporter = (progress: string) => Promise<void>;
 
-export type MapLoaderExtra = { warnings: WorldMapWarning[] };
+export type MapLoaderExtra = {
+    warnings: WorldMapWarning[];
+    conditionExprs?: ConditionItem[];
+};

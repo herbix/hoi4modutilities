@@ -3,7 +3,7 @@ import { DivDropdown } from "./util/dropdown";
 import { minBy } from "lodash";
 import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
 import { StyleTable } from "../src/util/styletable";
-import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
+import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../src/hoiformat/condition";
 import { NumberPosition } from "../src/util/common";
 import { GridBoxType } from "../src/hoiformat/gui";
 import { toNumberLike } from "../src/hoiformat/schema";
@@ -113,11 +113,8 @@ function updateSelectedMio(clearCondition: boolean) {
     }
 
     if (conditions) {
-        conditions.select.innerHTML = `<span class="value"></span>
-            ${conditionExprs.map(option =>
-                `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}] ` : ''}${option.nodeContent}</div>`
-            ).join('')}`;
-        conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
+        conditions.setupOptions(conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
+        conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(conditionItemToStringValue));
     }
 
     const warnings = document.getElementById('warnings') as HTMLTextAreaElement | null;
@@ -235,23 +232,9 @@ window.addEventListener('load', tryRun(async function() {
     if (conditionsElement) {
         conditions = new DivDropdown(conditionsElement, true);
         
-        conditions.selectedValues$.next(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
+        conditions.selectedValues$.next(selectedExprs.map(conditionItemToStringValue));
         conditions.selectedValues$.subscribe(async (selection) => {
-            selectedExprs = selection.map<ConditionItem>(selection => {
-                const index = selection.indexOf('!|');
-                if (index === -1) {
-                    return {
-                        scopeName: '',
-                        nodeContent: selection,
-                    };
-                } else {
-                    return {
-                        scopeName: selection.substring(0, index),
-                        nodeContent: selection.substring(index + 2),
-                    };
-                }
-            });
-
+            selectedExprs = selection.map<ConditionItem>(stringValueToConditionItem);
             setState({ selectedExprs });
             
             await buildContent();

@@ -243,6 +243,14 @@ export class WorldMap {
             changeMessages.push({ command: 'resources', data: JSON.stringify(worldMap.resources), start: 0, end: 0 });
         }
 
+        if (!isEqual(cachedWorldMap.rivers, worldMap.rivers)) {
+            changeMessages.push({ command: 'rivers', data: JSON.stringify(worldMap.rivers), start: 0, end: 0 });
+        }
+
+        if (!isEqual(cachedWorldMap.conditionExprs, worldMap.conditionExprs)) {
+            changeMessages.push({ command: 'conditionexprs', data: JSON.stringify(worldMap.conditionExprs), start: 0, end: 0 });
+        }
+
         if (!this.fillMessageForItem(changeMessages, worldMap.provinces, cachedWorldMap.provinces, 'provinces', worldMap.badProvincesCount, worldMap.provincesCount)) {
             return false;
         }

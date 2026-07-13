@@ -4,7 +4,7 @@ import { RenderCommonOptions } from "../src/util/hoi4gui/common";
 import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from "../src/util/hoi4gui/gridboxcommon";
 import { setState, getState, scrollToState, tryRun, subscribeRefreshButton, subscribeNavigators, arrayToMap, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
 import { StyleTable } from "../src/util/styletable";
-import { applyCondition, ConditionItem } from "../src/hoiformat/condition";
+import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../src/hoiformat/condition";
 import { DivDropdown } from "./util/dropdown";
 const renderedTechFolders: Record<string, RenderedTechnologyFolder> = (window as any).renderedTechFolders;
 const technologyTrees: TechnologyTree[] = (window as any).technologyTrees;
@@ -211,11 +211,8 @@ async function folderChange(folder: string, clearCondition: boolean) {
     }
 
     if (conditions) {
-        conditions.select.innerHTML = `<span class="value"></span>
-            ${conditionExprs.map(option =>
-                `<div class="option" value='${option.scopeName}!|${option.nodeContent}'>${option.scopeName ? `[${option.scopeName}] ` : ''}${option.nodeContent}</div>`
-            ).join('')}`;
-        conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
+        conditions.setupOptions(conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
+        conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(conditionItemToStringValue));
     }
 
     await buildContent();
@@ -237,23 +234,9 @@ window.addEventListener('load', tryRun(async function() {
     if (conditionsElement) {
         conditions = new DivDropdown(conditionsElement, true);
         
-        conditions.selectedValues$.next(selectedExprs.map(e => `${e.scopeName}!|${e.nodeContent}`));
+        conditions.selectedValues$.next(selectedExprs.map(conditionItemToStringValue));
         conditions.selectedValues$.subscribe(async (selection) => {
-            selectedExprs = selection.map<ConditionItem>(selection => {
-                const index = selection.indexOf('!|');
-                if (index === -1) {
-                    return {
-                        scopeName: '',
-                        nodeContent: selection,
-                    };
-                } else {
-                    return {
-                        scopeName: selection.substring(0, index),
-                        nodeContent: selection.substring(index + 2),
-                    };
-                }
-            });
-
+            selectedExprs = selection.map<ConditionItem>(stringValueToConditionItem);
             setState({ selectedExprs });
             await buildContent();
         });

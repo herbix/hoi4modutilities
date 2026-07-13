@@ -6,7 +6,7 @@ import { maxBy } from "lodash";
 
 export abstract class Loader<T> extends CommonLoader<T, MapLoaderExtra> {}
 export abstract class FileLoader<T> extends CommonFileLoader<T, MapLoaderExtra> {}
-export abstract class FolderLoader<T, F> extends CommonFolderLoader<T, F, MapLoaderExtra, MapLoaderExtra> {}
+export abstract class FolderLoader<T, F, A extends unknown[]=[]> extends CommonFolderLoader<T, F, MapLoaderExtra, MapLoaderExtra, A> {}
 
 export const mergeInLoadResult = commonMergeInLoadResult;
 

@@ -13,13 +13,9 @@ function nodeValueToString(nodeValue: NodeValue): string | null {
         return null;
     }
 
-    if (typeof nodeValue === 'object') {
-        return nodeValue.name;
-    }
-
     if (typeof nodeValue === 'string') {
         return '"' + nodeValue + '"';
     }
 
-    return nodeValue.toString();
+    return nodeValue.name;
 }
