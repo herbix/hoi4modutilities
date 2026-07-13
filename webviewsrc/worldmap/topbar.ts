@@ -43,6 +43,10 @@ export class TopBar extends Subscriber {
         this.addSubscription(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
         this.addSubscription(this.display = new DivDropdown(document.getElementById('display') as HTMLDivElement, true));
         this.addSubscription(this.conditions = new DivDropdown(document.getElementById('conditions') as HTMLDivElement, true));
+        const groupElement = this.conditions.select.closest<HTMLDivElement>('.group');
+        if (groupElement) {
+            groupElement.style.display = 'none';
+        }
         this.addSubscription(loader.worldMap$.subscribe(this.setupConditions));
 
         this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? 'province');
@@ -82,6 +86,10 @@ export class TopBar extends Subscriber {
         this.conditions.setupOptions(worldMap.conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
         const selectedConditions = getState().selectedConditions ?? [];
         this.conditions.selectedValues$.next(selectedConditions);
+        const groupElement = this.conditions.select.closest<HTMLDivElement>('.group');
+        if (groupElement) {
+            groupElement.style.display = worldMap.conditionExprs.length > 0 ? 'inline-block' : 'none';
+        }
     };
 
     private onViewModeChange() {

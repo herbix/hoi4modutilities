@@ -4,7 +4,15 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.14.0] - 2026/07/13 - Latest
+## [0.14.1] - 2026/07/14 - Latest
+
+### Fixed
+* Numbers starts with `.` or `+` can't be parsed.
+
+### Updated
+* Hide condition selection in world map preview if there is no condition to select.
+
+## [0.14.0] - 2026/07/13
 
 ### Added
 * Add condition selection in world map preview. (#121)

@@ -107,7 +107,7 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
 type HOITokenType = 'comment' | 'symbol' | 'operator' | 'string' | 'eof';
 const tokenRegexStrings: Record<HOITokenType, [string, number]> = {
     comment: ['#.*(?:[\\r\\n]|$)', 0],
-    symbol: ['[-\\w@\\[\\]\\u00A0-\\u024F][\\w:\\._@\\[\\]\\-\\?\\^\\/\\u00A0-\\u024F|%]*', 40],
+    symbol: ['[-\\w@\\[\\]\\u00A0-\\u024F\\.+][\\w:\\._@\\[\\]\\-\\?\\^\\/\\u00A0-\\u024F|%+]*', 40],
     operator: ['[={}<>;,]|>=|<=|!=', 10],
     string: ['"(?:\\\\"|\\\\\\\\|[^"])*"', 10],
     eof: ['$', 1000],
