@@ -357,7 +357,7 @@ function loadStateHistory(
         for (let i = 0, j = 0; i < bookmarks.length && j < dateHistoryEffects.length;) {
             const bookmark = bookmarks[i];
             const dateHistoryEffect = dateHistoryEffects[j];
-            if (compareBookmarkDate(dateHistoryEffect.date, bookmark.date) > 0) {
+            if (compareBookmarkDate(dateHistoryEffect.date, bookmark.date) >= 0) {
                 i++;
                 bookmarkCondition = { type: 'or', items: bookmarkConditions.slice(i) };
                 continue;
