@@ -357,7 +357,7 @@ export function toNumberLike(value: number): NumberLike {
 }
 
 export function parseNumberLike(value: string): NumberLike | undefined {
-    const regex = /^(-?(?:\d+(?:\.\d*)?|\.\d+))(%%?)$/;
+    const regex = /^(-?(?:\d+(?:\.\d*)?|\.\d+))(%%?)?$/;
     const result = regex.exec(value);
     if (!result) {
         return undefined;

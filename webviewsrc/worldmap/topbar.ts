@@ -8,9 +8,11 @@ import { DivDropdown } from "../util/dropdown";
 import { BehaviorSubject, combineLatest, fromEvent } from 'rxjs';
 import { Renderer } from './renderer';
 import { sendEvent } from '../util/telemetry';
+import { getState } from "../util/common";
+import { ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../../src/hoiformat/condition";
 
 export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
-export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'country' | 'stateid' | 'manpower' |
+export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'owner' | 'controller' | 'stateid' | 'manpower' |
     'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue' | 'resources';
 
 export const topBarHeight = 40;
@@ -26,8 +28,10 @@ export class TopBar extends Subscriber {
     public selectedStrategicRegionId$: BehaviorSubject<number | undefined>;
     public hoverSupplyAreaId$: BehaviorSubject<number | undefined>;
     public selectedSupplyAreaId$: BehaviorSubject<number | undefined>;
+    public selectedConditions$: BehaviorSubject<ConditionItem[]>;
     public warningFilter: DivDropdown;
     public display: DivDropdown;
+    public conditions: DivDropdown;
 
     public warningsVisible: boolean = false;
 
@@ -38,6 +42,8 @@ export class TopBar extends Subscriber {
 
         this.addSubscription(this.warningFilter = new DivDropdown(document.getElementById('warningfilter') as HTMLDivElement, true));
         this.addSubscription(this.display = new DivDropdown(document.getElementById('display') as HTMLDivElement, true));
+        this.addSubscription(this.conditions = new DivDropdown(document.getElementById('conditions') as HTMLDivElement, true));
+        this.addSubscription(loader.worldMap$.subscribe(this.setupConditions));
 
         this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? 'province');
         this.colorSet$ = toBehaviorSubject(document.getElementById('colorset') as HTMLSelectElement, state.colorSet ?? 'provinceid');
@@ -49,6 +55,12 @@ export class TopBar extends Subscriber {
         this.selectedStrategicRegionId$ = new BehaviorSubject<number | undefined>(state.selectedStrategicRegionId ?? undefined);
         this.hoverSupplyAreaId$ = new BehaviorSubject<number | undefined>(undefined);
         this.selectedSupplyAreaId$ = new BehaviorSubject<number | undefined>(state.selectedSupplyAreaId ?? undefined);
+        this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>(state.selectedConditions.map(stringValueToConditionItem) ?? []);
+
+        this.addSubscription(this.conditions.selectedValues$.subscribe(selection => {
+            this.selectedConditions$.next(selection.map(stringValueToConditionItem));
+        }));
+
         if (state.warningFilter) {
             this.warningFilter.selectedValues$.next(state.warningFilter);
         } else {
@@ -65,6 +77,15 @@ export class TopBar extends Subscriber {
         this.loadControls();
         this.registerEventListeners(canvas);
     }
+
+    private setupConditions = (worldMap: FEWorldMap) => {
+        this.conditions.select.innerHTML = `<span class="value"></span>
+            ${worldMap.conditionExprs.map(option =>
+                `<div class="option" value='${conditionItemToStringValue(option)}'>${conditionToString(option)}</div>`
+            ).join('')}`;
+        const selectedConditions = getState().selectedConditions ?? [];
+        this.conditions.selectedValues$.next(selectedConditions);
+    };
 
     private onViewModeChange() {
         document.querySelectorAll('#colorset > option[viewmode]').forEach(v => {

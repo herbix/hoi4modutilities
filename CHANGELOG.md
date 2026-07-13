@@ -4,6 +4,16 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Added
+* Add condition selection in world map preview, including bookmark/scenario selection.
+  * Limitation: only support previewing owner, controller and core.
+* Add "country (controller)" color set in world map preview.
+
+### Updated
+* Feature flag setting UI. Now you don't need to edit raw json.
+
 ## [0.13.0] - 2026/07/10 - Latest
 
 ### Added

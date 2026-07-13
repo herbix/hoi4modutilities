@@ -382,8 +382,27 @@ export function conditionToString(condition: ConditionComplexExpr): string {
     }
 
     if (!('items' in condition)) {
-        return (condition.scopeName !== '' ? '[' + condition.scopeName + ']' : '') + condition.nodeContent;
+        return (condition.scopeName !== '' ? '[' + condition.scopeName + '] ' : '') + condition.nodeContent;
     }
 
     return condition.type + '(' + condition.items.map(conditionToString).join(', ') + ')' + (condition.type === 'count' ? ' == ' + condition.amount : '');
+}
+
+export function conditionItemToStringValue(conditionItem: ConditionItem): string {
+    return `${conditionItem.scopeName}!|${conditionItem.nodeContent}`;
+}
+
+export function stringValueToConditionItem(value: string): ConditionItem {
+    const index = value.indexOf('!|');
+    if (index === -1) {
+        return {
+            scopeName: '',
+            nodeContent: value,
+        };
+    } else {
+        return {
+            scopeName: value.substring(0, index),
+            nodeContent: value.substring(index + 2),
+        };
+    }
 }

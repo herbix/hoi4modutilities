@@ -9,6 +9,7 @@ export interface EffectItem {
     scopeName: string;
     nodeContent: string;
     node: Node;
+    scopeStack: Scope[];
 }
 
 export interface RandomListEffect {
@@ -118,6 +119,7 @@ function extractEffectByCondition(
                 scopeName: currentScope.scopeName,
                 nodeContent: nodeToString(child),
                 node: child,
+                scopeStack: [...scopeStack],
             });
         }
 

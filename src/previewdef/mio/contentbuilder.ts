@@ -257,18 +257,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
                 z-index: 5;
             `)}">
             ${trait.id}
-            </span>
-            <br/>
-            <span
-            class="${styleTable.style('trait-span-display', () => `
-                margin: 10px -400px;
-                margin-top: 84px;
-                text-align: center;
-                display: inline-block;
-                position: relative;
-                z-index: 5;
-            `)}">
-            ${isFeatureEnabled('localisationIndex') ? `${await getLocalisedTextQuick(trait.name)}` : ''}
+            ${isFeatureEnabled('localisationIndex') ? `<br/>${await getLocalisedTextQuick(trait.name)}` : ''}
             </span>
         </div>
     </div>`;

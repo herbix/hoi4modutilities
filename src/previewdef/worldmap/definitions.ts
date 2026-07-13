@@ -105,9 +105,10 @@ export interface State extends Region, TokenInFile {
     name: string;
     manpower: number;
     category: string;
-    owner: WithCondition<string>[];
+    owner: WithCondition<string>[]; // return the first matching country tag
+    controller: WithCondition<string>[]; // return the first matching country tag
     provinces: number[];
-    cores: string[];
+    cores: WithCondition<string>[];  // each item is a country tag with a condition, representing the core of the state
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
     resources: Record<string, number | undefined>;
