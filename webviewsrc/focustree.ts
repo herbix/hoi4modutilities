@@ -175,10 +175,7 @@ function updateSelectedFocusTree(clearCondition: boolean) {
         }
 
         if (conditions) {
-            conditions.select.innerHTML = `<span class="value"></span>
-                ${conditionExprs.map(option =>
-                    `<div class="option" value='${conditionItemToStringValue(option)}'>${conditionToString(option)}</div>`
-                ).join('')}`;
+            conditions.setupOptions(conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
             conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(conditionItemToStringValue));
         }
 
@@ -189,8 +186,7 @@ function updateSelectedFocusTree(clearCondition: boolean) {
         }
 
         if (allowBranches) {
-            allowBranches.select.innerHTML = `<span class="value"></span>
-                ${focusTree.allowBranchOptions.map(option => `<div class="option" value="inbranch_${option}">${option}</div>`).join('')}`;
+            allowBranches.setupOptions(focusTree.allowBranchOptions.map(option => ({ value: 'inbranch_' + option, text: option })));
             allowBranches.selectAll();
         }
     }

@@ -120,6 +120,18 @@ export class DivDropdown extends Subscriber {
         this.selectedValues$.next(values);
     }
 
+    public setupOptions(options: { value: string; text: string }[]) {
+        const select = this.select;
+        select.innerHTML = '<span class="value"></span>';
+        for (const { value, text } of options) {
+            const option = document.createElement('div');
+            option.classList.add('option');
+            option.setAttribute('value', value);
+            option.textContent = text;
+            select.appendChild(option);
+        }
+    }
+
     private init() {
         this.addSubscription(fromEvent<MouseEvent>(this.select, 'mousedown').subscribe(e => {
             e.preventDefault();

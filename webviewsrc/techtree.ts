@@ -211,10 +211,7 @@ async function folderChange(folder: string, clearCondition: boolean) {
     }
 
     if (conditions) {
-        conditions.select.innerHTML = `<span class="value"></span>
-            ${conditionExprs.map(option =>
-                `<div class="option" value='${conditionItemToStringValue(option)}'>${conditionToString(option)}</div>`
-            ).join('')}`;
+        conditions.setupOptions(conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
         conditions.selectedValues$.next(clearCondition ? [] : selectedExprs.map(conditionItemToStringValue));
     }
 

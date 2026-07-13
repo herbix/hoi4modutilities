@@ -79,10 +79,7 @@ export class TopBar extends Subscriber {
     }
 
     private setupConditions = (worldMap: FEWorldMap) => {
-        this.conditions.select.innerHTML = `<span class="value"></span>
-            ${worldMap.conditionExprs.map(option =>
-                `<div class="option" value='${conditionItemToStringValue(option)}'>${conditionToString(option)}</div>`
-            ).join('')}`;
+        this.conditions.setupOptions(worldMap.conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
         const selectedConditions = getState().selectedConditions ?? [];
         this.conditions.selectedValues$.next(selectedConditions);
     };
