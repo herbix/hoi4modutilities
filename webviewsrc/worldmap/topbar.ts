@@ -55,7 +55,7 @@ export class TopBar extends Subscriber {
         this.selectedStrategicRegionId$ = new BehaviorSubject<number | undefined>(state.selectedStrategicRegionId ?? undefined);
         this.hoverSupplyAreaId$ = new BehaviorSubject<number | undefined>(undefined);
         this.selectedSupplyAreaId$ = new BehaviorSubject<number | undefined>(state.selectedSupplyAreaId ?? undefined);
-        this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>(state.selectedConditions.map(stringValueToConditionItem) ?? []);
+        this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>((state.selectedConditions ?? []).map(stringValueToConditionItem));
 
         this.addSubscription(this.conditions.selectedValues$.subscribe(selection => {
             this.selectedConditions$.next(selection.map(stringValueToConditionItem));
