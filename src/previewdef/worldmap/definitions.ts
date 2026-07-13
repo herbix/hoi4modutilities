@@ -1,3 +1,4 @@
+import { ConditionComplexExpr, ConditionItem } from "../../hoiformat/condition";
 import { Token } from "../../hoiformat/hoiparser";
 import { Warning } from "../../util/common";
 
@@ -26,6 +27,8 @@ export interface WorldMapData {
     terrains: Terrain[];
     resources: Resource[];
     rivers: River[];
+    conditionExprs: ConditionItem[];
+    bookmarks: Bookmark[];
     warnings: WorldMapWarning[];
 }
 
@@ -85,17 +88,34 @@ export interface ProvinceEdgeAdjacency {
 
 export type ProvinceEdge = Omit<ProvinceEdgeGraph & ProvinceEdgeAdjacency, 'from' | 'row' | 'toColor'>;
 
+export interface Bookmark {
+    name: string;
+    date: BookmarkDate;
+};
+
+export interface BookmarkDate {
+    year: number;
+    month: number;
+    day: number;
+    hour: number;
+}
+
 export interface State extends Region, TokenInFile {
     id: number;
     name: string;
     manpower: number;
     category: string;
-    owner: string | undefined;
+    owner: WithCondition<string>[];
     provinces: number[];
     cores: string[];
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
     resources: Record<string, number | undefined>;
+}
+
+export interface WithCondition<T> {
+    condition: ConditionComplexExpr;
+    value: T;
 }
 
 export interface Railway {
@@ -264,4 +284,7 @@ export interface ExportMapMessage {
 
 export type ProgressReporter = (progress: string) => Promise<void>;
 
-export type MapLoaderExtra = { warnings: WorldMapWarning[] };
+export type MapLoaderExtra = {
+    warnings: WorldMapWarning[];
+    conditionExprs?: ConditionItem[];
+};

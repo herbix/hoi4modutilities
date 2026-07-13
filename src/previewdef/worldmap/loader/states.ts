@@ -1,4 +1,4 @@
-import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Resource } from "../definitions";
+import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Resource, Bookmark, BookmarkDate, WithCondition } from "../definitions";
 import { Enum, SchemaDef, CustomMap, DetailValue, Raw, convertNodeToJson } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
@@ -10,7 +10,10 @@ import { localize } from "../../../util/i18n";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 import { ResourceDefinitionLoader } from "./resource";
-import { BookmarksLoader } from "./bookmarks";
+import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkDate } from "./bookmarks";
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition } from "../../../hoiformat/condition";
+import { EffectComplexExpr, EffectItem, extractEffectValue } from "../../../hoiformat/effect";
+import { Scope } from "../../../hoiformat/scope";
 
 interface StateFile {
     state: StateDefinition[];
@@ -88,22 +91,20 @@ const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
 type StateNoBoundingBox = Omit<State, keyof Region>;
 
 type StateLoaderResult = { states: State[], badStatesCount: number };
-export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[]> {
+export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[], [() => BookmarksLoader, () => ConditionItem[]]> {
     private categoriesLoader: StateCategoriesLoader;
-    private bookmarkLoader: BookmarksLoader;
+    private conditionExprs: ConditionItem[] = [];
 
-    constructor(private defaultMapLoader: DefaultMapLoader, private resourcesLoader: ResourceDefinitionLoader) {
-        super('history/states', StateLoader);
+    constructor(private defaultMapLoader: DefaultMapLoader, private resourcesLoader: ResourceDefinitionLoader, private bookmarksLoader: BookmarksLoader) {
+        super('history/states', StateLoader, () => this.bookmarksLoader, () => this.conditionExprs);
         this.categoriesLoader = new StateCategoriesLoader();
         this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
-        this.bookmarkLoader = new BookmarksLoader();
-        this.bookmarkLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
         return await super.shouldReloadImpl(session) || await this.defaultMapLoader.shouldReload(session)
             || await this.categoriesLoader.shouldReload(session) || await this.resourcesLoader.shouldReload(session)
-            || await this.bookmarkLoader.shouldReload(session);
+            || await this.bookmarksLoader.shouldReload(session);
     }
 
     protected async loadImpl(session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
@@ -114,12 +115,11 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
     protected async mergeFiles(fileResults: LoadResult<StateNoBoundingBox[]>[], session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
         const provinceMap = await this.defaultMapLoader.load(session);
         const stateCategories = await this.categoriesLoader.load(session);
-        const bookmarks = await this.bookmarkLoader.load(session);
         const resources = arrayToMap((await this.resourcesLoader.load(session)).result, 'name');
 
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
-        const warnings = mergeInLoadResult([stateCategories, bookmarks, ...fileResults], 'warnings');
+        const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
         const { provinces, width, height } = provinceMap.result;
 
         const states = flatMap(fileResults, c => c.result);
@@ -171,10 +171,16 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 }
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
-    protected async loadFromFile(): Promise<LoadResultOD<StateNoBoundingBox[]>> {
+    constructor(file: string, private bookmarkLoaderGetter: () => BookmarksLoader, private conditionExprsGetter: () => ConditionItem[]) {
+        super(file);
+    }
+
+    protected async loadFromFile(session: LoaderSession): Promise<LoadResultOD<StateNoBoundingBox[]>> {
+        const bookmarks = await this.bookmarkLoaderGetter().load(session);
+        const conditionExprs = this.conditionExprsGetter();
         const warnings: WorldMapWarning[] = [];
         return {
-            result: await loadState(this.file, warnings),
+            result: await loadState(this.file, warnings, bookmarks.result.bookmarks, conditionExprs),
             warnings,
         };
     }
@@ -236,7 +242,7 @@ class StateCategoryLoader extends FileLoader<StateCategory[]> {
     }
 }
 
-async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): Promise<StateNoBoundingBox[]> {
+async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], bookmarks: Bookmark[], conditionExprs: ConditionItem[]): Promise<StateNoBoundingBox[]> {
     try {
         const data = await readFileFromModOrHOI4AsJson<StateFile>(stateFile, stateFileSchema);
         const result: StateNoBoundingBox[] = [];
@@ -247,15 +253,11 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
             const name = state.name ? state.name : (warnings.push(localize('worldmap.warnings.statenoname', "The state doesn't have name field.")), '');
             const manpower = state.manpower ?? 0;
             const category = state.state_category ? state.state_category : (warnings.push(localize('worldmap.warnings.statenocategory', "The state doesn't have category field.")), '');
-            const history = state.history?._raw ? convertNodeToJson<StateHistory>(state.history?._raw, stateHistorySchema) : undefined;
-            const owner = history?.owner;
             const provinces = state.provinces._values.map(v => parseInt(v));
-            const cores = history?.add_core_of.map(v => v).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
             const impassable = state.impassable ?? false;
-            const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
-            const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
             const resources = arrayToMap(
                 Object.values(state.resources._map), '_key', v => v._value);
+            const { owner, victoryPoints, cores } = loadStateHistory(id, state.history, bookmarks, conditionExprs);
 
             if (provinces.length === 0) {
                 globalWarnings.push({
@@ -265,9 +267,9 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
                 });
             }
 
-            for (const vpPair of victoryPointsArray) {
-                if (!provinces.includes(vpPair[0])) {
-                    warnings.push(localize('worldmap.warnings.provincenothere', 'Province {0} not included in this state. But victory points defined here.', vpPair[0]));
+            for (const vpProvince of Object.keys(victoryPoints)) {
+                if (!provinces.includes(parseInt(vpProvince))) {
+                    warnings.push(localize('worldmap.warnings.provincenothere', 'Province {0} not included in this state. But victory points defined here.', vpProvince));
                 }
             }
 
@@ -289,6 +291,100 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[]): 
         error(e);
         return [];
     }
+}
+
+function loadStateHistory(stateId: number, rawHistory: Raw | undefined, bookmarks: Bookmark[], conditionExprs: ConditionItem[]): Pick<State, 'owner' | 'victoryPoints' | 'cores'> {
+    const history = rawHistory?._raw ? convertNodeToJson<StateHistory>(rawHistory?._raw, stateHistorySchema) : undefined;
+    const defaultOwner = history?.owner;
+    const cores = history?.add_core_of.map(v => v).filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)) ?? [];
+    const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
+    const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
+    
+    if (bookmarks.length === 0) {
+        return { owner: defaultOwner ? [{ value: defaultOwner, condition: true }] : [], victoryPoints, cores };
+    }
+
+    // to flatten the history items into a list of {date, effect, condition} and sort by date
+    const scope: Scope = { scopeName: `State ${stateId}`, scopeType: 'state' };
+    const dateHistory = rawHistory?._raw ? convertNodeToJson<CustomMap<Raw>>(rawHistory?._raw, { _innerType: "raw", _type: "map" }) : undefined;
+    const dateHistoryEffects: { date: BookmarkDate, effects: { effect: EffectItem, condition: ConditionComplexExpr }[] }[] = [];
+    for (const {_key, _value} of Object.values(dateHistory?._map ?? {})) {
+        if (!_key.match(/^\d{4}\.\d{1,2}\.\d{1,2}$/)) {
+            continue;
+        }
+
+        if (!_value?._raw.value) {
+            continue;
+        }
+        
+        const effect = extractEffectValue(_value?._raw.value, scope);
+        dateHistoryEffects.push({ date: toBookmarkDate(_key), effects: findHistoryItems(effect.effect) });
+    }
+    dateHistoryEffects.sort((a, b) => compareBookmarkDate(a.date, b.date));
+
+    const owner: WithCondition<string>[] = [];
+    const bookmarkConditions: ConditionItem[] = [];
+    if (bookmarks.length > 1) {
+        bookmarkConditions.push({ scopeName: '', nodeContent: bookmarkDateToString(bookmarks[bookmarks.length - 1].date) });
+    }
+    for (let i = bookmarks.length - 1, j = dateHistoryEffects.length - 1; i >= 0 && j >= 0;) {
+        const bookmark = bookmarks[i];
+        const previousBookmark = i > 0 ? bookmarks[i - 1] : undefined;
+        const dateHistoryEffect = dateHistoryEffects[j];
+        if (compareBookmarkDate(dateHistoryEffect.date, bookmark.date) >= 0) {
+            j--;
+            continue;
+        }
+        if (previousBookmark && compareBookmarkDate(dateHistoryEffect.date, previousBookmark.date) < 0) {
+            i--;
+            bookmarkConditions.push({ scopeName: '', nodeContent: bookmarkDateToString(bookmarks[bookmarks.length - 1].date) });
+            continue;
+        }
+        const bookmarkCondition: ConditionComplexExpr = i > 0 ? { type: 'or', items: bookmarkConditions.concat(conditionExprs) } : true;
+        for (const { effect, condition } of dateHistoryEffect.effects) {
+            const nodeName = effect.node.name?.toLowerCase();
+            if ((nodeName === 'owner' || nodeName === 'transfer_state_to') && effect.scopeName === scope.scopeName) {
+                const value = convertNodeToJson<string>(effect.node, 'string');
+                if (!value) {
+                    continue;
+                }
+                const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+                extractConditionalExprs(combinedCondition, conditionExprs);
+                owner.push({ value, condition: combinedCondition });
+            }
+        }
+        j--;
+    }
+
+    if (defaultOwner) {
+        owner.push({ value: defaultOwner, condition: true });
+    }
+
+    return { owner, victoryPoints, cores };
+}
+
+// TODO: TAG = { transfer_state = PREV }
+const historyItemTypes = ['owner', 'add_core_of', 'transfer_state_to', 'add_victory_points'];
+function findHistoryItems(
+    effect: EffectComplexExpr,
+    conditions: ConditionComplexExpr[] = [],
+    result: { effect: EffectItem, condition: ConditionComplexExpr }[] = []
+): { effect: EffectItem, condition: ConditionComplexExpr }[] {
+    if (effect === null) {
+        return result;
+    }
+
+    if ('nodeContent' in effect) {
+        if (effect.node.name && historyItemTypes.includes(effect.node.name?.toLowerCase())) {
+            result.push({ effect, condition: simplifyCondition({ type: 'and', items: conditions }) });
+        }
+    } else if ('condition' in effect) {
+        effect.items.forEach(item => findHistoryItems(item, conditions.concat(effect.condition), result));
+    } else {
+        effect.items.forEach(item => findHistoryItems(item.effect, conditions, result));
+    }
+
+    return result;
 }
 
 function sortStates(states: StateNoBoundingBox[], warnings: WorldMapWarning[]): { sortedStates: StateNoBoundingBox[], badStateId: number } {

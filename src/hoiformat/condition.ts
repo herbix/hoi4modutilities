@@ -45,6 +45,26 @@ export function extractConditionValues(nodeValue: NodeValue[], scope: Scope, exp
     };
 }
 
+const generalConditions = [
+    // 'always', has been handled in extractConditionFolder
+    'has_global_flag',
+    'has_dlc',
+    'has_start_date',
+    'date',
+    'difficulty',
+    'has_any_custom_difficulty_setting',
+    'has_custom_difficulty_setting',
+    'game_rules_allow_achievements',
+    'country_exists',
+    'is_ironman',
+    'is_historical_focus_on',
+    'is_tutorial',
+    'is_debug',
+    'threat',
+    'has_game_rule',
+    'has_completed_custom_achievement',
+];
+
 export function extractConditionFolder(
     nodeValue: NodeValue,
     scopeStack: Scope[],
@@ -136,6 +156,12 @@ export function extractConditionFolder(
         } else if (tryMoveScope(child, scopeStack, 'condition')) {
             items.push(extractConditionFolder(child.value, scopeStack));
             scopeStack.pop();
+
+        } else if (childName && generalConditions.includes(childName)) {
+            items.push({
+                scopeName: '',
+                nodeContent: nodeToString(child),
+            });
 
         } else {
             items.push({

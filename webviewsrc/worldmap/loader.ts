@@ -2,9 +2,10 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { Subscriber } from "../util/event";
-import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River, Bookmark } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
 import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
+import { ConditionItem } from "../../src/hoiformat/condition";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -241,6 +242,8 @@ class FEWorldMapClass implements FEWorldMap {
     terrains!: Terrain[];
     resources!: Resource[];
     rivers!: River[];
+    conditionExprs!: ConditionItem[];
+    bookmarks!: Bookmark[];
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
@@ -257,6 +260,7 @@ class FEWorldMapClass implements FEWorldMap {
             provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
             badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
             railwaysCount: 0, supplyNodesCount: 0,
+            conditionExprs: [], bookmarks: []
         } as WorldMapData & ExtraMapData));
     }
 

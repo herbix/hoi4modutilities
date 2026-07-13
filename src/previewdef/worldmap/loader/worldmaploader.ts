@@ -10,9 +10,12 @@ import { LoaderSession } from "../../../util/loader/loader";
 import { getConfiguration } from "../../../util/vsccommon";
 import { RailwayLoader, SupplyNodeLoader } from "./railway";
 import { ResourceDefinitionLoader } from "./resource";
+import { BookmarksLoader } from "./bookmarks";
+import { isEqual, uniqWith } from "lodash";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
+    private bookmarksLoader: BookmarksLoader;
     private statesLoader: StatesLoader;
     private countriesLoader: CountriesLoader;
     private strategicRegionsLoader: StrategicRegionsLoader;
@@ -30,7 +33,10 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         this.resourcesLoader = new ResourceDefinitionLoader();
         this.resourcesLoader.onProgress(e => this.onProgressEmitter.fire(e));
 
-        this.statesLoader = new StatesLoader(this.defaultMapLoader, this.resourcesLoader);
+        this.bookmarksLoader = new BookmarksLoader();
+        this.bookmarksLoader.onProgress(e => this.onProgressEmitter.fire(e));
+
+        this.statesLoader = new StatesLoader(this.defaultMapLoader, this.resourcesLoader, this.bookmarksLoader);
         this.statesLoader.onProgress(e => this.onProgressEmitter.fire(e));
 
         this.countriesLoader = new CountriesLoader();
@@ -57,6 +63,9 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         this.shouldReloadValue = false;
 
         const provinceMap = await this.defaultMapLoader.load(session);
+        session.throwIfCancelled();
+
+        const bookmarks = await this.bookmarksLoader.load(session);
         session.throwIfCancelled();
 
         const stateMap = await this.statesLoader.load(session);
@@ -90,8 +99,9 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
 
-        const subLoaderResults = [ provinceMap, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
+        const subLoaderResults = [ provinceMap, bookmarks, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
+        const conditionExprs = uniqWith(mergeInLoadResult(subLoaderResults, 'conditionExprs'), isEqual);
 
         const worldMap: WorldMapData = {
             ...provinceMap.result,
@@ -109,7 +119,9 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             countries: countries.result,
             railwaysCount: railways.result.railways.length,
             supplyNodesCount: supplyNodes.result.supplyNodes.length,
+            bookmarks: bookmarks.result.bookmarks,
             warnings,
+            conditionExprs,
         };
 
         delete (worldMap as unknown as Partial<ProvinceMap>)['colorByPosition'];

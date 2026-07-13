@@ -186,15 +186,18 @@ export abstract class FileLoader<T, E={}> extends Loader<T, E> {
     protected abstract loadFromFile(session: LoaderSession): Promise<LoadResultOD<T, E>>;
 }
 
-export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E> {
+export abstract class FolderLoader<T, TFile, E={}, EFile={}, FileConstructorArgs extends unknown[]=[]> extends Loader<T, E> {
     private fileCount: number = 0;
     private subLoaders: Record<string, FileLoader<TFile, EFile>> = {};
+    private fileConstructorArgs: FileConstructorArgs;
 
     constructor(
         public folder: string,
-        private subLoaderConstructor: { new (file: string): FileLoader<TFile, EFile> },
+        private subLoaderConstructor: { new (file: string, ...args: FileConstructorArgs): FileLoader<TFile, EFile> },
+        ...fileConstructorArgs: FileConstructorArgs
     ) {
         super();
+        this.fileConstructorArgs = fileConstructorArgs;
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
@@ -217,7 +220,7 @@ export abstract class FolderLoader<T, TFile, E={}, EFile={}> extends Loader<T, E
         for (const file of files) {
             let subLoader = subLoaders[file];
             if (!subLoader) {
-                subLoader = new this.subLoaderConstructor(path.join(this.folder, file));
+                subLoader = new this.subLoaderConstructor(path.join(this.folder, file), ...this.fileConstructorArgs);
                 subLoader.disableTelemetry = true;
                 subLoader.onProgress(e => this.onProgressEmitter.fire(e));
             }
@@ -349,8 +352,8 @@ class LoaderDependencies {
     }
 }
 
-export function mergeInLoadResult<K extends string, T extends { [k in K]: any[] }>(loadResults: T[], key: K): T[K] {
-    return loadResults.reduce<T[K]>((p, c) => (p as any).concat(c[key]), [] as unknown as T[K]);
+export function mergeInLoadResult<K extends string, T extends { [k in K]?: any[] }>(loadResults: T[], key: K): Exclude<T[K], undefined> {
+    return loadResults.reduce<Exclude<T[K], undefined>>((p, c) => (p as any).concat(c[key] ?? []), [] as unknown as Exclude<T[K], undefined>);
 }
 
 function checkLoaderSessionLoadingFile(session: LoaderSession, file: string) {
