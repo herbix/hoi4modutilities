@@ -7,7 +7,7 @@ import { Token } from "../../../hoiformat/hoiparser";
 import { arrayToMap, UserError } from "../../../util/common";
 import { DefaultMapLoader } from "./provincemap";
 import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader/loader";
+import { LoaderSession, mergeInLoadResultUnique } from "../../../util/loader/loader";
 import { flatMap, isEqual } from "lodash";
 import { ResourceDefinitionLoader } from "./resource";
 import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkDate } from "./bookmarks";
@@ -93,12 +93,11 @@ const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
 type StateNoBoundingBox = Omit<State, keyof Region>;
 
 type StateLoaderResult = { states: State[], badStatesCount: number };
-export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[], [() => BookmarksLoader, () => ConditionItem[]]> {
+export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundingBox[], [() => BookmarksLoader]> {
     private categoriesLoader: StateCategoriesLoader;
-    private conditionExprs: ConditionItem[] = [];
 
     constructor(private defaultMapLoader: DefaultMapLoader, private resourcesLoader: ResourceDefinitionLoader, private bookmarksLoader: BookmarksLoader) {
-        super('history/states', StateLoader, () => this.bookmarksLoader, () => this.conditionExprs);
+        super('history/states', StateLoader, () => this.bookmarksLoader);
         this.categoriesLoader = new StateCategoriesLoader();
         this.categoriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
@@ -111,7 +110,6 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 
     protected async loadImpl(session: LoaderSession): Promise<LoadResult<StateLoaderResult>> {
         await this.fireOnProgressEvent(localize('worldmap.progress.loadingstates', 'Loading states...'));
-        this.conditionExprs = [];
         return super.loadImpl(session);
     }
 
@@ -123,6 +121,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
         const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
+        const conditionExprs = mergeInLoadResultUnique(fileResults, 'conditionExprs', isEqual);
         const { provinces, width, height } = provinceMap.result;
 
         const states = flatMap(fileResults, c => c.result);
@@ -165,7 +164,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
             },
             dependencies: [this.folder + '/*', ...stateCategories.dependencies],
             warnings,
-            conditionExprs: this.conditionExprs,
+            conditionExprs,
         };
     }
 
@@ -175,17 +174,18 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 }
 
 class StateLoader extends FileLoader<StateNoBoundingBox[]> {
-    constructor(file: string, private bookmarkLoaderGetter: () => BookmarksLoader, private conditionExprsGetter: () => ConditionItem[]) {
+    constructor(file: string, private bookmarkLoaderGetter: () => BookmarksLoader) {
         super(file);
     }
 
     protected async loadFromFile(session: LoaderSession): Promise<LoadResultOD<StateNoBoundingBox[]>> {
         const bookmarks = await this.bookmarkLoaderGetter().load(session);
-        const conditionExprs = this.conditionExprsGetter();
+        const conditionExprs: ConditionItem[] = [];
         const warnings: WorldMapWarning[] = [];
         return {
             result: await loadState(this.file, warnings, bookmarks.result.bookmarks, conditionExprs),
             warnings,
+            conditionExprs,
         };
     }
 

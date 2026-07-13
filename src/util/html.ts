@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { contextContainer } from '../context';
 import { StyleTable } from './styletable';
 import { randomString } from './common';
+import { htmlEscape as commonHtmlEscape } from './common';
 
 export interface DynamicScript {
     content: string;
@@ -82,13 +83,4 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
 `;
 }
 
-export function htmlEscape(unsafe: string): string {
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;")
-         .replace(/\n/g, "&#13;")
-         .replace(/ /g, "&nbsp;");
-}
+export const htmlEscape = commonHtmlEscape;

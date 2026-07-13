@@ -1,4 +1,4 @@
-import { WorldMapData, ProgressReporter, ProvinceMap } from "../definitions";
+import { WorldMapData, ProvinceMap } from "../definitions";
 import { CountriesLoader } from "./countries";
 import { Loader, LoadResult, mergeInLoadResult } from "./common";
 import { StatesLoader } from "./states";
@@ -6,12 +6,12 @@ import { DefaultMapLoader } from "./provincemap";
 import { debug } from "../../../util/debug";
 import { StrategicRegionsLoader } from "./strategicregion";
 import { SupplyAreasLoader } from "./supplyarea";
-import { LoaderSession } from "../../../util/loader/loader";
+import { LoaderSession, mergeInLoadResultUnique } from "../../../util/loader/loader";
 import { getConfiguration } from "../../../util/vsccommon";
 import { RailwayLoader, SupplyNodeLoader } from "./railway";
 import { ResourceDefinitionLoader } from "./resource";
 import { BookmarksLoader } from "./bookmarks";
-import { isEqual, uniqWith } from "lodash";
+import { isEqual } from "lodash";
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -101,7 +101,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
 
         const subLoaderResults = [ provinceMap, bookmarks, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
-        const conditionExprs = uniqWith(mergeInLoadResult(subLoaderResults, 'conditionExprs'), isEqual);
+        const conditionExprs = mergeInLoadResultUnique(subLoaderResults, 'conditionExprs', isEqual);
 
         const worldMap: WorldMapData = {
             ...provinceMap.result,

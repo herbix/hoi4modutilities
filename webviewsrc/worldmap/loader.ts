@@ -148,6 +148,18 @@ export class Loader extends Subscriber {
                         this.loadNext();
                     }
                     break;
+                case 'rivers':
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.rivers = JSON.parse(message.data);
+                        this.loadNext();
+                    }
+                    break;
+                case 'conditionexprs':
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.conditionExprs = JSON.parse(message.data);
+                        this.loadNext();
+                    }
+                    break;
                 case 'progress':
                     this.progressText = message.data;
                     this.writableProgress$.next({ progressText: this.progressText, progress: this.progress });

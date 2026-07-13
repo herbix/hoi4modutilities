@@ -5,6 +5,7 @@ import { error } from '../debug';
 import { UserError } from '../common';
 import { Dependency, getDependenciesFromText } from '../dependency';
 import { sendEvent } from '../telemetry';
+import { Comparator, uniqWith } from 'lodash';
 export { Dependency } from '../dependency';
 
 export class LoaderSession {
@@ -354,6 +355,10 @@ class LoaderDependencies {
 
 export function mergeInLoadResult<K extends string, T extends { [k in K]?: any[] }>(loadResults: T[], key: K): Exclude<T[K], undefined> {
     return loadResults.reduce<Exclude<T[K], undefined>>((p, c) => (p as any).concat(c[key] ?? []), [] as unknown as Exclude<T[K], undefined>);
+}
+
+export function mergeInLoadResultUnique<K extends string, T extends { [k in K]?: any[] }>(loadResults: T[], key: K, comparator: Comparator<T[K]>): Exclude<T[K], undefined> {
+    return loadResults.reduce<Exclude<T[K], undefined>>((p, c) => uniqWith((p as any).concat(c[key] ?? []), comparator) as Exclude<T[K], undefined>, [] as unknown as Exclude<T[K], undefined>);
 }
 
 function checkLoaderSessionLoadingFile(session: LoaderSession, file: string) {

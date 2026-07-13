@@ -2,6 +2,7 @@ import { Node, NodeValue } from "./hoiparser";
 import { nodeToString } from "./tostring";
 import { Scope, tryMoveScope } from "./scope";
 import { isEqual } from "lodash";
+import { htmlEscape } from "../util/common";
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';
 export type ConditionComplexExpr = ConditionFolder | ConditionAmountFolder | ConditionItem | boolean;
@@ -376,16 +377,18 @@ export function extractConditionalExprs(condition: ConditionComplexExpr, result:
     return result;
 }
 
-export function conditionToString(condition: ConditionComplexExpr): string {
+export function conditionToString(condition: ConditionComplexExpr, escapeHtml: boolean = true): string {
     if (typeof condition === 'boolean') {
         return condition.toString();
     }
 
     if (!('items' in condition)) {
-        return (condition.scopeName !== '' ? '[' + condition.scopeName + '] ' : '') + condition.nodeContent;
+        const result = (condition.scopeName !== '' ? '[' + condition.scopeName + '] ' : '') + condition.nodeContent;
+        return escapeHtml ? htmlEscape(result) : result;
     }
 
-    return condition.type + '(' + condition.items.map(conditionToString).join(', ') + ')' + (condition.type === 'count' ? ' == ' + condition.amount : '');
+    return condition.type + '(' + condition.items.map(i => conditionToString(i, escapeHtml)).join(', ') + ')' +
+        (condition.type === 'count' ? ' == ' + condition.amount : '');
 }
 
 export function conditionItemToStringValue(conditionItem: ConditionItem): string {
