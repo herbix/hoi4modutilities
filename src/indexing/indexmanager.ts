@@ -6,6 +6,7 @@ import { gfxIndex } from './gfxindex';
 import { ConfigurationKey } from '../constants';
 import { getConfiguration } from '../util/vsccommon';
 import { sharedFocusIndex } from './sharedfocusindex';
+import { localisationIndex } from './localisationindex';
 
 export type IndexType = 'gfx' | 'sharedfocus' | 'localisation';
 
@@ -13,20 +14,24 @@ class IndexManager {
     private _indices: IndexBase<unknown>[] = [
         gfxIndex,
         sharedFocusIndex,
+        localisationIndex,
     ];
     private _indexMap: Record<IndexType, IndexBase<unknown>> = arrayToMap(this._indices, 'type');
-    private _indexInitializedEventEmitter = new vscode.EventEmitter<void>();
+    private _indexUpdatedEventEmitter = new vscode.EventEmitter<void>();
     private _enabledIndexTypes: IndexType[] = getConfiguration().indexing;
 
-    public onInitialized = this._indexInitializedEventEmitter.event;
+    public onUpdated = this._indexUpdatedEventEmitter.event;
 
     public register(): vscode.Disposable {
         const disposables: vscode.Disposable[] = [];
+        for (const index of this._indices) {
+            disposables.push(index.register());
+        }
         const task = this.buildAllIndex();
         vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
         task.then(() => {
             vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
-            this._indexInitializedEventEmitter.fire();
+            this._indexUpdatedEventEmitter.fire();
         });
         disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(this.onChangeWorkspaceFolders, this));
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
@@ -35,9 +40,28 @@ class IndexManager {
         disposables.push(vscode.workspace.onDidDeleteFiles(this.onDeleteFiles, this));
         disposables.push(vscode.workspace.onDidRenameFiles(this.onRenameFiles, this));
         disposables.push(vscode.workspace.onDidChangeConfiguration(this.onChangeConfiguration, this));
-        disposables.push(this._indexInitializedEventEmitter);
+        disposables.push(this._indexUpdatedEventEmitter);
         
         return vscode.Disposable.from(...disposables);
+    }
+
+    public async rebuildIndex(index: IndexBase<unknown>): Promise<void> {
+        index.clearIndex();
+        if (!this._enabledIndexTypes.includes(index.type)) {
+            return;
+        }
+        const tasks: Promise<void>[] = [];
+        tasks.push(index.buildGlobalIndex());
+        tasks.push(index.buildWorkspaceIndex());
+        const task = Promise.all(tasks);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
+        await task;
+        vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
+        this._indexUpdatedEventEmitter.fire();
+    }
+
+    public isIndexEnabled(type: IndexType): boolean {
+        return this._enabledIndexTypes.includes(type);
     }
 
     private onChangeWorkspaceFolders(_: vscode.WorkspaceFoldersChangeEvent): void {
@@ -45,7 +69,7 @@ class IndexManager {
         vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building workspace index...'), task);
         task.then(() => {
             vscode.window.showInformationMessage(localize('TODO', 'Building workspace index done.'));
-            this._indexInitializedEventEmitter.fire();
+            this._indexUpdatedEventEmitter.fire();
         });
     }
 
@@ -117,7 +141,7 @@ class IndexManager {
             vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
             task.then(() => {
                 vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
-                this._indexInitializedEventEmitter.fire();
+                this._indexUpdatedEventEmitter.fire();
             });
         }
     }

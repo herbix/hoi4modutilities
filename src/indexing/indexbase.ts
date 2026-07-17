@@ -1,4 +1,4 @@
-import { Uri } from 'vscode';
+import * as vscode from 'vscode';
 import { IndexType } from './indexmanager';
 import { sendEvent } from '../util/telemetry';
 
@@ -7,10 +7,14 @@ export abstract class IndexBase<T> {
     protected _workspaceIndex: Record<string, T> = {};
 
     public abstract type: IndexType;
-    public abstract includesFile(file: Uri): boolean;
-    public abstract addWorkspaceIndex(file: Uri): void;
-    public abstract removeWorkspaceIndex(file: Uri): void;
+    public abstract includesFile(file: vscode.Uri): boolean;
+    public abstract addWorkspaceIndex(file: vscode.Uri): void;
+    public abstract removeWorkspaceIndex(file: vscode.Uri): void;
     public abstract buildIndex(index: Record<string, T>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void>;
+
+    public register(): vscode.Disposable {
+        return vscode.Disposable.from();
+    }
     
     public async buildGlobalIndex(): Promise<void> {
         const estimatedSize: [number] = [0];

@@ -5,7 +5,6 @@ import { IndexType } from './indexmanager';
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../util/fileloader';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from '../util/i18n';
-import { matchPathEnd } from '../util/nodecommon';
 import { getFocusTree } from '../previewdef/focustree/schema';
 import { Logger } from '../util/logger';
 
@@ -14,7 +13,7 @@ class SharedFocusIndex extends IndexBase<string> {
     public type: IndexType = 'sharedfocus';
 
     public includesFile(file: vscode.Uri): boolean {
-        return file.path.endsWith('.txt') && matchPathEnd(file.toString().toLowerCase(), ['common', 'national_focus', '*']);
+        return file.path.endsWith('.txt') && file.path.includes('common/national_focus/');
     }
 
     public addWorkspaceIndex(file: vscode.Uri): void {
@@ -42,7 +41,7 @@ class SharedFocusIndex extends IndexBase<string> {
     }
 
     public async buildIndex(index: Record<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
-        const focusFiles = (await listFilesFromModOrHOI4('common/national_focus', options)).filter(f => f.toLocaleLowerCase().endsWith('.txt'));
+        const focusFiles = (await listFilesFromModOrHOI4('common/national_focus', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.txt'));
         await Promise.all(focusFiles.map(f => this.fillFocusItems('common/national_focus/' + f, index, options, estimatedSize)));
     }
 
@@ -70,10 +69,10 @@ class SharedFocusIndex extends IndexBase<string> {
             }
         } catch (e) {
             const baseMessage = options.hoi4
-                ? localize('sharedFocusIndex.vanilla', '[Vanilla]')
-                : localize('sharedFocusIndex.mod', '[Mod]');
+                ? localize('TODO', '[Vanilla]')
+                : localize('TODO', '[Mod]');
 
-            const failureMessage = localize('sharedFocusIndex.parseFailure', 'Parsing failed! Please check if the file has issues!');
+            const failureMessage = localize('TODO', 'Parsing failed. Please check if the file has issues.');
             if (e instanceof Error) {
                 Logger.error(`${baseMessage} ${focusFile} ${failureMessage}\n${e.stack}`);
             }

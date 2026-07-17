@@ -10,10 +10,11 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { Mio, MioTrait, TraitEffect } from './schema';
-import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { featureFlagsAsScript, isFeatureEnabled } from "../../util/featureflags";
+import { featureFlagsAsScript } from "../../util/featureflags";
+import { indexManager } from '../../indexing/indexmanager';
+import { localisationIndex } from '../../indexing/localisationindex';
 
-const defaultTraitIcon = 'gfx/interface/goals/goal_unknown.dds';
+const defaultTraitIcon = 'gfx/interface/traits/trait_unknown.dds';
 const traitEffectIconMap: Record<TraitEffect, string> = {
     equiment: 'GFX_design_team_icon',
     production: 'GFX_industrial_manufacturer_icon',
@@ -147,7 +148,7 @@ async function renderToolBar(mios: Mio[], styleTable: StyleTable): Promise<strin
         <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <select id="mios" class="select multiple-select" tabindex="0" role="combobox">
                 ${await Promise.all(mios.map(async (mio, i) => {
-                    const localizedText = isFeatureEnabled('localisationIndex') ? `(${mio.id}) ${await getLocalisedTextQuick(mio.id)}` : mio.id;
+                    const localizedText = indexManager.isIndexEnabled('localisation') ? `(${mio.id}) ${localisationIndex.getLocalisedText(mio.id)}` : mio.id;
                     return `<option value="${i}">${localizedText}</option>`;
                 })).then(options => options.join(''))}
             </select>
@@ -224,7 +225,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
         start="${trait.token?.start}"
         end="${trait.token?.end}"
         ${file === trait.file ? '' : `file="${trait.file}"`}
-        title="${trait.id}${isFeatureEnabled('localisationIndex') ? `\n${await getLocalisedTextQuick(trait.name)}` : ''}\n({{position}})">
+        title="${trait.id}${indexManager.isIndexEnabled('localisation') ? `\n${localisationIndex.getLocalisedText(trait.name)}` : ''}\n({{position}})">
             <div class="
                 ${styleTable.style('effect-host', () => `
                     text-align: center;
@@ -257,7 +258,7 @@ async function renderTrait(trait: MioTrait, styleTable: StyleTable, gfxFiles: st
                 z-index: 5;
             `)}">
             ${trait.id}
-            ${isFeatureEnabled('localisationIndex') ? `<br/>${await getLocalisedTextQuick(trait.name)}` : ''}
+            ${indexManager.isIndexEnabled('localisation') ? `<br/>${localisationIndex.getLocalisedText(trait.name)}` : ''}
             </span>
         </div>
     </div>`;

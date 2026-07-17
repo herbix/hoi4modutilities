@@ -1,4 +1,3 @@
-  
 {
     "hoi4modutilities.locale": "ko-kr",
     "hoi4modutilities.category": "HOI4 모드 개발용 유틸리티",
@@ -16,7 +15,16 @@
     "hoi4modutilities.preview.title": "HOI4 파일 미리보기",
     "hoi4modutilities.previewworld.title": "세계지도 미리보기",
     "hoi4modutilities.scanreferences.title": "레퍼런스 스캔",
+    "hoi4modutilities.selecthoifolder.title": "Select HOI4 Install Path",
+    "hoi4modutilities.selecthoifolder.desc": "Heart of Iron IV install path.",
     "hoi4modutilities.selectmodfile.title": "모드파일 선택",
     "hoi4modutilities.enableSupplyArea.title": "Enable Supply Area",
-    "hoi4modutilities.enableSupplyArea.desc": "If you are developing mod for HOI4(version<=1.10). Check this to enable supply area."
+    "hoi4modutilities.enableSupplyArea.desc": "If you are developing mod for HOI4(version<=1.10). Check this to enable supply area.",
+    "hoi4modutilities.previewLocalisation.title": "Preview Localization",
+    "hoi4modutilities.previewLocalisation.desc": "Language of content in previews.",
+    "hoi4modutilities.indexing.title": "Indexing",
+    "hoi4modutilities.indexing.desc": "When indexing is enabled, you don't need to manually add dependency to your .txt files when they use content from other files. Indexing takes start up time and more memory.",
+    "hoi4modutilities.indexing.gfx": "GFX Sprites",
+    "hoi4modutilities.indexing.sharedfocus": "Shared Focuses and Joint Focuses",
+    "hoi4modutilities.indexing.localisation": "Localisation Entries"
 }

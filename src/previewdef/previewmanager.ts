@@ -55,7 +55,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
         disposables.push(vscode.window.onDidChangeActiveTextEditor(this.updateHoi4PreviewContextValue, this));
         disposables.push(vscode.window.registerWebviewPanelSerializer(WebviewType.Preview, this));
-        disposables.push(indexManager.onInitialized(this.onGfxIndexInitialized, this));
+        disposables.push(indexManager.onUpdated(this.onGfxIndexInitialized, this));
 
         // Trigger context value setting
         this.updateHoi4PreviewContextValue(vscode.window.activeTextEditor);

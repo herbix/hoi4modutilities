@@ -6,7 +6,7 @@ const byDefaultEnabledFlags = [
     'rightButtonDrag',
 ];
 
-type FeatureFlag = 'useConditionInFocus' | 'eventTreePreview' | 'localisationIndex' | 'rightButtonDrag';
+type FeatureFlag = 'useConditionInFocus' | 'eventTreePreview' | 'rightButtonDrag';
 
 export function isFeatureEnabled(feature: FeatureFlag, featureFlags?: string[]): boolean {
     const ff = featureFlags ?? getConfiguration().featureFlags;
@@ -22,7 +22,6 @@ export function featureFlagsAsScript(): string {
     const featureFlagState: Record<FeatureFlag, boolean> = {
         useConditionInFocus: isFeatureEnabled('useConditionInFocus', featureFlags),
         eventTreePreview: isFeatureEnabled('eventTreePreview', featureFlags),
-        localisationIndex: isFeatureEnabled('localisationIndex', featureFlags),
         rightButtonDrag: isFeatureEnabled('rightButtonDrag', featureFlags),
     };
     return 'window.__featureflags = ' + JSON.stringify(featureFlagState) + ';';

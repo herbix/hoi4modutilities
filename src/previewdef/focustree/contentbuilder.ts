@@ -12,7 +12,8 @@ import { debug } from '../../util/debug';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { featureFlagsAsScript, isFeatureEnabled } from '../../util/featureflags';
 import { flatMap } from 'lodash';
-import { getLocalisedTextQuick } from "../../util/localisationIndex";
+import { indexManager } from '../../indexing/indexmanager';
+import { localisationIndex } from '../../indexing/localisationindex';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
 
@@ -191,7 +192,7 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
         <div class="toolbar">
-            ${isFeatureEnabled('localisationIndex') ? renderPreviewLabelModeControl(styleTable) : ''}
+            ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
             ${focuses}
             ${searchbox}
             ${isFeatureEnabled('useConditionInFocus') ? conditions : allowbranch}
@@ -233,7 +234,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
             `}
         `);
     }
-    
+
     styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => `
         left: 0;
         top: 0;
@@ -266,7 +267,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         }
     }
 
-    const localisedText = await getFocusLocalisedText(focus);
+    const localisedText = getFocusLocalisedText(focus);
     const textContent = htmlEscape(focus.id);
     const labelAttributes = getPreviewLabelAttributes(focus.id, localisedText);
     const titleAttributes = getPreviewTitleAttributes(focus.id, localisedText, '{{position}}');
@@ -314,14 +315,14 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     </div>`;
 }
 
-async function getFocusLocalisedText(focus: Focus): Promise<string | undefined> {
-    let localisedText = await getLocalisedTextQuick(focus.id);
+function getFocusLocalisedText(focus: Focus): string | undefined {
+    let localisedText = localisationIndex.getLocalisedText(focus.id);
     if (localisedText && localisedText !== focus.id) {
         return localisedText;
     }
 
     if (focus.text) {
-        localisedText = await getLocalisedTextQuick(focus.text);
+        localisedText = localisationIndex.getLocalisedText(focus.text);
         if (localisedText && localisedText !== focus.text) {
             return localisedText;
         }

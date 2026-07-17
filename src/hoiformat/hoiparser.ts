@@ -118,7 +118,7 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
     const value = parseBlockContent(tokens);
 
     if (tokens.peek().type !== 'eof') {
-        Logger.warn("File content can't be completely parsed");
+        Logger.warn(errorMessagePrefix + " File content can't be completely parsed");
     }
 
     return {

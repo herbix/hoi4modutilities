@@ -13,8 +13,9 @@ import { GridBoxType } from '../../hoiformat/gui';
 import { renderGridBox, GridBoxItem, GridBoxConnection } from '../../util/hoi4gui/gridbox';
 import { Token } from '../../hoiformat/hoiparser';
 import { getSpriteByGfxName } from '../../util/image/imagecache';
-import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { featureFlagsAsScript, isFeatureEnabled } from "../../util/featureflags";
+import { featureFlagsAsScript } from "../../util/featureflags";
+import { indexManager } from '../../indexing/indexmanager';
+import { localisationIndex } from '../../indexing/localisationindex';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -368,7 +369,7 @@ const flagIcons: string[] = [
 
 async function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
     if (typeof eventNode === 'object') {
-        const { localizationDict, gfxFiles } = eventsLoaderResult;
+        const { gfxFiles } = eventsLoaderResult;
         const event = eventNode.event;
         const eventId = event.id;
         const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
@@ -383,7 +384,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
                 '') +
             `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}
-            ${isFeatureEnabled('localisationIndex')  ? await getLocalisedTextQuick(event.title) : event.title}`;
+            ${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
@@ -405,7 +406,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
-                ${isFeatureEnabled('localisationIndex') ? await getLocalisedTextQuick(event.title) : event.title}
+                ${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}
             </p>`;
         
         const extraAttributes = [];
@@ -448,12 +449,12 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
         const eventId = eventNode;
         const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
         let contentText = '';
-        if (isFeatureEnabled('localisationIndex') ) {
-            let localizedTitle = await getLocalisedTextQuick(eventId);
+        if (indexManager.isIndexEnabled('localisation')) {
+            let localizedTitle = localisationIndex.getLocalisedText(eventId);
             if (localizedTitle !== eventId && localizedTitle) {
                 contentText += `<br/>${localizedTitle}`;
             } else {
-                localizedTitle = await getLocalisedTextQuick(`${eventId}.t`);
+                localizedTitle = localisationIndex.getLocalisedText(`${eventId}.t`);
                 if (localizedTitle !== `${eventId}.t` && localizedTitle) {
                     contentText += `<br/>${localizedTitle}`;
                 }
@@ -481,8 +482,8 @@ function makeIcon(type: string, styleTable: StyleTable): string {
 async function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
     let content = option.optionName;
     let title = option.optionName;
-    if (isFeatureEnabled('localisationIndex')){
-        const optionName = await getLocalisedTextQuick(option.optionName);
+    if (indexManager.isIndexEnabled('localisation')){
+        const optionName = localisationIndex.getLocalisedText(option.optionName);
         content = `${option.optionName} <br/> ${optionName}`;
         title = `${option.optionName} \n ${optionName}`;
     }

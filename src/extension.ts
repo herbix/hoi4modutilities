@@ -10,7 +10,6 @@ import { registerScanReferencesCommand } from './util/dependency';
 import { registerHoiFs } from './util/hoifs';
 import { loadI18n } from './util/i18n';
 import { Logger } from "./util/logger";
-import { registerLocalisationIndex } from "./util/localisationIndex";
 import { indexManager } from './indexing/indexmanager';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -38,7 +37,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
     context.subscriptions.push(indexManager.register());
-    context.subscriptions.push(registerLocalisationIndex());
 
     if (process.env.NODE_ENV !== 'production') {
         vscode.commands.registerCommand('hoi4modutilities.test', () => {

@@ -6,17 +6,15 @@ import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../util/fileloade
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { getSpriteTypes } from '../hoiformat/spritetype';
 import { localize } from '../util/i18n';
-import { error } from '../util/debug';
-import { forceError, UserError } from '../util/common';
 import { uniq } from 'lodash';
-import { matchPathEnd } from '../util/nodecommon';
+import { Logger } from '../util/logger';
 
 // sprite name -> gfx file path
 class GfxIndex extends IndexBase<string> {
     public type: IndexType = 'gfx';
 
     public includesFile(file: vscode.Uri): boolean {
-        return file.path.endsWith('.gfx') && matchPathEnd(file.toString().toLowerCase(), ['interface', '*']);
+        return file.path.endsWith('.gfx') && file.path.includes('interface/');
     }
 
     public addWorkspaceIndex(file: vscode.Uri): void {
@@ -44,7 +42,7 @@ class GfxIndex extends IndexBase<string> {
     }
     
     public async buildIndex(index: Record<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
-        const gfxFiles = (await listFilesFromModOrHOI4('interface', options)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
+        const gfxFiles = (await listFilesFromModOrHOI4('interface', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
         await Promise.all(gfxFiles.map(f => this.fillGfxItems('interface/' + f, index, options, estimatedSize)));
     }
 
@@ -73,7 +71,14 @@ class GfxIndex extends IndexBase<string> {
                 }
             }
         } catch(e) {
-            error(new UserError(forceError(e).toString()));
+            const baseMessage = options.hoi4
+                ? localize('TODO', '[Vanilla]')
+                : localize('TODO', '[Mod]');
+
+            const failureMessage = localize('TODO', 'Parsing failed. Please check if the file has issues.');
+            if (e instanceof Error) {
+                Logger.error(`${baseMessage} ${gfxFile} ${failureMessage}\n${e.stack}`);
+            }
         }
     }
 }
