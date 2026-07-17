@@ -5,7 +5,7 @@ import { flatten, chain } from 'lodash';
 import { ConditionItem, ConditionComplexExpr, extractConditionValues, extractConditionValue, extractConditionalExprs } from "../../hoiformat/condition";
 import { countryScope } from "../../hoiformat/scope";
 import { isFeatureEnabled } from "../../util/featureflags";
-import { randomString, Warning } from "../../util/common";
+import { NumberSize, randomString, Warning } from "../../util/common";
 import { localize } from "../../util/i18n";
 
 export interface FocusTree {
@@ -22,6 +22,7 @@ export interface FocusTree {
 interface FocusIconWithCondition {
     icon: string | undefined;
     condition: ConditionComplexExpr;
+    size?: NumberSize;
 }
 
 export interface Focus {

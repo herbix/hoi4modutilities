@@ -211,7 +211,9 @@ function renderPreviewLabelModeControl(styleTable: StyleTable): string {
 async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[], file: string): Promise<string> {
     for (const focusIcon of focus.icon) {
         const iconName = focusIcon.icon;
-        const iconObject = iconName ? await getFocusIcon(iconName, gfxFiles) : null;
+        const iconSprite = iconName ? await getSpriteByGfxName(iconName, gfxFiles) : undefined;
+        const iconObject = iconSprite?.image ?? (iconName ? await getImageByPath(defaultFocusIcon) : null);
+        focusIcon.size = iconSprite ? { width: iconSprite.image.width, height: iconSprite.image.height } : undefined;
         styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () => 
             `${iconObject ? `background-image: url(${iconObject.uri});` : 'background: grey;'}
             background-size: ${iconObject ? iconObject.width: 0}px;`
@@ -255,7 +257,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         {{iconClass}}
         ${styleTable.style('focus-common', () => `
             background-position-x: center;
-            background-position-y: calc(50% - 18px);
+            background-position-y: top;
             background-repeat: no-repeat;
             position: relative;
             width: 100%;
