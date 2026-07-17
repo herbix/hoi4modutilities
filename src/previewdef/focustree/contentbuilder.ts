@@ -211,14 +211,36 @@ function renderPreviewLabelModeControl(styleTable: StyleTable): string {
 async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: string[], file: string): Promise<string> {
     for (const focusIcon of focus.icon) {
         const iconName = focusIcon.icon;
-        const iconObject = iconName ? await getFocusIcon(iconName, gfxFiles) : null;
-        styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () => 
-            `${iconObject ? `background-image: url(${iconObject.uri});` : 'background: grey;'}
-            background-size: ${iconObject ? iconObject.width: 0}px;`
-        );
+        const iconSprite = iconName ? await getSpriteByGfxName(iconName, gfxFiles) : undefined;
+        const iconObject = iconSprite?.image ?? (iconName ? await getImageByPath(defaultFocusIcon) : null);
+        const iconWidth = iconSprite?.image.width ?? xGridSize;
+        const iconHeight = iconSprite?.image.height ?? yGridSize;
+        styleTable.style('focus-icon-' + normalizeForStyle(iconName ?? '-empty'), () => `
+            width: ${iconWidth}px;
+            height: ${iconHeight}px;
+            ${iconObject ? `background-image: url(${iconObject.uri});` : 'background: grey;'}
+            background-size: ${iconObject ? `${iconObject.width}px ${iconObject.height}px` : '0 0'};
+            ${iconSprite ? `
+                left: 50%;
+                top: calc(50% - 18px);
+                transform: translate(-50%, -50%);
+                background-position: center;
+            ` : `
+                left: 0;
+                top: 0;
+                background-position-x: center;
+                background-position-y: calc(50% - 18px);
+            `}
+        `);
     }
     
-    styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => 'background: grey;');
+    styleTable.style('focus-icon-' + normalizeForStyle('-empty'), () => `
+        left: 0;
+        top: 0;
+        width: ${xGridSize}px;
+        height: ${yGridSize}px;
+        background: grey;
+    `);
 
     let overlay = '';
     if (focus.overlay) {
@@ -252,11 +274,7 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
     return `<div
     class="
         navigator
-        {{iconClass}}
         ${styleTable.style('focus-common', () => `
-            background-position-x: center;
-            background-position-y: calc(50% - 18px);
-            background-repeat: no-repeat;
             position: relative;
             width: 100%;
             height: 100%;
@@ -271,6 +289,15 @@ async function renderFocus(focus: Focus, styleTable: StyleTable, gfxFiles: strin
         <div class="focus-checkbox ${styleTable.style('focus-checkbox', () => `position: absolute; top: 1px; z-index: 1;`)}">
             <input id="checkbox-${normalizeForStyle(focus.id)}" type="checkbox"/>
         </div>
+        <div class="
+            {{iconClass}}
+            ${styleTable.style('focus-icon-common', () => `
+                position: absolute;
+                pointer-events: none;
+                z-index: 0;
+                background-repeat: no-repeat;
+            `)}
+        "></div>
         ${overlay}
         <span
         ${labelAttributes}
