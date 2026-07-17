@@ -16,7 +16,7 @@ import { chain } from 'lodash';
 import { sendEvent } from '../util/telemetry';
 import { guiPreviewDef } from './gui';
 import { mioPreviewDef } from './mio';
-import { onGfxIndexInitialized } from '../util/gfxindex';
+import { indexManager } from '../indexing/indexmanager';
 
 export type PreviewProviderDef = PreviewProviderDefNormal | PreviewProviderDefAlternative;
 
@@ -32,7 +32,7 @@ interface PreviewProviderDefAlternative {
     onPreview(document: vscode.TextDocument): Promise<void>;
 }
 
-export class PreviewManager implements vscode.WebviewPanelSerializer {
+class PreviewManager implements vscode.WebviewPanelSerializer {
     private _previews: Record<string, PreviewBase> = {};
 
     private _previewProviders: PreviewProviderDef[] = [
@@ -55,7 +55,7 @@ export class PreviewManager implements vscode.WebviewPanelSerializer {
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
         disposables.push(vscode.window.onDidChangeActiveTextEditor(this.updateHoi4PreviewContextValue, this));
         disposables.push(vscode.window.registerWebviewPanelSerializer(WebviewType.Preview, this));
-        disposables.push(onGfxIndexInitialized(this.onGfxIndexInitialized, this));
+        disposables.push(indexManager.onInitialized(this.onGfxIndexInitialized, this));
 
         // Trigger context value setting
         this.updateHoi4PreviewContextValue(vscode.window.activeTextEditor);

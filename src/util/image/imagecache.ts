@@ -11,7 +11,7 @@ import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
 import { UserError } from '../common';
-import { getGfxContainerFile } from '../gfxindex';
+import { gfxIndex } from '../../indexing/gfxindex';
 export { Sprite, Image };
 
 const imageCache = new PromiseCache({
@@ -37,7 +37,7 @@ export function getImageByPath(relativePath: string): Promise<Image | undefined>
 }
 
 export async function getSpriteByGfxName(name: string, gfxFilePath: string | string[]): Promise<Sprite | undefined> {
-    const pathFromIndex = await getGfxContainerFile(name);
+    const pathFromIndex = await gfxIndex.getGfxContainerFile(name);
     if (pathFromIndex) {
         return await spriteCache.get(pathFromIndex + '?' + name);
     } else if (Array.isArray(gfxFilePath)) {

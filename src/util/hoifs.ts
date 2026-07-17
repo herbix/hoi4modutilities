@@ -13,7 +13,9 @@ const installPathContainer: { current: vscode.Uri | null } = {
 export function registerHoiFs(): vscode.Disposable {
     const disposables: vscode.Disposable[] = [];
     disposables.push(vscode.commands.registerCommand(Commands.SelectHoiFolder, selectHoiFolder));
-    disposables.push(vscode.workspace.registerFileSystemProvider(Hoi4FsSchema, new Hoi4UtilsFsProvider(), { isReadonly: true }));
+    const fsProvider = new Hoi4UtilsFsProvider();
+    disposables.push(vscode.workspace.registerFileSystemProvider(Hoi4FsSchema, fsProvider, { isReadonly: true }));
+    disposables.push(fsProvider);
 
     if (!IS_WEB_EXT) {
         disposables.push(vscode.workspace.onDidChangeConfiguration(onChangeWorkspaceConfiguration));
@@ -50,7 +52,7 @@ function onChangeWorkspaceConfiguration(e: vscode.ConfigurationChangeEvent): voi
     }
 }
 
-class Hoi4UtilsFsProvider implements vscode.FileSystemProvider {
+class Hoi4UtilsFsProvider implements vscode.FileSystemProvider, vscode.Disposable {
     private onDidChangeFileEventEmitter = new vscode.EventEmitter<vscode.FileChangeEvent[]>();
 
     onDidChangeFile: vscode.Event<vscode.FileChangeEvent[]> = this.onDidChangeFileEventEmitter.event;
@@ -96,6 +98,10 @@ class Hoi4UtilsFsProvider implements vscode.FileSystemProvider {
             vscode.Uri.joinPath(this.getInstallPath(), trimStart(source.path, '/')),
             vscode.Uri.joinPath(this.getInstallPath(), trimStart(destination.path, '/')),
             options);
+    }
+
+    dispose(): void {
+        this.onDidChangeFileEventEmitter.dispose();
     }
 
     private getInstallPath(): vscode.Uri {

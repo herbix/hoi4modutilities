@@ -2,10 +2,16 @@ import * as vscode from 'vscode';
 import { renderGfxFile } from './contentbuilder';
 import { PreviewProviderDef } from '../previewmanager';
 import { PreviewBase } from '../previewbase';
+import { matchPathEnd } from '../../util/nodecommon';
 
 function canPreviewGfx(document: vscode.TextDocument) {
     const uri = document.uri;
-    return uri.path.toLowerCase().endsWith('.gfx') ? 0 : undefined;
+    if (matchPathEnd(uri.toString().toLowerCase(), ['interface', '*']) && uri.path.toLowerCase().endsWith('.gfx')) {
+        return 0;
+    }
+
+    const text = document.getText();
+    return /(spriteTypes)\s*=\s*{/.exec(text)?.index;
 }
 
 class GfxPreview extends PreviewBase {

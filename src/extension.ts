@@ -9,10 +9,9 @@ import { registerTelemetryReporter, sendEvent } from './util/telemetry';
 import { registerScanReferencesCommand } from './util/dependency';
 import { registerHoiFs } from './util/hoifs';
 import { loadI18n } from './util/i18n';
-import { registerGfxIndex } from './util/gfxindex';
 import { Logger } from "./util/logger";
 import { registerLocalisationIndex } from "./util/localisationIndex";
-import { registerSharedFocusIndex } from "./util/sharedFocusIndex";
+import { indexManager } from './indexing/indexmanager';
 
 export function activate(context: vscode.ExtensionContext) {
     let locale = (context as any).extension?.packageJSON.locale;
@@ -38,8 +37,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(registerHoiFs());
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.DDS, new DDSViewProvider()));
     context.subscriptions.push(vscode.window.registerCustomEditorProvider(ViewType.TGA, new TGAViewProvider()));
-    context.subscriptions.push(registerSharedFocusIndex());
-    context.subscriptions.push(registerGfxIndex());
+    context.subscriptions.push(indexManager.register());
     context.subscriptions.push(registerLocalisationIndex());
 
     if (process.env.NODE_ENV !== 'production') {

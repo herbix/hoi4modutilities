@@ -3,7 +3,7 @@ import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten, chain, flatMap } from "lodash";
 import { Mio, getMiosFromFile } from "./schema";
-import { getGfxContainerFiles } from "../../util/gfxindex";
+import { gfxIndex } from "../../indexing/gfxindex";
 
 export interface MioLoaderResult {
     mios: Mio[];
@@ -30,7 +30,7 @@ export class MioLoader extends ContentLoader<MioLoaderResult> {
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
             ...flatten(mioDepFiles.map(f => f.result.gfxFiles)),
-            ...await getGfxContainerFiles(chain(mios).flatMap(m => Object.values(m.traits)).flatMap(t => t.icon).value()),
+            ...await gfxIndex.getGfxContainerFiles(chain(mios).flatMap(m => Object.values(m.traits)).flatMap(t => t.icon).value()),
         ];
 
         return {

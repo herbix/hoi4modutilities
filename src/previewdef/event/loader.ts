@@ -4,8 +4,8 @@ import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten } from "lodash";
 import { YamlLoader } from "../../util/loader/yaml";
-import { getGfxContainerFiles } from "../../util/gfxindex";
 import { getLanguageIdInYml } from "../../util/vsccommon";
+import { gfxIndex } from "../../indexing/gfxindex";
 
 export interface EventsLoaderResult {
     events: HOIEvents;
@@ -45,7 +45,7 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
             ...flatten(eventsDepFiles.map(f => f.result.gfxFiles)),
-            ...await getGfxContainerFiles(flatten(Object.values(events.eventItemsByNamespace)).map(e => e.picture)),
+            ...await gfxIndex.getGfxContainerFiles(flatten(Object.values(events.eventItemsByNamespace)).map(e => e.picture)),
         ];
 
         return {
