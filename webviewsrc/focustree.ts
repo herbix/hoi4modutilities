@@ -244,12 +244,14 @@ function getFocusPosition(
 }
 
 function getFocusIcon(focus: Focus, exprs: ConditionItem[], styleTable: StyleTable): string {
-    const iconName = getSelectedFocusIcon(focus, exprs)?.icon;
-    return styleTable.name('focus-icon-' + normalizeForStyle(iconName ?? '-empty'));
-}
+    for (const icon of focus.icon) {
+        if (applyCondition(icon.condition, exprs)) {
+            const iconName = icon.icon;
+            return styleTable.name('focus-icon-' + normalizeForStyle(iconName ?? '-empty'));
+        }
+    }
 
-function getSelectedFocusIcon(focus: Focus, exprs: ConditionItem[]) {
-    return focus.icon.find(icon => applyCondition(icon.condition, exprs));
+    return styleTable.name('focus-icon-' + normalizeForStyle('-empty'));
 }
 
 function focusToGridItem(
@@ -300,7 +302,6 @@ function focusToGridItem(
     });
 
     const position = getFocusPosition(focus, positionByFocusId, focustree, [], exprs);
-    const selectedIcon = getSelectedFocusIcon(focus, exprs);
 
     return {
         id: focus.id,
@@ -308,7 +309,6 @@ function focusToGridItem(
         classNames: classNames + ' focus',
         gridX: position.x,
         gridY: position.y,
-        size: selectedIcon?.size,
         connections,
     };
 }

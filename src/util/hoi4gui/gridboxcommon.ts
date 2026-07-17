@@ -18,7 +18,6 @@ export interface GridBoxItem {
     id: string;
     gridX: number;
     gridY: number;
-    size?: NumberSize;
     connections: GridBoxConnection[];
     isJoint?: boolean;
     htmlId?: string;
@@ -75,11 +74,10 @@ function getLeftUpPosition(gridX: number, gridY: number, format: Format['_name']
     };
 }
 
-function getCenterPosition(item: GridBoxItem, format: Format['_name'], slotSize: NumberSize, gridSize: NumberSize): NumberPosition {
-    const position = getLeftUpPosition(item.gridX, item.gridY, format, slotSize, gridSize);
-    const itemSize = item.size ?? slotSize;
-    position.x += itemSize.width / 2;
-    position.y += itemSize.height / 2;
+function getCenterPosition(gridX: number, gridY: number, format: Format['_name'], slotSize: NumberSize, gridSize: NumberSize): NumberPosition {
+    const position = getLeftUpPosition(gridX, gridY, format, slotSize, gridSize);
+    position.x += slotSize.width / 2;
+    position.y += slotSize.height / 2;
     return position;
 }
 
@@ -110,9 +108,7 @@ export async function renderGridBoxCommon(
     const background = onRenderBackground ? await onRenderBackground(gridBox.background, { size, orientation }) : '';
 
     const renderedItems = await Promise.all(Object.values(options.items).map(async (item) => {
-        const itemSize = item.size ?? slotSize;
-        const itemParentInfo: ParentInfo = { size: itemSize, orientation };
-        const children = options.onRenderItem ? await options.onRenderItem(item, itemParentInfo) : '';
+        const children = options.onRenderItem ? await options.onRenderItem(item, childrenParentInfo) : '';
         const position = getLeftUpPosition(item.gridX, item.gridY, format, slotSize, size);
         return `<div
             ${item.htmlId ? `id="${item.htmlId}"` : ''}
@@ -122,8 +118,8 @@ export async function renderGridBoxCommon(
                 ${options.styleTable.oneTimeStyle('gridbox-item', () => `
                     left: ${position.x}px;
                     top: ${position.y}px;
-                    width: ${itemSize.width}px;
-                    height: ${itemSize.height}px;
+                    width: ${xSlotSize}px;
+                    height: ${ySlotSize}px;
                 `)}
             ">
                 ${children}
@@ -163,8 +159,8 @@ export function renderLineConnections(items: Record<string, GridBoxItem>, format
                 return '';
             }
 
-            const itemPosition = getCenterPosition(item, format, slotSize, size);
-            const targetPosition = getCenterPosition(target, format, slotSize, size);
+            const itemPosition = getCenterPosition(item.gridX, item.gridY, format, slotSize, size);
+            const targetPosition = getCenterPosition(target.gridX, target.gridY, format, slotSize, size);
             return renderGridBoxConnection(itemPosition, targetPosition, conn.style ?? '', conn.targetType, format, slotSize, conn.classNames, styleTable, cornerPosition);
         }).join('')
     ).join('');
