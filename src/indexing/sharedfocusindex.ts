@@ -8,7 +8,7 @@ import { localize } from '../util/i18n';
 import { getFocusTree } from '../previewdef/focustree/schema';
 import { Logger } from '../util/logger';
 
-// sprite name -> focus file path
+// shared focus key -> focus file path
 class SharedFocusIndex extends IndexBase<string> {
     public type: IndexType = 'sharedfocus';
 
