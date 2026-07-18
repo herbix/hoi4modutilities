@@ -3,14 +3,14 @@ import { IndexType } from './indexmanager';
 import { sendEvent } from '../util/telemetry';
 
 export abstract class IndexBase<T> {
-    protected _globalIndex: Record<string, T> = {};
-    protected _workspaceIndex: Record<string, T> = {};
+    protected _globalIndex: Map<string, T> = new Map();
+    protected _workspaceIndex: Map<string, T> = new Map();
 
     public abstract type: IndexType;
     public abstract includesFile(file: vscode.Uri): boolean;
     public abstract addWorkspaceIndex(file: vscode.Uri): void;
     public abstract removeWorkspaceIndex(file: vscode.Uri): void;
-    public abstract buildIndex(index: Record<string, T>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void>;
+    public abstract buildIndex(index: Map<string, T>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void>;
 
     public register(): vscode.Disposable {
         return vscode.Disposable.from();
@@ -39,11 +39,11 @@ export abstract class IndexBase<T> {
     }
     
     public clearIndex(): void {
-        this._globalIndex = {};
-        this._workspaceIndex = {};
+        this._globalIndex.clear();
+        this._workspaceIndex.clear();
     }
 
     public get(key: string): T | undefined {
-        return this._workspaceIndex[key] ?? this._globalIndex[key];
+        return this._workspaceIndex.get(key) ?? this._globalIndex.get(key);
     }
 }

@@ -11,6 +11,7 @@ import { matchPathEnd } from '../util/nodecommon';
 import { ConfigurationKey } from '../constants';
 import { parseYaml } from '../util/yaml';
 import { Logger } from '../util/logger';
+import { error } from '../util/debug';
 
 interface LocalisationEntry {
     file: string;
@@ -36,7 +37,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
                 if (relative && relative.startsWith(this.getFolder() + '/')) {
-                this.fillLocalisationItems(relative, this._workspaceIndex, { hoi4: false, dlc: false });
+                this.fillLocalisationItems(relative, this._workspaceIndex, { hoi4: false, dlc: false, resolveReplacements: true });
             }
         }
     }
@@ -46,18 +47,19 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith(this.getFolder() + '/')) {
-                for (const key in this._workspaceIndex) {
-                    if (this._workspaceIndex[key].file === relative) {
-                        delete this._workspaceIndex[key];
+                for (const [key, value] of this._workspaceIndex) {
+                    if (value.file === relative) {
+                        this._workspaceIndex.delete(key);
                     }
                 }
             }
         }
     }
 
-    public async buildIndex(index: Record<string, LocalisationEntry>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
+    public async buildIndex(index: Map<string, LocalisationEntry>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
         const localisationFiles = (await listFilesFromModOrHOI4(this.getFolder(), { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.yml'));
         await Promise.all(localisationFiles.map(f => this.fillLocalisationItems(this.getFolder() + '/' + f, index, options, estimatedSize)));
+        this.resolveReplacements(index);
     }
 
     public getLocalisationContainerFile(key: string | undefined): string | undefined {
@@ -95,7 +97,11 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         }
     }
 
-    private async fillLocalisationItems(localisationFile: string, localisationIndex: Record<string, LocalisationEntry>, options: { mod?: boolean, hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
+    private async fillLocalisationItems(
+        localisationFile: string,
+        localisationIndex: Map<string, LocalisationEntry>,
+        options: { mod?: boolean, hoi4?: boolean, dlc?: boolean, resolveReplacements?: boolean } = {},
+        estimatedSize?: [number]): Promise<void> {
         try {
             if (estimatedSize) {
                 estimatedSize[0] += localisationFile.length;
@@ -110,24 +116,70 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
             if (typeof yamlObj === 'object') {
                 const dict = yamlObj[languageId];
                 if (typeof dict === 'object' && !Array.isArray(dict)) {
-                    for (const [k, v] of Object.entries(dict)) {
+                    const keys = Object.keys(dict);
+                    for (const k of keys) {
+                        const v = dict[k];
                         if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
-                            localisationIndex[k] = { file: localisationFile, value: v.toString() };
+                            localisationIndex.set(k, { file: localisationFile, value: v.toString() });
                         } else {
-                            localisationIndex[k] = { file: localisationFile, value: '' };
+                            localisationIndex.set(k, { file: localisationFile, value: '' });
                         }
+                    }
+                    if (options.resolveReplacements) {
+                        this.resolveReplacements(localisationIndex, keys);
                     }
                 }
             }
         } catch(e) {
             const baseMessage = options.hoi4
-                ? localize('TODO', '[Vanilla]')
-                : localize('TODO', '[Mod]');
+                ? localize('prefix.vanilla', '[Vanilla]')
+                : localize('prefix.mod', '[Mod]');
 
-            const failureMessage = localize('TODO', 'Parsing failed. Please check if the file has issues.');
+            const failureMessage = localize('index.error.parsingfailed', 'Parsing failed. Please check if the file has issues.');
             if (e instanceof Error) {
                 Logger.error(`${baseMessage} ${localisationFile} ${failureMessage}\n${e.stack}`);
             }
+        }
+    }
+
+    private resolveReplacements(localisationIndex: Map<string, LocalisationEntry>, keys?: string[] | undefined): void {
+        try {
+            const regex = /\$([^$]+)\$/g;
+            const resolvingKeys = new Set<string>();
+            function resolveValue(value: string): string {
+                // Avoid circular references
+                if (resolvingKeys.has(value)) {
+                    return value;
+                }
+                resolvingKeys.add(value);
+                try {
+                    return value.replace(regex, (match, p1) => {
+                        const entry = localisationIndex.get(p1);
+                        if (entry) {
+                            return resolveValue(entry.value);
+                        } else {
+                            return match;
+                        }
+                    });
+                } finally {
+                    resolvingKeys.delete(value);
+                }
+            }
+
+            if (keys) {
+                for (const key of keys) {
+                    const entry = localisationIndex.get(key);
+                    if (entry) {
+                        entry.value = resolveValue(entry.value);
+                    }
+                }
+            } else {
+                for (const [_, entry] of localisationIndex) {
+                    entry.value = resolveValue(entry.value);
+                }
+            }
+        } catch (e) {
+            error(e);
         }
     }
 }

@@ -28,9 +28,9 @@ class IndexManager {
             disposables.push(index.register());
         }
         const task = this.buildAllIndex();
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);
         task.then(() => {
-            vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
+            vscode.window.showInformationMessage(localize('index.builddone', 'Building index done.'));
             this._indexUpdatedEventEmitter.fire();
         });
         disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(this.onChangeWorkspaceFolders, this));
@@ -54,9 +54,9 @@ class IndexManager {
         tasks.push(index.buildGlobalIndex());
         tasks.push(index.buildWorkspaceIndex());
         const task = Promise.all(tasks);
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);
         await task;
-        vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
+        vscode.window.showInformationMessage(localize('index.builddone', 'Building index done.'));
         this._indexUpdatedEventEmitter.fire();
     }
 
@@ -66,9 +66,9 @@ class IndexManager {
 
     private onChangeWorkspaceFolders(_: vscode.WorkspaceFoldersChangeEvent): void {
         const task = this.buildWorkspaceIndex();
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building workspace index...'), task);
+        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.workspace.building', 'Building workspace index...'), task);
         task.then(() => {
-            vscode.window.showInformationMessage(localize('TODO', 'Building workspace index done.'));
+            vscode.window.showInformationMessage(localize('index.workspace.builddone', 'Building workspace index done.'));
             this._indexUpdatedEventEmitter.fire();
         });
     }
@@ -138,9 +138,9 @@ class IndexManager {
             const previousEnabledIndexTypes = this._enabledIndexTypes;
             this._enabledIndexTypes = [...getConfiguration().indexing];
             const task = this.buildAllIndex(previousEnabledIndexTypes);
-            vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('TODO', 'Building index...'), task);
+            vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);
             task.then(() => {
-                vscode.window.showInformationMessage(localize('TODO', 'Building index done.'));
+                vscode.window.showInformationMessage(localize('index.builddone', 'Building index done.'));
                 this._indexUpdatedEventEmitter.fire();
             });
         }

@@ -31,21 +31,21 @@ class SharedFocusIndex extends IndexBase<string> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith('common/national_focus/')) {
-                for (const key in this._workspaceIndex) {
-                    if (this._workspaceIndex[key] === relative) {
-                        delete this._workspaceIndex[key];
+                for (const [key, value] of this._workspaceIndex) {
+                    if (value === relative) {
+                        this._workspaceIndex.delete(key);
                     }
                 }
             }
         }
     }
 
-    public async buildIndex(index: Record<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
+    public async buildIndex(index: Map<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
         const focusFiles = (await listFilesFromModOrHOI4('common/national_focus', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.txt'));
         await Promise.all(focusFiles.map(f => this.fillFocusItems('common/national_focus/' + f, index, options, estimatedSize)));
     }
 
-    private async fillFocusItems(focusFile: string, focusIndex: Record<string, string>, options: { mod?: boolean; hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
+    private async fillFocusItems(focusFile: string, focusIndex: Map<string, string>, options: { mod?: boolean; hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
         const [fileBuffer, uri] = await readFileFromModOrHOI4(focusFile, options);
         const fileContent = fileBuffer.toString();
 
@@ -57,8 +57,8 @@ class SharedFocusIndex extends IndexBase<string> {
             focusTrees.forEach(tree => {
                 if (tree.isSharedFocues) {
                     for (const key of Object.keys(tree.focuses)) {
-                        if (focusIndex[key] === undefined) {
-                            focusIndex[key] = focusFile;
+                        if (!focusIndex.has(key)) {
+                            focusIndex.set(key, focusFile);
                         }
                     }
                 }
@@ -69,10 +69,10 @@ class SharedFocusIndex extends IndexBase<string> {
             }
         } catch (e) {
             const baseMessage = options.hoi4
-                ? localize('TODO', '[Vanilla]')
-                : localize('TODO', '[Mod]');
+                ? localize('prefix.vanilla', '[Vanilla]')
+                : localize('prefix.mod', '[Mod]');
 
-            const failureMessage = localize('TODO', 'Parsing failed. Please check if the file has issues.');
+            const failureMessage = localize('index.error.parsingfailed', 'Parsing failed. Please check if the file has issues.');
             if (e instanceof Error) {
                 Logger.error(`${baseMessage} ${focusFile} ${failureMessage}\n${e.stack}`);
             }

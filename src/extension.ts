@@ -18,12 +18,10 @@ export function activate(context: vscode.ExtensionContext) {
         locale = 'en';
     }
 
-    Logger.initialize();
-    Logger.show();
-
     loadI18n(locale);
 
     // Must register this first because other component may use it.
+    context.subscriptions.push(Logger.register());
     context.subscriptions.push(registerContextContainer(context));
     context.subscriptions.push(registerTelemetryReporter());
 

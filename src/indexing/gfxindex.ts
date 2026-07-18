@@ -32,16 +32,16 @@ class GfxIndex extends IndexBase<string> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith('interface/')) {
-                for (const key in this._workspaceIndex) {
-                    if (this._workspaceIndex[key] === relative) {
-                        delete this._workspaceIndex[key];
+                for (const [key, value] of this._workspaceIndex) {
+                    if (value === relative) {
+                        this._workspaceIndex.delete(key);
                     }
                 }
             }
         }
     }
     
-    public async buildIndex(index: Record<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
+    public async buildIndex(index: Map<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
         const gfxFiles = (await listFilesFromModOrHOI4('interface', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
         await Promise.all(gfxFiles.map(f => this.fillGfxItems('interface/' + f, index, options, estimatedSize)));
     }
@@ -57,7 +57,7 @@ class GfxIndex extends IndexBase<string> {
         return uniq(gfxNames.map(name => this.getGfxContainerFile(name)).filter((v): v is string => v !== undefined));
     }
 
-    private async fillGfxItems(gfxFile: string, gfxIndex: Record<string, string>, options: { mod?: boolean, hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
+    private async fillGfxItems(gfxFile: string, gfxIndex: Map<string, string>, options: { mod?: boolean, hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
         try {
             if (estimatedSize) {
                 estimatedSize[0] += gfxFile.length;
@@ -65,17 +65,17 @@ class GfxIndex extends IndexBase<string> {
             const [fileBuffer, uri] = await readFileFromModOrHOI4(gfxFile, options);
             const spriteTypes = getSpriteTypes(parseHoi4File(fileBuffer.toString(), localize('infile', 'In file {0}:\n', uri.toString())));
             for (const spriteType of spriteTypes) {
-                gfxIndex[spriteType.name] = gfxFile;
+                gfxIndex.set(spriteType.name, gfxFile);
                 if (estimatedSize) {
                     estimatedSize[0] += spriteType.name.length + 8;
                 }
             }
         } catch(e) {
             const baseMessage = options.hoi4
-                ? localize('TODO', '[Vanilla]')
-                : localize('TODO', '[Mod]');
+                ? localize('prefix.vanilla', '[Vanilla]')
+                : localize('prefix.mod', '[Mod]');
 
-            const failureMessage = localize('TODO', 'Parsing failed. Please check if the file has issues.');
+            const failureMessage = localize('index.error.parsingfailed', 'Parsing failed. Please check if the file has issues.');
             if (e instanceof Error) {
                 Logger.error(`${baseMessage} ${gfxFile} ${failureMessage}\n${e.stack}`);
             }
