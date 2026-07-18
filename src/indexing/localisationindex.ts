@@ -137,7 +137,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
 
             const failureMessage = localize('index.error.parsingfailed', 'Parsing failed. Please check if the file has issues.');
             if (e instanceof Error) {
-                Logger.error(`${baseMessage} ${localisationFile} ${failureMessage}\n${e.stack}`);
+                Logger.error(`${baseMessage} ${localisationFile} ${failureMessage} ${e.message}\n${e.stack}`);
             }
         }
     }
