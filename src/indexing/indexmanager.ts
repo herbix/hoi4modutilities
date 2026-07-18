@@ -25,7 +25,7 @@ class IndexManager {
     public register(): vscode.Disposable {
         const disposables: vscode.Disposable[] = [];
         for (const index of this._indices) {
-            disposables.push(index.register());
+            disposables.push(index.register(this._indexUpdatedEventEmitter));
         }
         const task = this.buildAllIndex();
         vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);

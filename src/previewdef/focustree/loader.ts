@@ -3,7 +3,6 @@ import { convertFocusFileNodeToJson, FocusTree, getFocusTreeWithFocusFile } from
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten, chain } from "lodash";
-import { isFeatureEnabled } from "../../util/featureflags";
 import { gfxIndex } from "../../indexing/gfxindex";
 import { sharedFocusIndex } from "../../indexing/sharedfocusindex";
 

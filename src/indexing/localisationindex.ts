@@ -22,9 +22,12 @@ interface LocalisationEntry {
 class LocalisationIndex extends IndexBase<LocalisationEntry> {
     public type: IndexType = 'localisation';
 
-    public override register(): vscode.Disposable {
+    private indexUpdatedEventEmitter: vscode.EventEmitter<void> | undefined;
+
+    public override register(indexUpdatedEventEmitter: vscode.EventEmitter<void>): vscode.Disposable {
         const disposables: vscode.Disposable[] = [];
         disposables.push(vscode.workspace.onDidChangeConfiguration(this.onChangeConfiguration, this));
+        this.indexUpdatedEventEmitter = indexUpdatedEventEmitter;
         return vscode.Disposable.from(...disposables);
     }
 
@@ -38,6 +41,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
                 if (relative && relative.startsWith(this.getFolder() + '/')) {
                 this.fillLocalisationItems(relative, this._workspaceIndex, { hoi4: false, dlc: false, resolveReplacements: true });
+                this.indexUpdatedEventEmitter?.fire();
             }
         }
     }

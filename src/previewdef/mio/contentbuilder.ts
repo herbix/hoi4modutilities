@@ -148,7 +148,7 @@ async function renderToolBar(mios: Mio[], styleTable: StyleTable): Promise<strin
         <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
             <select id="mios" class="select multiple-select" tabindex="0" role="combobox">
                 ${await Promise.all(mios.map(async (mio, i) => {
-                    const localizedText = indexManager.isIndexEnabled('localisation') ? `(${mio.id}) ${localisationIndex.getLocalisedText(mio.id)}` : mio.id;
+                    const localizedText = indexManager.isIndexEnabled('localisation') ? `(${mio.id}) ${localisationIndex.getLocalisedText(mio.name)}` : mio.id;
                     return `<option value="${i}">${localizedText}</option>`;
                 })).then(options => options.join(''))}
             </select>

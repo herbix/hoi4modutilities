@@ -12,7 +12,7 @@ export abstract class IndexBase<T> {
     public abstract removeWorkspaceIndex(file: vscode.Uri): void;
     public abstract buildIndex(index: Map<string, T>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void>;
 
-    public register(): vscode.Disposable {
+    public register(indexUpdatedEventEmitter: vscode.EventEmitter<void>): vscode.Disposable {
         return vscode.Disposable.from();
     }
     

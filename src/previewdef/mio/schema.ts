@@ -6,6 +6,7 @@ import { localize } from "../../util/i18n";
 
 export interface Mio {
     id: string;
+    name: string;
     traits: Record<string, MioTrait>;
     conditionExprs: ConditionItem[];
     warnings: MioWarning[];
@@ -40,6 +41,7 @@ export interface MioTrait {
 }
 
 interface MioDef {
+    name: string;
     include: string;
     trait: MioTraitDef[];
     add_trait: MioTraitDef[];
@@ -97,6 +99,7 @@ const mioTraitSchema: SchemaDef<MioTraitDef> = {
 };
 
 const mioSchema: SchemaDef<MioDef> = {
+    name: "string",
     include: "string",
     trait: {
         _innerType: mioTraitSchema,
@@ -145,6 +148,7 @@ export function getMiosFromFile(node: Node, dependentMios: Mio[], filePath: stri
 function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, dependentMios: Mio[], filePath: string): Mio {
     const id = mioDefItem._key;
     const mioDef = mioDefItem._value;
+    const name = mioDef.name ?? id;
     const baseMio = mioDef.include ? dependentMios.find(m => m.id === mioDef.include) : undefined;
     const traits = baseMio?.traits ? {...baseMio.traits} : {};
     const conditionExprs = baseMio?.conditionExprs ? [...baseMio.conditionExprs] : [];
@@ -165,7 +169,7 @@ function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, depend
     }
 
     for (const traitDef of [...mioDef.trait, ...mioDef.add_trait]) {
-        const trait = getTrait(traitDef, filePath, warnings, conditionExprs);
+        const trait = getTrait(id, traitDef, filePath, warnings, conditionExprs);
         if (traits[trait.id]) {
             warnings.push({
                 source: id,
@@ -193,6 +197,7 @@ function getMio(mioDefItem: { _key: string, _value: HOIPartial<MioDef> }, depend
 
     return {
         id,
+        name,
         traits,
         conditionExprs,
         warnings,
@@ -241,7 +246,7 @@ function validateRelativePositionId(traits: Record<string, MioTrait>, warnings: 
     }
 }
 
-function getTrait(traitDef: HOIPartial<MioTraitDef>, filePath: string, warnings: MioWarning[], conditionExprs: ConditionItem[]): MioTrait {
+function getTrait(mioId: string, traitDef: HOIPartial<MioTraitDef>, filePath: string, warnings: MioWarning[], conditionExprs: ConditionItem[]): MioTrait {
     const id = traitDef.token ?? `[missing_token_${randomString(8)}]`;
 
     if (!traitDef.token) {
@@ -253,7 +258,7 @@ function getTrait(traitDef: HOIPartial<MioTraitDef>, filePath: string, warnings:
 
     const x = traitDef.position?.x ?? 0;
     const y = traitDef.position?.y ?? 0;
-    const name = traitDef.name ?? '';
+    const name = traitDef.name ?? `${mioId}_${id}`;
     const parent = traitDef.parent && traitDef.parent.traits._values.length > 0 ? {
         traits: traitDef.parent.traits._values,
         numNeeded: traitDef.parent.num_parents_needed ?? 1,
