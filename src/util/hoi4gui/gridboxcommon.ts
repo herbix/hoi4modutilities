@@ -44,6 +44,36 @@ export interface RenderGridBoxCommonOptions extends RenderCommonOptions {
     onRenderLineBox?(item: GridBoxConnectionItem, parentInfo: ParentInfo): Promise<string>;
     lineRenderMode?: 'line' | 'control';
     cornerPosition?: number;
+    virtualization?: boolean;
+    onOutputVirtualizationData?(data: GridBoxVirtualizationData): void;
+}
+
+export interface GridBoxVirtualizationData {
+    className: string;
+    gridBoxX: number;
+    gridBoxY: number;
+    items: GridBoxVirtualizedItem[];
+    connections: GridBoxVirtualizedConnection[];
+}
+
+export interface GridBoxVirtualizedItem {
+    id: string | undefined;
+    classNames: string;
+    innerHTML: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+export interface GridBoxVirtualizedConnection {
+    classNames: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    vLine?: 'left' | 'right';
+    hLine?: 'top' | 'bottom';
 }
 
 const offsetMap: Record<Format['_name'], { x: number, y: number }> = {
@@ -107,28 +137,54 @@ export async function renderGridBoxCommon(
 
     const background = onRenderBackground ? await onRenderBackground(gridBox.background, { size, orientation }) : '';
 
-    const renderedItems = await Promise.all(Object.values(options.items).map(async (item) => {
+    const virtualizedItems = await Promise.all(Object.values(options.items).map(async (item) => {
         const children = options.onRenderItem ? await options.onRenderItem(item, childrenParentInfo) : '';
         const position = getLeftUpPosition(item.gridX, item.gridY, format, slotSize, size);
-        return `<div
-            ${item.htmlId ? `id="${item.htmlId}"` : ''}
-            class="
-                ${item.classNames ? item.classNames : ''}
-                ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
-                ${options.styleTable.oneTimeStyle('gridbox-item', () => `
+        const result: GridBoxVirtualizedItem = {
+            id: item.htmlId,
+            classNames: `${item.classNames ? item.classNames : ''} ` +
+                options.styleTable.style('positionAbsolute', () => `position: absolute;`) + ' ' +
+                options.styleTable.oneTimeStyle('gridbox-item', () => `
                     left: ${position.x}px;
                     top: ${position.y}px;
                     width: ${xSlotSize}px;
                     height: ${ySlotSize}px;
-                `)}
-            ">
-                ${children}
-            </div>`;
+                    z-index: 1;
+                `),
+            innerHTML: children,
+            x: position.x,
+            y: position.y,
+            width: xSlotSize,
+            height: ySlotSize,
+        };
+        return result;
     }));
 
+    const renderedItems = options.virtualization ? '' : virtualizedItems.map(item =>
+        `<div
+            ${item.id ? `id="${item.id}"` : ''}
+            class="${item.classNames}">
+            ${item.innerHTML}
+        </div>`).join('');
+    
+    const virtualizedConnections = options.lineRenderMode !== 'control' ?
+        renderLineConnections(options, format, slotSize, size, cornerPosition) :
+        [];
+
     const renderedConnections = options.lineRenderMode !== 'control' ?
-        renderLineConnections(options.items, format, slotSize, size, options.styleTable, cornerPosition) :
+        (options.virtualization ? '' : virtualizedConnections.map(conn => `<div class="${conn.classNames}"></div>`).join('')) :
         await renderControlConnections(options.items, format, slotSize, size, options.onRenderLineBox, options.styleTable, childrenParentInfo);
+
+    const gridBoxClass = options.styleTable.oneTimeStyle('gridbox', () => `
+        left: ${x}px;
+        top: ${y}px;
+        width: ${options.virtualization ? Math.max(width, virtualizedItems.reduce((max, item) => Math.max(max, item.x + item.width), 0)) : width}px;
+        height: ${options.virtualization ? Math.max(height, virtualizedItems.reduce((max, item) => Math.max(max, item.y + item.height), 0)) : height}px;
+    `);
+
+    if (options.virtualization && options.onOutputVirtualizationData) {
+        options.onOutputVirtualizationData({ className: gridBoxClass, gridBoxX: x, gridBoxY: y, items: virtualizedItems, connections: virtualizedConnections });
+    }
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
@@ -137,40 +193,35 @@ export async function renderGridBoxCommon(
     class="
         ${options?.classNames ? options.classNames : ''}
         ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
-        ${options.styleTable.oneTimeStyle('gridbox', () => `
-            left: ${x}px;
-            top: ${y}px;
-            width: ${width}px;
-            height: ${height}px;
-        `)}
+        ${gridBoxClass}
         ${options.enableNavigator ? 'navigator navigator-highlight' : ''}
     ">
         ${background}
         ${renderedConnections}
-        ${renderedItems.join('')}
+        ${renderedItems}
     </div>`;
 }
 
-export function renderLineConnections(items: Record<string, GridBoxItem>, format: Format['_name'], slotSize: NumberSize, size: NumberSize, styleTable: StyleTable, cornerPosition: number): string {
-    return Object.values(items).map(item => 
-        item.connections.map(conn => {
+function renderLineConnections(options: RenderGridBoxCommonOptions, format: Format['_name'], slotSize: NumberSize, size: NumberSize, cornerPosition: number): GridBoxVirtualizedConnection[] {
+    const items = options.items;
+    return Object.values(items).flatMap(item =>
+        item.connections.flatMap(conn => {
             const target = items[conn.target];
             if (!target) {
-                return '';
+                return [];
             }
 
             const itemPosition = getCenterPosition(item.gridX, item.gridY, format, slotSize, size);
             const targetPosition = getCenterPosition(target.gridX, target.gridY, format, slotSize, size);
-            return renderGridBoxConnection(itemPosition, targetPosition, conn.style ?? '', conn.targetType, format, slotSize, conn.classNames, styleTable, cornerPosition);
-        }).join('')
-    ).join('');
+            return renderGridBoxConnection(itemPosition, targetPosition, conn.style ?? '', conn.targetType, format, slotSize, conn.classNames, options.styleTable, cornerPosition);
+        })
+    );
 }
 
-export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, style: string, type: GridBoxConnectionType, format: Format['_name'], gridSize: NumberSize, classNames: string | undefined, styleTable: StyleTable, cornerPosition: number = 1.5): string {
+function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, style: string, type: GridBoxConnectionType, format: Format['_name'], gridSize: NumberSize, classNames: string | undefined, styleTable: StyleTable, cornerPosition: number = 1.5): GridBoxVirtualizedConnection[] {
     if (a.y === b.y) {
-        return `<div
-            class="
-                ${classNames ? classNames : ''}
+        return [{
+            classNames: `${classNames ? classNames : ''}
                 ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                 ${styleTable.oneTimeStyle('gridbox-connection', () => `
                     left: ${Math.min(a.x, b.x)}px;
@@ -179,13 +230,17 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${1}px;
                     border-top: ${style};
                 `)}
-                ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-            "></div>`;
+                ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+            x: Math.min(a.x, b.x),
+            y: a.y,
+            width: Math.abs(a.x - b.x),
+            height: 1,
+            hLine: 'top',
+        }];
     }
     if (a.x === b.x) {
-        return `<div
-            class="
-                ${classNames ? classNames : ''}
+        return [{
+            classNames: `${classNames ? classNames : ''}
                 ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                 ${styleTable.oneTimeStyle('gridbox-connection', () => `
                     left: ${a.x}px;
@@ -194,8 +249,13 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                     height: ${Math.abs(a.y - b.y)}px;
                     border-left: ${style};
                 `)}
-                ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-            "></div>`;
+                ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+            x: a.x,
+            y: Math.min(a.y, b.y),
+            width: 1,
+            height: Math.abs(a.y - b.y),
+            vLine: 'left',
+        }];
     }
 
     if (type === 'parent') {
@@ -210,9 +270,8 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
         const by = b.y - a.y;
         const cornerWidth = gridSize.width * cornerPosition;
         if (Math.abs(bx) < cornerWidth) {
-            return `<div
-                class="
-                    ${classNames ? classNames : ''}
+            return [{
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(a.x, b.x)}px;
@@ -222,12 +281,17 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         ${bx < 0 ? 'border-left' : 'border-right'}: ${style};
                         ${by < 0 ? 'border-bottom' : 'border-top'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>`;
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(a.x, b.x),
+                y: Math.min(a.y, b.y),
+                width: Math.abs(bx),
+                height: Math.abs(by),
+                vLine: bx < 0 ? 'left' : 'right',
+                hLine: by < 0 ? 'bottom' : 'top',
+            }];
         } else {
-            return `<div
-                class="
-                    ${classNames ? classNames : ''}
+            return [{
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(a.x, a.x + cornerWidth * Math.sign(bx))}px;
@@ -237,11 +301,15 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         ${bx < 0 ? 'border-left' : 'border-right'}: ${style};
                         ${by < 0 ? 'border-bottom' : 'border-top'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>
-                <div
-                class="
-                    ${classNames ? classNames : ''}
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(a.x, a.x + cornerWidth * Math.sign(bx)),
+                y: Math.min(a.y, b.y),
+                width: cornerWidth,
+                height: Math.abs(by),
+                vLine: bx < 0 ? 'left' : 'right',
+                hLine: by < 0 ? 'bottom' : 'top',
+            }, {
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(b.x, a.x + cornerWidth * Math.sign(bx))}px;
@@ -250,17 +318,21 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         height: ${Math.abs(by)}px;
                         ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>`;
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(b.x, a.x + cornerWidth * Math.sign(bx)),
+                y: Math.min(a.y, b.y),
+                width: Math.abs(bx) - cornerWidth,
+                height: Math.abs(by),
+                hLine: by > 0 ? 'bottom' : 'top',
+            }];
         }
     } else {
         const bx = b.x - a.x;
         const by = b.y - a.y;
         const cornerHeight = gridSize.height * cornerPosition;
         if (Math.abs(by) < cornerHeight) {
-            return `<div
-                class="
-                    ${classNames ? classNames : ''}
+            return [{
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(a.x, b.x)}px;
@@ -270,12 +342,17 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         ${bx > 0 ? 'border-left' : 'border-right'}: ${style};
                         ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>`;
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(a.x, b.x),
+                y: Math.min(a.y, b.y),
+                width: Math.abs(bx),
+                height: Math.abs(by),
+                vLine: bx > 0 ? 'left' : 'right',
+                hLine: by > 0 ? 'bottom' : 'top',
+            }];
         } else {
-            return `<div
-                class="
-                    ${classNames ? classNames : ''}
+            return [{
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(a.x, b.x)}px;
@@ -285,11 +362,15 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         ${bx > 0 ? 'border-left' : 'border-right'}: ${style};
                         ${by > 0 ? 'border-bottom' : 'border-top'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>
-                <div
-                class="
-                    ${classNames ? classNames : ''}
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(a.x, b.x),
+                y: Math.min(a.y, a.y + cornerHeight * Math.sign(by)),
+                width: Math.abs(bx),
+                height: cornerHeight,
+                vLine: bx > 0 ? 'left' : 'right',
+                hLine: by > 0 ? 'bottom' : 'top',
+            }, {
+                classNames: `${classNames ? classNames : ''}
                     ${styleTable.style('positionAbsolute', () => `position: absolute;`)}
                     ${styleTable.oneTimeStyle('gridbox-connection', () => `
                         left: ${Math.min(a.x, b.x)}px;
@@ -298,8 +379,13 @@ export function renderGridBoxConnection(a: NumberPosition, b: NumberPosition, st
                         height: ${Math.abs(by) - cornerHeight}px;
                         ${bx > 0 ? 'border-right' : 'border-left'}: ${style};
                     `)}
-                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}
-                "></div>`;
+                    ${styleTable.style('pointerEventsNone', () => `pointer-events: none;`)}`,
+                x: Math.min(a.x, b.x),
+                y: Math.min(b.y, a.y + cornerHeight * Math.sign(by)),
+                width: Math.abs(bx),
+                height: Math.abs(by) - cornerHeight,
+                vLine: bx > 0 ? 'right' : 'left',
+            }];
         }
     }
 }

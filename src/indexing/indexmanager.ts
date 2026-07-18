@@ -7,14 +7,16 @@ import { ConfigurationKey } from '../constants';
 import { getConfiguration } from '../util/vsccommon';
 import { sharedFocusIndex } from './sharedfocusindex';
 import { localisationIndex } from './localisationindex';
+import { eventIndex } from './eventindex';
 
-export type IndexType = 'gfx' | 'sharedfocus' | 'localisation';
+export type IndexType = 'gfx' | 'sharedfocus' | 'localisation' | 'event';
 
 class IndexManager {
     private _indices: IndexBase<unknown>[] = [
         gfxIndex,
         sharedFocusIndex,
         localisationIndex,
+        eventIndex,
     ];
     private _indexMap: Record<IndexType, IndexBase<unknown>> = arrayToMap(this._indices, 'type');
     private _indexUpdatedEventEmitter = new vscode.EventEmitter<void>();
@@ -27,12 +29,16 @@ class IndexManager {
         for (const index of this._indices) {
             disposables.push(index.register(this._indexUpdatedEventEmitter));
         }
-        const task = this.buildAllIndex();
-        vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);
-        task.then(() => {
-            vscode.window.showInformationMessage(localize('index.builddone', 'Building index done.'));
-            this._indexUpdatedEventEmitter.fire();
-        });
+
+        if (this._enabledIndexTypes.length !== 0) {
+            const task = this.buildAllIndex();
+            vscode.window.setStatusBarMessage('$(loading~spin) ' + localize('index.building', 'Building index...'), task);
+            task.then(() => {
+                vscode.window.showInformationMessage(localize('index.builddone', 'Building index done.'));
+                this._indexUpdatedEventEmitter.fire();
+            });
+        }
+
         disposables.push(vscode.workspace.onDidChangeWorkspaceFolders(this.onChangeWorkspaceFolders, this));
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
         disposables.push(vscode.workspace.onDidCloseTextDocument(this.onCloseTextDocument, this));

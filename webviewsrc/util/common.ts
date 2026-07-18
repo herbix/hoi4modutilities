@@ -28,8 +28,8 @@ export function copyArray<T>(src: T[], dst: T[], offsetSrc: number, offsetDst: n
     }
 }
 
-export function subscribeNavigators() {
-    const navigators = document.getElementsByClassName("navigator");
+export function subscribeNavigators(container: HTMLElement | Document = document): void {
+    const navigators = container.getElementsByClassName("navigator");
     for (let i = 0; i < navigators.length; i++) {
         const navigator = navigators[i] as HTMLDivElement;
         navigator.addEventListener('click', function(e) {

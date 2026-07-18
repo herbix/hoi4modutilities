@@ -3,8 +3,8 @@ export class StyleTable {
     private readonly rawRecords: Record<string, string> = {};
     private id: number = 0;
 
-    public style(name: string, callback: () => string, fakeClass?: string): string
-    public style(name: string, callback: () => Promise<string>, fakeClass?: string): Promise<string>
+    public style(name: string, callback: () => string, pseudoClass?: string): string
+    public style(name: string, callback: () => Promise<string>, pseudoClass?: string): Promise<string>
     public style(name: string, callback: (() => string) | (() => Promise<string>), pseudoClass: string = ''): string | Promise<string> {
         name = this.name(name);
         const key = name + pseudoClass;
@@ -25,11 +25,11 @@ export class StyleTable {
         }
     }
 
-    public oneTimeStyle(name: string, callback: () => string, fakeClass?: string): string
-    public oneTimeStyle(name: string, callback: () => Promise<string>, fakeClass?: string): Promise<string>
-    public oneTimeStyle(name: string, callback: (() => string) | (() => Promise<string>), fakeClass: string = ''): string | Promise<string> {
+    public oneTimeStyle(name: string, callback: () => string, pseudoClass?: string): string
+    public oneTimeStyle(name: string, callback: () => Promise<string>, pseudoClass?: string): Promise<string>
+    public oneTimeStyle(name: string, callback: (() => string) | (() => Promise<string>), pseudoClass: string = ''): string | Promise<string> {
         const sid = this.id++;
-        return this.style(name + '-' + sid, callback as any, fakeClass);
+        return this.style(name + '-' + sid, callback as any, pseudoClass);
     }
 
     public toStyleElement(nonce: string): string {

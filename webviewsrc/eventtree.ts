@@ -1,21 +1,24 @@
-import { tryRun, enableZoom } from "./util/common";
+import { tryRun, enableZoom, subscribeNavigators } from "./util/common";
+import { virtualizeGridBox } from "./util/virtualization";
 
 window.addEventListener('load', tryRun(async function() {
     // Zoom
     const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
     enableZoom(contentElement, 0, 0);
 
-    showPictureWhenHover();
+    virtualizeGridBox((window as any).virtualizationData, showEventElement);
 }));
 
-function showPictureWhenHover() {
-    const eventNodes = document.getElementsByClassName('event-picture-host') as HTMLCollectionOf<HTMLDivElement>;
-    for (let i = 0; i < eventNodes.length; i++) {
-        const eventNode = eventNodes.item(i);
-        if (eventNode) {
-            showPictureWhenHoverElement(eventNode);
+function showEventElement(element: HTMLDivElement): void {
+    const hosts = element.getElementsByClassName('event-picture-host') as HTMLCollectionOf<HTMLDivElement>;
+    for (let i = 0; i < hosts.length; i++) {
+        const host = hosts.item(i);
+        if (host) {
+            showPictureWhenHoverElement(host);
         }
     }
+
+    subscribeNavigators(element);
 }
 
 function showPictureWhenHoverElement(eventNode: HTMLDivElement) {
@@ -43,3 +46,4 @@ function showPictureWhenHoverElement(eventNode: HTMLDivElement) {
         hoverElement?.remove();
     });
 }
+

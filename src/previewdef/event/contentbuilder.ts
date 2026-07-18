@@ -27,7 +27,8 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
         debug('Loader session event tree', loadedLoaders);
 
         const styleTable = new StyleTable();
-        const baseContent = await renderEvents(loadResult.result, styleTable);
+        const jsCodes: string[] = [];
+        const baseContent = await renderEvents(loadResult.result, styleTable, jsCodes);
 
         return html(
             webview,
@@ -35,6 +36,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             [
                 setPreviewFileUriScript,
                 { content: featureFlagsAsScript() },
+                ...jsCodes.map(c => ({ content: c })),
                 'common.js',
                 'eventtree.js',
             ],
@@ -56,7 +58,7 @@ const topPaddingBase = 50;
 const xGridSize = 180;
 const yGridSize = 150;
 
-async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable, jsCodes: string[]): Promise<string> {
     const leftPadding = leftPaddingBase;
     const topPadding = topPaddingBase;
 
@@ -80,6 +82,10 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         items: arrayToMap(gridBoxItems, 'id'),
         onRenderItem: async (item) => idToContentMap[item.id],
         cornerPosition: 0.5,
+        virtualization: true,
+        onOutputVirtualizationData: (data) => {
+            jsCodes.push(`window.virtualizationData = ${JSON.stringify(data)};`);
+        },
     });
 
     return `
@@ -383,8 +389,8 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
                     `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
                 '') +
-            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}
-            ${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}`;
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}` +
+            `${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `<p class="
@@ -484,8 +490,8 @@ async function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoad
     let title = option.optionName;
     if (indexManager.isIndexEnabled('localisation')){
         const optionName = localisationIndex.getLocalisedText(option.optionName);
-        content = `${option.optionName} <br/> ${optionName}`;
-        title = `${option.optionName} \n ${optionName}`;
+        content = `${option.optionName}<br/>${optionName}`;
+        title = `${option.optionName}\n${optionName}`;
     }
 
     const extraAttributes = option.token ? `

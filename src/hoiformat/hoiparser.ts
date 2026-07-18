@@ -118,7 +118,7 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
     const value = parseBlockContent(tokens);
 
     if (tokens.peek().type !== 'eof') {
-        Logger.warn(errorMessagePrefix + " File content can't be completely parsed");
+        Logger.warn(errorMessagePrefix + "File content can't be completely parsed");
     }
 
     return {
@@ -135,11 +135,27 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
 }
 
 function parseNode(tokens: Tokenizer<HOITokenType>): Node {
-    const name = tokens.next();
-    if (name.type !== 'string' && name.type !== 'symbol') {
+    const name = tokens.peek();
+    if (name.type !== 'string' && name.type !== 'symbol' && name.value !== '{') {
         tokens.throw("Expect name to be symbol or string", true);
     }
 
+    if (name.value === '{') {
+        const [value, valueStartToken, valueEndToken] = parseNodeValue(tokens);
+        return {
+            name: null,
+            nameToken: null,
+            operator: null,
+            operatorToken: null,
+            value,
+            valueStartToken,
+            valueEndToken,
+            valueAttachment: null,
+            valueAttachmentToken: null,
+        };
+    }
+
+    tokens.next();
     let nextToken = tokens.peek();
     if (nextToken.type !== 'operator' || nextToken.value.match(/^[,;}]$/)) {
         while (nextToken.value.match(/^[,;]$/)) {

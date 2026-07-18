@@ -22,6 +22,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
         const constants = {};
 
         const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), constants);
+        const focusTreeDependencies = dependencies.filter(d => d.type === 'focus').map(d => d.path);
 
         const sharedFocusFilesFromIndex = chain(file.focus_tree)
             .flatMap(focusTree => focusTree.shared_focus)
@@ -32,10 +33,11 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             .value();
 
         for (const filePath of sharedFocusFilesFromIndex) {
-            dependencies.push({type: 'focus', path: filePath});
+            if (!focusTreeDependencies.includes(filePath) && filePath !== this.file) {
+                focusTreeDependencies.push(filePath);
+            }
         }
 
-        const focusTreeDependencies = dependencies.filter(d => d.type === 'focus').map(d => d.path);
         const focusTreeDepFiles = await this.loaderDependencies.loadMultiple(focusTreeDependencies, session, FocusTreeLoader);
 
         const sharedFocusTrees = chain(focusTreeDepFiles)
