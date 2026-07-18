@@ -66,7 +66,11 @@
 					"hoi4ModUtilities.indexing": {
 						"title": "%hoi4modutilities.indexing.title%",
 						"type": "array",
-						"default": ["gfx", "sharedfocus", "localisation"],
+						"default": [
+							"gfx",
+							"sharedfocus",
+							"localisation"
+						],
 						"uniqueItems": true,
 						"items": {
 							"type": "string",
@@ -246,7 +250,6 @@
 		"geni18n": "npm run compile-ts && node scripts/genzhi18n.js"
 	},
 	"devDependencies": {
-		"@types/adm-zip": "^0.4.33",
 		"@types/copy-webpack-plugin": "^8.0.0",
 		"@types/glob": "^7.1.1",
 		"@types/js-yaml": "^3.12.5",
@@ -275,7 +278,7 @@
 	"dependencies": {
 		"@vscode/codicons": "^0.0.33",
 		"@vscode/extension-telemetry": "^0.4.6",
-		"adm-zip": "^0.4.14",
+		"adm-zip": "^0.6.0",
 		"assert": "^2.0.0",
 		"browserify-zlib": "^0.2.0",
 		"buffer": "^6.0.3",
