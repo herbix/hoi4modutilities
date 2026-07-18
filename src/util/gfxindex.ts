@@ -62,7 +62,7 @@ async function buildGlobalGfxIndex(estimatedSize: [number]): Promise<void> {
     // Prefer DLC GFX files over base game GFX files
     const optionsDlc = { mod: false, hoi4: false, recursively: true };
     const gfxFilesDlc = (await listFilesFromModOrHOI4('interface', optionsDlc)).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
-    await Promise.all(gfxFilesDlc.map(f => fillGfxItems('interface/' + f, workspaceGfxIndex, optionsDlc, estimatedSize)));
+    await Promise.all(gfxFilesDlc.map(f => fillGfxItems('interface/' + f, globalGfxIndex, optionsDlc, estimatedSize)));
 }
 
 async function buildWorkspaceGfxIndex(estimatedSize: [number]): Promise<void> {

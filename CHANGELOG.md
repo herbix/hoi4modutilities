@@ -4,7 +4,15 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.14.1] - 2026/07/14 - Latest
+## [0.14.2] - 2026/07/18 - Latest
+
+### Updated
+* Large focus icons now won't be clipped on overflow.
+
+### Fixed
+* GFX index incorrectly fill DLC content to workspace index.
+
+## [0.14.1] - 2026/07/14
 
 ### Fixed
 * Numbers starts with `.` or `+` can't be parsed.
