@@ -3,15 +3,13 @@ import { ContentLoader, Dependency, LoadResultOD, LoaderSession, mergeInLoadResu
 import { parseHoi4File } from "../../hoiformat/hoiparser";
 import { localize } from "../../util/i18n";
 import { uniq, flatten } from "lodash";
-import { YamlLoader } from "../../util/loader/yaml";
-import { getGfxContainerFiles } from "../../util/gfxindex";
 import { getLanguageIdInYml } from "../../util/vsccommon";
+import { gfxIndex } from "../../indexing/gfxindex";
 
 export interface EventsLoaderResult {
     events: HOIEvents;
     mainNamespaces: string[];
     gfxFiles: string[];
-    localizationDict: Record<string, string>;
 }
 
 const eventsGFX = 'interface/eventpictures.gfx';
@@ -37,15 +35,11 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
         const mergedEvents = mergeEvents(events, ...eventsDepFiles.map(f => f.result.events));
         
         const localizationDependencies = dependencies.filter(d => d.type.match(/^locali[sz]ation$/) && d.path.endsWith('.yml')).map(d => d.path);
-        const localizationDepFiles = await this.loaderDependencies.loadMultiple(localizationDependencies, session, YamlLoader);
-
-        const localizationDict = makeLocalizationDict(mergeInLoadResult(localizationDepFiles, 'result'), this.languageKey);
-        Object.assign(localizationDict, ...eventsDepFiles.map(f => f.result.localizationDict));
         
         const gfxDependencies = [
             ...dependencies.filter(d => d.type === 'gfx').map(d => d.path),
             ...flatten(eventsDepFiles.map(f => f.result.gfxFiles)),
-            ...await getGfxContainerFiles(flatten(Object.values(events.eventItemsByNamespace)).map(e => e.picture)),
+            ...await gfxIndex.getGfxContainerFiles(flatten(Object.values(events.eventItemsByNamespace)).map(e => e.picture)),
         ];
 
         return {
@@ -53,7 +47,6 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
                 events: mergedEvents,
                 mainNamespaces: Object.keys(events.eventItemsByNamespace),
                 gfxFiles: uniq([...gfxDependencies, eventsGFX]),
-                localizationDict,
             },
             dependencies: uniq([
                 this.file,

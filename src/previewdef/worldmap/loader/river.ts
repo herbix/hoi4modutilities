@@ -39,7 +39,7 @@ async function loadRivers(file: string, progressReporter: ProgressReporter, warn
     if (riversImage.bitsPerPixel !== 8) {
         warnings.push({
             relatedFiles: [file],
-            text: localize('worldmap.warning.riverimagebpp', 'The rivers image should be 8 bits per pixel, but it is {0}.', riversImage.bitsPerPixel),
+            text: localize('worldmap.warnings.riverimagebpp', 'The rivers image should be 8 bits per pixel, but it is {0}.', riversImage.bitsPerPixel),
             source: [{ type: 'river', name: '', index: -1 }]
         });
 
@@ -145,7 +145,7 @@ function validateRiver(file: string, index: number, river: River, warning: World
     if (river.ends.length === 0) {
         warning.push({
             relatedFiles: [file],
-            text: localize('worldmap.warning.rivernoends', 'River has no end points.'),
+            text: localize('worldmap.warnings.rivernoends', 'River has no end points.'),
             source: [{ type: 'river', name: riverToString(river), index: index }]
         });
     }
@@ -154,7 +154,7 @@ function validateRiver(file: string, index: number, river: River, warning: World
     if (sources.length === 0) {
         warning.push({
             relatedFiles: [file],
-            text: localize('worldmap.warning.rivernosource', 'River has no source. Its end points are: {0}.', river.ends.map(e => riverToString(river, e)).join(', ')),
+            text: localize('worldmap.warnings.rivernosource', 'River has no source. Its end points are: {0}.', river.ends.map(e => riverToString(river, e)).join(', ')),
             source: [{ type: 'river', name: riverToString(river, river.ends[0]), index: index }]
         });
     }
@@ -162,7 +162,7 @@ function validateRiver(file: string, index: number, river: River, warning: World
     if (sources.length > 1) {
         warning.push({
             relatedFiles: [file],
-            text: localize('worldmap.warning.rivermultiplesource', 'River has multiple sources: {0}.', sources.map(s => riverToString(river, s)).join(', ')),
+            text: localize('worldmap.warnings.rivermultiplesource', 'River has multiple sources: {0}.', sources.map(s => riverToString(river, s)).join(', ')),
             source: [{ type: 'river', name: riverToString(river, sources[0]), index: index }]
         });
     }
@@ -223,7 +223,7 @@ function validateJoiningRiver(file: string, index: number, river: River, end: nu
             } else {
                 warning.push({
                     relatedFiles: [file],
-                    text: localize('worldmap.warning.rivernoflowinorout', 'River doesn\'t have flow-in or flow-out mark at {0}.', riverToString(river, current)),
+                    text: localize('worldmap.warnings.rivernoflowinorout', 'River doesn\'t have flow-in or flow-out mark at {0}.', riverToString(river, current)),
                     source: [{ type: 'river', name: riverToString(river, end), index: index }]
                 });
                 return;
@@ -234,7 +234,7 @@ function validateJoiningRiver(file: string, index: number, river: River, end: nu
             if (!adjecentToMark) {
                 warning.push({
                     relatedFiles: [file],
-                    text: localize('worldmap.warning.rivermayloop', 'River may contain a loop at {0} ~ {1}.', riverToString(river, end), riverToString(river, current)),
+                    text: localize('worldmap.warnings.rivermayloop', 'River may contain a loop at {0} ~ {1}.', riverToString(river, end), riverToString(river, current)),
                     source: [{ type: 'river', name: riverToString(river, end), index: index }]
                 });
             }

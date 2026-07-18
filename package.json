@@ -63,6 +63,26 @@
 						"default": true,
 						"description": "%hoi4modutilities.loadDlcContents.desc%"
 					},
+					"hoi4ModUtilities.indexing": {
+						"title": "%hoi4modutilities.indexing.title%",
+						"type": "array",
+						"default": ["gfx", "sharedfocus", "localisation"],
+						"uniqueItems": true,
+						"items": {
+							"type": "string",
+							"enum": [
+								"gfx",
+								"sharedfocus",
+								"localisation"
+							],
+							"enumDescriptions": [
+								"%hoi4modutilities.indexing.gfx%",
+								"%hoi4modutilities.indexing.sharedfocus%",
+								"%hoi4modutilities.indexing.localisation%"
+							]
+						},
+						"description": "%hoi4modutilities.indexing.desc%"
+					},
 					"hoi4ModUtilities.modFile": {
 						"title": "%hoi4modutilities.modFile.title%",
 						"type": "string",
@@ -78,13 +98,15 @@
 					"hoi4ModUtilities.previewLocalisation": {
 						"title": "%hoi4modutilities.previewLocalisation.title%",
 						"type": "string",
-						"default": "English",
+						"default": "Use Visual Studio Code Language",
 						"enum": [
+							"Use Visual Studio Code Language",
 							"Brazilian Portuguese",
 							"English",
 							"French",
 							"German",
 							"Japanese",
+							"Korean",
 							"Polish",
 							"Russian",
 							"Simplified Chinese",
@@ -100,17 +122,11 @@
 						"items": {
 							"type": "string",
 							"enum": [
-								"gfxIndex",
 								"useConditionInFocus",
 								"eventTreePreview",
-								"sharedFocusIndex",
-								"localisationIndex",
 								"rightButtonDrag",
-								"!gfxIndex",
 								"!useConditionInFocus",
 								"!eventTreePreview",
-								"!sharedFocusIndex",
-								"!localisationIndex",
 								"!rightButtonDrag"
 							]
 						},

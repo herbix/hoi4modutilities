@@ -7,19 +7,17 @@ enum LogLevel {
     ERROR = 'ERROR',
 }
 
+// User-facing logger
 export class Logger {
     private static outputChannel: vscode.OutputChannel;
 
-    public static initialize() {
-        if (!Logger.outputChannel) {
-            Logger.outputChannel = vscode.window.createOutputChannel('HOI4 Modding');
-        }
+    public static register(): vscode.Disposable {
+        Logger.outputChannel = vscode.window.createOutputChannel('HOI4 Mod Utilities');
+        Logger.outputChannel.show();
+        return Logger.outputChannel;
     }
 
     private static logMessage(level: LogLevel, message: string) {
-        if (!Logger.outputChannel) {
-            Logger.initialize();
-        }
         const timestamp = new Date().toISOString();
         Logger.outputChannel.appendLine(`[${timestamp}] [${level}] ${message}`);
     }
@@ -38,11 +36,5 @@ export class Logger {
 
     public static error(message: string) {
         Logger.logMessage(LogLevel.ERROR, message);
-    }
-
-    public static show() {
-        if (Logger.outputChannel) {
-            Logger.outputChannel.show();
-        }
     }
 }

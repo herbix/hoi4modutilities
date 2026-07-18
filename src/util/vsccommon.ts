@@ -133,12 +133,54 @@ const languageYmlDict = {
     French: 'l_french',
     German: 'l_german',
     Japanese: 'l_japanese',
+    Korean: 'l_korean',
     Polish: 'l_polish',
     Russian: 'l_russian',
     ['Simplified Chinese']: 'l_simp_chinese',
     Spanish: 'l_spanish',
 };
 
+const languageFolderDict = {
+    ['Brazilian Portuguese']: 'braz_por',
+    English: 'english',
+    French: 'french',
+    German: 'german',
+    Japanese: 'japanese',
+    Korean: 'korean',
+    Polish: 'polish',
+    Russian: 'russian',
+    ['Simplified Chinese']: 'simp_chinese',
+    Spanish: 'spanish',
+}
+
+type Language = keyof typeof languageYmlDict;
+
+const vscLanguageDict: Record<string, Language> = {
+    'pt-br': 'Brazilian Portuguese',
+    en: 'English',
+    fr: 'French',
+    de: 'German',
+    ja: 'Japanese',
+    ko: 'Korean',
+    pl: 'Polish',
+    ru: 'Russian',
+    'zh-cn': 'Simplified Chinese',
+    es: 'Spanish',
+}
+
+function getLanguage(): Language {
+    let language = vscode.workspace.getConfiguration('hoi4ModUtilities').previewLocalisation;
+    if (language === 'Use Visual Studio Code Language') {
+        const vscLanguage = vscode.env.language;
+        language = vscLanguageDict[vscLanguage] ?? 'English';
+    }
+    return language ?? 'English';
+}
+
 export function getLanguageIdInYml(): string {
-    return languageYmlDict[vscode.workspace.getConfiguration('hoi4ModUtilities').previewLocalisation ?? 'English'] ?? languageYmlDict['English'];
+    return languageYmlDict[getLanguage()] ?? languageYmlDict['English'];
+}
+
+export function getLocalisationFolderName(): string {
+    return languageFolderDict[getLanguage()] ?? languageFolderDict['English'];
 }

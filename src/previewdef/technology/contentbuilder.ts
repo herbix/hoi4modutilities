@@ -17,8 +17,9 @@ import { debug } from '../../util/debug';
 import { flatMap, uniq, range } from 'lodash';
 import { StyleTable } from '../../util/styletable';
 import { renderBackground, RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
-import { getLocalisedTextQuick } from "../../util/localisationIndex";
-import { featureFlagsAsScript, isFeatureEnabled } from "../../util/featureflags";
+import { featureFlagsAsScript } from "../../util/featureflags";
+import { indexManager } from '../../indexing/indexmanager';
+import { localisationIndex } from '../../indexing/localisationindex';
 
 const techTreeViewName = 'countrytechtreeview';
 const doctrineTreeViewName = 'countrydoctrineview';
@@ -123,7 +124,7 @@ async function renderTechnologyFolders(
 async function renderToolbar(folders: string[], styleTable: StyleTable): Promise<string> {
     const folderOptions = await Promise.all(
         folders.map(async (folder) => {
-            const localizedText = isFeatureEnabled('localisationIndex') ? `${await getLocalisedTextQuick(folder)} (${folder})` : folder;
+            const localizedText = indexManager.isIndexEnabled('localisation') ? `${localisationIndex.getLocalisedText(folder)} (${folder})` : folder;
             return `<option value="${folder}">${localizedText}</option>`;
         })
     );
@@ -154,7 +155,7 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px; z-index: 10;`)}">
         <div class="toolbar">
-            ${isFeatureEnabled('localisationIndex') ? renderPreviewLabelModeControl(styleTable) : ''}
+            ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
             ${folderSelect}
             ${conditions}
         </div>
@@ -208,7 +209,7 @@ async function renderTechnologyFolder(
                 onRenderChild: async (type, child, parentInfo) => {
                     if (type === 'instanttextbox' && isTechnologyStaticTitleTextBox(child as HOIPartial<InstantTextBoxType>)) {
                         const text = child as HOIPartial<InstantTextBoxType>;
-                        const localisedText = await getLocalisedTextQuick(text.text);
+                        const localisedText = localisationIndex.getLocalisedText(text.text);
                         return await renderInstantTextBox(
                             { ...text, text: getLocalisationLabelContent(text.text ?? '', localisedText) },
                             parentInfo,
@@ -320,7 +321,7 @@ async function renderTechnology(
                 if (childname === 'bonus') {
                     return '';
                 } else if (isTechnologyLabelTextBox(childname)) {
-                    const localisedText = await getLocalisedTextQuick(technology.id);
+                    const localisedText = localisationIndex.getLocalisedText(technology.id);
                     return await renderInstantTextBox(
                         { ...text, text: getTechnologyLabelContent(technology.id, localisedText) },
                         parentInfo,
@@ -456,7 +457,7 @@ function getTechnologyLabelContent(technologyId: string, localisedText: string |
 }
 
 async function getTechnologyTitleAttributes(technologyId: string, folder: TechnologyFolder): Promise<string> {
-    const localisedText = await getLocalisedTextQuick(technologyId);
+    const localisedText = localisationIndex.getLocalisedText(technologyId);
     const name = localisedText && localisedText !== technologyId ? localisedText : technologyId;
     const idTitle = `${technologyId}\n(${folder.x}, ${folder.y})`;
     const nameTitle = `${name}\n(${folder.x}, ${folder.y})`;

@@ -15,7 +15,16 @@
     "hoi4modutilities.preview.title": "Предпросмотр файла HOI4",
     "hoi4modutilities.previewworld.title": "Предпросмотр карты мира",
     "hoi4modutilities.scanreferences.title": "Найти похожее",
+    "hoi4modutilities.selecthoifolder.title": "Select HOI4 Install Path",
+    "hoi4modutilities.selecthoifolder.desc": "Heart of Iron IV install path.",
     "hoi4modutilities.selectmodfile.title": "Выбрать файл мода",
     "hoi4modutilities.enableSupplyArea.title": "Включить зону снабжения",
-    "hoi4modutilities.enableSupplyArea.desc": "Если вы разрабатываете мод для HOI4(version<=1.10). Проверьте этот параметр перед включением зоны снабжения."
+    "hoi4modutilities.enableSupplyArea.desc": "Если вы разрабатываете мод для HOI4(version<=1.10). Проверьте этот параметр перед включением зоны снабжения.",
+    "hoi4modutilities.previewLocalisation.title": "Preview Localization",
+    "hoi4modutilities.previewLocalisation.desc": "Language of content in previews.",
+    "hoi4modutilities.indexing.title": "Indexing",
+    "hoi4modutilities.indexing.desc": "When indexing is enabled, you don't need to manually add dependency to your .txt files when they use content from other files. Indexing takes start up time and more memory.",
+    "hoi4modutilities.indexing.gfx": "GFX Sprites",
+    "hoi4modutilities.indexing.sharedfocus": "Shared Focuses and Joint Focuses",
+    "hoi4modutilities.indexing.localisation": "Localisation Entries"
 }

@@ -93,7 +93,6 @@ export class Loader extends Subscriber {
                     this.loadingProvinceMap.states = new Array(this.loadingProvinceMap.statesCount);
                     this.loadingProvinceMap.countries = new Array(this.loadingProvinceMap.countriesCount);
                     this.loadingProvinceMap.strategicRegions = new Array(this.loadingProvinceMap.strategicRegionsCount);
-                    console.log(message.data);
                     this.startLoading();
                     break;
                 case 'provinces':
