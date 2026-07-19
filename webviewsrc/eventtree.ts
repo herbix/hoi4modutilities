@@ -4,9 +4,8 @@ import { virtualizeGridBox } from "./util/virtualization";
 window.addEventListener('load', tryRun(async function() {
     // Zoom
     const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
-    enableZoom(contentElement, 0, 0);
-
-    virtualizeGridBox((window as any).virtualizationData, showEventElement);
+    const { refresh: refreshVirtualization } = virtualizeGridBox((window as any).virtualizationData, showEventElement);
+    enableZoom(contentElement, 0, 0, refreshVirtualization);
 }));
 
 function showEventElement(element: HTMLDivElement): void {

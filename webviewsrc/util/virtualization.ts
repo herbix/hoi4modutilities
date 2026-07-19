@@ -4,7 +4,10 @@ import { getState } from "./common";
 type Item = GridBoxVirtualizedItem & { element?: HTMLDivElement; };
 type Connection = GridBoxVirtualizedConnection & { element?: HTMLDivElement; };
 
-export function virtualizeGridBox(data: GridBoxVirtualizationData, onElementShow?: (element: HTMLDivElement) => void): void {
+export function virtualizeGridBox(data: GridBoxVirtualizationData, onElementShow?: (element: HTMLDivElement) => void)
+: {
+    refresh: () => void;
+} {
     const gridBox = document.getElementsByClassName(data.className)[0] as HTMLDivElement;
     const unusedElements: HTMLDivElement[] = [];
 
@@ -41,8 +44,8 @@ export function virtualizeGridBox(data: GridBoxVirtualizationData, onElementShow
 
     const viewportChanged = () => {
         const scale = getState().scale ?? 1;
-        const viewportX = (window.scrollX - data.gridBoxX) / scale;
-        const viewportY = (window.scrollY - data.gridBoxY) / scale;
+        const viewportX = window.scrollX / scale - data.gridBoxX;
+        const viewportY = window.scrollY / scale - data.gridBoxY;
         const viewportWidth = window.innerWidth / scale;
         const viewportHeight = window.innerHeight / scale;
         
@@ -69,4 +72,7 @@ export function virtualizeGridBox(data: GridBoxVirtualizationData, onElementShow
 
     window.addEventListener('scroll', viewportChanged);
     window.addEventListener('resize', viewportChanged);
+    return {
+        refresh: viewportChanged
+    };
 }

@@ -67,7 +67,7 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
 }
 
 let shouldDisableZoom = false;
-export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOffset: number): void {
+export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOffset: number, onZoomed?: (scale: number) => void): void {
     let scale = getState().scale || 1;
     contentElement.style.transform = `scale(${scale})`;
     contentElement.style.transformOrigin = '0 0';
@@ -94,6 +94,9 @@ export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOff
         const nextScrollX = (e.pageX - xOffset) * scale / oldScale + xOffset - (e.pageX - oldScrollX);
         const nextScrollY = (e.pageY - yOffset) * scale / oldScale + yOffset - (e.pageY - oldScrollY);
         window.scrollTo(nextScrollX, nextScrollY);
+        if (onZoomed) {
+            onZoomed(scale);
+        }
     },
     {
         passive: false
