@@ -5,7 +5,7 @@ import { debug } from '../../util/debug';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { HOIEvent, HOIEventType } from './schema';
+import { ChildEvent, HOIEvent, HOIEventType } from './schema';
 import { flatten, repeat, max } from 'lodash';
 import { arrayToMap, forceError } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
@@ -106,42 +106,41 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
 }
 
 interface EventNode {
-    event: HOIEvent;
+    type: 'event';
+    event: HOIEvent | string;
     loop: boolean;
-    children: (EventEdge | OptionNode)[];
+    children: (EventNode | OptionNode)[];
     relatedNamespace: string[];
     token: Token | undefined;
+    parents: (EventNode | undefined)[];
+    toScope?: string;
+    days?: number;
+    hours?: number;
+    randomDays?: number;
+    randomHours?: number;
 }
 
 interface OptionNode {
+    type: 'option';
     optionName: string;
-    children: EventEdge[];
+    children: EventNode[];
     file: string;
     token: Token | undefined;
-}
-
-interface EventEdge {
-    toScope: string;
-    toNode: EventNode | string;
-    days: number;
-    hours: number;
-    randomDays: number;
-    randomHours: number;
+    parent: EventNode | undefined;
 }
 
 function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces: string[]): EventNode[] {
-    const eventIdToNode: Record<string, EventNode> = {};
+    const evnetNodeCache: Record<string, EventNode> = {};
     const eventHasParent: Record<string, boolean> = {};
     const eventStack: HOIEvent[] = [];
 
     for (const event of Object.values(eventIdToEvent)) {
-        eventToNode(event, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
+        eventToNode(event, eventIdToEvent, eventStack, evnetNodeCache, eventHasParent);
     }
     
     const result: EventNode[] = [];
-    for (const event of Object.values(eventIdToEvent)) {
-        if (!eventHasParent[event.id]) {
-            const eventNode = eventIdToNode[event.id];
+    for (const eventNode of Object.values(evnetNodeCache)) {
+        if (typeof eventNode.event === 'object' && !eventHasParent[eventNode.event.id]) {
             if (eventNode.relatedNamespace.some(n => mainNamespaces.includes(n))) {
                 result.push(eventNode);
             }
@@ -155,31 +154,42 @@ function eventToNode(
     event: HOIEvent,
     eventIdToEvent: Record<string, HOIEvent>,
     eventStack: HOIEvent[],
-    eventIdToNode: Record<string, EventNode>,
-    eventHasParent: Record<string, boolean>
+    eventNodeCache: Record<string, EventNode>,
+    eventHasParent: Record<string, boolean>,
+    eventEdge?: ChildEvent,
 ): EventNode {
-    const cachedNode = eventIdToNode[event.id];
+    const cacheKey = event.id + (eventEdge ? `:${eventEdge.scopeName}:${eventEdge.days}:${eventEdge.hours}:${eventEdge.randomDays}:${eventEdge.randomHours}` : '');
+    const cachedNode = eventNodeCache[cacheKey];
     if (cachedNode) {
         return cachedNode;
     }
 
     eventStack.push(event);
     const eventNode: EventNode = {
+        type: 'event',
         event,
         children: [],
         relatedNamespace: [event.namespace],
         token: event.token,
         loop: false,
+        parents: [],
+        toScope: eventEdge?.scopeName,
+        days: eventEdge?.days,
+        hours: eventEdge?.hours,
+        randomDays: eventEdge?.randomDays,
+        randomHours: eventEdge?.randomHours,
     };
-    eventIdToNode[event.id] = eventNode;
+    eventNodeCache[cacheKey] = eventNode;
 
     for (const option of [event.immediate, ...event.options]) {
         const isImmediate = !option.name;
         const optionNode: OptionNode = {
+            type: 'option',
             optionName: option.name ?? ':immediate',
             children: [],
             file: event.file,
             token: option.token,
+            parent: eventNode,
         };
         if (!isImmediate) {
             eventNode.children.push(optionNode);
@@ -189,18 +199,31 @@ function eventToNode(
             const childEventItem = eventIdToEvent[childEvent.eventName];
             eventHasParent[childEvent.eventName] = true;
 
-            let toNode: EventNode | string;
+            let toNode: EventNode;
             if (!childEventItem) {
-                toNode = childEvent.eventName;
+                toNode = {
+                    type: 'event',
+                    event: childEvent.eventName,
+                    children: [],
+                    relatedNamespace: [event.namespace],
+                    token: undefined,
+                    parents: [],
+                    loop: false,
+                    toScope: childEvent.scopeName,
+                    days: childEvent.days,
+                    hours: childEvent.hours,
+                    randomDays: childEvent.randomDays,
+                    randomHours: childEvent.randomHours,
+                };
             } else if (eventStack.includes(childEventItem)) {
-                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
+                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, eventHasParent, childEvent);
                 toNode = {
                     ...toNode,
                     children: [],
                     loop: true,
                 };
             } else {
-                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventIdToNode, eventHasParent);
+                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, eventHasParent, childEvent);
                 toNode.relatedNamespace.forEach(n => {
                     if (!eventNode.relatedNamespace.includes(n)) {
                         eventNode.relatedNamespace.push(n);
@@ -208,19 +231,14 @@ function eventToNode(
                 });
             }
 
-            const eventEdge: EventEdge = {
-                toNode,
-                toScope: childEvent.scopeName,
-                days: childEvent.days,
-                hours: childEvent.hours,
-                randomDays: childEvent.randomDays,
-                randomHours: childEvent.randomHours,
-            };
+            if (typeof toNode === 'object') {
+                toNode.parents.push(eventNode);
+            }
             
             if (isImmediate) {
-                eventNode.children.push(eventEdge);
+                eventNode.children.push(toNode);
             } else {
-                optionNode.children.push(eventEdge);
+                optionNode.children.push(toNode);
             }
         }
     }
@@ -255,8 +273,8 @@ async function graphToGridBoxItems(
             fromStack: [],
             currentScopeName: 'EVENT_TARGET',
         };
-        const tree = await eventNodeToGridBoxItems(eventNode, undefined, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
-        idToContentMap[tree.id] = await makeEventNode(scopeContext.currentScopeName, eventNode, undefined, eventsLoaderResult, styleTable);
+        const tree = await eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
+        idToContentMap[tree.id] = await makeEventNode(scopeContext.currentScopeName, eventNode, eventsLoaderResult, styleTable);
         appendChildToTree(resultTree, tree);
     }
 
@@ -264,8 +282,7 @@ async function graphToGridBoxItems(
 }
 
 async function eventNodeToGridBoxItems(
-    node: EventNode | OptionNode | string,
-    edge: EventEdge | undefined,
+    node: EventNode | OptionNode,
     idToContentMap: Record<string, string>,
     scopeContext: ScopeContext,
     eventsLoaderResult: EventsLoaderResult,
@@ -279,28 +296,25 @@ async function eventNodeToGridBoxItems(
         ends: [],
     };
     const childIds: string[] = [];
-    if (typeof node === 'object') {
-        for (const child of node.children) {
-            let tree: GridBoxTree;
-            if ('toNode' in child) {
-                const toNode = child.toNode;
-                const nextScopeContext = nextScope(scopeContext, child.toScope);
-                tree = await eventNodeToGridBoxItems(toNode, child, idToContentMap, nextScopeContext, eventsLoaderResult, styleTable, idContainer);
-            } else {
-                tree = await eventNodeToGridBoxItems(child, undefined, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
-            }
-            childIds.push(tree.id);
-            appendChildToTree(result, tree, 1, true);
+    for (const child of node.children) {
+        let tree: GridBoxTree;
+        if (child.type === 'event') {
+            const nextScopeContext = nextScope(scopeContext, child.toScope ?? '{event_target}');
+            tree = await eventNodeToGridBoxItems(child, idToContentMap, nextScopeContext, eventsLoaderResult, styleTable, idContainer);
+        } else {
+            tree = await eventNodeToGridBoxItems(child, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
         }
+        childIds.push(tree.id);
+        appendChildToTree(result, tree, 1, true);
     }
 
-    const isOption = typeof node === 'object' && !('event' in node);
-    const id = (typeof node === 'object' ? ('event' in node ? node.event.id : node.optionName) : node) + ':' + (idContainer.id++);
+    const isOption = node.type === 'option';
+    const id = (isOption ? node.optionName : (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
     if (isOption) {
         idToContentMap[id] = await makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
     } else {
         idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? node as EventNode : node, edge, eventsLoaderResult, styleTable);
+            typeof node === 'object' ? node as EventNode : node, eventsLoaderResult, styleTable);
     }
 
     const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
@@ -373,8 +387,9 @@ const flagIcons: string[] = [
     'refresh',
 ];
 
-async function makeEventNode(scope: string, eventNode: EventNode | string, edge: EventEdge | undefined, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
-    if (typeof eventNode === 'object') {
+async function makeEventNode(scope: string, eventNode: EventNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+    const delayText = makeDelayString(eventNode.days, eventNode.hours, eventNode.randomDays, eventNode.randomHours);
+    if (typeof eventNode.event === 'object') {
         const { gfxFiles } = eventsLoaderResult;
         const event = eventNode.event;
         const eventId = event.id;
@@ -384,11 +399,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
             (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
             (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
-            (edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ? 
-                localize('eventtree.delay', 'Delay: ') + (edge.days > 0 || edge.hours > 0 ?
-                    `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
-                    `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`) + '\n' :
-                '') +
+            (delayText ? localize('eventtree.delay', 'Delay: ') + delayText + '\n' : '') +
             `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}` +
             `${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}`;
 
@@ -405,11 +416,7 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                     ''}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
-                ${edge !== undefined && (edge.days > 0 || edge.hours > 0 || edge.randomDays > 0 || edge.randomHours > 0) ?
-                    `<br/>${makeIcon('watch', styleTable)} ${edge.days > 0 || edge.hours > 0 ?
-                        `${edge.randomDays > 0 ? `${edge.days}-${edge.days + edge.randomDays}` : edge.days} ${localize('days', 'day(s)')}` :
-                        `${edge.randomHours > 0 ? `${edge.hours}-${edge.hours + edge.randomHours}` : edge.hours} ${localize('hours', 'hour(s)')}`}`
-                    : ''}
+                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${delayText}` : ''}
             </p>
             <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
                 ${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}
@@ -452,17 +459,17 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
             extraAttributes.join(' '));
 
     } else {
-        const eventId = eventNode;
+        const eventId = eventNode.event;
         const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
         let contentText = '';
         if (indexManager.isIndexEnabled('localisation')) {
             let localizedTitle = localisationIndex.getLocalisedText(eventId);
             if (localizedTitle !== eventId && localizedTitle) {
-                contentText += `<br/>${localizedTitle}`;
+                contentText = localizedTitle;
             } else {
                 localizedTitle = localisationIndex.getLocalisedText(`${eventId}.t`);
                 if (localizedTitle !== `${eventId}.t` && localizedTitle) {
-                    contentText += `<br/>${localizedTitle}`;
+                    contentText = localizedTitle;
                 }
             }
         }
@@ -474,8 +481,9 @@ async function makeEventNode(scope: string, eventNode: EventNode | string, edge:
                 ${eventId}
                 <br/>
                 ${makeIcon('symbol-namespace', styleTable)} ${scope}
-                ${contentText}
-            </p>`;
+                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${delayText}` : ''}
+            </p>
+            ${contentText ? `<p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">${contentText}</p>` : ''}`;
     
         return makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'));
     }
@@ -563,4 +571,17 @@ function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset:
         }
         target.ends[i + yOffset] = e + xOffset;
     });
+}
+
+function makeDelayString(days: number | undefined, hours: number | undefined, randomDays: number | undefined, randomHours: number | undefined): string | undefined {
+    days ??= 0;
+    hours ??= 0;
+    randomDays ??= 0;
+    randomHours ??= 0;
+    if (days === 0 && hours === 0 && randomDays === 0 && randomHours === 0) {
+        return undefined;
+    }
+    return (days > 0 || randomDays > 0 ?
+            `${randomDays > 0 ? `${days + Math.floor(hours / 24)}-${days + randomDays + Math.floor((hours + randomHours) / 24)}` : days} ${localize('days', 'day(s)')}` :
+            `${randomHours > 0 ? `${hours}-${hours + randomHours}` : hours} ${localize('hours', 'hour(s)')}`);
 }
