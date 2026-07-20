@@ -6,7 +6,7 @@ import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { ChildEvent, HOIEvent, HOIEventType } from './schema';
-import { flatten, repeat, max } from 'lodash';
+import { flatten, repeat, max, chain } from 'lodash';
 import { arrayToMap, forceError } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
@@ -70,9 +70,9 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     } as HOIPartial<GridBoxType>;
     
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
-    const graph = eventsToGraph(eventIdToEvent, eventsLoaderResult.mainNamespaces);
+    const eventNodes = eventsToNodes(eventIdToEvent, eventsLoaderResult.mainNamespaces);
     const idToContentMap: Record<string, string> = {};
-    const gridBoxItems = await graphToGridBoxItems(graph, idToContentMap, eventsLoaderResult, styleTable);
+    const gridBoxItems = await eventNodesToGridBoxItems(eventNodes, idToContentMap, eventsLoaderResult.gfxFiles, styleTable);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -112,8 +112,8 @@ interface EventNode {
     children: (EventNode | OptionNode)[];
     relatedNamespace: string[];
     token: Token | undefined;
-    parents: (EventNode | undefined)[];
-    toScope?: string;
+    parents: EventNode[];
+    toScope: string;
     days?: number;
     hours?: number;
     randomDays?: number;
@@ -129,21 +129,38 @@ interface OptionNode {
     parent: EventNode | undefined;
 }
 
-function eventsToGraph(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces: string[]): EventNode[] {
-    const evnetNodeCache: Record<string, EventNode> = {};
-    const eventHasParent: Record<string, boolean> = {};
+function eventsToNodes(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces: string[]): EventNode[] {
+    const eventNodeCache: Record<string, EventNode> = {};
     const eventStack: HOIEvent[] = [];
 
     for (const event of Object.values(eventIdToEvent)) {
-        eventToNode(event, eventIdToEvent, eventStack, evnetNodeCache, eventHasParent);
+        eventToNode(event, eventIdToEvent, eventStack, eventNodeCache);
     }
-    
-    const result: EventNode[] = [];
-    for (const eventNode of Object.values(evnetNodeCache)) {
-        if (typeof eventNode.event === 'object' && !eventHasParent[eventNode.event.id]) {
-            if (eventNode.relatedNamespace.some(n => mainNamespaces.includes(n))) {
-                result.push(eventNode);
+
+    let result: EventNode[] = Object.values(eventNodeCache);
+    let updated = true;
+    while (updated) {
+        updated = false;
+        const cacheValues = result;
+        result = [];
+        for (const node of cacheValues) {
+            // Remove duplicate: a node mustn't be root if it there's a same event has parents.
+            // Remove unrelated: a node mustn't be root if it doesn't have any related namespace in mainNamespaces.
+            if (node.parents.length === 0 &&
+                (node.relatedNamespace.every(n => !mainNamespaces.includes(n) || cacheValues.some(n => n.event === node.event && n.parents.length > 0)))) {
+                for (const child of node.children) {
+                    if (child.type === 'event') {
+                        child.parents = child.parents.filter(p => p !== node);
+                    } else {
+                        for (const grandchild of child.children) {
+                            grandchild.parents = grandchild.parents.filter(p => p !== node);
+                        }
+                    }
+                }
+                updated = true;
+                continue;
             }
+            result.push(node);
         }
     }
 
@@ -155,7 +172,6 @@ function eventToNode(
     eventIdToEvent: Record<string, HOIEvent>,
     eventStack: HOIEvent[],
     eventNodeCache: Record<string, EventNode>,
-    eventHasParent: Record<string, boolean>,
     eventEdge?: ChildEvent,
 ): EventNode {
     const cacheKey = event.id + (eventEdge ? `:${eventEdge.scopeName}:${eventEdge.days}:${eventEdge.hours}:${eventEdge.randomDays}:${eventEdge.randomHours}` : '');
@@ -173,7 +189,7 @@ function eventToNode(
         token: event.token,
         loop: false,
         parents: [],
-        toScope: eventEdge?.scopeName,
+        toScope: eventEdge?.scopeName ?? 'EVENT_TARGET',
         days: eventEdge?.days,
         hours: eventEdge?.hours,
         randomDays: eventEdge?.randomDays,
@@ -197,7 +213,6 @@ function eventToNode(
 
         for (const childEvent of option.childEvents) {
             const childEventItem = eventIdToEvent[childEvent.eventName];
-            eventHasParent[childEvent.eventName] = true;
 
             let toNode: EventNode;
             if (!childEventItem) {
@@ -216,14 +231,15 @@ function eventToNode(
                     randomHours: childEvent.randomHours,
                 };
             } else if (eventStack.includes(childEventItem)) {
-                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, eventHasParent, childEvent);
+                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, childEvent);
                 toNode = {
                     ...toNode,
+                    parents: [...toNode.parents],
                     children: [],
                     loop: true,
                 };
             } else {
-                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, eventHasParent, childEvent);
+                toNode = eventToNode(childEventItem, eventIdToEvent, eventStack, eventNodeCache, childEvent);
                 toNode.relatedNamespace.forEach(n => {
                     if (!eventNode.relatedNamespace.includes(n)) {
                         eventNode.relatedNamespace.push(n);
@@ -250,59 +266,240 @@ function eventToNode(
 interface GridBoxTree {
     id: string;
     items: GridBoxItem[];
-    starts: number[];
-    ends: number[];
+    ranges: { start: number; end: number }[];
+    defaultRange?: { start: number; end: number };
+    entryNode?: EventNode | OptionNode;
+    outputNodes: GridBoxTreeOutputNode[];
 }
 
-async function graphToGridBoxItems(
-    graph: EventNode[],
+interface GridBoxTreeOutputNode {
+    node: EventNode;
+    fromItem: GridBoxItem;
+    x: number;
+}
+
+async function eventNodesToGridBoxItems(
+    nodes: EventNode[],
     idToContentMap: Record<string, string>,
-    eventsLoaderResult: EventsLoaderResult,
+    gfxFiles: string[],
     styleTable: StyleTable
 ): Promise<GridBoxItem[]> {
+    const idContainer = { id: 0 };
+    const entryNodes = findEntryNodes(nodes);
+    const treeMap = new Map<EventNode, GridBoxTree>();
+
+    for (const entryNode of entryNodes) {
+        const scopeContext: ScopeContext = {
+            fromStack: [],
+            currentScopeName: entryNode.toScope ?? 'EVENT_TARGET',
+        };
+        const tree = await eventNodeToGridBoxTree(entryNode, entryNodes, idToContentMap, scopeContext, gfxFiles, styleTable, idContainer);
+        treeMap.set(entryNode, tree);
+    }
+
+    const subGraphs = findSubGraphs(entryNodes, treeMap);
+
     const resultTree: GridBoxTree = {
         id: '',
         items: [],
-        starts: [],
-        ends: [],
+        ranges: [],
+        outputNodes: [],
     };
-    const idContainer = { id: 0 };
+    let resultWidth = 0;
+    let intermediateItemIndex = 0;
+    for (const subGraph of subGraphs) {
+        const parentCountMap = new Map<EventNode, number>();
+        const queue: { entryNode: EventNode; depth: number; }[] = [];
+        for (const entryNode of subGraph) {
+            parentCountMap.set(entryNode, entryNode.parents.length);
+            if (entryNode.parents.length === 0) {
+                queue.push({ entryNode, depth: 0 });
+            }
+        }
 
-    for (const eventNode of graph) {
-        const scopeContext: ScopeContext = {
-            fromStack: [],
-            currentScopeName: 'EVENT_TARGET',
-        };
-        const tree = await eventNodeToGridBoxItems(eventNode, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
-        idToContentMap[tree.id] = await makeEventNode(scopeContext.currentScopeName, eventNode, eventsLoaderResult, styleTable);
-        appendChildToTree(resultTree, tree);
+        const beginResultWidth = resultWidth;
+        let currentDepth = 0;
+        let yOffset = 0;
+        let parentYOffset = 0;
+        let nextDepthLinks: number[] = [];
+        while (queue.length > 0) {
+            const { entryNode, depth } = queue[0];
+            if (depth !== currentDepth) {
+                resultWidth = max([resultWidth, ...resultTree.ranges.map(r => r.end), ...(resultTree.defaultRange ? [resultTree.defaultRange.end] : [])]) ?? 0;
+                currentDepth = depth;
+                resultTree.defaultRange = { start: 0, end: beginResultWidth };
+                yOffset = resultTree.ranges.length + queue.length - 1;
+                parentYOffset = resultTree.ranges.length - 1;
+                nextDepthLinks = resultTree.outputNodes.filter(o => queue.every(q => q.entryNode !== o.node)).map(o => o.x).sort();
+                // resultTree.defaultRange.end = (max([beginResultWidth - 1, ...nextDepthLinks]) ?? beginResultWidth - 1) + 1;
+            }
+
+            queue.shift();
+
+            const tree = treeMap.get(entryNode)!;
+            appendChildToTree(resultTree, tree, yOffset);
+
+            const relatedOutputNodes = resultTree.outputNodes.filter(o => o.node === entryNode);
+            // Remove fullfilled output nodes
+            resultTree.outputNodes = resultTree.outputNodes.filter(o => o.node !== entryNode);
+            for (const parentOutput of relatedOutputNodes) {
+                let itemId: string;
+                if (parentOutput.fromItem.gridX === parentOutput.x && parentOutput.fromItem.gridY === parentYOffset) {
+                    itemId = tree.id;
+                } else {
+                    const intermediateItem: GridBoxItem = {
+                        id: 'intermediate:' + (intermediateItemIndex++),
+                        gridX: parentOutput.x,
+                        gridY: parentYOffset,
+                        connections: [{
+                            target: tree.id,
+                            targetType: 'child',
+                            style: '1px solid #88aaff'
+                        }],
+                    };
+                    idToContentMap[intermediateItem.id] = `${intermediateItem.id} (${intermediateItem.gridX}, ${intermediateItem.gridY})`;
+                    resultTree.items.push(intermediateItem);
+                    itemId = intermediateItem.id;
+                }
+                parentOutput.fromItem.connections.push({
+                    target: itemId,
+                    targetType: 'child',
+                    style: '1px solid #88aaff'
+                });
+            }
+            parentYOffset++;
+
+            for (const { node: outputNode } of tree.outputNodes) {
+                const count = parentCountMap.get(outputNode) ?? 0;
+                if (count > 0) {
+                    parentCountMap.set(outputNode, count - 1);
+                    if (count === 1) {
+                        queue.push({ entryNode: outputNode, depth: depth + 1 });
+                    }
+                }
+            }
+        }
+
+        resultWidth = max([resultWidth, ...resultTree.ranges.map(r => r.end), ...(resultTree.defaultRange ? [resultTree.defaultRange.end] : [])]) ?? 0;
+        resultTree.defaultRange = { start: 0, end: resultWidth };
+        resultTree.ranges = [];
     }
 
     return resultTree.items;
 }
 
-async function eventNodeToGridBoxItems(
+function findEntryNodes(nodes: EventNode[]): Set<EventNode> {
+    const entryNodes = new Set(nodes.filter(node => node.parents.length !== 1));
+
+    let deletedAnyNode = true;
+    while (deletedAnyNode) {
+        deletedAnyNode = false;
+        for (const eventNode of [...entryNodes]) {
+            if (eventNode.parents.length === 0) {
+                continue;
+            }
+
+            if (eventNode.toScope.match(/^from(?:\.from)*$/) ||
+                eventNode.toScope.includes('{event_target}') ||
+                !verifyEntryNode(eventNode, entryNodes, { fromStack: [], currentScopeName: eventNode.toScope })) {
+                entryNodes.delete(eventNode);
+                deletedAnyNode = true;
+            }
+        }
+    }
+
+    return entryNodes;
+}
+
+function verifyEntryNode(node: EventNode, entryNodes: Set<EventNode>, scopeContext: ScopeContext): boolean {
+    for (const child of node.children.flatMap(c => c.type === 'option' ? c.children : [c])) {
+        if (entryNodes.has(child)) {
+            continue;
+        }
+        const nextScopeContext = nextScope(scopeContext, child.toScope);
+        if (nextScopeContext.currentScopeName.endsWith('.FROM')) {
+            return false;
+        }
+        if (!verifyEntryNode(child, entryNodes, nextScopeContext)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function findSubGraphs(entryNodes: Set<EventNode>, treeMap: Map<EventNode, GridBoxTree>): Set<EventNode>[] {
+    const parentEntryNodeMap = new Map<EventNode, Set<EventNode>>();
+    for (const entryNode of entryNodes) {
+        for (const { node: outputNode } of treeMap.get(entryNode)!.outputNodes) {
+            let parentEntryNodes = parentEntryNodeMap.get(outputNode);
+            if (!parentEntryNodes) {
+                parentEntryNodes = new Set();
+                parentEntryNodeMap.set(outputNode, parentEntryNodes);
+            }
+            parentEntryNodes.add(entryNode);
+        }
+    }
+    
+    const visited = new Set<EventNode>();
+    const result: Set<EventNode>[] = [];
+    for (const entryNode of entryNodes) {
+        if (visited.has(entryNode)) {
+            continue;
+        }
+        const subGraph = new Set<EventNode>();
+        const stack = [entryNode];
+        while (stack.length > 0) {
+            const node = stack.pop()!;
+            if (visited.has(node)) {
+                continue;
+            }
+            visited.add(node);
+            subGraph.add(node);
+            const parentEntryNodes = parentEntryNodeMap.get(node);
+            if (parentEntryNodes) {
+                for (const parentEntryNode of parentEntryNodes) {
+                    stack.push(parentEntryNode);
+                }
+            }
+            for (const { node: outputNode } of treeMap.get(node)!.outputNodes) {
+                stack.push(outputNode);
+            }
+        }
+        result.push(subGraph);
+    }
+
+    return result;
+}
+
+async function eventNodeToGridBoxTree(
     node: EventNode | OptionNode,
+    entryNodes: Set<EventNode>,
     idToContentMap: Record<string, string>,
     scopeContext: ScopeContext,
-    eventsLoaderResult: EventsLoaderResult,
+    gfxFiles: string[],
     styleTable: StyleTable,
     idContainer: { id: number },
 ): Promise<GridBoxTree> {
     const result: GridBoxTree = {
         id: '',
         items: [],
-        starts: [],
-        ends: [],
+        ranges: [{ start: 0, end: 0 }],
+        entryNode: node,
+        outputNodes: [],
     };
+    const item: GridBoxItem = { id: '', gridX: 0, gridY: 0, connections: [] };
     const childIds: string[] = [];
     for (const child of node.children) {
         let tree: GridBoxTree;
         if (child.type === 'event') {
-            const nextScopeContext = nextScope(scopeContext, child.toScope ?? '{event_target}');
-            tree = await eventNodeToGridBoxItems(child, idToContentMap, nextScopeContext, eventsLoaderResult, styleTable, idContainer);
+            if (entryNodes.has(child)) {
+                appendOutputNodeToTree(result, item, child, 1);
+                continue;
+            }
+            const nextScopeContext = nextScope(scopeContext, child.toScope);
+            tree = await eventNodeToGridBoxTree(child, entryNodes, idToContentMap, nextScopeContext, gfxFiles, styleTable, idContainer);
         } else {
-            tree = await eventNodeToGridBoxItems(child, idToContentMap, scopeContext, eventsLoaderResult, styleTable, idContainer);
+            tree = await eventNodeToGridBoxTree(child, entryNodes, idToContentMap, scopeContext, gfxFiles, styleTable, idContainer);
         }
         childIds.push(tree.id);
         appendChildToTree(result, tree, 1, true);
@@ -311,37 +508,33 @@ async function eventNodeToGridBoxItems(
     const isOption = node.type === 'option';
     const id = (isOption ? node.optionName : (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
     if (isOption) {
-        idToContentMap[id] = await makeOptionNode(node as OptionNode, eventsLoaderResult, styleTable);
+        idToContentMap[id] = await makeOptionNode(node as OptionNode, styleTable);
     } else {
         idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? node as EventNode : node, eventsLoaderResult, styleTable);
+            typeof node === 'object' ? node as EventNode : node, gfxFiles, styleTable);
     }
 
-    const x = result.starts.length < 2 ? 0 : Math.floor((result.ends[1] + result.starts[1] - 1) / 2);
+    const x = result.ranges.length < 2 ? 0 : Math.floor((result.ranges[1].end + result.ranges[1].start - 1) / 2);
     result.id = id;
-    result.items.push({
-        id,
-        gridX: x,
-        gridY: 0,
-        connections: childIds.map<GridBoxConnection>(id => ({
-            target: id,
-            targetType: 'child',
-            style: '1px solid #88aaff'
-        })),
-    });
+    item.id = id;
+    item.gridX = x;
+    item.connections = childIds.map<GridBoxConnection>(id => ({
+        target: id,
+        targetType: 'child',
+        style: '1px solid #88aaff'
+    }));
+    result.items.push(item);
 
-    if (result.starts.length === 0) {
-        result.starts.push(0);
-        result.ends.push(1);
+    if (result.ranges[0].start === result.ranges[0].end) {
+        result.ranges[0].start = x;
+        result.ranges[0].end = x + 1;
     } else {
-        if (result.starts[0] === result.ends[0]) {
-            result.starts[0] = x;
-            result.ends[0] = x + 1;
-        } else {
-            result.starts[0] = Math.min(x, result.starts[0] ?? 0);
-            result.ends[0] = Math.max(x + 1, result.ends[0] ?? 0);
-        }
+        result.ranges[0].start = Math.min(x, result.ranges[0].start ?? 0);
+        result.ranges[0].end = Math.max(x + 1, result.ranges[0].end ?? 0);
     }
+
+    // DEBUG
+    // idToContentMap[id] += JSON.stringify(result.ranges) + "<br/>" + JSON.stringify(result.defaultRange);
 
     return result;
 }
@@ -387,10 +580,9 @@ const flagIcons: string[] = [
     'refresh',
 ];
 
-async function makeEventNode(scope: string, eventNode: EventNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: string[], styleTable: StyleTable): Promise<string> {
     const delayText = makeDelayString(eventNode.days, eventNode.hours, eventNode.randomDays, eventNode.randomHours);
     if (typeof eventNode.event === 'object') {
-        const { gfxFiles } = eventsLoaderResult;
         const event = eventNode.event;
         const eventId = event.id;
         const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
@@ -493,7 +685,7 @@ function makeIcon(type: string, styleTable: StyleTable): string {
     return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
 }
 
-async function makeOptionNode(option: OptionNode, eventsLoaderResult: EventsLoaderResult, styleTable: StyleTable): Promise<string> {
+async function makeOptionNode(option: OptionNode, styleTable: StyleTable): Promise<string> {
     let content = option.optionName;
     let title = option.optionName;
     if (indexManager.isIndexEnabled('localisation')){
@@ -544,32 +736,92 @@ function makeNode(content: string, title: string, styleTable: StyleTable, extraC
     </div>`;
 }
 
+function treeRange(tree: GridBoxTree, y: number): { start: number; end: number; } | undefined {
+    return tree.ranges[y] ?? tree.defaultRange;
+}
+
 function appendChildToTree(target: GridBoxTree, nextChild: GridBoxTree, yOffset: number = 0, canBeLessThanZero: boolean = false): void {
-    const minXOffset = target.starts.length === 0 ? -(max(nextChild.starts) ?? 0) : -Infinity;
-    const xOffset = Math.max(minXOffset, max(nextChild.starts.map((s, i) => {
+    const minXOffset = target.ranges.every((_, i) => i < yOffset) && target.defaultRange === undefined ?
+        -(max([...nextChild.ranges.map(r => r.start), ...(nextChild.defaultRange !== undefined ? [nextChild.defaultRange.start] : [])]) ?? 0) :
+        -Infinity;
+    let xOffset = minXOffset;
+    for (let i = 0, j = yOffset; i < nextChild.ranges.length + 1 || j < target.ranges.length; i++, j++) {
+        const r = treeRange(nextChild, i);
+        if (!r) {
+            continue;
+        }
+        const s = r.start;
+        const targetRange = treeRange(target, j);
+        let newOffset: number;
         if (!canBeLessThanZero) {
-            const e = target.ends[i + yOffset] ?? 0;
-            return e - s;
+            const e = targetRange?.end ?? 0;
+            newOffset = e - s;
         } else {
-            if (target.ends[i + yOffset] === target.starts[i + yOffset]) {
-                return -Infinity;
+            if (!targetRange || targetRange.end === targetRange.start) {
+                newOffset = -Infinity;
             } else {
-                return target.ends[i + yOffset] - s;
+                newOffset = targetRange.end - s;
             }
         }
-    })) ?? 0);
-    target.items.push(...nextChild.items.map(v => ({
+        if (newOffset > xOffset) {
+            xOffset = newOffset;
+        }
+    }
+    if (xOffset === -Infinity) {
+        xOffset = 0;
+    }
+
+    const movedChildItems = nextChild.items.map(v => ({
         ...v,
         gridX: v.gridX + xOffset,
         gridY: v.gridY + yOffset,
+    }));
+    target.items.push(...movedChildItems);
+    target.outputNodes.push(...nextChild.outputNodes.map(v => ({
+        node: v.node,
+        x: v.x + xOffset,
+        fromItem: movedChildItems.find(i => i.id === v.fromItem.id)!,
     })));
-    nextChild.ends.forEach((e, i) => {
-        if (target.starts[i + yOffset] === target.ends[i + yOffset]) {
-            target.starts[i + yOffset] = (nextChild.starts[i] ?? 0) + xOffset;
-        } else {
-            target.starts[i + yOffset] = target.starts[i + yOffset] ?? 0;
+    for (let i = 0, j = yOffset; i < nextChild.ranges.length || j < target.ranges.length; i++, j++) {
+        const r = treeRange(nextChild, i);
+        if (!r) {
+            continue;
         }
-        target.ends[i + yOffset] = e + xOffset;
+        const e = r.end;
+        const targetRange = treeRange(target, j);
+        if (!targetRange || targetRange?.start === targetRange?.end) {
+            target.ranges[j] = { start: (nextChild.ranges[i]?.start ?? 0) + xOffset, end: e + xOffset };
+        } else {
+            target.ranges[j] = { start: targetRange.start, end: Math.max(targetRange.end, e + xOffset) };
+        }
+    }
+    if (nextChild.defaultRange) {
+        if (target.defaultRange) {
+            target.defaultRange.start = Math.min(target.defaultRange.start, nextChild.defaultRange.start + xOffset);
+            target.defaultRange.end = Math.max(target.defaultRange.end, nextChild.defaultRange.end + xOffset);
+        } else {
+            target.defaultRange = { start: nextChild.defaultRange.start + xOffset, end: nextChild.defaultRange.end + xOffset };
+        }
+    }
+}
+
+function appendOutputNodeToTree(target: GridBoxTree, item: GridBoxItem, node: EventNode, yOffset: number = 0): void {
+    const x = max([...target.ranges.slice(yOffset), ...(target.defaultRange ? [target.defaultRange] : [])].map(r => r.end)) ?? 0;
+    for (let i = yOffset; i < target.ranges.length; i++) {
+        const range = target.ranges[i];
+        range.start = Math.min(range.start, x);
+        range.end = Math.max(range.end, x + 1);
+    }
+    if (target.defaultRange) {
+        target.defaultRange.start = Math.min(target.defaultRange.start, x);
+        target.defaultRange.end = Math.max(target.defaultRange.end, x + 1);
+    } else {
+        target.defaultRange = { start: x, end: x + 1 };
+    }
+    target.outputNodes.push({
+        node,
+        x,
+        fromItem: item,
     });
 }
 
@@ -585,3 +837,4 @@ function makeDelayString(days: number | undefined, hours: number | undefined, ra
             `${randomDays > 0 ? `${days + Math.floor(hours / 24)}-${days + randomDays + Math.floor((hours + randomHours) / 24)}` : days} ${localize('days', 'day(s)')}` :
             `${randomHours > 0 ? `${hours}-${hours + randomHours}` : hours} ${localize('hours', 'hour(s)')}`);
 }
+
