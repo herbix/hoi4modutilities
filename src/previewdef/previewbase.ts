@@ -40,11 +40,15 @@ export abstract class PreviewBase {
 
         this.lastDocumentChangeTimestamp = timestamp;
 
+        const getContentStartTime = Date.now();
         try {
             this.panel.webview.html = await this.getContent(document);
         } catch(e) {
             error(e);
         }
+
+        const timeElapsed = Date.now() - getContentStartTime;
+        debug(`Preview base (${this.uri.toString()}) content loaded in ${timeElapsed} ms.`);
 
         this.pendingChangeDocument = false;
     }

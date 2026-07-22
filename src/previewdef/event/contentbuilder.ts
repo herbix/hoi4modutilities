@@ -6,7 +6,7 @@ import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { StyleTable, normalizeForStyle } from '../../util/styletable';
 import { ChildEvent, HOIEvent, HOIEventType } from './schema';
-import { flatten, repeat, max, chain, min, uniqBy } from 'lodash';
+import { flatten, repeat, max, chain, min, uniqBy, maxBy, minBy } from 'lodash';
 import { arrayToMap, forceError } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { GridBoxType } from '../../hoiformat/gui';
@@ -16,6 +16,7 @@ import { getSpriteByGfxName } from '../../util/image/imagecache';
 import { featureFlagsAsScript } from "../../util/featureflags";
 import { indexManager } from '../../indexing/indexmanager';
 import { localisationIndex } from '../../indexing/localisationindex';
+import { contextContainer } from '../../context';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -29,6 +30,17 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
         const styleTable = new StyleTable();
         const jsCodes: string[] = [];
         const baseContent = await renderEvents(loadResult.result, styleTable, jsCodes);
+
+        styleTable.style('jump-item', () => `
+            pointer-events: none;
+            position: absolute;
+            width: 21px;
+            height: 21px;
+            top: calc(100% - 10px);
+            left: calc(50% - 10px);
+            background-color: var(--vscode-editor-background);
+            background-image: url("${contextContainer.current ? webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/jump.png')) : ''}");
+        `);
 
         return html(
             webview,
@@ -50,7 +62,6 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
         const baseContent = `${localize('error', 'Error')}: <br/>  <pre>${htmlEscape(forceError(e).toString())}</pre>`;
         return html(webview, baseContent, [ setPreviewFileUriScript ], []);
     }
-
 }
 
 const leftPaddingBase = 50;
@@ -306,6 +317,8 @@ async function eventNodesToGridBoxItems(
     styleTable: StyleTable
 ): Promise<GridBoxItem[]> {
     const idContainer = { id: 0 };
+
+    // entry nodes are start nodes of part of graphs in whose all nodes have only one parent node.
     const entryNodes = findEntryNodes(nodes);
     const treeMap = new Map<EventNode, GridBoxTree>();
 
@@ -318,6 +331,7 @@ async function eventNodesToGridBoxItems(
         treeMap.set(entryNode, tree);
     }
 
+    // sub graphs contains multiple entry nodes that don't connect to other sub graphs, but may connect to each other.
     const subGraphs = findSubGraphs(entryNodes, treeMap);
 
     const resultTree: GridBoxTree = {
@@ -326,6 +340,7 @@ async function eventNodesToGridBoxItems(
         ranges: [],
         outputNodes: [],
     };
+
     let resultWidth = 0;
     let intermediateItemIndex = 0;
     for (const subGraph of subGraphs) {
@@ -338,6 +353,7 @@ async function eventNodesToGridBoxItems(
             }
         }
 
+        // level order traversal entry nodes
         const beginResultWidth = resultWidth;
         let currentDepth = 0;
         let yOffset = 0;
@@ -345,21 +361,23 @@ async function eventNodesToGridBoxItems(
         let nextDepthLinks: number[] = [];
         let nextDepthLinksIndex = 0;
         let lastDepthOutputNodes: GridBoxTreeOutputNode[] = [];
-        let simpleLayer = false;
+        let simpleLevel = false;
         while (queue.length > 0) {
             if (queue[0].depth !== currentDepth) {
-                resultWidth = max([resultWidth, ...resultTree.ranges.map(r => r.end), ...(resultTree.defaultRange ? [resultTree.defaultRange.end] : [])]) ?? 0;
+                resultWidth = Math.max(treeMaxX(resultTree), resultWidth);
                 currentDepth = queue[0].depth;
                 resultTree.defaultRange = { start: 0, end: beginResultWidth };
                 parentYOffset = max([resultTree.ranges.length - 1, ...resultTree.outputNodes.map(o => o.y)]) ?? resultTree.ranges.length;
-                simpleLayer = uniqBy(resultTree.outputNodes, o => o.fromItem).length === 1 || uniqBy(resultTree.outputNodes, o => o.node).length === 1;
-                if (parentYOffset === resultTree.ranges.length && simpleLayer) {
+                simpleLevel = uniqBy(resultTree.outputNodes, o => o.fromItem).length === 1 || uniqBy(resultTree.outputNodes, o => o.node).length === 1;
+                if (parentYOffset === resultTree.ranges.length && simpleLevel) {
                     parentYOffset--;
                 }
                 yOffset = parentYOffset + queue.length;
                 nextDepthLinks = resultTree.outputNodes.filter(o => queue.every(q => q.entryNode !== o.node)).map(o => o.x).sort((a, b) => a - b);
                 nextDepthLinksIndex = 0;
                 lastDepthOutputNodes = [...resultTree.outputNodes];
+
+                // Calculate prefered center x for each entry node in queue, and sort by that value.
                 for (const queueItem of queue) {
                     const entryNode = queueItem.entryNode;
                     const relatedOutputNodes = resultTree.outputNodes.filter(o => o.node === entryNode).sort((a, b) => a.x - b.x);
@@ -375,15 +393,18 @@ async function eventNodesToGridBoxItems(
             const { entryNode, depth, preferedCenterX, relatedOutputNodes } = queue.shift()!;
 
             const tree = treeMap.get(entryNode)!;
-            let xOffset = calculateAppendChildToTreeXOffset(resultTree, tree, yOffset, true);
+            let xOffset = calculateAppendChildToTreeXOffset(resultTree, tree, yOffset, false);
             const treeMinXValue = treeMinX(tree);
             const treeMaxXValue = treeMaxX(tree);
             const treeInputX = treeRange(tree, 0)?.start ?? 0;
-            const avoidXs = simpleLayer || (relatedOutputNodes?.length ?? 0) <= 2 ?
+            const avoidXs = simpleLevel || (relatedOutputNodes?.length ?? 0) <= 2 ?
                 lastDepthOutputNodes.filter(o => o.node !== entryNode).map(o => o.x) :
-                lastDepthOutputNodes.map(o => o.x);
+                lastDepthOutputNodes.filter(o => o.x !== relatedOutputNodes![0].x && o.x !== relatedOutputNodes![relatedOutputNodes!.length - 1].x).map(o => o.x);
 
-            // Adjest to prefered center x
+            // Adjest to prefered center x            
+            while (nextDepthLinksIndex < nextDepthLinks.length && nextDepthLinks[nextDepthLinksIndex] < treeMinXValue + xOffset) {
+                nextDepthLinksIndex++;
+            }
             let originalXOffset = xOffset;
             if (treeInputX + xOffset < preferedCenterX) {
                 xOffset = preferedCenterX - treeInputX;
@@ -398,6 +419,7 @@ async function eventNodesToGridBoxItems(
                 }
             }
 
+            // Adjust to valid xOffset
             do {
                 originalXOffset = xOffset;
                 // input node shouldn't be below a line to other input nodes on same depth
@@ -423,9 +445,11 @@ async function eventNodesToGridBoxItems(
             resultTree.outputNodes = resultTree.outputNodes.filter(o => o.node !== entryNode);
             for (const parentOutput of (relatedOutputNodes ?? [])) {
                 let itemId: string;
-                if (parentOutput.fromItem.gridX === parentOutput.x && parentOutput.fromItem.gridY === parentYOffset) {
+                if ((parentOutput.fromItem.gridX === parentOutput.x && parentOutput.fromItem.gridY === parentYOffset) ||
+                    parentOutput.x === treeInputX + xOffset) {
                     itemId = tree.id;
                 } else {
+                    // Add intermediate node to control connection line position
                     const intermediateItem: GridBoxItem = {
                         id: 'intermediate:' + (intermediateItemIndex++),
                         gridX: parentOutput.x,
@@ -465,6 +489,8 @@ async function eventNodesToGridBoxItems(
         resultTree.defaultRange = { start: 0, end: resultWidth };
         resultTree.ranges = [];
     }
+
+    refineTreeItemPosition(resultTree.items, idToContentMap, styleTable);
 
     return resultTree.items;
 }
@@ -552,6 +578,240 @@ function findSubGraphs(entryNodes: Set<EventNode>, treeMap: Map<EventNode, GridB
     return result;
 }
 
+interface MatrixCell {
+    items: GridBoxItem[];
+    hConnections: { from: GridBoxItem, connection: GridBoxConnection }[];
+    vConnections: { from: GridBoxItem, connection: GridBoxConnection }[];
+    x: number;
+    y: number;
+}
+
+function refineTreeItemPosition(items: GridBoxItem[], idToContentMap: Record<string, string>, styleTable: StyleTable): void {
+    const itemMap = arrayToMap(items, 'id');
+    const itemParents = new Map<GridBoxItem, GridBoxItem[]>();
+    // (y, x) -> cell
+    const matrix = new Map<number, Map<number, MatrixCell>>();
+    for (const item of items) {
+        addItemToMatrix(matrix, item, itemMap);
+        for (const connection of item.connections) {
+            // targetType is always child
+            const targetItem = itemMap[connection.target];
+            if (!targetItem) {
+                continue;
+            }
+            itemParents.get(targetItem)?.push(item) ?? itemParents.set(targetItem, [item]);
+        }
+    }
+
+    let itemUpdated = true;
+    while (itemUpdated) {
+        itemUpdated = false;
+
+        forItem: for (const item of items) {
+            let minConnectionX = item.gridX;
+            let maxConnectionX = item.gridX;
+            for (const connection of item.connections) {
+                const targetItem = itemMap[connection.target];
+                if (!targetItem) {
+                    continue;
+                }
+                minConnectionX = Math.min(minConnectionX, targetItem.gridX);
+                maxConnectionX = Math.max(maxConnectionX, targetItem.gridX);
+                if (targetItem.gridX !== item.gridX) {
+                    const cell = getCell(matrix, targetItem.gridX, item.gridY);
+                    if (cell && cell.hConnections.some(c => c.from !== item)) {
+                        continue forItem;
+                    }
+                }
+            }
+
+            const parents = itemParents.get(item);
+            if (parents && parents.length > 0) {
+                const maxParentY = maxBy(parents, p => p.gridY)!.gridY;
+
+                forIYPos: for (let i = item.id.startsWith('intermediate:') && parents.length === 1 && item.gridX === parents[0].gridX ? maxParentY : maxParentY + 1;
+                    i < item.gridY;
+                    i++) {
+
+                    if (item.connections.length > 0) {
+                        for (let j = minConnectionX; j <= maxConnectionX; j++) {
+                            const cell = getCell(matrix, j, i);
+                            if (cell &&
+                                cell.hConnections.some(c => !parents.includes(c.from) && !item.connections.some(c1 => c1.target === c.connection.target))) {
+                                continue forIYPos;
+                            }
+                        }
+                    }
+
+                    for (let j = i; j < item.gridY; j++) {
+                        for (const connection of item.connections) {
+                            const targetItem = itemMap[connection.target];
+                            if (!targetItem) {
+                                continue;
+                            }
+
+                            const cell = getCell(matrix, targetItem.gridX, j);
+                            if (cell && ((j > i && cell.items.length > 0) ||
+                                cell.vConnections.some(c => c.connection.target !== connection.target && c.connection.target !== item.id) ||
+                                cell.hConnections.some(c => c.connection.target !== connection.target))) {
+                                continue forIYPos;
+                            }
+                        }
+                    }
+
+                    const oldY = item.gridY;
+                    removeItemFromMatrix(matrix, item);
+                    item.gridY = i;
+                    addItemToMatrix(matrix, item, itemMap);
+                    addItemToMatrixFromParents(matrix, item, parents);
+                    itemUpdated = true;
+                    // DEBUG
+                    // idToContentMap[item.id] += `<br/><span style="color:red;">[${item.id}] moved ${oldY - i} up</span>`;
+                    break;
+                }
+
+                const nonPointedParents = parents.filter(p => p.gridX !== item.gridX);
+                if (nonPointedParents.length > 1 && minBy(nonPointedParents, p => p.gridY)!.gridY === maxParentY) {
+                    const maxParentParentY = maxBy(nonPointedParents.flatMap(p => itemParents.get(p) ?? []), p => p.gridY)?.gridY;
+                    const minParentX = minBy([item, ...parents], p => p.gridX)!.gridX;
+                    const maxParentX = maxBy([item, ...parents], p => p.gridX)!.gridX;
+                    if (maxParentParentY !== undefined && maxParentParentY < maxParentY) {
+                        const parentsWithMaxParentParentY = nonPointedParents.filter(p => (itemParents.get(p) ?? []).some(pp => pp.gridY === maxParentParentY));
+                        const allAreIntermediate = parentsWithMaxParentParentY
+                            .every(p => {
+                                const pp = itemParents.get(p);
+                                return p.id.startsWith('intermediate:') && pp?.length === 1 && p.gridX === pp[0].gridX;
+                            });
+                        forIYPos2: for (let i = allAreIntermediate ? maxParentParentY : maxParentParentY + 1; i < maxParentY; i++) {
+                            for (let j = minParentX; j <= maxParentX; j++) {
+                                const cell = getCell(matrix, j, i);
+                                if (cell && cell.hConnections.some(c => !parents.includes(c.from) && c.connection.target !== item.id)) {
+                                    continue forIYPos2;
+                                }
+                            }
+
+                            for (let j = i; j < item.gridY; j++) {
+                                const cell = getCell(matrix, item.gridX, j);
+                                if (cell && ((j > i && cell.items.some(i => !parents.includes(i))) ||
+                                    cell.vConnections.some(c => c.connection.target !== item.id && parents.every(p => c.connection.target !== p.id)))) {
+                                    continue forIYPos2;
+                                }
+                            }
+
+                            for (const parent of nonPointedParents) {
+                                const oldY = parent.gridY;
+                                removeItemFromMatrix(matrix, parent);
+                                parent.gridY = i;
+                                addItemToMatrix(matrix, parent, itemMap);
+                                addItemToMatrixFromParents(matrix, parent, itemParents.get(parent) ?? []);
+                                itemUpdated = true;
+                                // DEBUG
+                                // idToContentMap[parent.id] += `<br/><span style="color:red;">[${parent.id}] moved ${oldY - i} up</span>`;
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let jumpId = 0;
+    for (const row of matrix.values()) {
+        for (const cell of row.values()) {
+            const vConnectionTargets = chain(cell.vConnections).map(c => c.connection.target).uniq().value();
+            const hConnectionTargets = chain(cell.hConnections).map(c => c.connection.target).uniq().value();
+            if (vConnectionTargets.length > 0 && hConnectionTargets.length > 0 && vConnectionTargets.every(t => !hConnectionTargets.includes(t))) {
+                const jumpItem: GridBoxItem = {
+                    id: 'jump:' + (jumpId++),
+                    gridX: cell.x,
+                    gridY: cell.y,
+                    connections: [],
+                    zIndex: 1,
+                };
+                items.push(jumpItem);
+                idToContentMap[jumpItem.id] = `<div class="${styleTable.name('jump-item')}"></div>`;
+                // DEBUG
+                // idToContentMap[jumpItem.id] = `<div class="${styleTable.name('jump-item')}">[${jumpItem.id}](${cell.x}, ${cell.y})</div>`;
+            }
+        }
+    }
+}
+
+function addItemToMatrix(matrix: Map<number, Map<number, MatrixCell>>, item: GridBoxItem, itemMap: Record<string, GridBoxItem>) {
+    const cell = getOrCreateCell(matrix, item.gridX, item.gridY);
+    cell.items.push(item);
+    for (const connection of item.connections) {
+        const targetItem = itemMap[connection.target];
+        if (!targetItem) {
+            continue;
+        }
+
+        addConnectionToMatrix(matrix, item, targetItem, connection);
+    }
+}
+
+function addItemToMatrixFromParents(matrix: Map<number, Map<number, MatrixCell>>, item: GridBoxItem, parents: GridBoxItem[]) {
+    for (const parent of parents) {
+        for (const connection of parent.connections) {
+            if (connection.target !== item.id) {
+                continue;
+            }
+
+            addConnectionToMatrix(matrix, parent, item, connection);
+        }
+    }
+}
+
+function addConnectionToMatrix(matrix: Map<number, Map<number, MatrixCell>>, fromItem: GridBoxItem, toItem: GridBoxItem, connection: GridBoxConnection) {
+    const cell = getOrCreateCell(matrix, fromItem.gridX, fromItem.gridY);
+    cell.vConnections.push({ from: fromItem, connection });
+    if (toItem.gridX !== fromItem.gridX) {
+        for (let i = Math.min(fromItem.gridX, toItem.gridX); i <= Math.max(fromItem.gridX, toItem.gridX); i++) {
+            const c = getOrCreateCell(matrix, i, fromItem.gridY);
+            c.hConnections.push({ from: fromItem, connection });
+        }
+        const c = getOrCreateCell(matrix, toItem.gridX, fromItem.gridY);
+        c.vConnections.push({ from: fromItem, connection });
+    }
+    for (let i = fromItem.gridY + 1; i < toItem.gridY; i++) {
+        const c = getOrCreateCell(matrix, toItem.gridX, i);
+        c.vConnections.push({ from: fromItem, connection });
+    }
+}
+
+function removeItemFromMatrix(matrix: Map<number, Map<number, MatrixCell>>, item: GridBoxItem) {
+    for (const row of matrix.values()) {
+        for (const cell of row.values()) {
+            cell.items = cell.items.filter(i => i !== item);
+            cell.hConnections = cell.hConnections.filter(c => c.from !== item && c.connection.target !== item.id);
+            cell.vConnections = cell.vConnections.filter(c => c.from !== item && c.connection.target !== item.id);
+        }
+    }
+}
+
+function getOrCreateCell(matrix: Map<number, Map<number, MatrixCell>>, x: number, y: number): MatrixCell {
+    let row = matrix.get(y);
+    if (!row) {
+        row = new Map<number, MatrixCell>();
+        matrix.set(y, row);
+    }
+    let cell = row.get(x);
+    if (!cell) {
+        cell = { items:[], hConnections: [], vConnections: [], x, y };
+        row.set(x, cell);
+    }
+    return cell;
+}
+
+function getCell(matrix: Map<number, Map<number, MatrixCell>>, x: number, y: number): MatrixCell | undefined {
+    const row = matrix.get(y);
+    if (!row) {
+        return undefined;
+    }
+    return row.get(x);
+}
+
 async function eventNodeToGridBoxTree(
     node: EventNode | OptionNode,
     entryNodes: Set<EventNode>,
@@ -587,13 +847,16 @@ async function eventNodeToGridBoxTree(
     }
 
     const isOption = node.type === 'option';
-    const id = (isOption ? node.optionName : (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
+    const id = (isOption ? 'option:' + node.optionName : 'event:' + (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
     if (isOption) {
         idToContentMap[id] = await makeOptionNode(node as OptionNode, styleTable);
     } else {
         idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
             typeof node === 'object' ? node as EventNode : node, gfxFiles, styleTable);
     }
+
+    // DEBUG
+    // idToContentMap[id] += id;
 
     const x = result.ranges.length < 2 ? 0 : Math.floor((result.ranges[1].end + result.ranges[1].start - 1) / 2);
     result.id = id;
