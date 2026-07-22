@@ -22,6 +22,7 @@ export interface GridBoxItem {
     isJoint?: boolean;
     htmlId?: string;
     classNames?: string;
+    zIndex?: number;
 }
 
 export interface GridBoxConnectionItemDirection {
@@ -149,7 +150,7 @@ export async function renderGridBoxCommon(
                     top: ${position.y}px;
                     width: ${xSlotSize}px;
                     height: ${ySlotSize}px;
-                    z-index: 1;
+                    z-index: ${item.zIndex ?? 10};
                 `),
             innerHTML: children,
             x: position.x,

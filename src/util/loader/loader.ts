@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import * as path from 'path';;
+import * as path from 'path';
 import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
-import { error } from '../debug';
+import { debug, error } from '../debug';
 import { UserError } from '../common';
 import { Dependency, getDependenciesFromText } from '../dependency';
 import { sendEvent } from '../telemetry';
@@ -112,6 +112,8 @@ export abstract class Loader<T, E = {}> {
                     { loaderType: this.constructor.name },
                     { timeElapsed, ...this.extraMesurements(this.cachedValue) });
             }
+
+            debug(`${this} load done in ${timeElapsed} ms.`);
         }
 
         this.onLoadDoneEmitter.fire(this.cachedValue);
