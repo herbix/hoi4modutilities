@@ -5,7 +5,7 @@ import { YAMLException } from 'js-yaml';
 export function debug(message: any, ...args: any[]): void {
     if (process.env.NODE_ENV !== 'production') {
         const timestamp = new Date().toISOString();
-        console.log(`[${timestamp}] ${message}`, ...args);
+        console.log(`[${timestamp}]`, message, ...args);
     }
 }
 

@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';;
+import * as path from 'path';
 import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
 import { debug, error } from '../debug';
 import { UserError } from '../common';

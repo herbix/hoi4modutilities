@@ -39,7 +39,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             top: calc(100% - 10px);
             left: calc(50% - 10px);
             background-color: var(--vscode-editor-background);
-            background-image: url("${contextContainer.current ? webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/jump.png')) : ''}");
+            ${contextContainer.current ? `background-image: url("${webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/jump.png'))}")` : ''};
         `);
 
         return html(
@@ -506,7 +506,7 @@ function findEntryNodes(nodes: EventNode[]): Set<EventNode> {
                 continue;
             }
 
-            if (eventNode.toScope.match(/^from(?:\.from)*$/) ||
+            if (eventNode.toScope.match(/^from(?:\.from)*$/i) ||
                 eventNode.toScope.includes('{event_target}') ||
                 !verifyEntryNode(eventNode, entryNodes, { fromStack: [], currentScopeName: eventNode.toScope })) {
                 entryNodes.delete(eventNode);
