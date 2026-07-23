@@ -60,7 +60,8 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 |`hoi4ModUtilities.loadDlcContents`|`boolean`|Whether to load DLC images when previewing files. Enabling this will use more memory (All DLCs are around 600MB).|
 |`hoi4ModUtilities.modFile`|`string`|Path to the working `.mod` file. This file is used to read replace_path. If not specified, will use first `.mod` file in first folder of the workspace.|
 |`hoi4ModUtilities.enableSupplyArea`|`boolean`|If you are developing mod for HOI4(version<=1.10). Use this to check enable supply area.|
-|`hoi4ModUtilities.previewLocalisation`|`enum`|Language of content in event tree preview.|
+|`hoi4ModUtilities.previewLocalisation`|`enum`|Language of content in preview windows.|
+|`hoi4ModUtilities.indexing`|`array` of `string`|When enabled, the specified file types don't need to be manually added as reference.|
 |`hoi4ModUtilities.featureFlags`|`array` of `string`|Feature flags are used to disable or enable features. Reloading is required after changing this. Please refer to [Wiki](https://github.com/herbix/hoi4modutilities/wiki/Feature-flags) on Github for details.|
 
 ## Known Issues

@@ -42,6 +42,7 @@ const table: Partial<typeof __table> = {
     "index.workspace.builddone": "Building workspace index done.",
     "index.workspace.building": "Building workspace index...",
     "infile": "{0} 파일 내:\n",
+    "installpathsetto": "Install path of Heart of Iron IV is set to: {0}.",
     "loading": "로딩중...",
     "miopreview.conditions": "조건: ",
     "miopreview.mio": "설계사: ",

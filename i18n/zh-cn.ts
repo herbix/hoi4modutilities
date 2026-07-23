@@ -42,6 +42,7 @@ const table: Partial<typeof __table> = {
     "index.workspace.builddone": "工作区索引构建完成。",
     "index.workspace.building": "正在构建工作区索引……",
     "infile": "在文件 {0} 中：\n",
+    "installpathsetto": "钢铁雄心四的安装路径已设置为：{0}。",
     "loading": "加载中……",
     "miopreview.conditions": "条件：",
     "miopreview.mio": "军工机构: ",

@@ -29,7 +29,7 @@ export function localize(key: keyof typeof __table | 'TODO', message: string, ..
     }
 
     const regex = new RegExp('\\{(' + args.map((_, i) => i.toString()).join('|') + ')\\}', 'g');
-    return message.replace(regex, (_, group1) => args[parseInt(group1)]?.toString());
+    return message.replace(regex, (_, group1) => String(args[parseInt(group1)]));
 }
 
 export function localizeText(text: string): string {

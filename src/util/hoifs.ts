@@ -7,6 +7,7 @@ import { clearImageCache } from '../util/image/imagecache';
 import { sendEvent } from './telemetry';
 import { getConfiguration, isFileScheme } from './vsccommon';
 import { getFs } from './fs';
+import { localize } from './i18n';
 
 const installPathContainer: { current: vscode.Uri | null } = {
     current: null,
@@ -44,6 +45,9 @@ async function selectHoiFolder(): Promise<void> {
     if (!IS_WEB_EXT && isFileScheme(uri)) {
         const conf = getConfiguration();
         conf.update('installPath', uri.fsPath, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage(localize('installpathsetto', 'Install path of Heart of Iron IV is set to: {0}.', uri.fsPath));
+    } else {
+        vscode.window.showInformationMessage(localize('installpathsetto', 'Install path of Heart of Iron IV is set to: {0}.', uri));
     }
 }
 

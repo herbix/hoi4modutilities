@@ -42,6 +42,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "index.workspace.builddone": "Building workspace index done.",
     "index.workspace.building": "Building workspace index...",
     "infile": "In file {0}:\n",
+    "installpathsetto": "Install path of Heart of Iron IV is set to: {0}.",
     "loading": "Loading...",
     "miopreview.conditions": "Conditions: ",
     "miopreview.mio": "Military Industrial Organization: ",
