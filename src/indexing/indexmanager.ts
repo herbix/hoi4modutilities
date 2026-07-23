@@ -140,7 +140,10 @@ class IndexManager {
     }
 
     private onChangeConfiguration(e: vscode.ConfigurationChangeEvent): void {
-        if (e.affectsConfiguration(`${ConfigurationKey}.indexing`)) {
+        if (e.affectsConfiguration(`${ConfigurationKey}.indexing`) ||
+            e.affectsConfiguration(`${ConfigurationKey}.modFile`) ||
+            e.affectsConfiguration(`${ConfigurationKey}.installPath`) ||
+            e.affectsConfiguration(`${ConfigurationKey}.loadDlcContents`)) {
             const previousEnabledIndexTypes = this._enabledIndexTypes;
             this._enabledIndexTypes = [...getConfiguration().indexing];
             const task = this.buildAllIndex(previousEnabledIndexTypes);

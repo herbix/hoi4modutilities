@@ -83,12 +83,11 @@ export abstract class Loader<T, E = {}> {
     }
 
     async load(session: LoaderSession): Promise<LoadResult<T, E>> {
+        const stopwatch = createStopwatch();
         session = session.forChild();
 
         // Load each loader at most one time in one session
         if (this.cachedValue === undefined || (!session.isLoaded(this) && (session.force || await this.shouldReload(session)))) {
-            const stopwatch = createStopwatch();
-
             session.loadingLoader.push(this);
             try {
                 this.beforeLoadImpl(session);

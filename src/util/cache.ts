@@ -1,12 +1,13 @@
-export interface CacheOptions<V> {
-    factory(key: string): V;
-    expireWhenChange?(key: string, cachedValue: V): any;
+export interface CacheOptions<V, K = string> {
+    factory(key: K): V;
+    expireWhenChange?(key: K, cachedValue: V): any;
+    keyToStr?(key: K): string;
     life: number;
     nonExpireLife?: number;
 }
 
-export interface PromiseCacheOptions<V> extends CacheOptions<Promise<V>> {
-    expireWhenChange?(key: string, cachedValue: Promise<V>): Promise<any> | any;
+export interface PromiseCacheOptions<V, K = string> extends CacheOptions<Promise<V>, K> {
+    expireWhenChange?(key: K, cachedValue: Promise<V>): Promise<any> | any;
 }
 
 interface CacheEntry<V> {
@@ -15,11 +16,11 @@ interface CacheEntry<V> {
     lastAccess: number;
 }
 
-export class Cache<V> {
+export class Cache<V, K = string> {
     protected _cache: Record<string, CacheEntry<V>> = {};
     private _intervalToken: NodeJS.Timeout | null = null;
     
-    constructor(protected readonly options: CacheOptions<V>) {
+    constructor(protected readonly options: CacheOptions<V, K>) {
         if (options.life > 0) {
             this._intervalToken = setInterval(() => this.tryClean(), options.life / 5);
         }
@@ -31,8 +32,9 @@ export class Cache<V> {
         }
     }
 
-    public get(key: string = ''): V {
-        const cacheEntry = this._cache[key];
+    public get(key: K): V {
+        const strKey = this.getStrKey(key);
+        const cacheEntry = this._cache[strKey];
         const now = Date.now();
         let expireToken: any = undefined;
         if (cacheEntry &&
@@ -50,12 +52,12 @@ export class Cache<V> {
             value
         };
 
-        this._cache[key] = newEntry;
+        this._cache[strKey] = newEntry;
         return newEntry.value;
     }
 
-    public remove(key: string = ''): void {
-        delete this._cache[key];
+    public remove(key: K): void {
+        delete this._cache[this.getStrKey(key)];
     }
 
     public clear(): void {
@@ -65,8 +67,12 @@ export class Cache<V> {
     public dispose(): void {
         this._cache = {};
         if (this._intervalToken) {
-            clearTimeout(this._intervalToken);
+            clearInterval(this._intervalToken);
         }
+    }
+
+    protected getStrKey(key: K): string {
+        return this.options.keyToStr ? this.options.keyToStr(key) : (key === undefined || key === null ? '' : String(key));
     }
     
     private tryClean(): void {
@@ -79,8 +85,8 @@ export class Cache<V> {
     }
 }
 
-export class PromiseCache<V> extends Cache<Promise<V>> {
-    constructor(options: PromiseCacheOptions<V>) {
+export class PromiseCache<V, K = string> extends Cache<Promise<V>, K> {
+    constructor(options: PromiseCacheOptions<V, K>) {
         super({
             ...options,
             factory: (key) => {
@@ -99,8 +105,9 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
         });
     }
 
-    public async get(key: string = ''): Promise<V> {
-        const cacheEntry = this._cache[key];
+    public async get(key: K): Promise<V> {
+        const strKey = this.getStrKey(key);
+        const cacheEntry = this._cache[strKey];
         const now = Date.now();
         let expireToken: any = undefined;
         if (cacheEntry &&
@@ -118,7 +125,7 @@ export class PromiseCache<V> extends Cache<Promise<V>> {
             value
         };
 
-        this._cache[key] = newEntry;
+        this._cache[strKey] = newEntry;
         return await newEntry.value;
     }
 }

@@ -4,6 +4,20 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Updated
+* Indexing settings is moved from feature flags to dedicated settings.
+* Simplified event preview to reduce duplicate event when possible.
+* Preview windows are refreshed now when localisation files update.
+* Improve reading performance of files on local desktop.
+
+### Added
+* Indexing for event files.
+
+### Fixed
+* Performance issue when opening preview windows (especially noticeable in map preview) (#130) (#130) (since v0.12.4).
+
 ## [0.14.2] - 2026/07/18 - Latest
 
 ### Updated
@@ -47,7 +61,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.12.4] - 2026/07/08
 
 ### Fixed
-* Reorder file loading logic to “workspace > dlc > base game”
+* Reorder file loading logic to "workspace > dlc > base game".
 
 ### Added
 * Support `overlay` in focus tree preview (#123) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).

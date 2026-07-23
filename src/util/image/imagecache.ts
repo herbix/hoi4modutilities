@@ -37,6 +37,12 @@ export function getImageByPath(relativePath: string): Promise<Image | undefined>
     return imageCache.get(relativePath);
 }
 
+export function clearImageCache(): void {
+    imageCache.clear();
+    spriteCache.clear();
+    gfxMapCache.clear();
+}
+
 export async function getSpriteByGfxName(name: string, gfxFilePath: string | string[]): Promise<Sprite | undefined> {
     const pathFromIndex = await gfxIndex.getGfxContainerFile(name);
     if (pathFromIndex) {

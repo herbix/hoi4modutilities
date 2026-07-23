@@ -7,6 +7,8 @@
         "out": true // set this to false to include "out" folder in search results
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-    "typescript.tsc.autoDetect": "off",
-    "typescript.tsdk": "e:\\Projects\\VSCExt\\hoi4focustreepreview\\node_modules\\typescript\\lib"
+    "js/ts.tsc.autoDetect": "off",
+    "js/ts.tsdk.path": "node_modules\\typescript\\lib",
+    // Increase the maximum number of lines in the debug console to avoid truncation of large outputs
+    "debug.console.maximumLines": 20000
 }

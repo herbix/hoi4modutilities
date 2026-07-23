@@ -1,7 +1,7 @@
 // This file contains constants that may be used in package.json
 
 export const ConfigurationKey = 'hoi4ModUtilities';
-export const Hoi4FsSchema = 'hoi4installpath';
+export const Hoi4FsScheme = 'hoi4installpath';
 
 export namespace ViewType {
     export const DDS = 'hoi4modutilities.dds';
