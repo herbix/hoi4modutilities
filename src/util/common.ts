@@ -15,6 +15,8 @@ export interface Warning<T> {
     source: T;
 }
 
+export type Unarray<T> = T extends (infer U)[] ? U : never;
+
 export function arrayToMap<T, K extends keyof T>(items: T[], key: K):
     T[K] extends string ? Record<string, T> : T[K] extends number ? Record<number, T> : never;
 export function arrayToMap<T, K extends keyof T, V>(items: T[], key: K, valueSelector: (value: T) => V):

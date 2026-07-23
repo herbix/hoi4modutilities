@@ -280,25 +280,19 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
                 if (uri.toString() === otherPreview.uri.toString()) {
                     continue;
                 }
-                if (!otherPreview.isDisposed) {
-                    otherPreview.onDocumentWillChange();
-                }
+                otherPreview.onDocumentWillChange();
             }
         });
 
     private updatePreviewItem = debounceByInput(
         (previewItem: PreviewBase, document: vscode.TextDocument, timestamp: number) => {
-            if (!previewItem.isDisposed) {
-                previewItem.onDocumentChange(document, timestamp);
-            }
+            previewItem.onDocumentChange(document, timestamp);
         },
         (preview) => preview.uri.toString(),
         300,
         { trailing: true },
         (previewItem: PreviewBase, document: vscode.TextDocument, timestamp: number) => {
-            if (!previewItem.isDisposed) {
-                previewItem.onDocumentWillChange();
-            }
+            previewItem.onDocumentWillChange();
         });
 }
 

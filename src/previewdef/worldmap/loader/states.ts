@@ -121,7 +121,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
         await this.fireOnProgressEvent(localize('worldmap.progress.mapprovincestostates', 'Mapping provinces to states...'));
 
         const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
-        const conditionExprs = mergeInLoadResultUnique(fileResults, 'conditionExprs', isEqual);
+        const conditionExprs = mergeInLoadResultUnique(fileResults, 'conditionExprs', (a, b) => a.nodeContent === b.nodeContent && a.scopeName === b.scopeName);
         const { provinces, width, height } = provinceMap.result;
 
         const states = flatMap(fileResults, c => c.result);

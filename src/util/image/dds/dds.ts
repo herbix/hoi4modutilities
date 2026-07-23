@@ -14,7 +14,7 @@ export class DDS {
     ) {
     }
 
-    public static parse(buffer: ArrayBuffer, byteOffset: number): DDS {
+    public static parse(buffer: ArrayBufferLike, byteOffset: number): DDS {
         const headerArray = new Int32Array(buffer, byteOffset, HEADER_LENGTH_INT);
         if (headerArray[0] !== DDS_MAGIC) {
             throw new UserError('Invalid magic number in DDS header');
@@ -30,7 +30,7 @@ export class DDS {
         }
     }
 
-    private static parseStandard(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader): DDS {
+    private static parseStandard(buffer: ArrayBufferLike, byteOffset: number, header: DDSHeader): DDS {
         const pixelFormat = convertPixelFormat(header.ddspf);
 
         const cubeMap = !!(header.dwCaps2 & DDSCAPS2_CUBEMAP);
@@ -63,7 +63,7 @@ export class DDS {
         return new DDS(header, undefined, images, cubeMap ? 'cubemap' : volume ? 'volume' : 'texture', 1, mipmapCount);
     }
 
-    private static parseDxt10(buffer: ArrayBuffer, byteOffset: number, header: DDSHeader, dxt10Header: DDSHeaderDXT10): DDS {
+    private static parseDxt10(buffer: ArrayBufferLike, byteOffset: number, header: DDSHeader, dxt10Header: DDSHeaderDXT10): DDS {
         const pixelFormat = convertPixelFormat(header.ddspf, dxt10Header);
 
         const cubeMap = !!(dxt10Header.miscFlag & DDS_RESOURCE_MISC_TEXTURECUBE);
@@ -130,7 +130,7 @@ function extractDxt10Header(dxt10HeaderArray: Int32Array): DDSHeaderDXT10 {
     };
 }
 
-function parseTexture(buffer: ArrayBuffer, offset: number, pixelFormat: PixelFormat, width: number, height: number, mipmapCount: number): [Surface[], number] {
+function parseTexture(buffer: ArrayBufferLike, offset: number, pixelFormat: PixelFormat, width: number, height: number, mipmapCount: number): [Surface[], number] {
     const result: Surface[] = [];
 
     offset = pushSurface(result, buffer, offset, width, height, pixelFormat, "Main image");
@@ -143,7 +143,7 @@ function parseTexture(buffer: ArrayBuffer, offset: number, pixelFormat: PixelFor
     return [result, offset];
 }
 
-function parseCubeMap(buffer: ArrayBuffer, offset: number, pixelFormat: PixelFormat, width: number, height: number, cubeMaps: string[], mipmapCount: number): [Surface[], number] {
+function parseCubeMap(buffer: ArrayBufferLike, offset: number, pixelFormat: PixelFormat, width: number, height: number, cubeMaps: string[], mipmapCount: number): [Surface[], number] {
     const result: Surface[] = [];
 
     for (const cubeMap of cubeMaps) {
@@ -158,7 +158,7 @@ function parseCubeMap(buffer: ArrayBuffer, offset: number, pixelFormat: PixelFor
     return [result, offset];
 }
 
-function parseVolumeTexture(buffer: ArrayBuffer, offset: number, pixelFormat: PixelFormat, width: number, height: number, depth: number, mipmapCount: number): [Surface[], number] {
+function parseVolumeTexture(buffer: ArrayBufferLike, offset: number, pixelFormat: PixelFormat, width: number, height: number, depth: number, mipmapCount: number): [Surface[], number] {
     const result: Surface[] = [];
 
     for (let i = 0; i < depth; i++) {
@@ -177,7 +177,7 @@ function parseVolumeTexture(buffer: ArrayBuffer, offset: number, pixelFormat: Pi
     return [result, offset];
 }
 
-function pushSurface(surfaces: Surface[], buffer: ArrayBuffer, offset: number, width: number, height: number, pixelFormat: PixelFormat, name: string): number {
+function pushSurface(surfaces: Surface[], buffer: ArrayBufferLike, offset: number, width: number, height: number, pixelFormat: PixelFormat, name: string): number {
     const length = getImageSizeInBytes(pixelFormat, width, height);
     const end = offset + length;
     if (end > buffer.byteLength) {

@@ -3,7 +3,7 @@ import { UserError } from '../../common';
 
 export class Surface {
     constructor(
-        private readonly buffer: ArrayBuffer,
+        private readonly buffer: ArrayBufferLike,
         private readonly offset: number,
         private readonly length: number,
         readonly name: string,
@@ -361,7 +361,7 @@ interface ChannelReader {
     reader: (buffer: any, offset: number, bitOffset: number, channelStart: number[], channelLength: number[], channelMask: number[], rawPixel: Float64Array) => void;
     readerState: unknown;
 }
-function getChannelReader(inputBuffer: ArrayBuffer, inputBufferOffset: number, length: number, pixelFormat: RawPixelFormat): ChannelReader | undefined {
+function getChannelReader(inputBuffer: ArrayBufferLike, inputBufferOffset: number, length: number, pixelFormat: RawPixelFormat): ChannelReader | undefined {
     if (pixelFormat.valueType === PixelValueType.float) {
         if (pixelFormat.channelLengthInPixel.every(p => p === 32) && pixelFormat.bitsPerPixel % 8 === 0) {
             return {

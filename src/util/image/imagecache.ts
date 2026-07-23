@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { forceError } from '../common';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
@@ -133,10 +134,15 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         return new Image(pngBuffer, png.width, png.height, realPath);
 
     } catch (e) {
-        if (!(e instanceof UserError)) {
+        let err = forceError(e);
+        // From PNG parser
+        if (err.message === 'Invalid file signature') {
+            err = new UserError(err.message);
+        }
+        if (!(err instanceof UserError)) {
             error("Failed to get image " + relativePath);
         }
-        error(e);
+        error(err);
         return undefined;
     }
 }

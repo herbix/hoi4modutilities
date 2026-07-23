@@ -1,8 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { hoiFileExpiryToken, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../fileloader';
-import { debug, error } from '../debug';
-import { UserError } from '../common';
+import { createStopwatch, debug, error } from '../debug';
+import { Unarray, UserError } from '../common';
 import { Dependency, getDependenciesFromText } from '../dependency';
 import { sendEvent } from '../telemetry';
 import { Comparator, uniqWith } from 'lodash';
@@ -87,7 +87,7 @@ export abstract class Loader<T, E = {}> {
 
         // Load each loader at most one time in one session
         if (this.cachedValue === undefined || (!session.isLoaded(this) && (session.force || await this.shouldReload(session)))) {
-            const loadStartTime = Date.now();
+            const stopwatch = createStopwatch();
 
             session.loadingLoader.push(this);
             try {
@@ -105,7 +105,7 @@ export abstract class Loader<T, E = {}> {
                 }
             }
 
-            const timeElapsed = Date.now() - loadStartTime;
+            const timeElapsed = stopwatch.getElapsed();
 
             if (timeElapsed > 500 && !this.disableTelemetry) {
                 sendEvent('loader.loaddone',
@@ -359,7 +359,7 @@ export function mergeInLoadResult<K extends string, T extends { [k in K]?: any[]
     return loadResults.reduce<Exclude<T[K], undefined>>((p, c) => (p as any).concat(c[key] ?? []), [] as unknown as Exclude<T[K], undefined>);
 }
 
-export function mergeInLoadResultUnique<K extends string, T extends { [k in K]?: any[] }>(loadResults: T[], key: K, comparator: Comparator<T[K]>): Exclude<T[K], undefined> {
+export function mergeInLoadResultUnique<K extends string, T extends { [k in K]?: any[] }>(loadResults: T[], key: K, comparator: Comparator<Unarray<T[K]>>): Exclude<T[K], undefined> {
     return loadResults.reduce<Exclude<T[K], undefined>>((p, c) => uniqWith((p as any).concat(c[key] ?? []), comparator) as Exclude<T[K], undefined>, [] as unknown as Exclude<T[K], undefined>);
 }
 

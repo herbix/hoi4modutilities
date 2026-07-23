@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { localize } from '../util/i18n';
-import { error, debug } from '../util/debug';
+import { error, debug, createStopwatch } from '../util/debug';
 import { dirUri, getDocumentByUri } from '../util/vsccommon';
 import { isEqual } from 'lodash';
 import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../util/fileloader';
@@ -30,25 +30,30 @@ export abstract class PreviewBase {
     }
 
     public onDocumentWillChange() {
+        if (this.disposed) {
+            return;
+        }
         this.pendingChangeDocument = true;
     }
 
     public async onDocumentChange(document: vscode.TextDocument, timestamp: number): Promise<void> {
-        if (timestamp <= this.lastDocumentChangeTimestamp && !this.pendingChangeDocument) {
+        if (this.disposed || (timestamp <= this.lastDocumentChangeTimestamp && !this.pendingChangeDocument)) {
             return;
         }
 
         this.lastDocumentChangeTimestamp = timestamp;
 
-        const getContentStartTime = Date.now();
+        const stopwatch = createStopwatch();
         try {
-            this.panel.webview.html = await this.getContent(document);
+            const content = await this.getContent(document);
+            if (!this.disposed) {
+                this.panel.webview.html = content;
+            }
         } catch(e) {
             error(e);
         }
 
-        const timeElapsed = Date.now() - getContentStartTime;
-        debug(`Preview base (${this.uri.toString()}) content loaded in ${timeElapsed} ms.`);
+        debug(`Preview base (${this.uri.toString()}) content loaded in ${stopwatch.getElapsed()} ms.`);
 
         this.pendingChangeDocument = false;
     }
@@ -58,10 +63,6 @@ export abstract class PreviewBase {
         this.disposed = true;
         this.disposeEmitter.fire(undefined);
         this.disposeEmitter.dispose();
-    }
-
-    public get isDisposed(): boolean {
-        return this.disposed;
     }
 
     public async initializePanelContent(document: vscode.TextDocument): Promise<void> {

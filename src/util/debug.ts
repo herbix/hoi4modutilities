@@ -17,3 +17,20 @@ export function error(error: unknown): void {
         sendException(realError, { callerStack: new Error().stack ?? '' });
     }
 }
+
+export function createStopwatch(): {
+    getElapsed: () => number;
+    split: () => number;
+} {
+    const start = Date.now();
+    let lastSplit = start;
+    return {
+        getElapsed: () => Date.now() - start,
+        split: () => {
+            const now = Date.now();
+            const elapsed = now - lastSplit;
+            lastSplit = now;
+            return elapsed;
+        }
+    };
+}
