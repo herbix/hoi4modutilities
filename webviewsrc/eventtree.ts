@@ -111,14 +111,6 @@ function setupSearchbox(): void {
 }
 
 function refreshSearchResults(): void {
-    const items = virtualizationData.items;
-    if (!Array.isArray(items)) {
-        searchMatches = [];
-        searchMatchIndex = 0;
-        updateRenderedSearchHighlights();
-        return;
-    }
-
     if (!searchText) {
         searchMatches = [];
         searchMatchIndex = 0;
@@ -126,7 +118,7 @@ function refreshSearchResults(): void {
         return;
     }
 
-    searchMatches = items
+    searchMatches = virtualizationData.items
         .map(item => {
             const itemId = item.id;
             const match = eventIdPattern.exec(itemId);
@@ -176,26 +168,25 @@ function navigateToCurrentMatch(): void {
 }
 
 function updateRenderedSearchHighlights(): void {
-    const gridBox = document.getElementsByClassName(virtualizationData.className)[0] as HTMLDivElement | undefined;
+    const gridBox = document.getElementsByClassName(virtualizationData.className)[0];
     if (!gridBox) {
         return;
     }
 
-    for (const child of Array.from(gridBox.children)) {
-        const element = child as HTMLDivElement;
+    for (const child of gridBox.children) {
+        const element = child as HTMLElement;
         element.style.outlineWidth = '0';
         element.style.background = '';
     }
 
-    const currentItemId = searchMatches.length > 0 ? searchMatches[searchMatchIndex].itemId : undefined;
     for (const match of searchMatches) {
-        const itemElement = document.getElementById(match.htmlId) as HTMLDivElement | null;
+        const itemElement = document.getElementById(match.htmlId);
         if (!itemElement) {
             continue;
         }
 
         itemElement.style.outline = '1px solid #E33';
-        itemElement.style.background = match.itemId === currentItemId ? 'rgba(255, 0, 0, 0.5)' : 'rgba(255, 0, 0, 0.3)';
+        itemElement.style.background = 'rgba(255, 0, 0, 0.5)';
     }
 }
 
