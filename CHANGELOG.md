@@ -4,7 +4,7 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.15.0] - 2026/07/23 - Latest
 
 ### Updated
 * Indexing settings is moved from feature flags to dedicated settings.
@@ -18,7 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Fixed
 * Performance issue when opening preview windows (especially noticeable in map preview) (#130) (#130) (since v0.12.4).
 
-## [0.14.2] - 2026/07/18 - Latest
+## [0.14.2] - 2026/07/18
 
 ### Updated
 * Large focus icons now won't be clipped on overflow.
