@@ -58,7 +58,8 @@ export interface GridBoxVirtualizationData {
 }
 
 export interface GridBoxVirtualizedItem {
-    id: string | undefined;
+    id: string;
+    htmlId: string | undefined;
     classNames: string;
     innerHTML: string;
     x: number;
@@ -142,7 +143,8 @@ export async function renderGridBoxCommon(
         const children = options.onRenderItem ? await options.onRenderItem(item, childrenParentInfo) : '';
         const position = getLeftUpPosition(item.gridX, item.gridY, format, slotSize, size);
         const result: GridBoxVirtualizedItem = {
-            id: item.htmlId,
+            id: item.id,
+            htmlId: item.htmlId,
             classNames: `${item.classNames ? item.classNames : ''} ` +
                 options.styleTable.style('positionAbsolute', () => `position: absolute;`) + ' ' +
                 options.styleTable.oneTimeStyle('gridbox-item', () => `
@@ -163,7 +165,7 @@ export async function renderGridBoxCommon(
 
     const renderedItems = options.virtualization ? '' : virtualizedItems.map(item =>
         `<div
-            ${item.id ? `id="${item.id}"` : ''}
+            ${item.htmlId ? `id="${item.htmlId}"` : ''}
             class="${item.classNames}">
             ${item.innerHTML}
         </div>`).join('');

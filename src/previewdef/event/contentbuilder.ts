@@ -54,6 +54,7 @@ export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, web
             ],
             [
                 'codicon.css',
+                'common.css',
                 styleTable
             ],
         );
@@ -99,6 +100,14 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         },
     });
 
+    const searchbox = `
+        <label for="searchbox" class="${styleTable.style('searchboxLabel', () => `margin-right:5px`)}">${localize('focustree.search', 'Search: ')}</label>
+        <input
+            class="${styleTable.style('searchbox', () => `margin-right:10px`)}"
+            id="searchbox"
+            type="text"
+        />`;
+
     return `
         <div id="dragger" additionalDraggerHostId="eventtreecontent" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
@@ -108,10 +117,16 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
             top:0;
         `)}"></div>
         <div id="eventtreecontent" class="${styleTable.oneTimeStyle('eventtreecontent', () => `
+            top: 40px;
             left: -20px;
             position: relative;
         `)}">
             ${renderedGridBox}
+        </div>
+        <div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
+            <div class="toolbar">
+                ${searchbox}
+            </div>
         </div>
     `;
 }
@@ -861,6 +876,7 @@ async function eventNodeToGridBoxTree(
     const x = result.ranges.length < 2 ? 0 : Math.floor((result.ranges[1].end + result.ranges[1].start - 1) / 2);
     result.id = id;
     item.id = id;
+    item.htmlId = id;
     item.gridX = x;
     item.connections = childIds.map<GridBoxConnection>(id => ({
         target: id,

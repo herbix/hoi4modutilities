@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Added
+* Add search box in event tree preview
+
 ## [0.15.0] - 2026/07/23 - Latest
 
 ### Updated

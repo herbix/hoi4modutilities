@@ -31,7 +31,7 @@ export function virtualizeGridBox(data: GridBoxVirtualizationData, onElementShow
                 element.style.display = 'none';
                 gridBox.appendChild(element);
             }
-            element.id = 'id' in item && item.id ? item.id : '';
+            element.id = 'htmlId' in item && item.htmlId ? item.htmlId : '';
             element.className = item.classNames;
             element.innerHTML = 'innerHTML' in item ? item.innerHTML : '';
             element.style.display = 'block';
