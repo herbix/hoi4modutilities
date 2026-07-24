@@ -35,7 +35,9 @@
 		"workspaceContains:**/*.gfx",
 		"workspaceContains:common/national_focus/*.txt",
 		"workspaceContains:common/technologies/*.txt",
+		"workspaceContains:common/military_industrial_organization/organizations/*.txt",
 		"workspaceContains:events/*.txt",
+		"workspaceContains:interface/*.gui",
 		"workspaceContains:map/default.map"
 	],
 	"main": "./dist/extension.js",
