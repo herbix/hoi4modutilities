@@ -334,8 +334,9 @@ export class Renderer extends Subscriber {
         const viewMode = topBar.viewMode$.value;
         const colorSet = topBar.colorSet$.value;
         const showSupply = Renderer.isSupplyVisible(topBar);
+        const fontSize = 10;
 
-        context.font = '10px sans-serif';
+        context.font = `${fontSize}px sans-serif`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         if (viewMode === 'province' || viewMode === 'warnings') {
@@ -362,7 +363,12 @@ export class Renderer extends Subscriber {
                         const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
                         const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                        context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
+                        if (region.localisedName) {
+                            context.fillText(region.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
+                            context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
+                        } else {
+                            context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
+                        }
                         if (viewMode === 'state' && colorSet === 'resources') {
                             const { width } = Renderer.getResourcesSize(region as State, 0.7, 16);
                             Renderer.renderResources(context, region as State, viewPoint.convertX(labelPosition.x + xOffset) - width / 2, viewPoint.convertY(labelPosition.y) + 5, 0.7, 16);

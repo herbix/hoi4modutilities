@@ -10,6 +10,7 @@ import { StatesLoader } from "./states";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
 import { UserError } from '../../../util/common';
+import { localisationIndex } from "../../../indexing/localisationindex";
 
 interface SupplyAreaFile {
     supply_area: SupplyAreaDefinition[];
@@ -113,6 +114,7 @@ async function loadSupplyArea(file: string, globalWarnings: WorldMapWarning[]): 
             const warnings: string[] = [];
             const id = supplyArea.id ? supplyArea.id : (warnings.push(localize('worldmap.warnings.supplyareanoid', "A supply area in \"{0}\" doesn't have id field.", file)), -1);
             const name = supplyArea.name ? supplyArea.name : (warnings.push(localize('worldmap.warnings.supplyareanoname', "Supply area {0} doesn't have name field.", id)), '');
+            const localisedName = localisationIndex.getLocalisedText(supplyArea.name);
             const value = supplyArea.value ?? 0;
             const states = supplyArea.states._values.map(v => parseInt(v));
 
@@ -129,6 +131,7 @@ async function loadSupplyArea(file: string, globalWarnings: WorldMapWarning[]): 
             result.push({
                 id,
                 name,
+                localisedName,
                 states,
                 value,
                 file,

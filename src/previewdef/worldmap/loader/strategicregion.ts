@@ -10,6 +10,7 @@ import { arrayToMap, UserError } from "../../../util/common";
 import { Token } from "../../../hoiformat/hoiparser";
 import { LoaderSession } from "../../../util/loader/loader";
 import { flatMap } from "lodash";
+import { localisationIndex } from "../../../indexing/localisationindex";
 
 interface StrategicRegionFile {
     strategic_region: StrategicRegionDefinition[];
@@ -114,6 +115,7 @@ async function loadStrategicRegion(file: string, globalWarnings: WorldMapWarning
             const warnings: string[] = [];
             const id = strategicRegion.id ? strategicRegion.id : (warnings.push(localize('worldmap.warnings.strategicregionnoid', "A strategic region in \"{0}\" doesn't have id field.", file)), -1);
             const name = strategicRegion.name ? strategicRegion.name : (warnings.push(localize('worldmap.warnings.strategicregionnoname', "Strategic region {0} doesn't have name field.", id)), '');
+            const localisedName = localisationIndex.getLocalisedText(strategicRegion.name);
             const provinces = strategicRegion.provinces._values.map(v => parseInt(v));
             const navalTerrain = strategicRegion.naval_terrain ?? null;
 
@@ -130,6 +132,7 @@ async function loadStrategicRegion(file: string, globalWarnings: WorldMapWarning
             result.push({
                 id,
                 name,
+                localisedName,
                 provinces,
                 navalTerrain,
                 file,

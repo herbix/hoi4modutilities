@@ -103,6 +103,7 @@ export interface BookmarkDate {
 export interface State extends Region, TokenInFile {
     id: number;
     name: string;
+    localisedName: string | undefined;
     manpower: number;
     category: string;
     owner: WithCondition<string>[]; // return the first matching country tag
@@ -183,6 +184,7 @@ export interface Resource {
 export interface StrategicRegion extends Region, TokenInFile {
     id: number;
     name: string;
+    localisedName: string | undefined;
     provinces: number[];
     navalTerrain: string | null;
 }
@@ -190,6 +192,7 @@ export interface StrategicRegion extends Region, TokenInFile {
 export interface SupplyArea extends Region, TokenInFile {
     id: number;
     name: string;
+    localisedName: string | undefined;
     value: number;
     states: number[];
 }

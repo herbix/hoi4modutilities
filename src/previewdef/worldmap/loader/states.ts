@@ -14,6 +14,7 @@ import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkD
 import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition } from "../../../hoiformat/condition";
 import { EffectComplexExpr, EffectItem, extractEffectValue } from "../../../hoiformat/effect";
 import { Scope } from "../../../hoiformat/scope";
+import { localisationIndex } from "../../../indexing/localisationindex";
 
 interface StateFile {
     state: StateDefinition[];
@@ -255,6 +256,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             const warnings: string[] = [];
             const id = state.id ? state.id : (warnings.push(localize('worldmap.warnings.statenoid', "A state in {0} doesn't have id field.", stateFile)), -1);
             const name = state.name ? state.name : (warnings.push(localize('worldmap.warnings.statenoname', "The state doesn't have name field.")), '');
+            const localisedName = localisationIndex.getLocalisedText(state.name);
             const manpower = state.manpower ?? 0;
             const category = state.state_category ? state.state_category : (warnings.push(localize('worldmap.warnings.statenocategory', "The state doesn't have category field.")), '');
             const provinces = state.provinces._values.map(v => parseInt(v));
@@ -284,7 +286,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             })));
 
             result.push({
-                id, name, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources,
+                id, name, localisedName, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources,
                 file: stateFile,
                 token: state._token ?? null,
             });

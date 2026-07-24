@@ -113,7 +113,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
             const yamlObj = parseLocalisationYaml(content, localisationFile);
             if (yamlObj && typeof yamlObj === 'object') {
                 const dict = yamlObj[languageId];
-                if (typeof dict === 'object' && !Array.isArray(dict)) {
+                if (dict && typeof dict === 'object' && !Array.isArray(dict)) {
                     const keys = Object.keys(dict);
                     for (const k of keys) {
                         const v = dict[k];

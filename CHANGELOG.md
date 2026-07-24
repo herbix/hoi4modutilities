@@ -7,7 +7,11 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [Unreleased]
 
 ### Added
-* Add search box in event tree preview
+* Add search box in event tree preview.
+* Add localised labels on world map preview.
+
+### Update
+* Refine localisation file preprocessing to accept more files.
 
 ## [0.15.0] - 2026/07/23 - Latest
 
