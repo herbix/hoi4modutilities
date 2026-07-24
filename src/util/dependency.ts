@@ -9,7 +9,7 @@ import { parseHoi4File } from "../hoiformat/hoiparser";
 import { getEvents, HOIEvents, HOIEvent } from "../previewdef/event/schema";
 import { getLanguageIdInYml, getRelativePathInWorkspace, isSameUri } from "./vsccommon";
 import { flatMap, flatten } from "lodash";
-import { parseYaml } from "./yaml";
+import { parseLocalisationYaml } from "./yaml";
 
 export type Dependency = { type: string, path: string };
 
@@ -139,7 +139,7 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
             if (isSameUri(document.uri, realPathUri)) {
                 return undefined;
             }
-            return { file: filePath, result: parseYaml(buffer.toString()) };
+            return { file: filePath, result: parseLocalisationYaml(buffer.toString()) };
         } catch (e) {
             return undefined;
         }

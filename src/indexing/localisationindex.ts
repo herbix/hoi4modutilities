@@ -1,15 +1,13 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import * as yaml from 'js-yaml';
 import { chain } from 'lodash';
-import { getLanguageIdInYml, getLocalisationFolderName } from '../util/vsccommon';
+import { getLanguageIdInYml } from '../util/vsccommon';
 import { IndexBase } from './indexbase';
 import { indexManager, IndexType } from './indexmanager';
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../util/fileloader';
 import { localize } from '../util/i18n';
-import { matchPathEnd } from '../util/nodecommon';
 import { ConfigurationKey } from '../constants';
-import { parseYaml } from '../util/yaml';
+import { parseLocalisationYaml } from '../util/yaml';
 import { Logger } from '../util/logger';
 import { error } from '../util/debug';
 
@@ -32,14 +30,14 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
     }
 
     public includesFile(file: vscode.Uri): boolean {
-        return file.path.endsWith('.yml') && matchPathEnd(file.toString().toLowerCase(), ['localisation', getLocalisationFolderName(), '*']);
+        return file.path.endsWith('.yml') && file.path.includes('localisation/');
     }
 
     public addWorkspaceIndex(file: vscode.Uri): void {
         const wsFolder = vscode.workspace.getWorkspaceFolder(file);
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
-                if (relative && relative.startsWith(this.getFolder() + '/')) {
+                if (relative && relative.startsWith('localisation/')) {
                 this.fillLocalisationItems(relative, this._workspaceIndex, { hoi4: false, dlc: false, resolveReplacements: true });
                 this.indexUpdatedEventEmitter?.fire();
             }
@@ -50,7 +48,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         const wsFolder = vscode.workspace.getWorkspaceFolder(file);
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
-            if (relative && relative.startsWith(this.getFolder() + '/')) {
+            if (relative && relative.startsWith('localisation/')) {
                 for (const [key, value] of this._workspaceIndex) {
                     if (value.file === relative) {
                         this._workspaceIndex.delete(key);
@@ -61,8 +59,8 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
     }
 
     public async buildIndex(index: Map<string, LocalisationEntry>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
-        const localisationFiles = (await listFilesFromModOrHOI4(this.getFolder(), { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.yml'));
-        await Promise.all(localisationFiles.map(f => this.fillLocalisationItems(this.getFolder() + '/' + f, index, options, estimatedSize)));
+        const localisationFiles = (await listFilesFromModOrHOI4('localisation', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.yml'));
+        await Promise.all(localisationFiles.map(f => this.fillLocalisationItems('localisation/' + f, index, options, estimatedSize)));
         this.resolveReplacements(index);
     }
 
@@ -91,10 +89,6 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         return entry?.value ?? key;
     }
 
-    private getFolder(): string {
-        return `localisation/${getLocalisationFolderName()}`;
-    }
-
     private onChangeConfiguration(e: vscode.ConfigurationChangeEvent): void {
         if (e.affectsConfiguration(`${ConfigurationKey}.previewLocalisation`)) {
             indexManager.rebuildIndex(this);
@@ -116,8 +110,8 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
                 estimatedSize[0] += content.length;
             }
             const languageId = getLanguageIdInYml();
-            const yamlObj = parseYaml(content, { schema: yaml.JSON_SCHEMA, json: true });
-            if (typeof yamlObj === 'object') {
+            const yamlObj = parseLocalisationYaml(content, localisationFile);
+            if (yamlObj && typeof yamlObj === 'object') {
                 const dict = yamlObj[languageId];
                 if (typeof dict === 'object' && !Array.isArray(dict)) {
                     const keys = Object.keys(dict);

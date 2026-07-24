@@ -173,8 +173,8 @@ function updateRenderedSearchHighlights(): void {
         return;
     }
 
-    for (const child of gridBox.children) {
-        const element = child as HTMLElement;
+    for (let i = 0; i < gridBox.children.length; i++) {
+        const element = gridBox.children[i] as HTMLElement;
         element.style.outlineWidth = '0';
         element.style.background = '';
     }
