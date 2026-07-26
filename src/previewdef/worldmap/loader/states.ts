@@ -141,6 +141,8 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
                         relatedFiles: [ state.file ],
                         text: localize('worldmap.warnings.statecategorynotexist', "State category of state {0} is not defined: {1}.", i, state.category),
                     });
+                } else {
+                    state.categoryColor = stateCategories.result[state.category].color;
                 }
 
                 for (const key in state.resources) {
@@ -287,6 +289,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
 
             result.push({
                 id, name, localisedName, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources,
+                categoryColor: 0, // will be filled later
                 file: stateFile,
                 token: state._token ?? null,
             });

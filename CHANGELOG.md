@@ -4,16 +4,17 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.15.1] - 2026/07/26 - Latest
 
 ### Added
 * Add search box in event tree preview.
 * Add localised labels on world map preview.
+* Add state category color set in world map preview.
 
 ### Update
 * Refine localisation file preprocessing to accept more files.
 
-## [0.15.0] - 2026/07/23 - Latest
+## [0.15.0] - 2026/07/23
 
 ### Updated
 * Indexing settings is moved from feature flags to dedicated settings.

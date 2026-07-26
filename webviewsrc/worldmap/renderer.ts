@@ -645,7 +645,7 @@ ${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'I
 ${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}
 ${vp ? `${feLocalize('worldmap.tooltip.victorypoint', 'Victory point')}=${vp}` : ''}
 ${stateObject ? `
-${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}`: ''
+${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject?.localisedName ? `${stateObject.localisedName} (${stateObject.id})` : stateObject.id}`: ''
 }
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
@@ -767,7 +767,7 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         const controller = solveWithCondition(state.controller, selectedConditions);
         this.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
-${feLocalize('worldmap.tooltip.state', 'State')}=${state.id}
+${feLocalize('worldmap.tooltip.state', 'State')}=${state.localisedName ? `${state.localisedName} (${state.id})` : state.id}
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}
@@ -1037,6 +1037,12 @@ function getColorByColorSet(
                 const controller = solveWithCondition(state?.controller, renderContext.topBar.selectedConditions$.value) ??
                     solveWithCondition(state?.owner, renderContext.topBar.selectedConditions$.value);
                 return worldMap.countries.find(c => c && c.tag === controller)?.color ?? defaultColor(province);
+            }
+        case 'statecategory':
+            {
+                const stateId = provinceToState[province.id];
+                const state = worldMap.getStateById(stateId);
+                return state?.categoryColor ?? defaultColor(province);
             }
         case 'terrain':
             {

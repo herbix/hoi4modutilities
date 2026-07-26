@@ -66,23 +66,18 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ## Known Issues
 
-* GUI of focus tree can't be configured like technology tree.
-* Edge lines on world map not alway fit edge of colors.
-* Event tree preview will duplicate events even they are same event if they are from different option.
+* GUI of focus tree and MIO can't be configured like technology tree.
+* Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.15.0]
-
-### Updated
-* Indexing settings is moved from feature flags to dedicated settings.
-* Simplified event preview to reduce duplicate event when possible.
-* Preview windows are refreshed now when localisation files update.
-* Improve reading performance of files on local desktop.
+## Release Notes - [0.15.1]
 
 ### Added
-* Indexing for event files.
+* Add search box in event tree preview.
+* Add localised labels on world map preview.
+* Add state category color set in world map preview.
 
-### Fixed
-* Performance issue when opening preview windows (especially noticeable in map preview) (#130) (#130) (since v0.12.4).
+### Update
+* Refine localisation file preprocessing to accept more files.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -106,6 +106,7 @@ export interface State extends Region, TokenInFile {
     localisedName: string | undefined;
     manpower: number;
     category: string;
+    categoryColor: number;
     owner: WithCondition<string>[]; // return the first matching country tag
     controller: WithCondition<string>[]; // return the first matching country tag
     provinces: number[];
