@@ -1,7 +1,7 @@
 import { chain } from 'lodash';
 import * as vscode from 'vscode';
 import { ContainerWindowType } from '../../hoiformat/gui';
-import { HOIPartial, NumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
+import { HOIPartial, parseNumberLike, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { arrayToMap, forceError } from '../../util/common';
 import { debug } from '../../util/debug';
 import { getHeight, getWidth } from '../../util/hoi4gui/common';
@@ -156,14 +156,18 @@ async function renderSingleContainerWindow(
     const size = { width: 1920, height: 1080 };
     const width = getWidth(containerWindow.size);
     const height = getHeight(containerWindow.size);
-    if (!width?._unit && width?._value !== undefined) {
-        size.width = width._value;
-    }
-    if (!height?._unit && height?._value !== undefined) {
-        size.height = height._value;
+    if (!containerWindow.fullscreen) {
+        if (!width?._unit && width?._value !== undefined) {
+            size.width = width._value;
+        }
+        if (!height?._unit && height?._value !== undefined) {
+            size.height = height._value;
+        }
     }
 
-    const position = containerWindow.position ? { ...containerWindow.position } : { x: undefined, y: undefined };
+    const position = containerWindow.fullscreen
+        ? { x: toNumberLike(0), y: toNumberLike(0) }
+        : containerWindow.position ? { ...containerWindow.position } : { x: undefined, y: undefined };
     if (position.x?._value !== undefined && position.x?._value < 0) {
         position.x = { ...position.x, _value: 0 };
     }
@@ -187,6 +191,13 @@ async function renderSingleContainerWindow(
         {
             ...containerWindow,
             position: position,
+            size: containerWindow.fullscreen ? {
+                min: undefined,
+                width: parseNumberLike('100%%'),
+                height: parseNumberLike('100%%'),
+                x: undefined,
+                y: undefined,
+            } : containerWindow.size,
             orientation: toStringAsSymbolIgnoreCase('upper_left'),
             origo: toStringAsSymbolIgnoreCase('upper_left'),
         },
