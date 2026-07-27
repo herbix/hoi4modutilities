@@ -3,7 +3,7 @@ import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
 import { getImageByPath } from '../../util/image/imagecache';
 import { localize } from '../../util/i18n';
-import { SpriteType } from '../../hoiformat/spritetype';
+import { AnySpriteType } from '../../hoiformat/spritetype';
 import { html, htmlEscape } from '../../util/html';
 import { StyleTable } from '../../util/styletable';
 import { forceError } from '../../util/common';
@@ -35,7 +35,7 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
     }
 }
 
-async function renderSpriteTypes(spriteTypes: SpriteType[], styleTable: StyleTable): Promise<string> {
+async function renderSpriteTypes(spriteTypes: AnySpriteType[], styleTable: StyleTable): Promise<string> {
     const imageList = (await Promise.all(spriteTypes.map(st => renderSpriteType(st, styleTable)))).join('');
     const filter = `<div
     class="${styleTable.style('filterBar', () => `
@@ -62,8 +62,10 @@ async function renderSpriteTypes(spriteTypes: SpriteType[], styleTable: StyleTab
     </div>`;
 }
 
-async function renderSpriteType(spriteType: SpriteType, styleTable: StyleTable): Promise<string> {
-    const image = await getImageByPath(spriteType.texturefile);
+async function renderSpriteType(spriteType: AnySpriteType, styleTable: StyleTable): Promise<string> {
+    const texturefile = 'texturefile1' in spriteType ? spriteType.texturefile1 : spriteType.texturefile;
+    const noofframes = 'noofframes' in spriteType ? spriteType.noofframes : 1;
+    const image = await getImageByPath(texturefile);
     return `<div
         id="${spriteType.name}"
         class="
@@ -79,7 +81,7 @@ async function renderSpriteType(spriteType: SpriteType, styleTable: StyleTable):
         start="${spriteType.token?.start}"
         end="${spriteType.token?.end}"
         title="${spriteType.name}${image ? ` (${
-            image.width / spriteType.noofframes}x${image.height}x${spriteType.noofframes})` : ''
+            image.width / noofframes}x${image.height}x${noofframes})` : ''
             }\n${image ? image.path : localize('gfx.imagenotfound', 'Image not found')}">
         ${image ? `<img src="${image.uri}" />` :
             `<div 

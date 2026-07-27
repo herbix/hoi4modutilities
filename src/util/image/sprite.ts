@@ -115,6 +115,25 @@ export class CorneredTileSprite extends Sprite {
     }
 }
 
+export class ProgressBarSprite extends Sprite {
+    constructor(
+        id: string,
+        image: Image,
+        readonly backgroundImage: Image,
+        readonly size: NumberPosition,
+        readonly horizontal: boolean) {
+        super(id, image, 1);
+    }
+
+    public get width(): number {
+        return this.size.x;
+    }
+
+    public get height(): number {
+        return this.size.y;
+    }
+}
+
 function toDataUrl(buffer: Buffer): string {
     return 'data:image/png;base64,' + buffer.toString('base64');
 }
