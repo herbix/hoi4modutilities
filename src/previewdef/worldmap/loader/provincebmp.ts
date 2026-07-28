@@ -5,22 +5,22 @@ import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
 import { LoaderSession } from "../../../util/loader/loader";
 import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
 import { FileLoader, LoadResult, LoadResultOD, mergeRegions, pointEqual } from "./common";
-import { MinimumProvinceSizeLoader } from "./minimumprovincesize";
+import { DefinesLoader } from "./defines";
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
-    private minimumProvinceSizeLoader = new MinimumProvinceSizeLoader();
+    private definesLoader = new DefinesLoader();
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
-        return await super.shouldReloadImpl(session) || await this.minimumProvinceSizeLoader.shouldReload(session);
+        return await super.shouldReloadImpl(session) || await this.definesLoader.shouldReload(session);
     }
 
     protected async loadFromFile(session: LoaderSession): Promise<LoadResultOD<ProvinceBmp>> {
         const warnings: WorldMapWarning[] = [];
-        const minimumProvinceSize = await this.minimumProvinceSizeLoader.load(session);
+        const defines = await this.definesLoader.load(session);
         return {
-            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), minimumProvinceSize.result, warnings),
+            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), defines.result, warnings),
             warnings,
-            dependencies: [this.file, ...minimumProvinceSize.dependencies],
+            dependencies: [this.file, ...defines.dependencies],
         };
     }
 

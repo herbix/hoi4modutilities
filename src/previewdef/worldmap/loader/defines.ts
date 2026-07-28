@@ -4,17 +4,17 @@ import { FileLoader, FolderLoader, LoadResult, LoadResultOD } from "./common";
 
 const defaultMinimumProvinceSize = 8;
 
-interface MinimumProvinceSizeFile {
+interface DefinesFile {
     file: string;
     minimumProvinceSize?: number;
 }
 
-export class MinimumProvinceSizeLoader extends FolderLoader<number, MinimumProvinceSizeFile> {
+export class DefinesLoader extends FolderLoader<number, DefinesFile> {
     constructor() {
-        super('common/defines', MinimumProvinceSizeFileLoader);
+        super('common/defines', DefinesFileLoader);
     }
 
-    protected mergeFiles(fileResults: LoadResult<MinimumProvinceSizeFile>[], _session: LoaderSession): Promise<LoadResult<number>> {
+    protected mergeFiles(fileResults: LoadResult<DefinesFile>[], _session: LoaderSession): Promise<LoadResult<number>> {
         const minimumProvinceSize = fileResults
             .map(result => result.result)
             .sort((a, b) => a.file.localeCompare(b.file))
@@ -28,12 +28,12 @@ export class MinimumProvinceSizeLoader extends FolderLoader<number, MinimumProvi
     }
 
     public toString() {
-        return `[MinimumProvinceSizeLoader]`;
+        return `[DefinesLoader]`;
     }
 }
 
-class MinimumProvinceSizeFileLoader extends FileLoader<MinimumProvinceSizeFile> {
-    protected async loadFromFile(): Promise<LoadResultOD<MinimumProvinceSizeFile>> {
+class DefinesFileLoader extends FileLoader<DefinesFile> {
+    protected async loadFromFile(): Promise<LoadResultOD<DefinesFile>> {
         const [buffer] = await readFileFromModOrHOI4(this.file);
         return {
             result: {
@@ -45,7 +45,7 @@ class MinimumProvinceSizeFileLoader extends FileLoader<MinimumProvinceSizeFile> 
     }
 
     public toString() {
-        return `[MinimumProvinceSizeFileLoader: ${this.file}]`;
+        return `[DefinesFileLoader: ${this.file}]`;
     }
 }
 
