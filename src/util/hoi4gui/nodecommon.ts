@@ -1,7 +1,7 @@
 import { Background } from '../../hoiformat/gui';
 import { HOIPartial, parseNumberLike } from '../../hoiformat/schema';
 import { NumberPosition, NumberSize } from '../common';
-import { CorneredTileSprite, Sprite } from '../image/sprite';
+import { CorneredTileSprite, ProgressBarSprite, Sprite } from '../image/sprite';
 import { calculateBBox, ParentInfo, RenderCommonOptions } from './common';
 
 export interface RenderNodeCommonOptions extends RenderCommonOptions {
@@ -9,6 +9,10 @@ export interface RenderNodeCommonOptions extends RenderCommonOptions {
 }
 
 export function renderSprite(position: NumberPosition, size: NumberSize, sprite: Sprite, frame: number, scale: number, options: RenderCommonOptions): string {
+    if (sprite instanceof ProgressBarSprite) {
+        return renderProgressBarSprite(position, sprite, scale, options);
+    }
+
     if (sprite instanceof CorneredTileSprite) {
         return renderCorneredTileSprite(position, size, sprite, frame, options);
     }
@@ -34,6 +38,58 @@ export function renderSprite(position: NumberPosition, size: NumberSize, sprite:
             background-size: ${sprite.width * scale}px ${sprite.height * scale}px;
         `)}
     "></div>`;
+}
+
+export function renderProgressBarSprite(position: NumberPosition, sprite: ProgressBarSprite, scale: number, options: RenderCommonOptions): string {
+    const width = sprite.width * scale;
+    const height = sprite.height * scale;
+    const progress = 0.5;
+    const progressWidth = sprite.horizontal ? width * progress : width;
+    const progressHeight = sprite.horizontal ? height : height * progress;
+
+    return `<div
+    ${options?.id ? `id="${options.id}"` : ''}
+    class="
+        ${options?.classNames ? options.classNames : ''}
+        ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+        ${options.styleTable.oneTimeStyle('progressbarsprite', () => `
+            left: ${position.x}px;
+            top: ${position.y}px;
+            width: ${width}px;
+            height: ${height}px;
+        `)}
+        ${options.styleTable.style(`progressbarsprite-bg-${sprite.id}`, () => `
+            background-image: url(${sprite.backgroundImage.uri});
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        `)}
+    ">
+        <div class="
+            ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+            ${options.styleTable.oneTimeStyle('progressbarsprite-progress', () => `
+                left: 0;
+                top: ${sprite.horizontal ? 0 : height - progressHeight}px;
+                width: ${progressWidth}px;
+                height: ${progressHeight}px;
+                overflow: hidden;
+            `)}
+        ">
+            <div class="
+                ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
+                ${options.styleTable.oneTimeStyle('progressbarsprite-progress-image', () => `
+                    left: 0;
+                    top: ${sprite.horizontal ? 0 : progressHeight - height}px;
+                    width: ${width}px;
+                    height: ${height}px;
+                `)}
+                ${options.styleTable.style(`progressbarsprite-img-${sprite.id}`, () => `
+                    background-image: url(${sprite.image.uri});
+                    background-size: 100% 100%;
+                    background-repeat: no-repeat;
+                `)}
+            "></div>
+        </div>
+    </div>`;
 }
 
 export function renderCorneredTileSprite(position: NumberPosition, size: NumberSize, sprite: CorneredTileSprite, frame: number, options: RenderCommonOptions): string {
