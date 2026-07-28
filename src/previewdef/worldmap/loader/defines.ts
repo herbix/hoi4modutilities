@@ -53,7 +53,7 @@ function parseMinimumProvinceSize(content: string): number | undefined {
     const contentWithoutComments = content
         .replace(/--\[\[[\s\S]*?\]\]/g, '')
         .replace(/--[^\r\n]*/g, '');
-    const regex = /\bMINIMUM_PROVINCE_SIZE_IN_PIXELS\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)(?=\s*(?:[,;]|$))/gim;
+    const regex = /\bMINIMUM_PROVINCE_SIZE_IN_PIXELS\s*=\s*(-?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)(?=\s*(?:[,;]|$))/gm;
     let result: number | undefined;
     let match: RegExpExecArray | null;
 
