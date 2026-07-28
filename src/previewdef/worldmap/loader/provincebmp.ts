@@ -2,15 +2,26 @@ import { UserError } from "../../../util/common";
 import { readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { localize } from "../../../util/i18n";
 import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
+import { LoaderSession } from "../../../util/loader/loader";
 import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
 import { FileLoader, LoadResult, LoadResultOD, mergeRegions, pointEqual } from "./common";
+import { DefinesLoader } from "./defines";
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
-    protected async loadFromFile(): Promise<LoadResultOD<ProvinceBmp>> {
+    private definesLoader = new DefinesLoader();
+
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await super.shouldReloadImpl(session) || await this.definesLoader.shouldReload(session);
+    }
+
+    protected async loadFromFile(session: LoaderSession): Promise<LoadResultOD<ProvinceBmp>> {
         const warnings: WorldMapWarning[] = [];
+        const defines = await this.definesLoader.load(session);
+        const minimumProvinceSize = defines.result.minimumProvinceSize?.value ?? 8;
         return {
-            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), warnings),
+            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), minimumProvinceSize, warnings),
             warnings,
+            dependencies: [this.file, ...defines.dependencies],
         };
     }
 
@@ -28,7 +39,12 @@ export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
     }
 }
 
-async function loadProvincesBmp(provincesFile: string, progressReporter: ProgressReporter, warnings: WorldMapWarning[]): Promise<ProvinceBmp> {
+async function loadProvincesBmp(
+    provincesFile: string,
+    progressReporter: ProgressReporter,
+    minimumProvinceSize: number,
+    warnings: WorldMapWarning[]
+): Promise<ProvinceBmp> {
     await progressReporter(localize('worldmap.progress.loadingprovincebmp', 'Loading province bmp...',));
 
     const [provinceMapImageBuffer] = await readFileFromModOrHOI4(provincesFile);
@@ -40,11 +56,28 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
     
     const width = provinceMapImage.width;
     const height = provinceMapImage.height;
-    const provincesWithZone = fillProvinceZones(colorOnlyProvinces, colorToProvince, colorByPosition, width, height, provincesFile, warnings);
+    const provincesWithZone = fillProvinceZones(
+        colorOnlyProvinces,
+        colorToProvince,
+        colorByPosition,
+        width,
+        height,
+        provincesFile,
+        minimumProvinceSize,
+        warnings
+    );
     
     await progressReporter(localize('worldmap.progress.calculatingedge', 'Calculating province edges...'));
     
-    const provinces = fillEdges(provincesWithZone, colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>, colorByPosition, width, height);
+    const provinces = fillEdges(
+        provincesWithZone,
+        colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>,
+        colorByPosition,
+        width,
+        height,
+        provincesFile,
+        warnings
+    );
 
     validateProvince(colorByPosition, width, height, provincesFile, warnings);
 
@@ -102,6 +135,7 @@ function fillProvinceZones<T extends ColorContainer>(
     width: number,
     height: number,
     file: string,
+    minimumProvinceSize: number,
     warnings: WorldMapWarning[],
 ): (T & ProvinceZoneDef)[] {
     const blockStack: Zone[] = [];
@@ -151,6 +185,17 @@ function fillProvinceZones<T extends ColorContainer>(
 
     for (const provinceWithoutRegion of provinces) {
         const province = Object.assign(provinceWithoutRegion, mergeRegions(provinceWithoutRegion.coverZones, width));
+        if (province.mass <= minimumProvinceSize) {
+            const { x, y } = getProvinceWarningPosition(province.coverZones);
+            warnings.push({
+                source: [{ type: 'province', color: province.color, id: -1 }],
+                relatedFiles: [file],
+                text: localize('worldmap.warnings.provincetoosmall',
+                    'The province has only {0} pixels around (x={1},y={2}). Should have at least {3}.',
+                    province.mass, x, y, minimumProvinceSize),
+            });
+        }
+
         if (province.boundingBox.w > width / 2 || province.boundingBox.h > height / 2) {
             warnings.push({
                 source: [{ type: 'province', color: province.color, id: -1 }],
@@ -163,13 +208,32 @@ function fillProvinceZones<T extends ColorContainer>(
     return provinces as (T & ProvinceZoneDef)[];
 }
 
+function getProvinceWarningPosition(coverZones: Zone[]): Point {
+    let x = Infinity;
+    let y = -Infinity;
+
+    for (const zone of coverZones) {
+        const bottom = zone.y + zone.h;
+        if (bottom > y) {
+            x = zone.x;
+            y = bottom;
+        } else if (bottom === y) {
+            x = Math.min(x, zone.x);
+        }
+    }
+
+    return { x, y };
+}
+
 type EdgeDef = { edges: ProvinceEdgeGraph[] };
 function fillEdges<T extends ColorContainer>(
     provincesWithoutEdges: (T & Partial<EdgeDef>)[],
     colorToProvinceWithoutEdges: Record<number, T & Partial<EdgeDef>>,
     colorByPosition: number[],
     width: number,
-    height: number
+    height: number,
+    file: string,
+    warnings: WorldMapWarning[]
 ): (T & EdgeDef)[] {
     const accessedPixels = new Array<boolean>(colorByPosition.length).fill(false);
 
@@ -186,7 +250,7 @@ function fillEdges<T extends ColorContainer>(
                 continue;
             }
 
-            fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height);
+            fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height, file, warnings);
         }
     }
 
@@ -199,10 +263,23 @@ function fillEdgesOfProvince<T extends EdgeDef>(
     colorByPosition: number[],
     accessedPixels: boolean[],
     width: number,
-    height: number
+    height: number,
+    file: string,
+    warnings: WorldMapWarning[]
 ): void {
     const color = colorByPosition[index];
-    const edgePixels = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
+    const { edgePixels, pixelCount } = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
+    const x = index % width;
+    const y = Math.floor(index / width);
+
+    if (pixelCount === 1) {
+        warnings.push({
+            source: [{ type: 'province', id: -1, color }],
+            relatedFiles: [file],
+            text: localize('worldmap.warnings.onepixelprovince', 'One-pixel province color found at {0}, {1}.', x, y),
+        });
+    }
+
     const edgePixelsByAdjecentProvince: Record<number, [Point, Point][]> = {};
     edgePixels.forEach(([p, line]) => {
         let lines = edgePixelsByAdjecentProvince[p];
@@ -235,6 +312,7 @@ function findEdgePixels(index: number, accessedPixels: boolean[], color: number,
     const edgePixels: [number, [Point, Point]][] = [];
     const pixelStack: number[] = [ index ];
     const indices: number[] = new Array(4);
+    let pixelCount = 0;
 
     while (pixelStack.length > 0) {
         const pixelIndex = pixelStack.pop()!;
@@ -265,9 +343,10 @@ function findEdgePixels(index: number, accessedPixels: boolean[], color: number,
         }
 
         accessedPixels[pixelIndex] = true;
+        pixelCount++;
     }
 
-    return edgePixels;
+    return { edgePixels, pixelCount };
 }
 
 function concatEdges(edges: [Point, Point][]): Point[][] {
