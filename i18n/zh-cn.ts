@@ -209,7 +209,7 @@ const table: Partial<typeof __table> = {
     "worldmap.warnings.provincenotexistonmap": "地块{0}不存在于地图上。",
     "worldmap.warnings.provincenothere": "地块{0}不属于此省份，但胜利点定义在这个省份中。",
     "worldmap.warnings.provincetoolarge": "地块过大：{0}x{1}。",
-    "worldmap.warnings.provincetoosmall": "地块在(x={1},y={2})附近只有{0}个像素。至少应有8个像素。",
+    "worldmap.warnings.provincetoosmall": "地块在(x={1},y={2})附近只有{0}个像素。至少应有{3}个像素。",
     "worldmap.warnings.railwaylinecountnotenough": "铁路中地块的数量不足：{0}。",
     "worldmap.warnings.resourcedefinedtwice": "资源\"{0}\"在不同的文件内重复定义：{1}，{2}。",
     "worldmap.warnings.resourcenotexist": "省份{1}使用的资源\"{0}\"不存在。",

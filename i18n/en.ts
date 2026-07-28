@@ -206,7 +206,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.warnings.provincenotexistonmap": "Province {0} doesn't exist on map.",
     "worldmap.warnings.provincenothere": "Province {0} not included in this state. But victory points defined here.",
     "worldmap.warnings.provincetoolarge": "The province is too large: {0}x{1}.",
-    "worldmap.warnings.provincetoosmall": "The province has only {0} pixels around (x={1},y={2}). Should have at least 8.",
+    "worldmap.warnings.provincetoosmall": "The province has only {0} pixels around (x={1},y={2}). Should have at least {3}.",
     "worldmap.warnings.railwaylinecountnotenough": "Not enough provinces in railway: {0}",
     "worldmap.warnings.resourcedefinedtwice": "Resource {0} is defined in two files: {1}, {2}.",
     "worldmap.warnings.resourcenotexist": "Resource {0} used in state {1} is not defined.",
