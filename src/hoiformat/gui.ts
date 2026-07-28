@@ -39,6 +39,7 @@ export interface GuiTypes {
 
 export interface ContainerWindowType {
     name: string;
+    fullscreen: boolean;
     orientation: Orientation;
     origo: Orientation;
     position: Position;
@@ -194,6 +195,7 @@ const buttonTypeSchema: SchemaDef<ButtonType> = {
 
 const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {
     name: "string",
+    fullscreen: "boolean",
     orientation: "stringignorecase",
     origo: "stringignorecase",
     position: positionSchema,
