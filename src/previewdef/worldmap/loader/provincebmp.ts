@@ -2,7 +2,7 @@ import { UserError } from "../../../util/common";
 import { readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { localize } from "../../../util/i18n";
 import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
-import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
+import { Point, ProgressReporter, ProvinceBmp, ProvinceBmpComponent, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
 import { FileLoader, LoadResult, LoadResultOD, mergeRegions, pointEqual } from "./common";
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
@@ -44,7 +44,13 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
     
     await progressReporter(localize('worldmap.progress.calculatingedge', 'Calculating province edges...'));
     
-    const provinces = fillEdges(provincesWithZone, colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>, colorByPosition, width, height);
+    const { provinces, components } = fillEdges(
+        provincesWithZone,
+        colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>,
+        colorByPosition,
+        width,
+        height
+    );
 
     validateProvince(colorByPosition, width, height, provincesFile, warnings);
 
@@ -54,6 +60,7 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
         colorByPosition,
         colorToProvince: colorToProvince as unknown as Record<number, ProvinceGraph>,
         provinces,
+        components,
     };
 }
 
@@ -170,8 +177,9 @@ function fillEdges<T extends ColorContainer>(
     colorByPosition: number[],
     width: number,
     height: number
-): (T & EdgeDef)[] {
+): { provinces: (T & EdgeDef)[], components: ProvinceBmpComponent[] } {
     const accessedPixels = new Array<boolean>(colorByPosition.length).fill(false);
+    const components: ProvinceBmpComponent[] = [];
 
     for (const province of provincesWithoutEdges) {
         province.edges = [];
@@ -186,11 +194,14 @@ function fillEdges<T extends ColorContainer>(
                 continue;
             }
 
-            fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height);
+            components.push(fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height));
         }
     }
 
-    return provinces as (T & EdgeDef)[];
+    return {
+        provinces: provinces as (T & EdgeDef)[],
+        components,
+    };
 }
 
 function fillEdgesOfProvince<T extends EdgeDef>(
@@ -200,9 +211,9 @@ function fillEdgesOfProvince<T extends EdgeDef>(
     accessedPixels: boolean[],
     width: number,
     height: number
-): void {
+): ProvinceBmpComponent {
     const color = colorByPosition[index];
-    const edgePixels = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
+    const { edgePixels, pixelCount } = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
     const edgePixelsByAdjecentProvince: Record<number, [Point, Point][]> = {};
     edgePixels.forEach(([p, line]) => {
         let lines = edgePixelsByAdjecentProvince[p];
@@ -223,6 +234,13 @@ function fillEdgesOfProvince<T extends EdgeDef>(
             province.edges.push(edgeSet);
         }
     }
+
+    return {
+        color,
+        x: index % width,
+        y: Math.floor(index / width),
+        pixelCount,
+    };
 }
 
 const indicesToOffset: [number, number][][] = [
@@ -235,6 +253,7 @@ function findEdgePixels(index: number, accessedPixels: boolean[], color: number,
     const edgePixels: [number, [Point, Point]][] = [];
     const pixelStack: number[] = [ index ];
     const indices: number[] = new Array(4);
+    let pixelCount = 0;
 
     while (pixelStack.length > 0) {
         const pixelIndex = pixelStack.pop()!;
@@ -265,9 +284,10 @@ function findEdgePixels(index: number, accessedPixels: boolean[], color: number,
         }
 
         accessedPixels[pixelIndex] = true;
+        pixelCount++;
     }
 
-    return edgePixels;
+    return { edgePixels, pixelCount };
 }
 
 function concatEdges(edges: [Point, Point][]): Point[][] {
