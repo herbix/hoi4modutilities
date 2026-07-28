@@ -171,6 +171,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.display.border": "Show border",
     "worldmap.topbar.display.fastrendering": "Fast rendering",
     "worldmap.topbar.display.label": "Show label",
+    "worldmap.topbar.display.localisedlabel": "Show localised label",
     "worldmap.topbar.display.mousehighlight": "Mouse highlight",
     "worldmap.topbar.display.river": "Show River",
     "worldmap.topbar.display.supply": "Show Supply",

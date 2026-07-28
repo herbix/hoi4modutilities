@@ -171,6 +171,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.display.border": "경계 보이기",
     "worldmap.topbar.display.fastrendering": "빠른 시각화",
     "worldmap.topbar.display.label": "ID 표기",
+    "worldmap.topbar.display.localisedlabel": "Show localised label",
     "worldmap.topbar.display.mousehighlight": "마우스 강조",
     "worldmap.topbar.display.river": "하천 표시",
     "worldmap.topbar.display.supply": "보급 표시",

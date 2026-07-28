@@ -171,6 +171,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.display.border": "显示边界",
     "worldmap.topbar.display.fastrendering": "快速绘制",
     "worldmap.topbar.display.label": "显示标签",
+    "worldmap.topbar.display.localisedlabel": "显示本地化标签",
     "worldmap.topbar.display.mousehighlight": "指针高亮",
     "worldmap.topbar.display.river": "显示河流",
     "worldmap.topbar.display.supply": "显示补给",
