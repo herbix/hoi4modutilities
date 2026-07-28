@@ -33,13 +33,13 @@ jobs:
         npm install
         npm install vsce
 
+    - name: Test
+      run: |
+        xvfb-run npm run test
+
     - name: Build
       run: |
         node_modules/.bin/vsce package
-
-    - name: Test
-      run: |
-        npm run test
 
     - name: Output Artifact
       uses: actions/upload-artifact@v4
