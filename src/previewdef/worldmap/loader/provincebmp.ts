@@ -17,8 +17,9 @@ export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
     protected async loadFromFile(session: LoaderSession): Promise<LoadResultOD<ProvinceBmp>> {
         const warnings: WorldMapWarning[] = [];
         const defines = await this.definesLoader.load(session);
+        const minimumProvinceSize = defines.result.minimumProvinceSize?.value ?? 8;
         return {
-            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), defines.result, warnings),
+            result: await loadProvincesBmp(this.file, e => this.fireOnProgressEvent(e), minimumProvinceSize, warnings),
             warnings,
             dependencies: [this.file, ...defines.dependencies],
         };

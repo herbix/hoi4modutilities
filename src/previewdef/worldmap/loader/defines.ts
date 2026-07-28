@@ -2,26 +2,36 @@ import { readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { LoaderSession } from "../../../util/loader/loader";
 import { FileLoader, FolderLoader, LoadResult, LoadResultOD } from "./common";
 
-const defaultMinimumProvinceSize = 8;
-
-interface DefinesFile {
-    file: string;
-    minimumProvinceSize?: number;
+export interface Defines {
+    minimumProvinceSize?: {
+        file: string;
+        value: number;
+    };
 }
 
-export class DefinesLoader extends FolderLoader<number, DefinesFile> {
+interface DefinesFile extends Defines {
+    file: string;
+}
+
+export class DefinesLoader extends FolderLoader<Defines, DefinesFile> {
     constructor() {
         super('common/defines', DefinesFileLoader);
     }
 
-    protected mergeFiles(fileResults: LoadResult<DefinesFile>[], _session: LoaderSession): Promise<LoadResult<number>> {
-        const minimumProvinceSize = fileResults
+    protected mergeFiles(fileResults: LoadResult<DefinesFile>[], _session: LoaderSession): Promise<LoadResult<Defines>> {
+        const result: Defines = {};
+        const definesFiles = fileResults
             .map(result => result.result)
-            .sort((a, b) => a.file.localeCompare(b.file))
-            .reduce((value, defines) => defines.minimumProvinceSize ?? value, defaultMinimumProvinceSize);
+            .sort((a, b) => a.file.localeCompare(b.file));
+
+        for (const defines of definesFiles) {
+            if (defines.minimumProvinceSize !== undefined) {
+                result.minimumProvinceSize = defines.minimumProvinceSize;
+            }
+        }
 
         return Promise.resolve({
-            result: minimumProvinceSize,
+            result,
             warnings: [],
             dependencies: [this.folder + '/*'],
         });
@@ -35,10 +45,14 @@ export class DefinesLoader extends FolderLoader<number, DefinesFile> {
 class DefinesFileLoader extends FileLoader<DefinesFile> {
     protected async loadFromFile(): Promise<LoadResultOD<DefinesFile>> {
         const [buffer] = await readFileFromModOrHOI4(this.file);
+        const minimumProvinceSize = parseMinimumProvinceSize(buffer.toString());
         return {
             result: {
                 file: this.file,
-                minimumProvinceSize: parseMinimumProvinceSize(buffer.toString()),
+                minimumProvinceSize: minimumProvinceSize === undefined ? undefined : {
+                    file: this.file,
+                    value: minimumProvinceSize,
+                },
             },
             warnings: [],
         };
