@@ -42,3 +42,7 @@ declare module 'tga' {
     }
     export = TGA;
 }
+
+interface NodeRequire {
+    context(directory: string, useSubdirectories?: boolean, regExp?: RegExp, mode?: string): NodeRequire;
+}
