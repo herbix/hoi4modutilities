@@ -55,7 +55,7 @@ export interface CorneredTileSpriteType {
 
 export interface ProgressBarType {
     name: string;
-    texturefile1: string;
+    texturefile: string;
     texturefile2: string;
     size: NumberPosition;
     horizontal: boolean;
@@ -181,16 +181,16 @@ export function getSpriteTypes(node: Node): AnySpriteType[] {
 
         for (const sprite of spritetypes.progressbartype) {
             const name = sprite.name?._value;
-            const texturefile1 = sprite.texturefile1;
+            const texturefile = sprite.texturefile1;
             const texturefile2 = sprite.texturefile2;
-            if (name && texturefile1 && texturefile2) {
+            if (name && texturefile && texturefile2) {
                 const size = {
                     x: sprite.size?.x ?? 100,
                     y: sprite.size?.y ?? 100,
                 };
                 result.push({
                     name,
-                    texturefile1,
+                    texturefile,
                     texturefile2,
                     size,
                     horizontal: sprite.horizontal ?? (size.x >= size.y),

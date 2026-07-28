@@ -63,9 +63,8 @@ async function renderSpriteTypes(spriteTypes: AnySpriteType[], styleTable: Style
 }
 
 async function renderSpriteType(spriteType: AnySpriteType, styleTable: StyleTable): Promise<string> {
-    const texturefile = 'texturefile1' in spriteType ? spriteType.texturefile1 : spriteType.texturefile;
     const noofframes = 'noofframes' in spriteType ? spriteType.noofframes : 1;
-    const image = await getImageByPath(texturefile);
+    const image = await getImageByPath(spriteType.texturefile);
     return `<div
         id="${spriteType.name}"
         class="

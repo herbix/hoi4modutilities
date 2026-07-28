@@ -87,7 +87,7 @@ async function getSpriteByGfxNameImpl(name: string, gfxFilePath: string): Promis
         return undefined;
     }
 
-    const image = await imageCache.get('texturefile1' in sprite ? sprite.texturefile1 : sprite.texturefile);
+    const image = await imageCache.get(sprite.texturefile);
     if (image === undefined) {
         return undefined;
     }
