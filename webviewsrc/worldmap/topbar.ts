@@ -8,14 +8,23 @@ import { DivDropdown } from "../util/dropdown";
 import { BehaviorSubject, combineLatest, fromEvent } from 'rxjs';
 import { Renderer } from './renderer';
 import { sendEvent } from '../util/telemetry';
-import { getState } from "../util/common";
+import { getState, setState } from "../util/common";
 import { ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../../src/hoiformat/condition";
+import { distinctUntilChanged } from "rxjs/operators";
 
 export type ViewMode = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'owner' | 'controller' | 'stateid' | 'manpower' |
     'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue' | 'resources' | 'statecategory';
 
 export const topBarHeight = 40;
+
+interface WorkspaceState {
+    viewMode?: ViewMode;
+    colorSet?: ColorSet;
+    display?: string[];
+    selectedConditions?: string[];
+    warningFilter?: string[];
+}
 
 export class TopBar extends Subscriber {
     public viewMode$: BehaviorSubject<ViewMode>;
@@ -36,6 +45,7 @@ export class TopBar extends Subscriber {
     public warningsVisible: boolean = false;
 
     private searchBox: HTMLInputElement;
+    private conditionSetupDone: boolean = false;
 
     constructor(canvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, state: any) {
         super();
@@ -49,8 +59,10 @@ export class TopBar extends Subscriber {
         }
         this.addSubscription(loader.worldMap$.subscribe(this.setupConditions));
 
-        this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? 'province');
-        this.colorSet$ = toBehaviorSubject(document.getElementById('colorset') as HTMLSelectElement, state.colorSet ?? 'provinceid');
+        const workspaceState: WorkspaceState = (window as any).__workspaceState ?? {};
+
+        this.viewMode$ = toBehaviorSubject(document.getElementById('viewmode') as HTMLSelectElement, state.viewMode ?? workspaceState.viewMode ?? 'province');
+        this.colorSet$ = toBehaviorSubject(document.getElementById('colorset') as HTMLSelectElement, state.colorSet ?? workspaceState.colorSet ?? 'provinceid');
         this.hoverProvinceId$ = new BehaviorSubject<number | undefined>(undefined);
         this.selectedProvinceId$ = new BehaviorSubject<number | undefined>(state.selectedProvinceId ?? undefined);
         this.hoverStateId$ = new BehaviorSubject<number | undefined>(undefined);
@@ -59,22 +71,41 @@ export class TopBar extends Subscriber {
         this.selectedStrategicRegionId$ = new BehaviorSubject<number | undefined>(state.selectedStrategicRegionId ?? undefined);
         this.hoverSupplyAreaId$ = new BehaviorSubject<number | undefined>(undefined);
         this.selectedSupplyAreaId$ = new BehaviorSubject<number | undefined>(state.selectedSupplyAreaId ?? undefined);
-        this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>((state.selectedConditions ?? []).map(stringValueToConditionItem));
+        this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>((state.selectedConditions ?? workspaceState.selectedConditions ?? []).map(stringValueToConditionItem));
 
         this.addSubscription(this.conditions.selectedValues$.subscribe(selection => {
             this.selectedConditions$.next(selection.map(stringValueToConditionItem));
+            if (this.conditionSetupDone) {
+                setState({ selectedConditions: selection });
+            }
         }));
 
         if (state.warningFilter) {
             this.warningFilter.selectedValues$.next(state.warningFilter);
+        } else if (workspaceState.warningFilter) {
+            this.warningFilter.selectedValues$.next(workspaceState.warningFilter);
         } else {
             this.warningFilter.selectAll();
         }
+
         if (state.display) {
             this.display.selectedValues$.next(state.display);
+        } else if (workspaceState.display) {
+            this.display.selectedValues$.next(workspaceState.display);
         } else {
             this.display.selectAll();
         }
+
+        this.addSubscription(
+            combineLatest([
+                this.viewMode$,
+                this.colorSet$,
+                this.warningFilter.selectedValues$,
+                this.display.selectedValues$,
+                this.conditions.selectedValues$,
+            ]).pipe(
+                distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
+            ).subscribe(this.updateWorkspaceState));
 
         this.searchBox = document.getElementById("searchbox") as HTMLInputElement;
 
@@ -83,13 +114,31 @@ export class TopBar extends Subscriber {
     }
 
     private setupConditions = (worldMap: FEWorldMap) => {
+        if (worldMap.conditionExprs.length === 0 && !this.conditionSetupDone) {
+            return;
+        }
+
         this.conditions.setupOptions(worldMap.conditionExprs.map(option => ({ value: conditionItemToStringValue(option), text: conditionToString(option) })));
-        const selectedConditions = getState().selectedConditions ?? [];
+        const workspaceState: WorkspaceState = (window as any).__workspaceState ?? {};
+        const selectedConditions: string[] = getState().selectedConditions ?? workspaceState.selectedConditions ?? [];
         this.conditions.selectedValues$.next(selectedConditions);
         const groupElement = this.conditions.select.closest<HTMLDivElement>('.group');
         if (groupElement) {
             groupElement.style.display = worldMap.conditionExprs.length > 0 ? 'inline-block' : 'none';
         }
+
+        this.conditionSetupDone = true;
+    };
+
+    private updateWorkspaceState = ([viewMode, colorSet, warningFilter, display, selectedConditions]: [ViewMode, ColorSet, readonly string[], readonly string[], readonly string[]]) => {
+        const workspaceState: WorkspaceState = {
+            viewMode,
+            colorSet,
+            warningFilter: [...warningFilter],
+            display: [...display],
+            selectedConditions: this.conditionSetupDone ? [...selectedConditions] : ((window as any).__workspaceState ?? {}).selectedConditions,
+        };
+        vscode.postMessage<WorldMapMessage>({ command: 'savestate', value: workspaceState });
     };
 
     private onViewModeChange() {
@@ -240,7 +289,7 @@ export class TopBar extends Subscriber {
         }));
         this.addSubscription(fromEvent(exportButton, 'click').subscribe(e => {
             e.stopPropagation();
-            vscode.postMessage({ command: 'requestexportmap' });
+            vscode.postMessage<WorldMapMessage>({ command: 'requestexportmap' });
         }));
         this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {
             const message = event.data as WorldMapMessage;
@@ -259,7 +308,7 @@ export class TopBar extends Subscriber {
             canvas.height = Math.max(1, worldMap.height);
             const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: 1 });
             Renderer.renderMapImpl(canvas, this, viewPoint, worldMap, { preciseEdge: true, overwriteRenderPrecision: 1 });
-            vscode.postMessage({ command: 'exportmap', dataUrl: canvas.toDataURL() });
+            vscode.postMessage<WorldMapMessage>({ command: 'exportmap', dataUrl: canvas.toDataURL() });
         }));
     }
     

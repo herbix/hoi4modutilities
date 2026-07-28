@@ -170,7 +170,7 @@ export abstract class PreviewBase {
         this.onDocumentChange(document, Date.now());
     }
 
-    protected handleMessage(_msg: any): Promise<void> | void {
+    protected handleMessage(msg: any): Promise<void> | void {
     }
 
     protected abstract getContent(document: vscode.TextDocument): Promise<string>;

@@ -4,6 +4,19 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Unreleased]
+
+### Added
+* Add option in world map preview to hide localised label (#138).
+* Support fullscreen GUI previews. (#136) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Support progress bar sprite previews (#137) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+
+### Fixed
+* Worldmap preview may be black when resizing the preview window.
+
+### Updated
+* Combobox selections on top bar of world map preview are now persisted with workspace.
+
 ## [0.15.1] - 2026/07/26 - Latest
 
 ### Added
@@ -11,7 +24,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Add localised labels on world map preview.
 * Add state category color set in world map preview.
 
-### Update
+### Updated
 * Refine localisation file preprocessing to accept more files.
 
 ## [0.15.0] - 2026/07/23
@@ -26,7 +39,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Indexing for event files.
 
 ### Fixed
-* Performance issue when opening preview windows (especially noticeable in map preview) (#130) (#130) (since v0.12.4).
+* Performance issue when opening preview windows (especially noticeable in map preview) (#130) (#132) (since v0.12.4).
 
 ## [0.14.2] - 2026/07/18
 
@@ -47,10 +60,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [0.14.0] - 2026/07/13
 
 ### Added
-* Add condition selection in world map preview. (#121)
+* Add condition selection in world map preview (#121).
   * Limitation: only support previewing owner, controller and core.
-* Add bookmark/scenario selection in world map preview, along with condition selection. (#33)
-* Add "country (controller)" color set in world map preview. (#118)
+* Add bookmark/scenario selection in world map preview, along with condition selection (#33).
+* Add "country (controller)" color set in world map preview (#118).
 
 ### Updated
 * Feature flag setting UI. Now you don't need to edit raw json.

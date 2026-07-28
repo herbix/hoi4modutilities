@@ -14,6 +14,7 @@ import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
 import { getConfiguration } from '../../util/vsccommon';
+import { contextContainer } from '../../context';
 
 export class WorldMap {
     public panel: vscode.WebviewPanel | undefined;
@@ -65,6 +66,7 @@ export class WorldMap {
             [
                 { content: i18nTableAsScript() },
                 { content: 'window.__enableSupplyArea = ' + getConfiguration().enableSupplyArea + ';' },
+                { content: 'window.__workspaceState = ' + JSON.stringify(contextContainer.current?.workspaceState.get('worldmappreview.state', {})) + ';' },
                 'common.js',
                 'worldmap.js'
             ],
@@ -111,6 +113,9 @@ export class WorldMap {
                     break;
                 case 'exportmap':
                     await this.exportMap(msg.dataUrl);
+                    break;
+                case 'savestate':
+                    contextContainer.current?.workspaceState.update('worldmappreview.state', msg.value);
                     break;
             }
         } catch (e) {

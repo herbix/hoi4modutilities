@@ -67,7 +67,7 @@ export class Renderer extends Subscriber {
         this.resizeCanvas();
 
         this.addSubscription(loader.worldMap$.subscribe(this.reloadImages));
-        this.addSubscription(loader.worldMap$.subscribe(this.renderCanvas));
+        this.addSubscription(loader.worldMap$.subscribe(() => this.renderCanvas()));
         this.addSubscription(
             combineLatest([
                 loader.progress$,
@@ -87,7 +87,7 @@ export class Renderer extends Subscriber {
                 topBar.selectedConditions$,
             ]).pipe(
                 distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
-            ).subscribe(this.renderCanvas)
+            ).subscribe(() => this.renderCanvas())
         );
     }
 
@@ -101,7 +101,7 @@ export class Renderer extends Subscriber {
         }
     };
 
-    public renderCanvas = () => {
+    public renderCanvas(forceDrawMap: boolean = false): void {
         if (this.canvasWidth <= 0 && this.canvasHeight <= 0) {
             return;
         }
@@ -113,7 +113,7 @@ export class Renderer extends Subscriber {
         backCanvasContext.fillStyle = 'white';
         backCanvasContext.font = '12px sans-serif';
 
-        this.renderMap();
+        this.renderMap(forceDrawMap);
         backCanvasContext.drawImage(this.mapCanvas, 0, 0);
 
         const viewMode = this.topBar.viewMode$.value;
@@ -145,11 +145,11 @@ export class Renderer extends Subscriber {
     private resizeCanvas = () => {
         this.canvasWidth = this.mainCanvas.width = this.mapCanvas.width = this.backCanvas.width = window.innerWidth;
         this.canvasHeight = this.mainCanvas.height = this.mapCanvas.height = this.backCanvas.height = window.innerHeight;
-        this.renderCanvas();
+        this.renderCanvas(true);
     };
 
     private oldMapState: any = undefined;
-    private renderMap() {
+    private renderMap(force: boolean) {
         const worldMap = this.loader.worldMap;
         const displayOptions = this.topBar.display.selectedValues$.value;
         const newMapState = {
@@ -166,11 +166,12 @@ export class Renderer extends Subscriber {
             fastRendering: displayOptions.includes('fastrending'),
             supplyVisible: displayOptions.includes('supply'),
             riverVisible: displayOptions.includes('river'),
+            localisedLabelVisible: displayOptions.includes('localisedlabel'),
             ...this.viewPoint.toJson(),
         };
 
         // State not changed
-        if (this.oldMapState !== undefined && Object.keys(newMapState).every(k => this.oldMapState[k] === (newMapState as any)[k])) {
+        if (!force && this.oldMapState !== undefined && Object.keys(newMapState).every(k => this.oldMapState[k] === (newMapState as any)[k])) {
             return;
         }
         this.oldMapState = newMapState;
@@ -363,7 +364,7 @@ export class Renderer extends Subscriber {
                         const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
                         const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
                         context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                        if (region.localisedName) {
+                        if (region.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
                             context.fillText(region.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
                             context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
                         } else {
