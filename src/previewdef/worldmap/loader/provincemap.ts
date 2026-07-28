@@ -1,4 +1,4 @@
-import { ProvinceMap, Province, ProvinceEdge, WorldMapWarning, ProvinceDefinition, ProvinceBmp, ProvinceBmpComponent, ProvinceEdgeAdjacency, ProgressReporter, Terrain } from "../definitions";
+import { ProvinceMap, Province, ProvinceEdge, WorldMapWarning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, Terrain } from "../definitions";
 import { FileLoader, mergeInLoadResult, LoadResult, sortItems } from "./common";
 import { SchemaDef } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
@@ -89,7 +89,6 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
         const { provinces, badProvinceId: badProvinceIdForMerge } =
             mergeProvinceDefinitions(provinceDefinitions.result, provinceBmp.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.provinces], warnings);
     
-        validateProvinceBmpComponents(provinces, provinceBmp.result.components, 'map/' + defaultMap.provinces, warnings);
         validateProvinceContinents(provinces, continents.result, ['map/' + defaultMap.definitions, 'map/' + defaultMap.continent], warnings);
         validateProvinceTerrains(provinces, terrains.result, ['map/' + defaultMap.definitions], warnings);
 
@@ -271,41 +270,6 @@ function mergeProvinceDefinitions(
     }
 
     return { provinces: result, badProvinceId: badId };
-}
-
-function validateProvinceBmpComponents(
-    provinces: Province[],
-    components: ProvinceBmpComponent[],
-    provinceBmpFile: string,
-    warnings: WorldMapWarning[]
-) {
-    const provinceByColor = arrayToMap(provinces, 'color');
-    for (const { color, x, y, pixelCount } of components) {
-        const province = provinceByColor[color];
-        const source = [{
-            type: 'province' as const,
-            id: province?.id ?? null,
-            color,
-        }];
-
-        if (pixelCount < 8) {
-            warnings.push({
-                source,
-                relatedFiles: [provinceBmpFile],
-                text: localize('worldmap.warnings.provincetoosmall',
-                    'Province {0} has only {1} pixels around (x={2},y={3}). Should have at least 8.',
-                    province?.id ?? -1, pixelCount, x, y),
-            });
-        }
-
-        if (pixelCount === 1) {
-            warnings.push({
-                source,
-                relatedFiles: [provinceBmpFile],
-                text: localize('worldmap.warnings.onepixelprovince', 'One-pixel province color found at {0}, {1}.', x, y),
-            });
-        }
-    }
 }
 
 function validateProvinceContinents(provinces: Province[], continents: string[], relatedFiles: string[], warnings: WorldMapWarning[]) {

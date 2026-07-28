@@ -209,7 +209,7 @@ const table: Partial<typeof __table> = {
     "worldmap.warnings.provincenotexistonmap": "프로빈스 {0}번은 지도상에 존재하지 않음.",
     "worldmap.warnings.provincenothere": "프로빈스 {0}번은 이 주에 할당되지 않았지만 승점이 설정되어 있음.",
     "worldmap.warnings.provincetoolarge": "프로빈스가 너무 거대함: {0}x{1}.",
-    "worldmap.warnings.provincetoosmall": "Province {0} has only {1} pixels around (x={2},y={3}). Should have at least 8.",
+    "worldmap.warnings.provincetoosmall": "The province has only {0} pixels around (x={1},y={2}). Should have at least 8.",
     "worldmap.warnings.railwaylinecountnotenough": "철도 프로빈스가 부족함: {0}",
     "worldmap.warnings.resourcedefinedtwice": "Resource {0} is defined in two files: {1}, {2}.",
     "worldmap.warnings.resourcenotexist": "Resource {0} used in state {1} is not defined.",

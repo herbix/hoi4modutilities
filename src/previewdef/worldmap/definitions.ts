@@ -38,12 +38,6 @@ export interface ProvinceBmp {
     colorByPosition: number[]; // width * height
     colorToProvince: Record<number, ProvinceGraph>;
     provinces: ProvinceGraph[];
-    components: ProvinceBmpComponent[];
-}
-
-export interface ProvinceBmpComponent extends Point {
-    color: number;
-    pixelCount: number;
 }
 
 export interface ProvinceMap {

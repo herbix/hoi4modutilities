@@ -2,7 +2,7 @@ import { UserError } from "../../../util/common";
 import { readFileFromModOrHOI4 } from "../../../util/fileloader";
 import { localize } from "../../../util/i18n";
 import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
-import { Point, ProgressReporter, ProvinceBmp, ProvinceBmpComponent, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
+import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
 import { FileLoader, LoadResult, LoadResultOD, mergeRegions, pointEqual } from "./common";
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
@@ -44,12 +44,14 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
     
     await progressReporter(localize('worldmap.progress.calculatingedge', 'Calculating province edges...'));
     
-    const { provinces, components } = fillEdges(
+    const provinces = fillEdges(
         provincesWithZone,
         colorToProvince as Record<number, ColorContainer & ProvinceZoneDef>,
         colorByPosition,
         width,
-        height
+        height,
+        provincesFile,
+        warnings
     );
 
     validateProvince(colorByPosition, width, height, provincesFile, warnings);
@@ -60,7 +62,6 @@ async function loadProvincesBmp(provincesFile: string, progressReporter: Progres
         colorByPosition,
         colorToProvince: colorToProvince as unknown as Record<number, ProvinceGraph>,
         provinces,
-        components,
     };
 }
 
@@ -176,10 +177,11 @@ function fillEdges<T extends ColorContainer>(
     colorToProvinceWithoutEdges: Record<number, T & Partial<EdgeDef>>,
     colorByPosition: number[],
     width: number,
-    height: number
-): { provinces: (T & EdgeDef)[], components: ProvinceBmpComponent[] } {
+    height: number,
+    file: string,
+    warnings: WorldMapWarning[]
+): (T & EdgeDef)[] {
     const accessedPixels = new Array<boolean>(colorByPosition.length).fill(false);
-    const components: ProvinceBmpComponent[] = [];
 
     for (const province of provincesWithoutEdges) {
         province.edges = [];
@@ -194,14 +196,11 @@ function fillEdges<T extends ColorContainer>(
                 continue;
             }
 
-            components.push(fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height));
+            fillEdgesOfProvince(xi, colorToProvince, colorByPosition, accessedPixels, width, height, file, warnings);
         }
     }
 
-    return {
-        provinces: provinces as (T & EdgeDef)[],
-        components,
-    };
+    return provinces as (T & EdgeDef)[];
 }
 
 function fillEdgesOfProvince<T extends EdgeDef>(
@@ -210,10 +209,33 @@ function fillEdgesOfProvince<T extends EdgeDef>(
     colorByPosition: number[],
     accessedPixels: boolean[],
     width: number,
-    height: number
-): ProvinceBmpComponent {
+    height: number,
+    file: string,
+    warnings: WorldMapWarning[]
+): void {
     const color = colorByPosition[index];
     const { edgePixels, pixelCount } = findEdgePixels(index, accessedPixels, color, colorByPosition, width, height);
+    const x = index % width;
+    const y = Math.floor(index / width);
+
+    if (pixelCount < 8) {
+        warnings.push({
+            source: [{ type: 'province', id: -1, color }],
+            relatedFiles: [file],
+            text: localize('worldmap.warnings.provincetoosmall',
+                'The province has only {0} pixels around (x={1},y={2}). Should have at least 8.',
+                pixelCount, x, y),
+        });
+    }
+
+    if (pixelCount === 1) {
+        warnings.push({
+            source: [{ type: 'province', id: -1, color }],
+            relatedFiles: [file],
+            text: localize('worldmap.warnings.onepixelprovince', 'One-pixel province color found at {0}, {1}.', x, y),
+        });
+    }
+
     const edgePixelsByAdjecentProvince: Record<number, [Point, Point][]> = {};
     edgePixels.forEach(([p, line]) => {
         let lines = edgePixelsByAdjecentProvince[p];
@@ -234,13 +256,6 @@ function fillEdgesOfProvince<T extends EdgeDef>(
             province.edges.push(edgeSet);
         }
     }
-
-    return {
-        color,
-        x: index % width,
-        y: Math.floor(index / width),
-        pixelCount,
-    };
 }
 
 const indicesToOffset: [number, number][][] = [
