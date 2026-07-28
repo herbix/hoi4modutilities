@@ -21,7 +21,10 @@ async function loadAdjacencies(adjacenciesFile: string, progressReporter: Progre
     await progressReporter(localize('worldmap.progress.loadingadjacencies', 'Loading adjecencies...'));
 
     const [adjecenciesBuffer] = await readFileFromModOrHOI4(adjacenciesFile);
-    const adjecencies = adjecenciesBuffer.toString().split(/(?:\r\n|\n|\r)/).map(line => line.split(/[,;]/)).filter((v, i) => i > 0 && v.length >= 9);
+    const adjecencies = adjecenciesBuffer.toString()
+        .split(/(?:\r\n|\n|\r)/)
+        .map(line => line.split(/[,;]/))
+        .filter((v, i) => i > 0 && v.length >= 9 && !v[0].startsWith('#'));
 
     return adjecencies.map(row => convertRowToAdjacencies(row, warnings)).filter((v): v is ProvinceEdgeAdjacency => !!v);
 }

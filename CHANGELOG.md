@@ -4,12 +4,13 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Unreleased]
+## [0.15.2] - 2026/07/28 - Latest
 
 ### Added
 * Add option in world map preview to hide localised label (#138).
 * Support fullscreen GUI previews. (#136) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
 * Support progress bar sprite previews (#137) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add province pixel warnings (#139) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
 
 ### Fixed
 * Worldmap preview may be black when resizing the preview window.
@@ -17,7 +18,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ### Updated
 * Combobox selections on top bar of world map preview are now persisted with workspace.
 
-## [0.15.1] - 2026/07/26 - Latest
+## [0.15.1] - 2026/07/26
 
 ### Added
 * Add search box in event tree preview.
