@@ -6,9 +6,25 @@ let nodeFs: vscode.FileSystem | undefined = undefined;
 
 if (!IS_WEB_EXT) {
     const fs: typeof import('fs/promises') = require('fs/promises');
+    const emfileRetryCount = 20;
+    const emfileRetryDelay = 100;
+
+    async function retryOnEmfile<T>(operation: () => Promise<T>): Promise<T> {
+        for (let retryCount = 0; ; retryCount++) {
+            try {
+                return await operation();
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException)?.code !== 'EMFILE' || retryCount >= emfileRetryCount) {
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, emfileRetryDelay));
+            }
+        }
+    }
+
     nodeFs = {
         async stat(uri: vscode.Uri): Promise<vscode.FileStat> {
-            const stat = await fs.stat(uri.fsPath);
+            const stat = await retryOnEmfile(() => fs.stat(uri.fsPath));
             return {
                 type: stat.isFile() ? vscode.FileType.File : stat.isDirectory() ? vscode.FileType.Directory : vscode.FileType.Unknown,
                 ctime: stat.ctimeMs,
@@ -17,26 +33,26 @@ if (!IS_WEB_EXT) {
             };
         },
         async readDirectory(uri: vscode.Uri): Promise<[string, vscode.FileType][]> {
-            const entries = await fs.readdir(uri.fsPath, { withFileTypes: true });
+            const entries = await retryOnEmfile(() => fs.readdir(uri.fsPath, { withFileTypes: true }));
             return entries.map(entry => [entry.name, entry.isFile() ? vscode.FileType.File : entry.isDirectory() ? vscode.FileType.Directory : vscode.FileType.Unknown]);
         },
         async createDirectory(uri: vscode.Uri): Promise<void> {
-            await fs.mkdir(uri.fsPath, { recursive: true });
+            await retryOnEmfile(() => fs.mkdir(uri.fsPath, { recursive: true }));
         },
         async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-            return await fs.readFile(uri.fsPath);
+            return await retryOnEmfile(() => fs.readFile(uri.fsPath));
         },
         async writeFile(uri: vscode.Uri, content: Uint8Array): Promise<void> {
-            await fs.writeFile(uri.fsPath, content);
+            await retryOnEmfile(() => fs.writeFile(uri.fsPath, content));
         },
         async delete(uri: vscode.Uri, options: { recursive: boolean; }): Promise<void> {
-            await fs.rm(uri.fsPath, { recursive: options.recursive });
+            await retryOnEmfile(() => fs.rm(uri.fsPath, { recursive: options.recursive }));
         },
         async rename(oldUri: vscode.Uri, newUri: vscode.Uri, options: { overwrite: boolean; }): Promise<void> {
-            await fs.rename(oldUri.fsPath, newUri.fsPath);
+            await retryOnEmfile(() => fs.rename(oldUri.fsPath, newUri.fsPath));
         },
         async copy(source: vscode.Uri, destination: vscode.Uri, options: { overwrite: boolean; }): Promise<void> {
-            await fs.copyFile(source.fsPath, destination.fsPath);
+            await retryOnEmfile(() => fs.copyFile(source.fsPath, destination.fsPath));
         },
         isWritableFileSystem(scheme: string): boolean {
             return scheme === 'file';

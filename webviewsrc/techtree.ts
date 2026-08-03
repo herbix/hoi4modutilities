@@ -17,6 +17,11 @@ async function buildContent() {
     const mainContent = document.getElementById('mainContent') as HTMLDivElement;
     const folder = selectedFolder;
     const renderedFolder = renderedTechFolders[folder];
+    if (!renderedFolder) {
+        mainContent.innerHTML = '';
+        return;
+    }
+
     let template = renderedFolder.template ?? '';
 
     const styleTable = new StyleTable();

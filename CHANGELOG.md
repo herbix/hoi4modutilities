@@ -4,6 +4,12 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Release candidate]
+
+### Fixed
+* Reading from file system sometimes triggers "EFILE: too many open files".
+* In tech tree preview sometimes an unexpected folder is selected.
+
 ## [0.15.2] - 2026/07/28 - Latest
 
 ### Added
