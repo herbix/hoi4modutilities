@@ -176,6 +176,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.display.adaptzooming": "확대/축소 적용",
     "worldmap.topbar.display.border": "경계 보이기",
     "worldmap.topbar.display.demilitarizedzone": "Show demilitarized zone",
+    "worldmap.topbar.display.countryname": "국가명 표시",
     "worldmap.topbar.display.fastrendering": "빠른 시각화",
     "worldmap.topbar.display.label": "ID 표기",
     "worldmap.topbar.display.localisedlabel": "Show localised label",

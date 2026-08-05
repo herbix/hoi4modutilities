@@ -258,6 +258,7 @@ class FEWorldMapClass implements FEWorldMap {
     continents!: string[];
     terrains!: Terrain[];
     resources!: Resource[];
+    mapFont!: WorldMapData['mapFont'];
     rivers!: River[];
     conditionExprs!: ConditionItem[];
     bookmarks!: Bookmark[];
@@ -282,7 +283,7 @@ class FEWorldMapClass implements FEWorldMap {
             provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
             badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
             railwaysCount: 0, supplyNodesCount: 0,
-            conditionExprs: [], bookmarks: [], provinceDefinitionsFile: undefined,
+            conditionExprs: [], bookmarks: [], provinceDefinitionsFile: undefined, mapFont: undefined,
         } as WorldMapData & ExtraMapData));
     }
 

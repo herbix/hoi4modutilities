@@ -176,6 +176,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.display.adaptzooming": "Адаптировать приближение",
     "worldmap.topbar.display.border": "Показать границу",
     "worldmap.topbar.display.demilitarizedzone": "Show demilitarized zone",
+    "worldmap.topbar.display.countryname": "Показать названия стран",
     "worldmap.topbar.display.fastrendering": "Быстрый рендер",
     "worldmap.topbar.display.label": "Показать ярлык",
     "worldmap.topbar.display.localisedlabel": "Show localised label",

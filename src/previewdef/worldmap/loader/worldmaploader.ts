@@ -12,6 +12,7 @@ import { RailwayLoader, SupplyNodeLoader } from './railway';
 import { ResourceDefinitionLoader } from './resource';
 import { BookmarksLoader } from './bookmarks';
 import { isEqual } from 'lodash';
+import { loadMapFont } from './mapfont';
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;
@@ -74,6 +75,9 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         const countries = await this.countriesLoader.load(session);
         session.throwIfCancelled();
 
+        const mapFont = await loadMapFont(countries.result.map(country => country.localisedName).filter((name): name is string => !!name));
+        session.throwIfCancelled();
+
         const strategicRegions = await this.strategicRegionsLoader.load(session);
         session.throwIfCancelled();
 
@@ -99,7 +103,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
         const loadedLoaders = Array.from((session as any).loadedLoader).map<string>(v => (v as any).toString());
         debug('Loader session', loadedLoaders);
 
-        const subLoaderResults = [ provinceMap, bookmarks, stateMap, countries, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
+        const subLoaderResults = [ provinceMap, bookmarks, stateMap, countries, mapFont, strategicRegions, supplyAreas, railways, supplyNodes, resources ];
         const warnings = mergeInLoadResult(subLoaderResults, 'warnings');
         const conditionExprs = mergeInLoadResultUnique(subLoaderResults, 'conditionExprs', isEqual);
 
@@ -111,6 +115,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             ...railways.result,
             ...supplyNodes.result,
             resources: resources.result,
+            mapFont: mapFont.result,
             provincesCount: provinceMap.result.provinces.length,
             statesCount: stateMap.result.states.length,
             countriesCount: countries.result.length,

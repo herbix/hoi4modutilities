@@ -230,7 +230,7 @@ export class WorldMap {
 
         if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount', 'supplyAreasCount',
             'railwaysCount', 'supplyNodesCount',
-            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount'] as (keyof WorldMapData)[])
+            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount', 'mapFont'] as (keyof WorldMapData)[])
             .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
             return false;
         }

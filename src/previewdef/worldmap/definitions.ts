@@ -26,6 +26,7 @@ export interface WorldMapData {
     continents: string[];
     terrains: Terrain[];
     resources: Resource[];
+    mapFont: MapFont | undefined;
     rivers: River[];
     conditionExprs: ConditionItem[];
     bookmarks: Bookmark[];
@@ -171,9 +172,26 @@ interface WarningRiver extends WarningSourceBase {
 
 export interface Country {
     tag: string;
+    localisedName: string | undefined;
     color: number;
     localisedName: string | undefined;
     file: string;
+}
+
+export interface MapFont {
+    lineHeight: number;
+    imageUri: string;
+    glyphs: Record<number, MapFontGlyph | undefined>;
+}
+
+export interface MapFontGlyph {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    xOffset: number;
+    yOffset: number;
+    xAdvance: number;
 }
 
 export interface Terrain {

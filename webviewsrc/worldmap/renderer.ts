@@ -1,4 +1,4 @@
-import { LabelFontSize, Point, Province, Terrain, WithCondition, Zone } from './definitions';
+import { LabelFontSize, MapFont, Point, Province, Terrain, Zone } from './definitions';
 import { FEWorldMap, Loader } from './loader';
 import { ViewPoint } from './viewpoint';
 import { distanceHamming, distanceSqr, zoneCenter } from '../../src/previewdef/worldmap/graphutils';
@@ -12,6 +12,7 @@ import { distinctUntilChanged } from 'rxjs/operators';
 import { ConditionItem } from '../../src/hoiformat/condition';
 import type { ViewModeControllers } from './viewmode';
 import { solveWithCondition } from './common';
+import { calculateCountryLabels, CountryLabel, CountryLabelRegion, minCountryLabelWidthScale } from './countrylabels';
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;
@@ -34,6 +35,7 @@ export interface RenderContext {
     demilitarizedZonePattern?: CanvasPattern;
     colorSetState: any;
     viewModeState: any;
+    countryLabels: CountryLabel[];
 }
 
 export class Renderer extends Subscriber {
@@ -47,6 +49,10 @@ export class Renderer extends Subscriber {
     
     private cursorX = 0;
     private cursorY = 0;
+
+    private static mapFontImages = new Map<string, HTMLImageElement>();
+    private static loadingMapFonts = new Set<string>();
+    private static countryLabelsCache = new WeakMap<FEWorldMap, { conditions: string, labels: CountryLabel[] }>();
 
     constructor(
         private mainCanvas: HTMLCanvasElement,
@@ -67,6 +73,7 @@ export class Renderer extends Subscriber {
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
 
+        this.addSubscription(loader.worldMap$.subscribe(this.reloadImages));
         this.addSubscription(loader.worldMap$.subscribe(() => this.renderCanvas()));
         this.addSubscription(
             combineLatest([
@@ -83,8 +90,27 @@ export class Renderer extends Subscriber {
                 distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
             ).subscribe(() => this.renderCanvas())
         );
+        this.addSubscription(loader.loading$.pipe(distinctUntilChanged()).subscribe(loading => {
+            if (!loading) {
+                this.renderCanvas(true);
+            }
+        }));
     }
 
+    private reloadImages = () => {
+        const mapFont = this.loader.worldMap.mapFont;
+        if (mapFont && !Renderer.mapFontImages.has(mapFont.imageUri) && !Renderer.loadingMapFonts.has(mapFont.imageUri)) {
+            Renderer.loadingMapFonts.add(mapFont.imageUri);
+            const image = new Image();
+            image.onload = () => {
+                Renderer.loadingMapFonts.delete(mapFont.imageUri);
+                Renderer.mapFontImages.set(mapFont.imageUri, image);
+                this.renderCanvas(true);
+            };
+            image.onerror = () => Renderer.loadingMapFonts.delete(mapFont.imageUri);
+            image.src = mapFont.imageUri;
+        }
+    };
     public renderCanvas(forceDrawMap: boolean = false): void {
         if (this.canvasWidth <= 0 && this.canvasHeight <= 0) {
             return;
@@ -131,6 +157,7 @@ export class Renderer extends Subscriber {
             selectedConditions: this.topBar.selectedConditions$.value,
             edgeVisible: displayOptions.includes('edge'),
             labelVisible: displayOptions.includes('label'),
+            countryNameVisible: displayOptions.includes('countryname'),
             adaptZooming: displayOptions.includes('adaptzooming'),
             fastRendering: displayOptions.includes('fastrending'),
             supplyVisible: displayOptions.includes('supply'),
@@ -145,8 +172,10 @@ export class Renderer extends Subscriber {
             return;
         }
         this.oldMapState = newMapState;
-        Renderer.renderMapImpl(this.mapCanvas, this.topBar, this.viewPoint, worldMap,
-            newMapState.fastRendering ? {} : { preciseEdge: true, overwriteRenderPrecision: 1 });
+        Renderer.renderMapImpl(this.mapCanvas, this.topBar, this.viewPoint, worldMap, {
+            ...(newMapState.fastRendering ? {} : { preciseEdge: true, overwriteRenderPrecision: 1 }),
+            countryLabels: this.loader.loading$.value ? [] : undefined,
+        });
     }
 
     public static renderMapImpl(canvas: HTMLCanvasElement, topBar: TopBar, viewPoint: ViewPoint, worldMap: FEWorldMap, otherRenderContext?: Partial<RenderContext>) {
@@ -168,8 +197,13 @@ export class Renderer extends Subscriber {
             viewModeState: undefined,
             demilitarizedZonePattern: topBar.display.selectedValues$.value.includes('demilitarizedzone') ?
                 mapCanvasContext.createPattern(createSlashPattern(), 'repeat') ?? undefined : undefined,
+            countryLabels: [],
             ...otherRenderContext,
         };
+
+        if (otherRenderContext?.countryLabels === undefined && Renderer.isCountryNameVisible(topBar)) {
+            renderContext.countryLabels = Renderer.createCountryLabels(worldMap, renderContext);
+        }
 
         const mapZone: Zone = { x: 0, y: 0, w: worldMap.width, h: worldMap.height };
         Renderer.renderAllOffsets(viewPoint, mapZone, worldMap.width, xOffset => Renderer.renderMapBackground(worldMap, xOffset, renderContext));
@@ -260,6 +294,10 @@ export class Renderer extends Subscriber {
         if (Renderer.isLabelVisible(topBar, viewPoint)) {
             Renderer.renderMapLabels(renderContext, worldMap, context, xOffset);
         }
+
+        if (Renderer.isCountryNameVisible(topBar)) {
+            Renderer.renderCountryLabels(renderContext, worldMap, context, xOffset);
+        }
     }
 
     private static isEdgeVisible(topBar: TopBar, viewPoint: ViewPoint) {
@@ -328,6 +366,139 @@ export class Renderer extends Subscriber {
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         renderContext.topBar.viewModeController.renderMapLabels(renderContext, worldMap, xOffset);
+    }
+
+    private static createCountryLabels(worldMap: FEWorldMap, renderContext: RenderContext): CountryLabel[] {
+        const conditions = JSON.stringify(renderContext.topBar.selectedConditions$.value);
+        const cached = Renderer.countryLabelsCache.get(worldMap);
+        if (cached?.conditions === conditions) {
+            return cached.labels;
+        }
+
+        const countries = new Map(worldMap.countries.filter((country): country is NonNullable<typeof country> => !!country)
+            .map(country => [country.tag, country]));
+        const regions: CountryLabelRegion[] = [];
+
+        worldMap.forEachProvince(province => {
+            const stateId = renderContext.provinceToState[province.id];
+            const owner = stateId === undefined ? undefined : renderContext.stateToOwnerCountry[stateId];
+            const country = owner ? countries.get(owner) : undefined;
+            if (province.type === 'land' && owner && country?.localisedName) {
+                regions.push({
+                    id: province.id,
+                    owner,
+                    text: country.localisedName,
+                    color: country.color,
+                    boundingBox: province.boundingBox,
+                    coverZones: province.coverZones,
+                    centerOfMass: province.centerOfMass,
+                    mass: province.mass,
+                    neighbours: province.edges.filter(edge => edge.path.length > 0).map(edge => edge.to),
+                });
+            }
+        });
+
+        const labels = calculateCountryLabels(regions, worldMap.width);
+        Renderer.countryLabelsCache.set(worldMap, { conditions, labels });
+        return labels;
+    }
+
+    private static renderCountryLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
+        const { viewPoint } = renderContext;
+        for (const label of renderContext.countryLabels) {
+            const center = label.center;
+            const maxWidth = label.maxWidth * viewPoint.scale;
+            let fontSize = label.fontSize * viewPoint.scale;
+            if (fontSize < 5 || maxWidth < 8) {
+                continue;
+            }
+
+            const text = label.text.toLocaleUpperCase();
+            context.save();
+            context.translate(viewPoint.convertX(center.x + xOffset), viewPoint.convertY(center.y));
+            context.rotate(label.angle);
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+
+            const mapFont = worldMap.mapFont;
+            const mapFontImage = mapFont ? Renderer.mapFontImages.get(mapFont.imageUri) : undefined;
+            if (mapFont && mapFontImage && Renderer.renderBitmapCountryLabel(context, text, mapFont, mapFontImage, fontSize, maxWidth)) {
+                context.restore();
+                continue;
+            }
+
+            context.font = `600 ${fontSize}px "Arial Narrow", sans-serif`;
+
+            let widths = Array.from(text, character => context.measureText(character).width);
+            let textWidth = widths.reduce((sum, width) => sum + width, 0);
+            let widthScale = Math.min(1, maxWidth / Math.max(1, textWidth));
+            if (widthScale < minCountryLabelWidthScale) {
+                fontSize *= widthScale / minCountryLabelWidthScale;
+                if (fontSize < 5) {
+                    context.restore();
+                    continue;
+                }
+                context.font = `600 ${fontSize}px "Arial Narrow", sans-serif`;
+                widths = Array.from(text, character => context.measureText(character).width);
+                textWidth = widths.reduce((sum, width) => sum + width, 0);
+                widthScale = Math.min(1, maxWidth / Math.max(1, textWidth));
+            }
+
+            const availableWidth = maxWidth / widthScale;
+            const spacing = text.length > 1 ? Math.min(fontSize * 0.65, Math.max(0, (availableWidth - textWidth) / (text.length - 1))) : 0;
+            const fullWidth = textWidth + spacing * Math.max(0, text.length - 1);
+            const fillColor = getHighConstrastColor(label.color);
+            context.fillStyle = toColor(fillColor);
+            context.strokeStyle = toColor(fillColor === 0 ? 0xFFFFFF : 0);
+            context.lineWidth = Math.max(1.5, fontSize * 0.1);
+            context.lineJoin = 'round';
+            context.scale(widthScale, 1);
+
+            let x = -fullWidth / 2;
+            Array.from(text).forEach((character, index) => {
+                const characterX = x + widths[index] / 2;
+                context.strokeText(character, characterX, 0);
+                context.fillText(character, characterX, 0);
+                x += widths[index] + spacing;
+            });
+            context.restore();
+        }
+    }
+
+    private static renderBitmapCountryLabel(context: CanvasRenderingContext2D, text: string, font: MapFont,
+        image: HTMLImageElement, fontSize: number, maxWidth: number): boolean {
+        const glyphs = Array.from(text, character => font.glyphs[character.codePointAt(0)!]);
+        if (glyphs.some(glyph => !glyph)) {
+            return false;
+        }
+
+        let scaleY = fontSize / font.lineHeight;
+        const advance = glyphs.reduce((sum, glyph) => sum + glyph!.xAdvance, 0);
+        let scaleX = Math.min(scaleY, maxWidth / Math.max(1, advance));
+        scaleY = Math.min(scaleY, scaleX / minCountryLabelWidthScale);
+        scaleX = Math.min(scaleY, maxWidth / Math.max(1, advance));
+        if (font.lineHeight * scaleY < 5) {
+            return true;
+        }
+
+        const textWidth = advance * scaleX;
+        const actualFontSize = font.lineHeight * scaleY;
+        const spacing = glyphs.length > 1 ? Math.min(actualFontSize * 0.65, Math.max(0, (maxWidth - textWidth) / (glyphs.length - 1))) : 0;
+        const fullWidth = textWidth + spacing * Math.max(0, glyphs.length - 1);
+        let x = -fullWidth / 2;
+        for (const glyph of glyphs) {
+            if (glyph!.w > 0 && glyph!.h > 0) {
+                context.drawImage(image, glyph!.x, glyph!.y, glyph!.w, glyph!.h,
+                    x + glyph!.xOffset * scaleX, (glyph!.yOffset - font.lineHeight / 2) * scaleY,
+                    glyph!.w * scaleX, glyph!.h * scaleY);
+            }
+            x += glyph!.xAdvance * scaleX + spacing;
+        }
+        return true;
+    }
+
+    private static isCountryNameVisible(topBar: TopBar) {
+        return topBar.colorSet$.value === 'owner' && topBar.display.selectedValues$.value.includes('countryname');
     }
 
     private static renderEdges(
