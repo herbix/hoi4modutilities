@@ -69,19 +69,12 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * GUI of focus tree and MIO can't be configured like technology tree.
 * Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.15.2]
-
-### Added
-* Add option in world map preview to hide localised label (#138).
-* Support fullscreen GUI previews. (#136) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
-* Support progress bar sprite previews (#137) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
-* Add province pixel warnings (#139) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+## Release Notes - [0.15.3]
 
 ### Fixed
-* Worldmap preview may be black when resizing the preview window.
-
-### Updated
-* Combobox selections on top bar of world map preview are now persisted with workspace.
+* Reading from file system sometimes triggers "EFILE: too many open files".
+* In tech tree preview sometimes an unexpected folder is selected.
+* `integrated_dlc` was not read when loading DLC content.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

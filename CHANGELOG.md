@@ -4,13 +4,14 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Release candidate]
+## [0.15.3] - 2026/08/05 - Latest
 
 ### Fixed
 * Reading from file system sometimes triggers "EFILE: too many open files".
 * In tech tree preview sometimes an unexpected folder is selected.
+* `integrated_dlc` was not read when loading DLC content.
 
-## [0.15.2] - 2026/07/28 - Latest
+## [0.15.2] - 2026/07/28
 
 ### Added
 * Add option in world map preview to hide localised label (#138).

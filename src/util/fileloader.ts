@@ -301,7 +301,14 @@ export async function listFilesFromModOrHOI4(
 }
 
 async function getDlcZipPaths(installPathUri: vscode.Uri): Promise<vscode.Uri[] | null> {
-    const dlcPath = vscode.Uri.joinPath(installPathUri, 'dlc');
+    return [
+        ...await getDlcZipPathsByFolder(installPathUri, 'dlc') ?? [],
+        ...await getDlcZipPathsByFolder(installPathUri, 'integrated_dlc') ?? [],
+    ];
+}
+
+async function getDlcZipPathsByFolder(installPathUri: vscode.Uri, folder: string): Promise<vscode.Uri[] | null> {
+    const dlcPath = vscode.Uri.joinPath(installPathUri, folder);
     if (!await isDirectory(dlcPath)) {
         return null;
     }
@@ -324,7 +331,14 @@ async function getDlcZipPaths(installPathUri: vscode.Uri): Promise<vscode.Uri[] 
 }
 
 async function getDlcPaths(installPathUri: vscode.Uri): Promise<vscode.Uri[] | null> {
-    const dlcPath = vscode.Uri.joinPath(installPathUri, 'dlc');
+    return [
+        ...await getDlcPathsByFolder(installPathUri, 'dlc') ?? [],
+        ...await getDlcPathsByFolder(installPathUri, 'integrated_dlc') ?? [],
+    ];
+}
+
+async function getDlcPathsByFolder(installPathUri: vscode.Uri, folder: string): Promise<vscode.Uri[] | null> {
+    const dlcPath = vscode.Uri.joinPath(installPathUri, folder);
     if (!await isDirectory(dlcPath)) {
         return null;
     }
