@@ -26,6 +26,8 @@ interface WorkspaceState {
     warningFilter?: string[];
 }
 
+const exportImageScale = 2;
+
 export class TopBar extends Subscriber {
     public viewMode$: BehaviorSubject<ViewMode>;
     public colorSet$: BehaviorSubject<ColorSet>;
@@ -304,9 +306,9 @@ export class TopBar extends Subscriber {
 
             sendEvent('worldmap.export');
             const canvas = document.createElement("canvas");
-            canvas.width = Math.max(1, worldMap.width);
-            canvas.height = Math.max(1, worldMap.height);
-            const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: 1 });
+            canvas.width = Math.max(1, worldMap.width * exportImageScale);
+            canvas.height = Math.max(1, worldMap.height * exportImageScale);
+            const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: exportImageScale });
             Renderer.renderMapImpl(canvas, this, viewPoint, worldMap, { preciseEdge: true, overwriteRenderPrecision: 1 });
             vscode.postMessage<WorldMapMessage>({ command: 'exportmap', dataUrl: canvas.toDataURL() });
         }));
