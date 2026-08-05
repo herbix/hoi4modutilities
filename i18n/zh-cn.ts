@@ -182,6 +182,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.search.placeholder": "范围：{0}",
     "worldmap.topbar.search.title": "搜索",
     "worldmap.topbar.viewmode": "预览模式：",
+    "worldmap.topbar.viewmode.country": "国家",
     "worldmap.topbar.viewmode.province": "地块",
     "worldmap.topbar.viewmode.state": "省份",
     "worldmap.topbar.viewmode.strategicregion": "战略区域",

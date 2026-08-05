@@ -182,6 +182,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.search.placeholder": "Диапазон: {0}",
     "worldmap.topbar.search.title": "Поиск",
     "worldmap.topbar.viewmode": "Показать мод: ",
+    "worldmap.topbar.viewmode.country": "Страна",
     "worldmap.topbar.viewmode.province": "Провинция",
     "worldmap.topbar.viewmode.state": "Территория",
     "worldmap.topbar.viewmode.strategicregion": "Стратегический регион",

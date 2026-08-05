@@ -182,6 +182,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.search.placeholder": "범위: {0}",
     "worldmap.topbar.search.title": "검색",
     "worldmap.topbar.viewmode": "보기 모드: ",
+    "worldmap.topbar.viewmode.country": "국가",
     "worldmap.topbar.viewmode.province": "프로빈스",
     "worldmap.topbar.viewmode.state": "주",
     "worldmap.topbar.viewmode.strategicregion": "전략구역",
