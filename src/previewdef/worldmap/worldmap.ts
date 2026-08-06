@@ -15,7 +15,6 @@ import { LoaderSession } from '../../util/loader/loader';
 import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
 import { getConfiguration } from '../../util/vsccommon';
 import { contextContainer } from '../../context';
-import { setPngDpi } from '../../util/image/pngmetadata';
 
 export class WorldMap {
     public panel: vscode.WebviewPanel | undefined;
@@ -374,7 +373,7 @@ export class WorldMap {
 
         try {
             const base64 = dataUrl.substring(prefix.length);
-            const buffer = setPngDpi(Buffer.from(base64, 'base64'), 300);
+            const buffer = Buffer.from(base64, 'base64');
 
             await writeFile(uri, buffer);
 

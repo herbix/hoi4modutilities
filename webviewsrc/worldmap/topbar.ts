@@ -26,7 +26,7 @@ interface WorkspaceState {
     warningFilter?: string[];
 }
 
-const exportImageScale = 2;
+const exportImageScale = 4;
 
 export class TopBar extends Subscriber {
     public viewMode$: BehaviorSubject<ViewMode>;
