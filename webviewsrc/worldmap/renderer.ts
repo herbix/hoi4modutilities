@@ -2,7 +2,7 @@ import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, Wit
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
-import { CountryTag, isCountryBorder, selectCountryTagStates } from "./countryview";
+import { CountryTag, getCountryTags } from "./countryview";
 import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
 import { Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
@@ -350,22 +350,19 @@ export class Renderer extends Subscriber {
         context.textBaseline = 'middle';
         if (viewMode === 'country') {
             if (!renderContext.countryTags) {
-                renderContext.countryTags = selectCountryTagStates(worldMap,
+                renderContext.countryTags = getCountryTags(worldMap, provinceToState,
                     stateId => getStateOwner(renderContext, worldMap, stateId));
             }
 
-            for (const { owner, state } of renderContext.countryTags) {
-                if (!viewPoint.bboxInView(state.boundingBox, xOffset)) {
+            for (const { owner, province, boundingBox, centerOfMass } of renderContext.countryTags) {
+                if (!viewPoint.bboxInView(boundingBox, xOffset)) {
                     continue;
                 }
 
-                const labelPosition = state.centerOfMass;
-                const province = worldMap.getProvinceById(state.provinces[0]);
-                if (province) {
-                    const provinceColor = getColorByColorSet(colorSet, province, worldMap, renderContext);
-                    context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                    context.fillText(owner, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
-                }
+                const provinceAtLabel = worldMap.getProvinceByPosition(centerOfMass.x, centerOfMass.y);
+                const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
+                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
+                context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y));
             }
         } else if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
@@ -454,7 +451,7 @@ export class Renderer extends Subscriber {
                 } else if (viewMode === 'country') {
                     const ownerFrom = getStateOwner(renderContext, worldMap, stateFromId);
                     const ownerTo = getStateOwner(renderContext, worldMap, stateToId);
-                    if (!isCountryBorder(ownerFrom, ownerTo)) {
+                    if (ownerFrom === ownerTo) {
                         continue;
                     }
                 } else if (viewMode === 'strategicregion') {

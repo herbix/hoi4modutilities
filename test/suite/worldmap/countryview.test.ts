@@ -1,36 +1,40 @@
 import * as assert from 'assert';
-import { State } from '../../../src/previewdef/worldmap/definitions';
-import { isCountryBorder, selectCountryTagStates } from '../../../webviewsrc/worldmap/countryview';
+import { Province } from '../../../src/previewdef/worldmap/definitions';
+import { getCountryTags } from '../../../webviewsrc/worldmap/countryview';
 
 suite('Country view', () => {
-    test('uses the largest state of each owner for country tags', () => {
-        const states = [
-            { id: 1, mass: 10 },
-            { id: 2, mass: 30 },
-            { id: 3, mass: 20 },
-            { id: 4, mass: 40 },
-        ] as State[];
+    test('uses the center of mass of each connected country territory for tags', () => {
+        const provinces = [
+            province(1, 0, 0, 10, 10, [2]),
+            province(2, 10, 0, 20, 10, [1]),
+            province(3, 50, 0, 10, 10, []),
+            province(4, 70, 0, 10, 10, []),
+        ];
         const owners: Record<number, string | undefined> = {
             1: 'AAA',
             2: 'AAA',
-            3: 'BBB',
-            4: undefined,
+            3: 'AAA',
         };
 
-        const tags = selectCountryTagStates({
-            forEachState: callback => states.forEach(callback),
-        }, stateId => owners[stateId]);
+        const tags = getCountryTags({
+            width: 100,
+            forEachProvince: callback => provinces.forEach(callback),
+        }, { 1: 1, 2: 2, 3: 3, 4: 4 }, stateId => owners[stateId]);
 
-        assert.deepStrictEqual(tags.map(tag => [tag.owner, tag.state.id]), [
-            ['AAA', 2],
-            ['BBB', 3],
+        assert.deepStrictEqual(tags.map(tag => [tag.owner, tag.province.id, tag.centerOfMass]), [
+            ['AAA', 1, { x: 15, y: 5 }],
+            ['AAA', 3, { x: 55, y: 5 }],
         ]);
     });
-
-    test('only treats different owners as a country border', () => {
-        assert.strictEqual(isCountryBorder('AAA', 'AAA'), false);
-        assert.strictEqual(isCountryBorder(undefined, undefined), false);
-        assert.strictEqual(isCountryBorder('AAA', 'BBB'), true);
-        assert.strictEqual(isCountryBorder('AAA', undefined), true);
-    });
 });
+
+function province(id: number, x: number, y: number, w: number, h: number, neighbours: number[]): Province {
+    return {
+        id,
+        type: 'land',
+        boundingBox: { x, y, w, h },
+        centerOfMass: { x: x + w / 2, y: y + h / 2 },
+        mass: w * h,
+        edges: neighbours.map(to => ({ to, path: [[{ x, y }]], type: '' })),
+    } as Province;
+}
