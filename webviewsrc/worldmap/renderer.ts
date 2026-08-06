@@ -12,7 +12,7 @@ import { distinctUntilChanged } from 'rxjs/operators';
 import { ConditionItem } from '../../src/hoiformat/condition';
 import type { ViewModeControllers } from './viewmode';
 import { solveWithCondition } from './common';
-import { calculateCountryLabels, CountryLabel, CountryLabelRegion, minCountryLabelWidthScale } from './countrylabels';
+import { calculateCountryLabels, CountryLabel, CountryLabelRegion } from './countrylabels';
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;
@@ -377,26 +377,45 @@ export class Renderer extends Subscriber {
 
         const countries = new Map(worldMap.countries.filter((country): country is NonNullable<typeof country> => !!country)
             .map(country => [country.tag, country]));
+        const provinces: Province[] = [];
+        worldMap.forEachProvince(province => {
+            provinces.push(province);
+        });
+        const ownerByProvince = new Map<number, string | undefined>();
+        for (const province of provinces) {
+            const stateId = renderContext.provinceToState[province.id];
+            ownerByProvince.set(province.id,
+                stateId === undefined ? undefined : renderContext.stateToOwnerCountry[stateId]);
+        }
         const regions: CountryLabelRegion[] = [];
 
-        worldMap.forEachProvince(province => {
-            const stateId = renderContext.provinceToState[province.id];
-            const owner = stateId === undefined ? undefined : renderContext.stateToOwnerCountry[stateId];
+        for (const province of provinces) {
+            const owner = ownerByProvince.get(province.id);
             const country = owner ? countries.get(owner) : undefined;
-            if (province.type === 'land' && owner && country?.localisedName) {
+            if (province.type === 'land' && owner && country) {
+                const text = country.localisedName ?? owner;
+                const mapFont = worldMap.mapFont;
+                const glyphs = mapFont ? Array.from(text.toLocaleUpperCase(), character => mapFont.glyphs[character.codePointAt(0)!]) : [];
                 regions.push({
                     id: province.id,
                     owner,
-                    text: country.localisedName,
+                    text,
                     color: country.color,
                     boundingBox: province.boundingBox,
                     coverZones: province.coverZones,
+                    boundaryPaths: province.edges
+                        .filter(edge => edge.path.length > 0 && ownerByProvince.get(edge.to) !== owner)
+                        .flatMap(edge => edge.path),
                     centerOfMass: province.centerOfMass,
                     mass: province.mass,
-                    neighbours: province.edges.filter(edge => edge.path.length > 0).map(edge => edge.to),
+                    neighbours: province.edges
+                        .filter(edge => edge.path.length > 0 && ownerByProvince.get(edge.to) === owner)
+                        .map(edge => edge.to),
+                    textWidthRatio: mapFont && glyphs.length > 0 && glyphs.every(glyph => !!glyph) ?
+                        glyphs.reduce((sum, glyph) => sum + glyph!.xAdvance, 0) / mapFont.lineHeight : undefined,
                 });
             }
-        });
+        }
 
         const labels = calculateCountryLabels(regions, worldMap.width);
         Renderer.countryLabelsCache.set(worldMap, { conditions, labels });
@@ -406,6 +425,9 @@ export class Renderer extends Subscriber {
     private static renderCountryLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const { viewPoint } = renderContext;
         for (const label of renderContext.countryLabels) {
+            if (label.text === label.owner) {
+                continue;
+            }
             const center = label.center;
             const maxWidth = label.maxWidth * viewPoint.scale;
             let fontSize = label.fontSize * viewPoint.scale;
@@ -415,25 +437,27 @@ export class Renderer extends Subscriber {
 
             const text = label.text.toLocaleUpperCase();
             context.save();
-            context.translate(viewPoint.convertX(center.x + xOffset), viewPoint.convertY(center.y));
-            context.rotate(label.angle);
             context.textAlign = 'center';
             context.textBaseline = 'middle';
+            const fillColor = getHighConstrastColor(label.color);
+            context.fillStyle = toColor(fillColor);
+            context.strokeStyle = toColor(fillColor === 0 ? 0xFFFFFF : 0);
+            context.lineWidth = Math.max(1.5, fontSize * 0.1);
+            context.lineJoin = 'round';
 
             const mapFont = worldMap.mapFont;
             const mapFontImage = mapFont ? Renderer.mapFontImages.get(mapFont.imageUri) : undefined;
-            if (mapFont && mapFontImage && Renderer.renderBitmapCountryLabel(context, text, mapFont, mapFontImage, fontSize, maxWidth)) {
+            if (mapFont && mapFontImage && Renderer.renderBitmapCountryLabel(
+                context, text, mapFont, mapFontImage, label, viewPoint, xOffset, fontSize, maxWidth)) {
                 context.restore();
                 continue;
             }
 
             context.font = `600 ${fontSize}px "Arial Narrow", sans-serif`;
-
             let widths = Array.from(text, character => context.measureText(character).width);
             let textWidth = widths.reduce((sum, width) => sum + width, 0);
-            let widthScale = Math.min(1, maxWidth / Math.max(1, textWidth));
-            if (widthScale < minCountryLabelWidthScale) {
-                fontSize *= widthScale / minCountryLabelWidthScale;
+            if (textWidth > maxWidth) {
+                fontSize *= maxWidth / textWidth;
                 if (fontSize < 5) {
                     context.restore();
                     continue;
@@ -441,60 +465,76 @@ export class Renderer extends Subscriber {
                 context.font = `600 ${fontSize}px "Arial Narrow", sans-serif`;
                 widths = Array.from(text, character => context.measureText(character).width);
                 textWidth = widths.reduce((sum, width) => sum + width, 0);
-                widthScale = Math.min(1, maxWidth / Math.max(1, textWidth));
             }
 
-            const availableWidth = maxWidth / widthScale;
-            const spacing = text.length > 1 ? Math.min(fontSize * 0.65, Math.max(0, (availableWidth - textWidth) / (text.length - 1))) : 0;
-            const fullWidth = textWidth + spacing * Math.max(0, text.length - 1);
-            const fillColor = getHighConstrastColor(label.color);
-            context.fillStyle = toColor(fillColor);
-            context.strokeStyle = toColor(fillColor === 0 ? 0xFFFFFF : 0);
-            context.lineWidth = Math.max(1.5, fontSize * 0.1);
-            context.lineJoin = 'round';
-            context.scale(widthScale, 1);
-
-            let x = -fullWidth / 2;
-            Array.from(text).forEach((character, index) => {
-                const characterX = x + widths[index] / 2;
-                context.strokeText(character, characterX, 0);
-                context.fillText(character, characterX, 0);
-                x += widths[index] + spacing;
+            Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, widths, (index) => {
+                const character = Array.from(text)[index];
+                context.strokeText(character, 0, 0);
+                context.fillText(character, 0, 0);
             });
             context.restore();
         }
     }
 
     private static renderBitmapCountryLabel(context: CanvasRenderingContext2D, text: string, font: MapFont,
-        image: HTMLImageElement, fontSize: number, maxWidth: number): boolean {
+        image: HTMLImageElement, label: CountryLabel, viewPoint: ViewPoint, xOffset: number,
+        fontSize: number, maxWidth: number): boolean {
         const glyphs = Array.from(text, character => font.glyphs[character.codePointAt(0)!]);
         if (glyphs.some(glyph => !glyph)) {
             return false;
         }
 
-        let scaleY = fontSize / font.lineHeight;
+        let scale = fontSize / font.lineHeight;
         const advance = glyphs.reduce((sum, glyph) => sum + glyph!.xAdvance, 0);
-        let scaleX = Math.min(scaleY, maxWidth / Math.max(1, advance));
-        scaleY = Math.min(scaleY, scaleX / minCountryLabelWidthScale);
-        scaleX = Math.min(scaleY, maxWidth / Math.max(1, advance));
-        if (font.lineHeight * scaleY < 5) {
+        scale = Math.min(scale, maxWidth / Math.max(1, advance));
+        if (font.lineHeight * scale < 5) {
             return true;
         }
 
-        const textWidth = advance * scaleX;
-        const actualFontSize = font.lineHeight * scaleY;
-        const spacing = glyphs.length > 1 ? Math.min(actualFontSize * 0.65, Math.max(0, (maxWidth - textWidth) / (glyphs.length - 1))) : 0;
-        const fullWidth = textWidth + spacing * Math.max(0, glyphs.length - 1);
-        let x = -fullWidth / 2;
-        for (const glyph of glyphs) {
-            if (glyph!.w > 0 && glyph!.h > 0) {
-                context.drawImage(image, glyph!.x, glyph!.y, glyph!.w, glyph!.h,
-                    x + glyph!.xOffset * scaleX, (glyph!.yOffset - font.lineHeight / 2) * scaleY,
-                    glyph!.w * scaleX, glyph!.h * scaleY);
+        const advances = glyphs.map(glyph => glyph!.xAdvance * scale);
+        Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, advances, index => {
+            const glyph = glyphs[index]!;
+            if (glyph.w > 0 && glyph.h > 0) {
+                context.drawImage(image, glyph.x, glyph.y, glyph.w, glyph.h,
+                    -glyph.xAdvance * scale / 2 + glyph.xOffset * scale,
+                    (glyph.yOffset - font.lineHeight / 2) * scale,
+                    glyph.w * scale, glyph.h * scale);
             }
-            x += glyph!.xAdvance * scaleX + spacing;
-        }
+        });
         return true;
+    }
+
+    private static renderCountryGlyphs(context: CanvasRenderingContext2D, label: CountryLabel, viewPoint: ViewPoint,
+        xOffset: number, advances: number[], renderGlyph: (index: number) => void) {
+        const totalAdvance = advances.reduce((sum, advance) => sum + advance, 0);
+        let cursor = -totalAdvance / 2;
+        if (!label.arc) {
+            context.translate(viewPoint.convertX(label.center.x + xOffset), viewPoint.convertY(label.center.y));
+            context.rotate(label.angle);
+            advances.forEach((advance, index) => {
+                context.save();
+                context.translate(cursor + advance / 2, 0);
+                renderGlyph(index);
+                context.restore();
+                cursor += advance;
+            });
+            return;
+        }
+
+        const arc = label.arc;
+        const radius = arc.radius * viewPoint.scale;
+        const arcCenterX = viewPoint.convertX(label.center.x + arc.centerOffset.x + xOffset);
+        const arcCenterY = viewPoint.convertY(label.center.y + arc.centerOffset.y);
+        advances.forEach((advance, index) => {
+            const offset = cursor + advance / 2;
+            const angle = arc.centerAngle + arc.direction * offset / radius;
+            context.save();
+            context.translate(arcCenterX + Math.cos(angle) * radius, arcCenterY + Math.sin(angle) * radius);
+            context.rotate(angle + arc.direction * Math.PI / 2);
+            renderGlyph(index);
+            context.restore();
+            cursor += advance;
+        });
     }
 
     private static isCountryNameVisible(topBar: TopBar) {

@@ -14,7 +14,7 @@ suite('country map labels', () => {
         assert.ok(labels.some(label => label.center.x > 100), 'the disconnected territory should have a label');
     });
 
-    test('follows the territory principal axis but limits steep labels', () => {
+    test('keeps straight fallback labels upright', () => {
         const horizontal = calculateCountryLabels([
             region(1, 'AAA', 'AAA', 10, 10, 20, 20, 100, [2]),
             region(2, 'AAA', 'AAA', 28, 18, 20, 20, 100, [1]),
@@ -46,17 +46,6 @@ suite('country map labels', () => {
         assert.ok(label.maxWidth < 30, 'only the continuous owner-colored segment may contain the label');
     });
 
-    test('keeps labels inside narrow territory bands', () => {
-        const narrowRegion = region(1, 'AAA', 'A', 0, 0, 80, 30, 100, []);
-        narrowRegion.coverZones = [
-            { x: 0, y: 0, w: 80, h: 8 },
-            { x: 32, y: 8, w: 16, h: 22 },
-        ];
-        const label = calculateCountryLabels([narrowRegion], 100)[0];
-
-        assert.ok(label.fontSize < 10, 'narrow cross-sections should constrain the label height');
-    });
-
     test('scales labels beyond the source map font size for large countries', () => {
         const label = calculateCountryLabels([
             region(1, 'AAA', 'AAA', 0, 0, 1000, 300, 300000, []),
@@ -65,12 +54,59 @@ suite('country map labels', () => {
         assert.ok(label.fontSize > 64, 'the source font size must not cap its rendered map size');
     });
 
-    test('uses limited horizontal compression to keep wide-country labels tall', () => {
+    test('uses the fixed text aspect instead of horizontally compressing the label', () => {
         const label = calculateCountryLabels([
             region(1, 'AST', 'AUSTRALIA', 0, 0, 800, 280, 224000, []),
         ], 1200)[0];
 
-        assert.ok(label.fontSize > 140, 'a long name should use the available territory height');
+        assert.ok(label.fontSize > 80, 'the largest fixed-aspect label should use the available length');
+        assert.ok(label.fontSize < 100, 'fixed character spacing must not be replaced with the old horizontal compression');
+    });
+
+    test('fits and limits a curved label to the paper maximum circular angle', () => {
+        const center = { x: 250, y: 250 };
+        const innerRadius = 170;
+        const outerRadius = 210;
+        const startAngle = Math.PI * 0.05;
+        const endAngle = Math.PI * 0.95;
+        const boundary: { x: number, y: number }[] = [];
+        for (let i = 0; i <= 80; i++) {
+            const angle = startAngle + (endAngle - startAngle) * i / 80;
+            boundary.push({ x: center.x + Math.cos(angle) * outerRadius, y: center.y + Math.sin(angle) * outerRadius });
+        }
+        for (let i = 80; i >= 0; i--) {
+            const angle = startAngle + (endAngle - startAngle) * i / 80;
+            boundary.push({ x: center.x + Math.cos(angle) * innerRadius, y: center.y + Math.sin(angle) * innerRadius });
+        }
+        boundary.push(boundary[0]);
+
+        const coverZones = [];
+        for (let y = 20; y < 480; y++) {
+            let start = -1;
+            for (let x = 20; x < 480; x++) {
+                const radius = Math.hypot(x - center.x, y - center.y);
+                const angle = (Math.atan2(y - center.y, x - center.x) + Math.PI * 2) % (Math.PI * 2);
+                const inside = radius >= innerRadius && radius <= outerRadius && angle >= startAngle && angle <= endAngle;
+                if (inside && start < 0) {
+                    start = x;
+                }
+                if ((!inside || x === 479) && start >= 0) {
+                    coverZones.push({ x: start, y, w: x - start + (inside ? 1 : 0), h: 1 });
+                    start = -1;
+                }
+            }
+        }
+
+        const curved = region(1, 'AAA', 'CURVED LAND', 20, 20, 460, 460, 40000, []);
+        curved.coverZones = coverZones;
+        curved.boundaryPaths = [boundary];
+        const label = calculateCountryLabels([curved], 600)[0];
+
+        assert.ok(label.arc, 'the medial-axis candidate should produce a circular support line');
+        assert.ok(label.arc!.span <= Math.PI / 3, 'the circular angle must be at most 60 degrees');
+        assert.ok(Math.cos(label.arc!.centerAngle + label.arc!.direction * Math.PI / 2) >= 0,
+            'curved text must progress from left to right instead of being reversed');
+        assert.ok(label.fontSize > 0);
     });
 
     test('keeps labels below five map pixels for zoomed rendering', () => {
