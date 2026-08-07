@@ -350,13 +350,20 @@ export class WorldMap {
     }
 
     private async requestExportMap() {
+        const scale = await vscode.window.showQuickPick([1, 2, 3, 4].map(value => ({ label: `${value}×`, value })), {
+            placeHolder: localize('worldmap.export.title', 'Export as image'),
+        });
+        if (!scale) {
+            return;
+        }
+
         const uri = await vscode.window.showSaveDialog({ filters: { [localize('pngfile', 'PNG file')]: ['png'] } });
         this.lastRequestedExportUri = uri;
         if (!uri) {
             return;
         }
 
-        await this.postMessageToWebview({ command: 'requestexportmap' });
+        await this.postMessageToWebview({ command: 'requestexportmap', scale: scale.value });
     }
 
     private async exportMap(dataUrl?: string) {

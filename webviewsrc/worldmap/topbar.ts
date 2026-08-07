@@ -26,8 +26,6 @@ interface WorkspaceState {
     warningFilter?: string[];
 }
 
-const exportImageScale = 4;
-
 export class TopBar extends Subscriber {
     public viewMode$: BehaviorSubject<ViewMode>;
     public colorSet$: BehaviorSubject<ColorSet>;
@@ -305,6 +303,7 @@ export class TopBar extends Subscriber {
             }
 
             sendEvent('worldmap.export');
+            const exportImageScale = message.scale ?? 1;
             const canvas = document.createElement("canvas");
             canvas.width = Math.max(1, worldMap.width * exportImageScale);
             canvas.height = Math.max(1, worldMap.height * exportImageScale);
