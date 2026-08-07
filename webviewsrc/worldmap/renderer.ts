@@ -2,7 +2,7 @@ import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, Wit
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
-import { CountryTag, getCountryTags } from "./countryview";
+import { CountryRegion, getCountryRegions } from "./countryview";
 import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
 import { Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
@@ -35,7 +35,7 @@ interface RenderContext {
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
     stateControllers: Record<number, string | undefined>;
-    countryTags?: CountryTag[];
+    countryRegions?: CountryRegion[];
     renderedProvincesByOffset: Record<number, Province[]>;
     renderedProvincesById: Record<number, Province>;
     renderedProvinces?: Province[];
@@ -198,7 +198,7 @@ export class Renderer extends Subscriber {
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
             stateControllers: {},
-            countryTags: undefined,
+            countryRegions: undefined,
             renderedProvincesByOffset: {},
             renderedProvincesById: {},
             extraState: undefined,
@@ -349,12 +349,12 @@ export class Renderer extends Subscriber {
         context.textAlign = 'center';
         context.textBaseline = 'middle';
         if (viewMode === 'country') {
-            if (!renderContext.countryTags) {
-                renderContext.countryTags = getCountryTags(worldMap, provinceToState,
+            if (!renderContext.countryRegions) {
+                renderContext.countryRegions = getCountryRegions(worldMap, provinceToState,
                     stateId => getStateOwner(renderContext, worldMap, stateId));
             }
 
-            for (const { owner, province, boundingBox, centerOfMass } of renderContext.countryTags) {
+            for (const { owner, province, boundingBox, centerOfMass } of renderContext.countryRegions) {
                 if (!viewPoint.bboxInView(boundingBox, xOffset)) {
                     continue;
                 }

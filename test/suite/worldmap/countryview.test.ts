@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import { Province } from '../../../src/previewdef/worldmap/definitions';
-import { getCountryTags } from '../../../webviewsrc/worldmap/countryview';
+import { getCountryRegions } from '../../../webviewsrc/worldmap/countryview';
 
 suite('Country view', () => {
     test('uses the center of mass of each connected country territory for tags', () => {
@@ -16,12 +16,12 @@ suite('Country view', () => {
             3: 'AAA',
         };
 
-        const tags = getCountryTags({
+        const regions = getCountryRegions({
             width: 100,
             forEachProvince: callback => provinces.forEach(callback),
         }, { 1: 1, 2: 2, 3: 3, 4: 4 }, stateId => owners[stateId]);
 
-        assert.deepStrictEqual(tags.map(tag => [tag.owner, tag.province.id, tag.centerOfMass]), [
+        assert.deepStrictEqual(regions.map(region => [region.owner, region.province.id, region.centerOfMass]), [
             ['AAA', 1, { x: 15, y: 5 }],
             ['AAA', 3, { x: 55, y: 5 }],
         ]);

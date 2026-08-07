@@ -1,16 +1,16 @@
 import { Province, Region } from "../../src/previewdef/worldmap/definitions";
 import { mergeRegions } from "../../src/previewdef/worldmap/loader/region";
 
-export interface CountryTag extends Region {
+export interface CountryRegion extends Region {
     owner: string;
     province: Province;
 }
 
-export function getCountryTags(
+export function getCountryRegions(
     provinces: { width: number; forEachProvince(callback: (province: Province) => boolean | void): void },
     provinceToState: Record<number, number | undefined>,
     getStateOwner: (stateId: number) => string | undefined,
-): CountryTag[] {
+): CountryRegion[] {
     const provincesById = new Map<number, Province>();
     const owners = new Map<number, string>();
     provinces.forEachProvince(province => {
@@ -22,10 +22,10 @@ export function getCountryTags(
         }
     });
 
-    const result: CountryTag[] = [];
-    const remaining = new Set(provincesById.keys());
+    const result: CountryRegion[] = [];
+    const remaining = new Set<number>(provincesById.keys());
     while (remaining.size > 0) {
-        const provinceId = remaining.values().next().value as number;
+        const provinceId = remaining.values().next().value;
         const owner = owners.get(provinceId)!;
         const component: Province[] = [];
         const queue = [provinceId];
