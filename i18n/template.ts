@@ -182,6 +182,7 @@ const table: Partial<typeof __table> = {
     "worldmap.topbar.search.placeholder": "Range: {0}",
     "worldmap.topbar.search.title": "Search",
     "worldmap.topbar.viewmode": "View mode: ",
+    "worldmap.topbar.viewmode.country": "Country",
     "worldmap.topbar.viewmode.province": "Province",
     "worldmap.topbar.viewmode.state": "State",
     "worldmap.topbar.viewmode.strategicregion": "Strategic Region",
