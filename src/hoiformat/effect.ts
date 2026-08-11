@@ -52,6 +52,13 @@ function extractEffectByCondition(
     const items: EffectItem[] = [];
     let ifItem: ConditionFolder | undefined = undefined;
 
+    function pushItemsToResult() {
+        if (items.length > 0) {
+            result.push({ condition, items: [...items] });
+            items.length = 0;
+        }
+    }
+
     for (const child of nodeValue) {
         let keepIfItem = false;
 
@@ -62,10 +69,12 @@ function extractEffectByCondition(
         }
 
         if (childName === 'hidden_effect') {
+            pushItemsToResult();
             extractEffectByCondition(child.value, scopeStack, condition, result);
         
         } else if (childName === 'random_list') {
             if (Array.isArray(child.value)) {
+                pushItemsToResult();
                 const randomListItems = child.value.map(n => {
                     const possibility = parseInt(n.name ?? '0');
                     const effect = extractEffectByCondition(n.value, scopeStack, true, [], ['modifier']);
@@ -79,6 +88,7 @@ function extractEffectByCondition(
 
         } else if (childName === 'if') {
             if (Array.isArray(child.value)) {
+                pushItemsToResult();
                 const limit = child.value.find(v => v.name === 'limit');
                 if (limit) {
                     ifItem = handleIf(child, limit, scopeStack, condition, result);
@@ -100,17 +110,20 @@ function extractEffectByCondition(
 
         } else if (childName === 'else_if') {
             if (ifItem) {
+                pushItemsToResult();
                 handleElseIf(child, ifItem, scopeStack, result);
                 keepIfItem = true;
             }
 
         } else if (childName === 'else') {
             if (ifItem) {
+                pushItemsToResult();
                 handleElse(child, ifItem, scopeStack, result);
                 keepIfItem = false;
             }
 
         } else if (tryMoveScope(child, scopeStack, 'effect')) {
+            pushItemsToResult();
             extractEffectByCondition(child.value, scopeStack, condition, result);
             scopeStack.pop();
 
@@ -128,18 +141,7 @@ function extractEffectByCondition(
         }
     }
 
-    if (items.length > 0) {
-        const existing = result.filter((r): r is EffectByCondition => r !== null && 'condition' in r).find(r => r.condition === condition);
-        if (existing) {
-            existing.items.push(...items);
-        } else {
-            result.push({
-                condition,
-                items,
-            });
-        }
-    }
-
+    pushItemsToResult();
     return { condition: true, items: result };
 }
 

@@ -311,20 +311,20 @@ function loadStateHistory(
     conditionExprs: ConditionItem[]
 ): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores' | 'isDemilitarizedZone'> {
     const history = rawHistory?._raw ? convertNodeToJson<StateHistory>(rawHistory?._raw, stateHistorySchema) : undefined;
-    const defaultOwner = history?.owner;
-    const defaultController = history?.controller;
-    const defaultIsDemilitarizedZone = history?.set_demilitarized_zone;
-    const cores = history?.add_core_of.filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)).map(v => ({ value: v, condition: true })) ?? [];
     const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
     const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
     
-    if (bookmarks.length === 0) {
+    if (bookmarks.length === 0 || !rawHistory) {
+        const defaultOwner = history?.owner;
+        const defaultController = history?.controller;
+        const defaultIsDemilitarizedZone = history?.set_demilitarized_zone;
+        const defaultCores = history?.add_core_of.filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)).map(v => ({ value: v, condition: true })) ?? [];
         return {
             owner: defaultOwner ? [{ value: defaultOwner, condition: true }] : [],
             controller: defaultController ? [{ value: defaultController, condition: true }] : [],
             isDemilitarizedZone: defaultIsDemilitarizedZone !== undefined ? [{ value: defaultIsDemilitarizedZone, condition: true }] : [],
             victoryPoints,
-            cores,
+            cores: defaultCores,
         };
     }
 
@@ -332,8 +332,12 @@ function loadStateHistory(
     const scope: Scope = { scopeName: `State ${stateId}`, scopeType: 'state' };
     const dateHistory = rawHistory?._raw ? convertNodeToJson<CustomMap<Raw>>(rawHistory?._raw, { _innerType: "raw", _type: "map" }) : undefined;
     const dateHistoryEffects: { date: BookmarkDate, effects: { effect: EffectItem, condition: ConditionComplexExpr }[] }[] = [];
+
+    const historyEffect = extractEffectValue(rawHistory?._raw.value, scope);
+    dateHistoryEffects.push({ date: { year: 0, month: 0, day: 0, hour: 0 }, effects: findHistoryItems(historyEffect.effect) });
+
     for (const {_key, _value} of Object.values(dateHistory?._map ?? {})) {
-        if (!_key.match(/^\d{4}\.\d{1,2}\.\d{1,2}$/)) {
+        if (!_key.match(/^\d{4}\.\d{1,2}\.\d{1,2}(\.\d{1,2})?$/)) {
             continue;
         }
 
@@ -347,19 +351,9 @@ function loadStateHistory(
     dateHistoryEffects.sort((a, b) => compareBookmarkDate(a.date, b.date));
 
     const owner: WithCondition<string>[] = [];
-    if (defaultOwner) {
-        owner.push({ value: defaultOwner, condition: true });
-    }
-
     const controller: WithCondition<string>[] = [];
-    if (defaultController) {
-        controller.push({ value: defaultController, condition: true });
-    }
-
     const isDemilitarizedZone: WithCondition<boolean>[] = [];
-    if (defaultIsDemilitarizedZone !== undefined) {
-        isDemilitarizedZone.push({ value: defaultIsDemilitarizedZone, condition: true });
-    }
+    const cores: WithCondition<string>[] = [];
 
     if (dateHistoryEffects.some(e => e.effects.length > 0)) {
         const bookmarkConditions: ConditionItem[] = [];
