@@ -286,6 +286,7 @@ export interface OpenFileMessage {
 export interface ExportMapMessage {
     command: 'exportmap' | 'requestexportmap';
     dataUrl?: string;
+    scale?: number;
 }
 
 export interface SaveStateMessage {
