@@ -2,10 +2,11 @@ import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, 
 import { copyArray } from "../util/common";
 import { inBBox } from "./graphutils";
 import { Subscriber } from "../util/event";
-import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River, Bookmark } from "../../src/previewdef/worldmap/definitions";
+import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River, Bookmark, WithCondition } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
 import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
-import { ConditionItem } from "../../src/hoiformat/condition";
+import { applyCondition, ConditionItem } from "../../src/hoiformat/condition";
+import { isEqual } from "lodash";
 
 interface ExtraMapData {
     provincesCount: number;
@@ -23,6 +24,11 @@ interface FEWorldMapClassExtra {
 
     getStateByProvinceId(provinceId: number): State | undefined;
     getProvinceToStateMap(): Record<number, number | undefined>;
+
+    getCountryByTag(countryTag: string): Country | undefined;
+    getCountryByState(state: State | undefined, selectedConditions: ConditionItem[], type: 'owner' | 'controller'): string | undefined;
+    getStateToCountryMap(selectedConditions: ConditionItem[], type: 'owner' | 'controller'): Record<number, string | undefined>;
+    getOwnerCountryToStatesMap(selectedConditions: ConditionItem[]): Record<string, number[]>;
     
     getStrategicRegionByProvinceId(provinceId: number): StrategicRegion | undefined;
     getProvinceToStrategicRegionMap(): Record<number, number | undefined>;
@@ -263,6 +269,10 @@ class FEWorldMapClass implements FEWorldMap {
     private railways!: (Railway | null | undefined)[];
     private supplyNodes!: (SupplyNode | null | undefined)[];
 
+    private lastSelectedConditions?: ConditionItem[];
+    private cachedStateToOwnerCountryMap?: Record<number, string | undefined>;
+    private cachedOwnerCountryToStatesMap?: Record<string, number[]>;
+
     constructor(worldMap?: WorldMapData & ExtraMapData) {
         Object.assign(this, worldMap ?? ({
             width: 0, height: 0,
@@ -290,6 +300,10 @@ class FEWorldMapClass implements FEWorldMap {
     public getSupplyAreaById = (supplyAreaId: number | undefined): SupplyArea | undefined => {
         return supplyAreaId ? this.supplyAreas[supplyAreaId] ?? undefined : undefined;
     };
+
+    public getCountryByTag(countryTag: string): Country | undefined {
+        return this.countries.find(c => c.tag === countryTag);
+    }
 
     public getStateByProvinceId(provinceId: number): State | undefined {
         let resultState: State | undefined = undefined;
@@ -391,6 +405,48 @@ class FEWorldMapClass implements FEWorldMap {
         );
     
         return result;
+    }
+
+    public getStateToCountryMap(selectedConditions: ConditionItem[], type: 'owner' | 'controller'): Record<number, string | undefined> {
+        // Only cache owner map because it's more commonly used.
+        if (type === 'owner' && this.cachedStateToOwnerCountryMap && isEqual(this.lastSelectedConditions, selectedConditions)) {
+            return this.cachedStateToOwnerCountryMap;
+        }
+
+        const result: Record<number, string | undefined> = {};
+        const countryToStatesMap: Record<string, number[]> | undefined = type === 'owner' ? {} : undefined;
+
+        this.forEachState(state => {
+            const countryTag = this.getCountryByState(state, selectedConditions, type);
+            result[state.id] = countryTag;
+            if (countryToStatesMap && countryTag) {
+                if (!countryToStatesMap[countryTag]) {
+                    countryToStatesMap[countryTag] = [];
+                }
+                countryToStatesMap[countryTag].push(state.id);
+            }
+        });
+
+        if (type === 'owner') {
+            this.cachedStateToOwnerCountryMap = result;
+            this.cachedOwnerCountryToStatesMap = countryToStatesMap;
+            this.lastSelectedConditions = selectedConditions;
+        }
+
+        return result;
+    }
+
+    public getCountryByState(state: State | undefined, selectedConditions: ConditionItem[], type: 'owner' | 'controller'): string | undefined {
+        return state?.[type]?.find(o => applyCondition(o.condition, selectedConditions))?.value;
+    }
+
+    public getOwnerCountryToStatesMap(selectedConditions: ConditionItem[]): Record<string, number[]> {
+        if (this.cachedOwnerCountryToStatesMap && isEqual(this.lastSelectedConditions, selectedConditions)) {
+            return this.cachedOwnerCountryToStatesMap;
+        }
+
+        this.getStateToCountryMap(selectedConditions, 'owner');
+        return this.cachedOwnerCountryToStatesMap!;
     }
 
     public forEachProvince(callback: (province: Province) => boolean | void) {

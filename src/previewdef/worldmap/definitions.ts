@@ -166,6 +166,7 @@ interface WarningRiver extends WarningSourceBase {
 export interface Country {
     tag: string;
     color: number;
+    file: string;
 }
 
 export interface Terrain {
@@ -276,7 +277,7 @@ export interface ProvinceMapSummaryMessage {
 
 export interface OpenFileMessage {
     command: 'openfile';
-    type: 'state' | 'strategicregion' | 'supplyarea';
+    type: 'state' | 'strategicregion' | 'supplyarea' | 'country';
     file: string;
     start: number | undefined;
     end: number | undefined;

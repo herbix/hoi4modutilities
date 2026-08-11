@@ -176,7 +176,7 @@ export class WorldMap {
         }
     }
 
-    private async openFile(file: string, type: 'state' | 'strategicregion' | 'supplyarea', start: number | undefined, end: number | undefined): Promise<void> {
+    private async openFile(file: string, type: 'state' | 'strategicregion' | 'supplyarea' | 'country', start: number | undefined, end: number | undefined): Promise<void> {
         // TODO duplicate with previewbase.ts
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {

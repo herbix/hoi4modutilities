@@ -37,6 +37,8 @@ export class TopBar extends Subscriber {
     public selectedStrategicRegionId$: BehaviorSubject<number | undefined>;
     public hoverSupplyAreaId$: BehaviorSubject<number | undefined>;
     public selectedSupplyAreaId$: BehaviorSubject<number | undefined>;
+    public hoverCountryTag$: BehaviorSubject<string | undefined>;
+    public selectedCountryTag$: BehaviorSubject<string | undefined>;
     public selectedConditions$: BehaviorSubject<ConditionItem[]>;
     public warningFilter: DivDropdown;
     public display: DivDropdown;
@@ -71,6 +73,8 @@ export class TopBar extends Subscriber {
         this.selectedStrategicRegionId$ = new BehaviorSubject<number | undefined>(state.selectedStrategicRegionId ?? undefined);
         this.hoverSupplyAreaId$ = new BehaviorSubject<number | undefined>(undefined);
         this.selectedSupplyAreaId$ = new BehaviorSubject<number | undefined>(state.selectedSupplyAreaId ?? undefined);
+        this.hoverCountryTag$ = new BehaviorSubject<string | undefined>(undefined);
+        this.selectedCountryTag$ = new BehaviorSubject<string | undefined>(state.selectedCountryTag ?? undefined);
         this.selectedConditions$ = new BehaviorSubject<ConditionItem[]>((state.selectedConditions ?? workspaceState.selectedConditions ?? []).map(stringValueToConditionItem));
 
         this.addSubscription(this.conditions.selectedValues$.subscribe(selection => {
@@ -262,6 +266,14 @@ export class TopBar extends Subscriber {
                         start: supplyArea.token?.start, end: supplyArea.token?.end });
                 }
             }
+        } else if (this.viewMode$.value === 'country') {
+            const selected = useHoverValue ? this.hoverCountryTag$.value : this.selectedCountryTag$.value;
+            if (selected) {
+                const country = this.loader.worldMap.getCountryByTag(selected);
+                if (country) {
+                    vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'country', file: country.file, start: 0, end: 0 });
+                }
+            }
         }
     }
 
@@ -272,11 +284,12 @@ export class TopBar extends Subscriber {
             this.openMapItem();
         }));
 
-        this.addSubscription(combineLatest([this.viewMode$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$]).subscribe(
-            ([viewMode, selectedStateId, selectedStrategicRegionId, selectedSupplyAreaId]) => {
+        this.addSubscription(combineLatest([this.viewMode$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$, this.selectedCountryTag$]).subscribe(
+            ([viewMode, selectedStateId, selectedStrategicRegionId, selectedSupplyAreaId, selectedCountryTag]) => {
                 open.disabled = !((viewMode === 'state' && selectedStateId !== undefined) ||
                     (viewMode === 'strategicregion' && selectedStrategicRegionId !== undefined) ||
-                    (viewMode === 'supplyarea' && selectedSupplyAreaId !== undefined));
+                    (viewMode === 'supplyarea' && selectedSupplyAreaId !== undefined) ||
+                    (viewMode === 'country' && selectedCountryTag !== undefined));
             }
         ));
     }
@@ -319,6 +332,7 @@ export class TopBar extends Subscriber {
                 this.hoverStateId$.next(undefined);
                 this.hoverStrategicRegionId$.next(undefined);
                 this.hoverSupplyAreaId$.next(undefined);
+                this.hoverCountryTag$.next(undefined);
                 return;
             }
     
@@ -336,6 +350,7 @@ export class TopBar extends Subscriber {
             this.hoverStateId$.next(this.hoverProvinceId$.value === undefined ? undefined : worldMap.getStateByProvinceId(this.hoverProvinceId$.value)?.id);
             this.hoverStrategicRegionId$.next(this.hoverProvinceId$.value === undefined ? undefined : worldMap.getStrategicRegionByProvinceId(this.hoverProvinceId$.value)?.id);
             this.hoverSupplyAreaId$.next(this.hoverStateId$.value === undefined ? undefined : worldMap.getSupplyAreaByStateId(this.hoverStateId$.value)?.id);
+            this.hoverCountryTag$.next(this.hoverStateId$.value === undefined ? undefined : worldMap.getCountryByState(worldMap.getStateById(this.hoverStateId$.value), this.selectedConditions$.value, 'owner'));
         }));
     
         this.addSubscription(fromEvent(canvas, 'mouseleave').subscribe(() => {
@@ -343,6 +358,7 @@ export class TopBar extends Subscriber {
             this.hoverStateId$.next(undefined);
             this.hoverStrategicRegionId$.next(undefined);
             this.hoverSupplyAreaId$.next(undefined);
+            this.hoverCountryTag$.next(undefined);
         }));
     
         this.addSubscription(fromEvent(canvas, 'click').subscribe(() => {
@@ -358,6 +374,9 @@ export class TopBar extends Subscriber {
                     break;
                 case 'supplyarea':
                     this.selectedSupplyAreaId$.next(this.selectedSupplyAreaId$.value === this.hoverSupplyAreaId$.value ? undefined : this.hoverSupplyAreaId$.value);
+                    break;
+                case 'country':
+                    this.selectedCountryTag$.next(this.selectedCountryTag$.value === this.hoverCountryTag$.value ? undefined : this.hoverCountryTag$.value);
                     break;
             }
         }));

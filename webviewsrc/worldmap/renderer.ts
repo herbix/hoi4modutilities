@@ -1,4 +1,4 @@
-import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, WithCondition } from "../../src/previewdef/worldmap/definitions";
+import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, WithCondition } from "./definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
@@ -31,17 +31,16 @@ interface RenderContext {
     viewPoint: ViewPoint;
     mapCanvasContext: CanvasRenderingContext2D;
     provinceToState: Record<number, number | undefined>;
-    stateOwners: Record<number, string | undefined>;
+    stateToOwnerCountry: Record<number, string | undefined>;
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
-    stateControllers: Record<number, string | undefined>;
     countryRegions?: CountryRegion[];
     renderedProvincesByOffset: Record<number, Province[]>;
     renderedProvincesById: Record<number, Province>;
     renderedProvinces?: Province[];
     overwriteRenderPrecision?: number;
     preciseEdge?: boolean;
-    extraState: any;
+    colorSetState: any;
 }
 
 export class Renderer extends Subscriber {
@@ -87,6 +86,8 @@ export class Renderer extends Subscriber {
                 topBar.selectedStrategicRegionId$,
                 topBar.hoverSupplyAreaId$,
                 topBar.selectedSupplyAreaId$,
+                topBar.hoverCountryTag$,
+                topBar.selectedCountryTag$,
                 topBar.warningFilter.selectedValues$,
                 topBar.display.selectedValues$,
                 topBar.selectedConditions$,
@@ -135,6 +136,9 @@ export class Renderer extends Subscriber {
                 break;
             case 'supplyarea':
                 this.renderSupplyAreaHoverSelection(this.loader.worldMap);
+                break;
+            case 'country':
+                this.renderCountryHoverSelection(this.loader.worldMap);
                 break;
         }
 
@@ -194,14 +198,13 @@ export class Renderer extends Subscriber {
             viewPoint,
             mapCanvasContext,
             provinceToState: worldMap.getProvinceToStateMap(),
-            stateOwners: {},
+            stateToOwnerCountry: worldMap.getStateToCountryMap(topBar.selectedConditions$.value, 'owner'),
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
-            stateControllers: {},
             countryRegions: undefined,
             renderedProvincesByOffset: {},
             renderedProvincesById: {},
-            extraState: undefined,
+            colorSetState: undefined,
             ...otherRenderContext,
         };
 
@@ -338,7 +341,7 @@ export class Renderer extends Subscriber {
     }
 
     private static renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
-        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, topBar, viewPoint } = renderContext;
+        const { provinceToState, stateToOwnerCountry, provinceToStrategicRegion, stateToSupplyArea, topBar, viewPoint } = renderContext;
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const viewMode = topBar.viewMode$.value;
         const colorSet = topBar.colorSet$.value;
@@ -350,8 +353,7 @@ export class Renderer extends Subscriber {
         context.textBaseline = 'middle';
         if (viewMode === 'country') {
             if (!renderContext.countryRegions) {
-                renderContext.countryRegions = getCountryRegions(worldMap, provinceToState,
-                    stateId => getStateOwner(renderContext, worldMap, stateId));
+                renderContext.countryRegions = getCountryRegions(worldMap, provinceToState, stateToOwnerCountry);
             }
 
             for (const { owner, province, boundingBox, centerOfMass } of renderContext.countryRegions) {
@@ -413,7 +415,7 @@ export class Renderer extends Subscriber {
         isRed: boolean,
         preciseEdge?: boolean,
     ) {
-        const { provinceToState, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces, topBar, viewPoint } = renderContext;
+        const { provinceToState, stateToOwnerCountry, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces, topBar, viewPoint } = renderContext;
         const scale = viewPoint.scale;
         const viewMode = topBar.viewMode$.value;
 
@@ -449,8 +451,8 @@ export class Renderer extends Subscriber {
                         continue;
                     }
                 } else if (viewMode === 'country') {
-                    const ownerFrom = getStateOwner(renderContext, worldMap, stateFromId);
-                    const ownerTo = getStateOwner(renderContext, worldMap, stateToId);
+                    const ownerFrom = stateFromId === undefined ? undefined : stateToOwnerCountry[stateFromId];
+                    const ownerTo = stateToId === undefined ? undefined : stateToOwnerCountry[stateToId];
                     if (ownerFrom === ownerTo) {
                         continue;
                     }
@@ -668,8 +670,8 @@ export class Renderer extends Subscriber {
         const railwayLevel = worldMap.getRailwayLevelByProvinceId(province.id);
         const supplyNode = worldMap.getSupplyNodeByProvinceId(province.id);
         const vp = stateObject?.victoryPoints[province.id];
-        const owner = solveWithCondition(stateObject?.owner, selectedConditions);
-        const controller = solveWithCondition(stateObject?.controller, selectedConditions);
+        const owner = worldMap.getCountryByState(stateObject, selectedConditions, 'owner');
+        const controller = worldMap.getCountryByState(stateObject, selectedConditions, 'controller');
 
         this.renderTooltip(`
 ${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
@@ -772,6 +774,27 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         hover && this.isTooltipVisible() && this.renderSupplyAreaTooltip(hover, worldMap);
     }
 
+    private renderCountryHoverSelection(worldMap: FEWorldMap) {
+        const hover = this.topBar.hoverCountryTag$.value;
+        const getCountryProvinces = (tag: string | undefined) => {
+            if (!tag) {
+                return undefined;
+            }
+
+            const ownerCountryToState = worldMap.getOwnerCountryToStatesMap(this.topBar.selectedConditions$.value);
+            const provinces: number[] = [];
+            for (const stateId of ownerCountryToState[tag] ?? []) {
+                const state = worldMap.getStateById(stateId);
+                if (state) {
+                    provinces.push(...state.provinces);
+                }
+            }
+            return { provinces };
+        };
+        this.renderHoverSelection(worldMap, getCountryProvinces(hover), getCountryProvinces(this.topBar.selectedCountryTag$.value));
+        hover && this.isTooltipVisible() && this.renderCountryTooltip(hover, worldMap);
+    }
+
     private renderHoverSelection(worldMap: FEWorldMap, hover: { provinces: number[] } | undefined, selected: { provinces: number[] } | undefined) {
         if (selected) {
             for (const provinceId of selected.provinces) {
@@ -794,8 +817,8 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
 
     private renderStateTooltip(state: State, worldMap: FEWorldMap, selectedConditions: ConditionItem[]) {
         const supplyArea = worldMap.getSupplyAreaByStateId(state.id);
-        const owner = solveWithCondition(state.owner, selectedConditions);
-        const controller = solveWithCondition(state.controller, selectedConditions);
+        const owner = worldMap.getCountryByState(state, selectedConditions, 'owner');
+        const controller = worldMap.getCountryByState(state, selectedConditions, 'controller');
         this.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
 ${feLocalize('worldmap.tooltip.state', 'State')}=${state.localisedName ? `${state.localisedName} (${state.id})` : state.id}
@@ -838,6 +861,14 @@ ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
 ${feLocalize('worldmap.tooltip.states', 'States')}=${supplyArea.states.join(',')}
 ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
+    }
+
+    private renderCountryTooltip(tag: string, worldMap: FEWorldMap) {
+        const ownerCountryToState = worldMap.getOwnerCountryToStatesMap(this.topBar.selectedConditions$.value);
+        const states = ownerCountryToState[tag] ?? [];
+        this.renderTooltip(`
+${feLocalize('worldmap.tooltip.country', 'Country')}=${tag}
+${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
     }
 
     private renderTooltip(tooltip: string, sizeCallback?: (width: number, height: number) => {width: number, height: number}, renderCallback?: (x: number, y: number) => void) {
@@ -987,36 +1018,8 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
     }
 }
 
-function getStateOwner(renderContext: RenderContext, worldMap: FEWorldMap, stateId: number | undefined) {
-    if (stateId === undefined) {
-        return undefined;
-    }
-
-    if (!(stateId in renderContext.stateOwners)) {
-        renderContext.stateOwners[stateId] = solveWithCondition(worldMap.getStateById(stateId)?.owner,
-            renderContext.topBar.selectedConditions$.value);
-    }
-    return renderContext.stateOwners[stateId];
-}
-
-function solveWithCondition<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T | undefined {
-    return value?.find(o => applyCondition(o.condition, selectedConditions))?.value;
-}
-
 function solveWithConditionAsSet<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T[] {
     return value?.filter(o => applyCondition(o.condition, selectedConditions)).map(o => o.value) ?? [];
-}
-
-function getStateController(renderContext: RenderContext, worldMap: FEWorldMap, stateId: number | undefined) {
-    if (stateId === undefined) {
-        return undefined;
-    }
-
-    if (!(stateId in renderContext.stateControllers)) {
-        renderContext.stateControllers[stateId] = solveWithCondition(worldMap.getStateById(stateId)?.controller,
-            renderContext.topBar.selectedConditions$.value) ?? getStateOwner(renderContext, worldMap, stateId);
-    }
-    return renderContext.stateControllers[stateId];
 }
 
 function toColor(colorNum: number) {
@@ -1074,6 +1077,7 @@ function getColorByColorSet(
 ): number {
     const { provinceToState,
         provinceToStrategicRegion,
+        stateToOwnerCountry,
         stateToSupplyArea,
         topBar } = renderContext;
     switch (colorSet) {
@@ -1082,13 +1086,17 @@ function getColorByColorSet(
         case 'owner':
             {
                 const stateId = provinceToState[province.id];
-                const owner = getStateOwner(renderContext, worldMap, stateId);
+                const owner = stateId === undefined ? undefined : stateToOwnerCountry[stateId];
                 return worldMap.countries.find(c => c && c.tag === owner)?.color ?? defaultColor(province);
             }
         case 'controller':
             {
+                if (renderContext.colorSetState === undefined) {
+                    renderContext.colorSetState = worldMap.getStateToCountryMap(topBar.selectedConditions$.value, 'controller');
+                }
+
                 const stateId = provinceToState[province.id];
-                const controller = getStateController(renderContext, worldMap, stateId);
+                const controller = stateId === undefined ? undefined : (renderContext.colorSetState[stateId] ?? stateToOwnerCountry[stateId]);
                 return worldMap.countries.find(c => c && c.tag === controller)?.color ?? defaultColor(province);
             }
         case 'statecategory':
@@ -1099,27 +1107,27 @@ function getColorByColorSet(
             }
         case 'terrain':
             {
-                if (renderContext.extraState === undefined) {
-                    renderContext.extraState = arrayToMap(worldMap.terrains, 'name');
+                if (renderContext.colorSetState === undefined) {
+                    renderContext.colorSetState = arrayToMap(worldMap.terrains, 'name');
                 }
 
                 const navalTerrain = province.type === 'land' ? undefined : worldMap.getStrategicRegionById(provinceToStrategicRegion[province.id])?.navalTerrain;
-                return (renderContext.extraState as Record<string, Terrain | undefined>)[navalTerrain ?? province.terrain]?.color ?? 0;
+                return (renderContext.colorSetState as Record<string, Terrain | undefined>)[navalTerrain ?? province.terrain]?.color ?? 0;
             }
         case 'continent':
-            if (renderContext.extraState === undefined) {
+            if (renderContext.colorSetState === undefined) {
                 let continent = 0;
                 worldMap.forEachProvince(p => (p.continent > continent ? continent = p.continent : 0, false));
-                renderContext.extraState = avoidPowerOf2(continent + 1);
+                renderContext.colorSetState = avoidPowerOf2(continent + 1);
             }
-            return province.continent !== 0 ? valueAndMaxToColor(province.continent + 1, renderContext.extraState) : defaultColor(province);
+            return province.continent !== 0 ? valueAndMaxToColor(province.continent + 1, renderContext.colorSetState) : defaultColor(province);
         case 'stateid':
             {
-                if (renderContext.extraState === undefined) {
-                    renderContext.extraState = avoidPowerOf2(worldMap.statesCount);
+                if (renderContext.colorSetState === undefined) {
+                    renderContext.colorSetState = avoidPowerOf2(worldMap.statesCount);
                 }
                 const stateId = provinceToState[province.id];
-                return stateId !== undefined ? valueAndMaxToColor(stateId < 0 ? 0 : stateId, renderContext.extraState) : defaultColor(province);
+                return stateId !== undefined ? valueAndMaxToColor(stateId < 0 ? 0 : stateId, renderContext.colorSetState) : defaultColor(province);
             }
         case 'warnings':
             {
@@ -1146,29 +1154,29 @@ function getColorByColorSet(
                     return defaultColor(province);
                 }
 
-                if (renderContext.extraState === undefined) {
+                if (renderContext.colorSetState === undefined) {
                     let maxManpower = 0;
                     worldMap.forEachState(state => (state.manpower > maxManpower ? maxManpower = state.manpower : 0, false));
-                    renderContext.extraState = maxManpower;
+                    renderContext.colorSetState = maxManpower;
                 }
 
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
-                const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(renderContext.extraState);
+                const value = manpowerHandler(state?.manpower ?? 0) / manpowerHandler(renderContext.colorSetState);
                 return valueToColorGYR(value);
             }
         case 'victorypoint':
             {
-                if (renderContext.extraState === undefined) {
+                if (renderContext.colorSetState === undefined) {
                     let maxVictoryPoint = 0;
                     worldMap.forEachState(state => Object.values(state.victoryPoints).forEach(
                         vp => vp !== undefined && vp > maxVictoryPoint ? maxVictoryPoint = vp: 0));
-                    renderContext.extraState = maxVictoryPoint;
+                    renderContext.colorSetState = maxVictoryPoint;
                 }
 
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
-                const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(renderContext.extraState);
+                const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(renderContext.colorSetState);
                 return valueToColorGreyScale(value);
             }
         case 'resources':
@@ -1177,7 +1185,7 @@ function getColorByColorSet(
                     return defaultColor(province);
                 }
 
-                if (renderContext.extraState === undefined) {
+                if (renderContext.colorSetState === undefined) {
                     let maxResources = 0;
                     worldMap.forEachState(state => {
                         const numResources = Object.values(state.resources).reduce<number>((p, c) => p + (c ?? 0), 0);
@@ -1186,31 +1194,31 @@ function getColorByColorSet(
                         }
                         return false;
                     });
-                    renderContext.extraState = maxResources;
+                    renderContext.colorSetState = maxResources;
                 }
 
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
                 const numResources = state ? Object.values(state.resources).reduce<number>((p, c) => p + (c ?? 0), 0) : 0;
-                const value = resourcesHandler(numResources) / resourcesHandler(renderContext.extraState);
+                const value = resourcesHandler(numResources) / resourcesHandler(renderContext.colorSetState);
                 return valueToColorGYR(value);
             }
         case 'strategicregionid':
             {
-                if (renderContext.extraState === undefined) {
-                    renderContext.extraState = avoidPowerOf2(worldMap.strategicRegionsCount);
+                if (renderContext.colorSetState === undefined) {
+                    renderContext.colorSetState = avoidPowerOf2(worldMap.strategicRegionsCount);
                 }
                 const strategicRegionId = provinceToStrategicRegion[province.id];
-                return valueAndMaxToColor(strategicRegionId === undefined || strategicRegionId < 0 ? 0 : strategicRegionId, renderContext.extraState);
+                return valueAndMaxToColor(strategicRegionId === undefined || strategicRegionId < 0 ? 0 : strategicRegionId, renderContext.colorSetState);
             }
         case 'supplyareaid':
             {
-                if (renderContext.extraState === undefined) {
-                    renderContext.extraState = avoidPowerOf2(worldMap.supplyAreasCount);
+                if (renderContext.colorSetState === undefined) {
+                    renderContext.colorSetState = avoidPowerOf2(worldMap.supplyAreasCount);
                 }
                 const stateId = provinceToState[province.id];
                 const supplyAreaId = stateId !== undefined ? stateToSupplyArea[stateId] : undefined;
-                return supplyAreaId !== undefined ? valueAndMaxToColor(supplyAreaId < 0 ? 0 : supplyAreaId, renderContext.extraState) : defaultColor(province);
+                return supplyAreaId !== undefined ? valueAndMaxToColor(supplyAreaId < 0 ? 0 : supplyAreaId, renderContext.colorSetState) : defaultColor(province);
             }
         case 'supplyvalue':
             {
@@ -1218,16 +1226,16 @@ function getColorByColorSet(
                     return defaultColor(province);
                 }
 
-                if (renderContext.extraState === undefined) {
+                if (renderContext.colorSetState === undefined) {
                     let maxSupplyValue = 0;
                     worldMap.forEachSupplyArea(supplyArea => (supplyArea.value > maxSupplyValue ? maxSupplyValue = supplyArea.value: 0, false));
-                    renderContext.extraState = maxSupplyValue;
+                    renderContext.colorSetState = maxSupplyValue;
                 }
 
                 const stateId = provinceToState[province.id];
                 const supplyAreaId = stateId ? stateToSupplyArea[stateId] : undefined;
                 const supplyArea = worldMap.getSupplyAreaById(supplyAreaId);
-                const value = (supplyArea?.value ?? 0) / (renderContext.extraState);
+                const value = (supplyArea?.value ?? 0) / (renderContext.colorSetState);
                 return valueToColorGYR(value);
             }
         default:

@@ -209,6 +209,7 @@ async function loadCountry(tag: string, countryFile: string): Promise<Country | 
         return {
             tag,
             color: convertColor(data.color),
+            file: countryFile,
         };
     } catch (e) {
         error(e);

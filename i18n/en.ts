@@ -130,6 +130,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.tooltip.continent": "Continent",
     "worldmap.tooltip.controller": "Controller",
     "worldmap.tooltip.coreof": "Core of",
+    "worldmap.tooltip.country": "Country",
     "worldmap.tooltip.impassable": "Impassable",
     "worldmap.tooltip.manpower": "Manpower",
     "worldmap.tooltip.navalterrain": "Naval terrain",
@@ -257,9 +258,10 @@ const internalTable = /* SOT Do not remove this comment */{
 };/* EOT Do not remove this comment */
 
 export const __table = Object.assign(internalTable, {
+    "worldmap.openfiletype.country": "country",
     "worldmap.openfiletype.state": "state",
     "worldmap.openfiletype.strategicregion": "strategic region",
-    "worldmap.openfiletype.supplyarea": "supply area",
+    "worldmap.openfiletype.supplyarea": "supply area"
 });
 
 // Real export
