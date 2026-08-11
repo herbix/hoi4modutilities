@@ -95,6 +95,7 @@ const table: Partial<typeof __table> = {
     "worldmap.error.provinceidtoolarge": "Максимальный id провинции слишком большой: {0}.",
     "worldmap.export.error": "Невозможно экспортировать карту мира: {0}.",
     "worldmap.export.error.imgformat": "Невозможно экспортировать карту мира: Изображение в неверном формате.",
+    "worldmap.export.scale": "Scale of the exported image (1 ~ 10)",
     "worldmap.export.success": "Успешный экспорт карты мира.",
     "worldmap.export.title": "Экспортировать как изображение",
     "worldmap.failedtoload": "Ошибка при загрузке карты мира: {0}.",

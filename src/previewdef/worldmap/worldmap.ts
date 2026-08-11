@@ -6,7 +6,7 @@ import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
 import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
 import { matchPathEnd } from '../../util/nodecommon';
-import { writeFile, mkdirs, getDocumentByUri, dirUri } from '../../util/vsccommon';
+import { writeFile, mkdirs, getDocumentByUri, dirUri, showQuickPickAnyString } from '../../util/vsccommon';
 import { slice, debounceByInput, forceError } from '../../util/common';
 import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
@@ -350,10 +350,14 @@ export class WorldMap {
     }
 
     private async requestExportMap() {
-        const scale = await vscode.window.showQuickPick([1, 2, 3, 4].map(value => ({ label: `${value}×`, value })), {
-            placeHolder: localize('worldmap.export.title', 'Export as image'),
-        });
-        if (!scale) {
+        const scaleStr = await showQuickPickAnyString(['1', '2', '3', '4'],
+            v => {
+                const pv = parseFloat(v);
+                return !isNaN(pv) && pv >= 1 && pv <= 10;
+            },
+            localize('worldmap.export.scale', 'Scale of the exported image (1 ~ 10)'));
+
+        if (!scaleStr) {
             return;
         }
 
@@ -363,7 +367,7 @@ export class WorldMap {
             return;
         }
 
-        await this.postMessageToWebview({ command: 'requestexportmap', scale: scale.value });
+        await this.postMessageToWebview({ command: 'requestexportmap', scale: parseFloat(scaleStr) });
     }
 
     private async exportMap(dataUrl?: string) {

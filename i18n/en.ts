@@ -95,6 +95,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.error.provinceidtoolarge": "Max province id is too large: {0}.",
     "worldmap.export.error": "Can't export world map: {0}.",
     "worldmap.export.error.imgformat": "Can't export world map: Image is not in correct format.",
+    "worldmap.export.scale": "Scale of the exported image (1 ~ 10)",
     "worldmap.export.success": "Successfully exported world map.",
     "worldmap.export.title": "Export as image",
     "worldmap.failedtoload": "Failed to load world map: {0}.",

@@ -95,6 +95,7 @@ const table: Partial<typeof __table> = {
     "worldmap.error.provinceidtoolarge": "최대 프로빈스 ID가 너무 큼: {0}.",
     "worldmap.export.error": "지도를 내보낼수 없음: {0}.",
     "worldmap.export.error.imgformat": "지도를 내보낼수 없음: 이미지 형식이 유효하지 않음.",
+    "worldmap.export.scale": "Scale of the exported image (1 ~ 10)",
     "worldmap.export.success": "성공적으로 지도를 내보냄.",
     "worldmap.export.title": "이미지로 내보내기",
     "worldmap.failedtoload": "지도를 불러오는데 실패했습니다: {0}.",

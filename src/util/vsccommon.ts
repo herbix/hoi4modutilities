@@ -185,3 +185,26 @@ export function getLanguageIdInYml(): string {
 export function getLocalisationFolderName(): string {
     return languageFolderDict[getLanguage()] ?? languageFolderDict['English'];
 }
+
+export async function showQuickPickAnyString(items: string[] | Thenable<string[]>, validate?: (value: string) => boolean, placeholder?: string): Promise<string | undefined> {
+    return new Promise<string | undefined>(async (resolve) => {
+        const quickPick = vscode.window.createQuickPick();
+        quickPick.items = (await items).map(label => ({ label }));
+        quickPick.placeholder = placeholder;
+        quickPick.onDidAccept(() => {
+            const selection = quickPick.selectedItems[0];
+            const textResult = selection ? selection.label : quickPick.value;
+            if (!validate || validate(textResult)) {
+                resolve(textResult);
+                quickPick.hide();
+            }
+        });
+
+        quickPick.onDidHide(() => {
+            quickPick.dispose();
+            resolve(undefined);
+        });
+
+        quickPick.show();
+    });
+}

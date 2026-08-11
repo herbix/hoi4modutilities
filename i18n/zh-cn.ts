@@ -95,6 +95,7 @@ const table: Partial<typeof __table> = {
     "worldmap.error.provinceidtoolarge": "地块编号过大，最大值：{0}。",
     "worldmap.export.error": "无法导出地图：{0}。",
     "worldmap.export.error.imgformat": "无法导出地图：图像格式问题。",
+    "worldmap.export.scale": "导出图像的比例（1 ~ 10）",
     "worldmap.export.success": "成功导出地图。",
     "worldmap.export.title": "导出成图像",
     "worldmap.failedtoload": "载入地图失败：{0}。",
