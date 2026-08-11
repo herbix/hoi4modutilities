@@ -1,4 +1,4 @@
-import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Resource, Bookmark, BookmarkDate, WithCondition } from "../definitions";
+import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Bookmark, BookmarkDate, WithCondition } from "../definitions";
 import { Enum, SchemaDef, CustomMap, DetailValue, Raw, convertNodeToJson } from "../../../hoiformat/schema";
 import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
 import { error } from "../../../util/debug";
@@ -37,6 +37,7 @@ interface StateHistory {
     controller: string;
     victory_points: Enum[];
     add_core_of: string[];
+    set_demilitarized_zone: boolean;
 }
 
 const stateFileSchema: SchemaDef<StateFile> = {
@@ -69,6 +70,7 @@ const stateHistorySchema: SchemaDef<StateHistory> = {
         _innerType: "string",
         _type: "array",
     },
+    set_demilitarized_zone: "boolean",
 };
 
 interface StateCategoryFile {
@@ -265,7 +267,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             const impassable = state.impassable ?? false;
             const resources = arrayToMap(
                 Object.values(state.resources._map), '_key', v => v._value);
-            const { owner, controller, victoryPoints, cores } = loadStateHistory(id, state.history, bookmarks, conditionExprs);
+            const { owner, controller, victoryPoints, cores, isDemilitarizedZone } = loadStateHistory(id, state.history, bookmarks, conditionExprs);
 
             if (provinces.length === 0) {
                 globalWarnings.push({
@@ -288,7 +290,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             })));
 
             result.push({
-                id, name, localisedName, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources,
+                id, name, localisedName, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources, isDemilitarizedZone,
                 categoryColor: 0, // will be filled later
                 file: stateFile,
                 token: state._token ?? null,
@@ -307,10 +309,11 @@ function loadStateHistory(
     rawHistory: Raw | undefined,
     bookmarks: Bookmark[],
     conditionExprs: ConditionItem[]
-): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores'> {
+): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores' | 'isDemilitarizedZone'> {
     const history = rawHistory?._raw ? convertNodeToJson<StateHistory>(rawHistory?._raw, stateHistorySchema) : undefined;
     const defaultOwner = history?.owner;
     const defaultController = history?.controller;
+    const defaultIsDemilitarizedZone = history?.set_demilitarized_zone;
     const cores = history?.add_core_of.filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)).map(v => ({ value: v, condition: true })) ?? [];
     const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
     const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
@@ -319,6 +322,7 @@ function loadStateHistory(
         return {
             owner: defaultOwner ? [{ value: defaultOwner, condition: true }] : [],
             controller: defaultController ? [{ value: defaultController, condition: true }] : [],
+            isDemilitarizedZone: defaultIsDemilitarizedZone !== undefined ? [{ value: defaultIsDemilitarizedZone, condition: true }] : [],
             victoryPoints,
             cores,
         };
@@ -352,6 +356,11 @@ function loadStateHistory(
         controller.push({ value: defaultController, condition: true });
     }
 
+    const isDemilitarizedZone: WithCondition<boolean>[] = [];
+    if (defaultIsDemilitarizedZone !== undefined) {
+        isDemilitarizedZone.push({ value: defaultIsDemilitarizedZone, condition: true });
+    }
+
     if (dateHistoryEffects.some(e => e.effects.length > 0)) {
         const bookmarkConditions: ConditionItem[] = [];
         for (let i = 0; i < bookmarks.length; i++) {
@@ -368,21 +377,23 @@ function loadStateHistory(
                 continue;
             }
             for (const { effect, condition } of dateHistoryEffect.effects) {
-                extractFromEffect(stateId, scope, effect, condition, bookmarkCondition, owner, controller, cores, conditionExprs);
+                extractFromEffect(stateId, scope, effect, condition, bookmarkCondition, owner, controller, cores, isDemilitarizedZone, conditionExprs);
             }
             j++;
         }
         owner.reverse();
         controller.reverse();
+        isDemilitarizedZone.reverse();
     }
 
-    return { owner, controller, victoryPoints, cores };
+    return { owner, controller, victoryPoints, cores, isDemilitarizedZone };
 }
 
 const historyItemTypes = [
     'owner', 'transfer_state_to', 'transfer_state',
     'controller', 'set_state_controller', 'set_state_controller_to',
     'add_core_of', 'remove_core_of',
+    'set_demilitarized_zone',
     // TODO 'add_victory_points', 'set_victory_points',
 ];
 function findHistoryItems(
@@ -416,6 +427,7 @@ function extractFromEffect(
     owner: WithCondition<string>[],
     controller: WithCondition<string>[],
     cores: WithCondition<string>[],
+    isDemilitarizedZone: WithCondition<boolean>[],
     conditionExprs: ConditionItem[]) {
 
     const nodeName = effect.node.name?.toLowerCase();
@@ -495,6 +507,16 @@ function extractFromEffect(
             item.condition = simplifyCondition({ type: 'and', items: [item.condition, { type: 'ornot', items: [combinedCondition] }] });
             extractConditionalExprs(item.condition, conditionExprs);
         }
+    }
+    // set_demilitarized_zone = yes/no
+    if (nodeName === 'set_demilitarized_zone' && effect.scopeName === scope.scopeName) {
+        const value = convertNodeToJson<boolean>(effect.node, 'boolean');
+        if (value === undefined) {
+            return;
+        }
+        const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+        extractConditionalExprs(combinedCondition, conditionExprs);
+        isDemilitarizedZone.push({ value, condition: combinedCondition });
     }
 }
 

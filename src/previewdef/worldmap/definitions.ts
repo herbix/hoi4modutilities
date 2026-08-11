@@ -114,6 +114,7 @@ export interface State extends Region, TokenInFile {
     impassable: boolean;
     victoryPoints: Record<number, number | undefined>;
     resources: Record<string, number | undefined>;
+    isDemilitarizedZone: WithCondition<boolean>[]; // return the first matching boolean value
 }
 
 export interface WithCondition<T> {

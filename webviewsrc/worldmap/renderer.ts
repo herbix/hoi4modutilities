@@ -40,6 +40,7 @@ interface RenderContext {
     renderedProvinces?: Province[];
     overwriteRenderPrecision?: number;
     preciseEdge?: boolean;
+    demilitarizedZonePattern?: CanvasPattern;
     colorSetState: any;
 }
 
@@ -176,6 +177,7 @@ export class Renderer extends Subscriber {
             supplyVisible: displayOptions.includes('supply'),
             riverVisible: displayOptions.includes('river'),
             localisedLabelVisible: displayOptions.includes('localisedlabel'),
+            demilitarizedZoneVisible: displayOptions.includes('demilitarizedzone'),
             ...this.viewPoint.toJson(),
         };
 
@@ -205,6 +207,8 @@ export class Renderer extends Subscriber {
             renderedProvincesByOffset: {},
             renderedProvincesById: {},
             colorSetState: undefined,
+            demilitarizedZonePattern: topBar.display.selectedValues$.value.includes('demilitarizedzone') ?
+                mapCanvasContext.createPattern(createSlashPattern(), 'repeat') ?? undefined : undefined,
             ...otherRenderContext,
         };
 
@@ -260,7 +264,11 @@ export class Renderer extends Subscriber {
     }
 
     private static renderMapForeground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
-        const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
+        const { mapCanvasContext: context, topBar, viewPoint, demilitarizedZonePattern } = renderContext;
+
+        if (demilitarizedZonePattern) {
+            Renderer.renderDemilitarizedZones(renderContext, worldMap, context, xOffset);
+        }
 
         if (Renderer.isRiverVisible(topBar, viewPoint)) {
             Renderer.renderRivers(renderContext, worldMap, context, xOffset);
@@ -586,6 +594,36 @@ export class Renderer extends Subscriber {
         }
     }
 
+    private static renderDemilitarizedZones(
+        renderContext: RenderContext,
+        worldMap: FEWorldMap,
+        context: CanvasRenderingContext2D,
+        xOffset: number) {
+        const { demilitarizedZonePattern } = renderContext;
+        if (!demilitarizedZonePattern) {
+            return;
+        }
+
+        context.fillStyle = demilitarizedZonePattern;
+        const { viewPoint, provinceToState, topBar } = renderContext;
+        const scale = viewPoint.scale;
+        const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
+        const stateIdToDemilitarized: Record<number, boolean> = {};
+        for (const province of renderedProvinces) {
+            const stateId = provinceToState[province.id];
+            if (stateId === undefined) {
+                continue;
+            }
+            if (stateIdToDemilitarized[stateId] === undefined) {
+                const state = worldMap.getStateById(stateId);
+                stateIdToDemilitarized[stateId] = solveWithCondition(state?.isDemilitarizedZone, topBar.selectedConditions$.value) ?? false;
+            }
+            if (stateIdToDemilitarized[stateId]) {
+                Renderer.renderProvince(viewPoint, context, province, scale, xOffset);
+            }
+        }
+    }
+
     private static renderProvince(
         viewPoint: ViewPoint,
         context: CanvasRenderingContext2D,
@@ -672,9 +710,11 @@ export class Renderer extends Subscriber {
         const vp = stateObject?.victoryPoints[province.id];
         const owner = worldMap.getCountryByState(stateObject, selectedConditions, 'owner');
         const controller = worldMap.getCountryByState(stateObject, selectedConditions, 'controller');
+        const isDemilitarizedZone = stateObject ? solveWithCondition(stateObject.isDemilitarizedZone, selectedConditions) : false;
 
         this.renderTooltip(`
 ${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
+${isDemilitarizedZone ? '|r|' + feLocalize('TODO', 'Demilitarized zone') : ''}
 ${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}
 ${vp ? `${feLocalize('worldmap.tooltip.victorypoint', 'Victory point')}=${vp}` : ''}
 ${stateObject ? `
@@ -819,8 +859,10 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         const supplyArea = worldMap.getSupplyAreaByStateId(state.id);
         const owner = worldMap.getCountryByState(state, selectedConditions, 'owner');
         const controller = worldMap.getCountryByState(state, selectedConditions, 'controller');
+        const isDemilitarizedZone = solveWithCondition(state.isDemilitarizedZone, selectedConditions);
         this.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
+${isDemilitarizedZone ? '|r|' + feLocalize('TODO', 'Demilitarized zone') : ''}
 ${feLocalize('worldmap.tooltip.state', 'State')}=${state.localisedName ? `${state.localisedName} (${state.id})` : state.id}
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
@@ -1016,6 +1058,10 @@ ${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
             }
         }
     }
+}
+
+function solveWithCondition<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T | undefined {
+    return value?.find(o => applyCondition(o.condition, selectedConditions))?.value;
 }
 
 function solveWithConditionAsSet<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T[] {
@@ -1311,4 +1357,24 @@ function defaultColor(province: Province) {
 
 function toCommaDivideNumber(value: number): string {
     return value.toString(10).replace(/(?<!^)(\d{3})(?=(?:\d{3})*$)/g, ',$1');
+}
+
+function createSlashPattern(): HTMLCanvasElement {
+    const patCanvas = document.createElement('canvas');
+    const patCtx = patCanvas.getContext('2d') as CanvasRenderingContext2D;
+    const patSize = 14;
+    patCanvas.width = patSize;
+    patCanvas.height = patSize;
+
+    patCtx.strokeStyle = '#ff0000';
+    patCtx.lineWidth = 1;
+    patCtx.beginPath();
+    patCtx.moveTo(0, patSize / 2);
+    patCtx.lineTo(patSize / 2, 0);
+    patCtx.stroke();
+    patCtx.beginPath();
+    patCtx.moveTo(patSize / 2, patSize);
+    patCtx.lineTo(patSize, patSize / 2);
+    patCtx.stroke();
+    return patCanvas;
 }

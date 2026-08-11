@@ -15,15 +15,22 @@ import { distinctUntilChanged } from "rxjs/operators";
 export type ViewMode = 'province' | 'state' | 'country' | 'strategicregion' | 'supplyarea' | 'warnings';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'owner' | 'controller' | 'stateid' | 'manpower' |
     'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue' | 'resources' | 'statecategory';
+type WarningFilter = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'river';
+type DisplayOption = 'edge' | 'localisedlabel' | 'label' | 'tooltip' | 'supply' | 'river' | 'demilitarizedzone' | 'mousehighlight' | 'fastrending' | 'adaptzooming';
 
 export const topBarHeight = 40;
+
+const displayOptions: DisplayOption[] = [
+    'edge', 'localisedlabel', 'label', 'tooltip', 'supply', 'river', 'demilitarizedzone', 'mousehighlight', 'fastrending', 'adaptzooming'
+];
 
 interface WorkspaceState {
     viewMode?: ViewMode;
     colorSet?: ColorSet;
-    display?: string[];
+    display?: DisplayOption[]; // to be deprecated
+    displayDict?: Record<DisplayOption, boolean>;
     selectedConditions?: string[];
-    warningFilter?: string[];
+    warningFilter?: WarningFilter[];
 }
 
 export class TopBar extends Subscriber {
@@ -40,8 +47,8 @@ export class TopBar extends Subscriber {
     public hoverCountryTag$: BehaviorSubject<string | undefined>;
     public selectedCountryTag$: BehaviorSubject<string | undefined>;
     public selectedConditions$: BehaviorSubject<ConditionItem[]>;
-    public warningFilter: DivDropdown;
-    public display: DivDropdown;
+    public warningFilter: DivDropdown<WarningFilter>;
+    public display: DivDropdown<DisplayOption>;
     public conditions: DivDropdown;
 
     public warningsVisible: boolean = false;
@@ -94,8 +101,11 @@ export class TopBar extends Subscriber {
 
         if (state.display) {
             this.display.selectedValues$.next(state.display);
+        } else if (workspaceState.displayDict) {
+            this.display.selectedValues$.next(displayOptions.filter(option => workspaceState.displayDict![option] ?? true));
         } else if (workspaceState.display) {
-            this.display.selectedValues$.next(workspaceState.display);
+            // patch for old workspace state that used array instead of dict
+            this.display.selectedValues$.next([...workspaceState.display, 'demilitarizedzone']);
         } else {
             this.display.selectAll();
         }
@@ -134,11 +144,15 @@ export class TopBar extends Subscriber {
         this.conditionSetupDone = true;
     };
 
-    private updateWorkspaceState = ([viewMode, colorSet, warningFilter, display, selectedConditions]: [ViewMode, ColorSet, readonly string[], readonly string[], readonly string[]]) => {
+    private updateWorkspaceState = ([viewMode, colorSet, warningFilter, display, selectedConditions]: [ViewMode, ColorSet, readonly WarningFilter[], readonly DisplayOption[], readonly string[]]) => {
         const workspaceState: WorkspaceState = {
             viewMode,
             colorSet,
             warningFilter: [...warningFilter],
+            displayDict: displayOptions.reduce((dict, option) => {
+                dict[option] = display.includes(option);
+                return dict;
+            }, {} as Record<DisplayOption, boolean>),
             display: [...display],
             selectedConditions: this.conditionSetupDone ? [...selectedConditions] : ((window as any).__workspaceState ?? {}).selectedConditions,
         };
