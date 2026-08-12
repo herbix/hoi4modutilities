@@ -8,6 +8,7 @@ import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import { solveWithCondition, solveWithConditionAsSet, toCommaDivideNumber } from '../common';
 
 export class ProvinceViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'province';
@@ -114,7 +115,7 @@ export class ProvinceViewModeController extends ViewModeControllerBase<number> {
         const victoryPoints = stateObject?.victoryPoints[province.id];
         const owner = worldMap.getCountryByState(stateObject, selectedConditions, 'owner');
         const controller = worldMap.getCountryByState(stateObject, selectedConditions, 'controller');
-        const isDemilitarizedZone = stateObject ? this.solveWithCondition(stateObject.isDemilitarizedZone, selectedConditions) : false;
+        const isDemilitarizedZone = stateObject ? solveWithCondition(stateObject.isDemilitarizedZone, selectedConditions) : false;
 
         renderer.renderTooltip(`
 ${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
@@ -140,8 +141,8 @@ ${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategi
 ${stateObject ? `
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${owner}
 ${controller && owner !== controller ? `${feLocalize('worldmap.tooltip.controller', 'Controller')}=${controller}` : ''}
-${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${this.solveWithConditionAsSet(stateObject.cores, selectedConditions).join(',')}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${this.toCommaDivideNumber(stateObject.manpower)}` : ''
+${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${solveWithConditionAsSet(stateObject.cores, selectedConditions).join(',')}
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(stateObject.manpower)}` : ''
 }
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}

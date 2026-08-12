@@ -11,6 +11,7 @@ import { combineLatest, fromEvent } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 import { applyCondition, ConditionItem } from "../../src/hoiformat/condition";
 import type { ViewModeControllers } from './viewmode';
+import { solveWithCondition } from "./common";
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;
@@ -734,11 +735,6 @@ export class Renderer extends Subscriber {
     private renderAllOffsets(boundingBox: Zone, step: number, callback: (xOffset: number) => void, minimalRenderCount: number = 1) {
         Renderer.renderAllOffsets(this.viewPoint, boundingBox, step, callback, minimalRenderCount);
     }
-
-}
-
-function solveWithCondition<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T | undefined {
-    return value?.find(o => applyCondition(o.condition, selectedConditions))?.value;
 }
 
 function toColor(colorNum: number) {

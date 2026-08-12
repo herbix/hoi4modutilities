@@ -52,18 +52,6 @@ export abstract class ViewModeControllerBase<T> {
         return count > 1 ? `1-${count - 1}` : '';
     }
 
-    protected solveWithCondition<TValue>(value: WithCondition<TValue>[] | undefined, selectedConditions: ConditionItem[]): TValue | undefined {
-        return value?.find(item => applyCondition(item.condition, selectedConditions))?.value;
-    }
-
-    protected solveWithConditionAsSet<TValue>(value: WithCondition<TValue>[] | undefined, selectedConditions: ConditionItem[]): TValue[] {
-        return value?.filter(item => applyCondition(item.condition, selectedConditions)).map(item => item.value) ?? [];
-    }
-
-    protected toCommaDivideNumber(value: number): string {
-        return value.toString(10).replace(/(?<!^)(\d{3})(?=(?:\d{3})*$)/g, ',$1');
-    }
-
     protected renderRegionLabels<TRegion extends LabeledRegion>(
         renderContext: RenderContext,
         worldMap: FEWorldMap,

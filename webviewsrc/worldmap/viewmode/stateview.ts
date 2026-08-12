@@ -8,6 +8,7 @@ import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import { solveWithCondition, solveWithConditionAsSet, toCommaDivideNumber } from '../common';
 
 export class StateViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'state';
@@ -111,8 +112,8 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         const supplyArea = worldMap.getSupplyAreaByStateId(state.id);
         const owner = worldMap.getCountryByState(state, selectedConditions, 'owner');
         const controller = worldMap.getCountryByState(state, selectedConditions, 'controller');
-        const isDemilitarizedZone = this.solveWithCondition(state.isDemilitarizedZone, selectedConditions);
-        const claimBy = this.solveWithConditionAsSet(state.claimBy, selectedConditions);
+        const isDemilitarizedZone = solveWithCondition(state.isDemilitarizedZone, selectedConditions);
+        const claimBy = solveWithConditionAsSet(state.claimBy, selectedConditions);
         renderer.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
 ${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
@@ -122,9 +123,9 @@ ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${owner}
 ${controller && owner !== controller ? `${feLocalize('worldmap.tooltip.controller', 'Controller')}=${controller}` : ''}
-${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${this.solveWithConditionAsSet(state.cores, selectedConditions).join(',')}
+${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${solveWithConditionAsSet(state.cores, selectedConditions).join(',')}
 ${claimBy.length > 0 ? feLocalize('worldmap.tooltip.claimby', 'Claim by') + '=' + claimBy.join(',') : ''}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${this.toCommaDivideNumber(state.manpower)}
+${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(state.manpower)}
 ${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
