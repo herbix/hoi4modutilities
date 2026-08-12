@@ -12,7 +12,8 @@
 		"rootDir": ".",
 		"strict": true,
 		"noFallthroughCasesInSwitch": true,
-		"importHelpers": true
+		"importHelpers": true,
+		"skipLibCheck": true
 	},
 	"exclude": [
 		"node_modules",
