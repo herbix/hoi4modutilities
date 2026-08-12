@@ -3,7 +3,7 @@ const tsParser = require("@typescript-eslint/parser");
 
 module.exports = [
     {
-        files: ["src/**/*.ts"],
+        files: ["src/**/*.ts", "webviewsrc/**/*.ts"],
         languageOptions: {
             parser: tsParser,
             parserOptions: {

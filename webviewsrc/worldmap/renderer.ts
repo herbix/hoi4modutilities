@@ -1,32 +1,23 @@
-import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, WithCondition } from "./definitions";
+import { Province, Point, Zone, Terrain, WithCondition, LabelFontSize } from "./definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
 import { zoneCenter, distanceSqr, distanceHamming } from "../../src/previewdef/worldmap/graphutils";
-import { CountryRegion, getCountryRegions } from "./countryview";
-import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
+import { TopBar, topBarHeight, ColorSet } from "./topbar";
 import { Subscriber } from "../util/event";
 import { arrayToMap } from "../util/common";
 import { feLocalize } from "../util/i18n";
-import { chain, max, padStart } from "lodash";
+import { max, padStart } from "lodash";
 import { combineLatest, fromEvent } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
 import { applyCondition, ConditionItem } from "../../src/hoiformat/condition";
+import type { ViewModeControllers } from './viewmode';
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;
 const waterWarning = 0xC00000;
 const waterNoWarning = 0x20E020;
 
-const renderScaleByViewMode: Record<ViewMode, { edge: number, labels: number }> = {
-    province: { edge: 2, labels: 3 },
-    state: { edge: 1, labels: 1 },
-    country: { edge: 0.25, labels: 0.25 },
-    strategicregion: { edge: 0.25, labels: 0.25 },
-    supplyarea: { edge: 0.5, labels: 1 },
-    warnings: { edge: 2, labels: 3 },
-};
-
-interface RenderContext {
+export interface RenderContext {
     topBar: TopBar;
     viewPoint: ViewPoint;
     mapCanvasContext: CanvasRenderingContext2D;
@@ -34,7 +25,6 @@ interface RenderContext {
     stateToOwnerCountry: Record<number, string | undefined>;
     provinceToStrategicRegion: Record<number, number | undefined>;
     stateToSupplyArea: Record<number, number | undefined>;
-    countryRegions?: CountryRegion[];
     renderedProvincesByOffset: Record<number, Province[]>;
     renderedProvincesById: Record<number, Province>;
     renderedProvinces?: Province[];
@@ -42,6 +32,7 @@ interface RenderContext {
     preciseEdge?: boolean;
     demilitarizedZonePattern?: CanvasPattern;
     colorSetState: any;
+    viewModeState: any;
 }
 
 export class Renderer extends Subscriber {
@@ -56,9 +47,13 @@ export class Renderer extends Subscriber {
     private cursorX = 0;
     private cursorY = 0;
 
-    private static resourceImages: Record<string, HTMLImageElement | undefined> = {};
-
-    constructor(private mainCanvas: HTMLCanvasElement, private viewPoint: ViewPoint, private loader: Loader, private topBar: TopBar) {
+    constructor(
+        private mainCanvas: HTMLCanvasElement,
+        private viewPoint: ViewPoint,
+        private loader: Loader,
+        private topBar: TopBar,
+        viewModeControllers: ViewModeControllers,
+    ) {
         super();
 
         this.addSubscription(fromEvent(window, 'resize').subscribe(this.resizeCanvas));
@@ -71,7 +66,6 @@ export class Renderer extends Subscriber {
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
 
-        this.addSubscription(loader.worldMap$.subscribe(this.reloadImages));
         this.addSubscription(loader.worldMap$.subscribe(() => this.renderCanvas()));
         this.addSubscription(
             combineLatest([
@@ -79,16 +73,8 @@ export class Renderer extends Subscriber {
                 viewPoint.observable$,
                 topBar.viewMode$,
                 topBar.colorSet$,
-                topBar.hoverProvinceId$,
-                topBar.selectedProvinceId$,
-                topBar.hoverStateId$,
-                topBar.selectedStateId$,
-                topBar.hoverStrategicRegionId$,
-                topBar.selectedStrategicRegionId$,
-                topBar.hoverSupplyAreaId$,
-                topBar.selectedSupplyAreaId$,
-                topBar.hoverCountryTag$,
-                topBar.selectedCountryTag$,
+                ...viewModeControllers.getHoverObservables(),
+                ...viewModeControllers.getSelectedObservables(),
                 topBar.warningFilter.selectedValues$,
                 topBar.display.selectedValues$,
                 topBar.selectedConditions$,
@@ -97,16 +83,6 @@ export class Renderer extends Subscriber {
             ).subscribe(() => this.renderCanvas())
         );
     }
-
-    private reloadImages = () => {
-        for (const resource of this.loader.worldMap.resources) {
-            const image = new Image();
-            image.onload = () => {
-                Renderer.resourceImages[resource.name] = image;
-            };
-            image.src = resource.imageUri;
-        }
-    };
 
     public renderCanvas(forceDrawMap: boolean = false): void {
         if (this.canvasWidth <= 0 && this.canvasHeight <= 0) {
@@ -123,25 +99,7 @@ export class Renderer extends Subscriber {
         this.renderMap(forceDrawMap);
         backCanvasContext.drawImage(this.mapCanvas, 0, 0);
 
-        const viewMode = this.topBar.viewMode$.value;
-        switch (viewMode) {
-            case 'province':
-            case 'warnings':
-                this.renderProvinceHoverSelection(this.loader.worldMap);
-                break;
-            case 'state':
-                this.renderStateHoverSelection(this.loader.worldMap);
-                break;
-            case 'strategicregion':
-                this.renderStrategicRegionHoverSelection(this.loader.worldMap);
-                break;
-            case 'supplyarea':
-                this.renderSupplyAreaHoverSelection(this.loader.worldMap);
-                break;
-            case 'country':
-                this.renderCountryHoverSelection(this.loader.worldMap);
-                break;
-        }
+        this.topBar.viewModeController.renderHoverSelection(this, this.loader.worldMap);
 
         if (this.loader.progressText !== '') {
             this.renderLoadingText(this.loader.progressText);
@@ -203,10 +161,10 @@ export class Renderer extends Subscriber {
             stateToOwnerCountry: worldMap.getStateToCountryMap(topBar.selectedConditions$.value, 'owner'),
             provinceToStrategicRegion: worldMap.getProvinceToStrategicRegionMap(),
             stateToSupplyArea: worldMap.getStateToSupplyAreaMap(),
-            countryRegions: undefined,
             renderedProvincesByOffset: {},
             renderedProvincesById: {},
             colorSetState: undefined,
+            viewModeState: undefined,
             demilitarizedZonePattern: topBar.display.selectedValues$.value.includes('demilitarizedzone') ?
                 mapCanvasContext.createPattern(createSlashPattern(), 'repeat') ?? undefined : undefined,
             ...otherRenderContext,
@@ -217,6 +175,22 @@ export class Renderer extends Subscriber {
 
         renderContext.renderedProvinces = Object.values(renderContext.renderedProvincesById);
         Renderer.renderAllOffsets(viewPoint, mapZone, worldMap.width, xOffset => Renderer.renderMapForeground(worldMap, xOffset, renderContext));
+    }
+
+    public static getProvinceLabelColor(
+        province: Province,
+        labelPosition: Point,
+        worldMap: FEWorldMap,
+        renderContext: RenderContext,
+    ): string {
+        const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
+        const provinceColor = getColorByColorSet(
+            renderContext.topBar.colorSet$.value,
+            provinceAtLabel ?? province,
+            worldMap,
+            renderContext,
+        );
+        return toColor(getHighConstrastColor(provinceColor));
     }
 
     private static renderMapBackground(worldMap: FEWorldMap, xOffset: number, renderContext: RenderContext) {
@@ -289,10 +263,8 @@ export class Renderer extends Subscriber {
 
     private static isEdgeVisible(topBar: TopBar, viewPoint: ViewPoint) {
         if (topBar.display.selectedValues$.value.includes('adaptzooming')) {
-            const viewMode = topBar.viewMode$.value;
-            const renderScale = renderScaleByViewMode[viewMode];
             const scale = viewPoint.scale;
-            return renderScale.edge <= scale && topBar.display.selectedValues$.value.includes('edge');
+            return topBar.viewModeController.edgeRenderScale <= scale && topBar.display.selectedValues$.value.includes('edge');
         }
 
         return topBar.display.selectedValues$.value.includes('edge');
@@ -300,20 +272,22 @@ export class Renderer extends Subscriber {
 
     private static isLabelVisible(topBar: TopBar, viewPoint: ViewPoint) {
         if (topBar.display.selectedValues$.value.includes('adaptzooming')) {
-            const viewMode = topBar.viewMode$.value;
-            const renderScale = renderScaleByViewMode[viewMode];
             const scale = viewPoint.scale;
-            return renderScale.labels <= scale && topBar.display.selectedValues$.value.includes('label');
+            return topBar.viewModeController.labelRenderScale <= scale && topBar.display.selectedValues$.value.includes('label');
         }
 
         return topBar.display.selectedValues$.value.includes('label');
     }
 
-    private isMouseHighlightVisible() {
+    public get selectedConditions(): ConditionItem[] {
+        return this.topBar.selectedConditions$.value;
+    }
+
+    public isMouseHighlightVisible() {
         return this.topBar.display.selectedValues$.value.includes('mousehighlight');
     }
 
-    private isTooltipVisible() {
+    public isTooltipVisible() {
         return this.topBar.display.selectedValues$.value.includes('tooltip');
     }
 
@@ -349,82 +323,10 @@ export class Renderer extends Subscriber {
     }
 
     private static renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
-        const { provinceToState, stateToOwnerCountry, provinceToStrategicRegion, stateToSupplyArea, topBar, viewPoint } = renderContext;
-        const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
-        const viewMode = topBar.viewMode$.value;
-        const colorSet = topBar.colorSet$.value;
-        const showSupply = Renderer.isSupplyVisible(topBar);
-        const fontSize = 10;
-
-        context.font = `${fontSize}px sans-serif`;
+        context.font = `${LabelFontSize}px sans-serif`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        if (viewMode === 'country') {
-            if (!renderContext.countryRegions) {
-                renderContext.countryRegions = getCountryRegions(worldMap, renderedProvinces, provinceToState, stateToOwnerCountry);
-            }
-
-            for (const { owner, province, boundingBox, labelPosition } of renderContext.countryRegions) {
-                if (!viewPoint.bboxInView(boundingBox, xOffset)) {
-                    continue;
-                }
-
-                const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
-                const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
-                const country = worldMap.getCountryByTag(owner);
-                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                if (country?.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
-                    context.fillText(country.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
-                    context.fillText(owner, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
-                } else {
-                    context.fillText(owner, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
-                }
-            }
-        } else if (viewMode === 'province' || viewMode === 'warnings') {
-            for (const province of renderedProvinces) {
-                const labelPosition = province.centerOfMass;
-                const provinceColor = showSupply && worldMap.getSupplyNodeByProvinceId(province.id) ? 0xFF0000 :
-                    getColorByColorSet(colorSet, worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y) ?? province, worldMap, renderContext);
-                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                const stateObject = worldMap.getStateByProvinceId(province.id);
-                const vp = stateObject?.victoryPoints[province.id];
-                if (vp !== undefined && province.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
-                    context.fillText(`${province.localisedName} (${vp})`, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
-                    context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
-                } else {
-                    context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
-                }
-            }
-        } else {
-            const renderedRegions: Record<number, boolean> = {};
-            const regionMap = viewMode === 'state' ? provinceToState : provinceToStrategicRegion;
-            const getRegionById = viewMode === 'state' ? worldMap.getStateById : viewMode === 'supplyarea' ? worldMap.getSupplyAreaById : worldMap.getStrategicRegionById;
-
-            for (const province of renderedProvinces) {
-                const stateId = viewMode === 'supplyarea' ? provinceToState[province.id] : undefined;
-                const regionId = viewMode === 'supplyarea' ? (stateId !== undefined ? stateToSupplyArea[stateId] : undefined) : regionMap[province.id];
-                if (regionId !== undefined && !renderedRegions[regionId]) {
-                    renderedRegions[regionId] = true;
-                    const region = getRegionById(regionId);
-                    if (region) {
-                        const labelPosition = region.centerOfMass;
-                        const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
-                        const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
-                        context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                        if (region.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
-                            context.fillText(region.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
-                            context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
-                        } else {
-                            context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
-                        }
-                        if (viewMode === 'state' && colorSet === 'resources') {
-                            const { width } = Renderer.getResourcesSize(region as State, 0.7, 16);
-                            Renderer.renderResources(context, region as State, viewPoint.convertX(labelPosition.x + xOffset) - width / 2, viewPoint.convertY(labelPosition.y) + 5, 0.7, 16);
-                        }
-                    }
-                }
-            }
-        }
+        renderContext.topBar.viewModeController.renderMapLabels(renderContext, worldMap, xOffset);
     }
 
     private static renderEdges(
@@ -436,9 +338,8 @@ export class Renderer extends Subscriber {
         isRed: boolean,
         preciseEdge?: boolean,
     ) {
-        const { provinceToState, stateToOwnerCountry, provinceToStrategicRegion, stateToSupplyArea, renderedProvinces, topBar, viewPoint } = renderContext;
+        const { provinceToState, renderedProvinces, topBar, viewPoint } = renderContext;
         const scale = viewPoint.scale;
-        const viewMode = topBar.viewMode$.value;
 
         context.lineWidth = 2;
         for (const provinceEdge of province.edges) {
@@ -463,31 +364,8 @@ export class Renderer extends Subscriber {
                 continue;
             }
 
-            const strategicRegionFromId = provinceToStrategicRegion[province.id];
-            const strategicRegionToId = provinceToStrategicRegion[provinceEdge.to];
-
-            if (!impassable && paths.length > 0) {
-                if (viewMode === 'state') {
-                    if (stateFromId === stateToId && (stateFromId !== undefined || strategicRegionFromId === strategicRegionToId)) {
-                        continue;
-                    }
-                } else if (viewMode === 'country') {
-                    const ownerFrom = stateFromId === undefined ? undefined : stateToOwnerCountry[stateFromId];
-                    const ownerTo = stateToId === undefined ? undefined : stateToOwnerCountry[stateToId];
-                    if (ownerFrom === ownerTo) {
-                        continue;
-                    }
-                } else if (viewMode === 'strategicregion') {
-                    if (strategicRegionFromId === strategicRegionToId) {
-                        continue;
-                    }
-                } else if (viewMode === 'supplyarea') {
-                    if ((stateFromId === stateToId && (stateFromId !== undefined || strategicRegionFromId === strategicRegionToId)) ||
-                        (stateFromId !== undefined && stateToId !== undefined && stateToSupplyArea[stateFromId] === stateToSupplyArea[stateToId])
-                        ) {
-                        continue;
-                    }
-                }
+            if (!impassable && paths.length > 0 && !topBar.viewModeController.shouldRenderProvinceEdge(renderContext, province, provinceEdge, worldMap)) {
+                continue;
             }
 
             for (const path of paths) {
@@ -683,7 +561,7 @@ export class Renderer extends Subscriber {
         }));
     }
 
-    private renderHoverProvince(province: Province, worldMap: FEWorldMap, renderAdjacent: boolean = true) {
+    public renderHoverProvince(province: Province, worldMap: FEWorldMap, renderAdjacent: boolean = true) {
         const backCanvasContext = this.backCanvasContext;
         const viewPoint = this.viewPoint;
         backCanvasContext.fillStyle = 'rgba(255, 255, 255, 0.7)';
@@ -708,64 +586,10 @@ export class Renderer extends Subscriber {
         }
     }
 
-    private renderSelectedProvince(province: Province, worldMap: FEWorldMap) {
+    public renderSelectedProvince(province: Province, worldMap: FEWorldMap) {
         this.backCanvasContext.fillStyle = 'rgba(128, 255, 128, 0.7)';
         this.renderAllOffsets(province.boundingBox, worldMap.width, xOffset =>
             this.renderProvince(this.backCanvasContext, province, this.viewPoint.scale, xOffset));
-    }
-
-    private renderProvinceTooltip(province: Province, worldMap: FEWorldMap, selectedConditions: ConditionItem[]) {
-        const stateObject = worldMap.getStateByProvinceId(province.id);
-        const strategicRegion = worldMap.getStrategicRegionByProvinceId(province.id);
-        const supplyArea = stateObject ? worldMap.getSupplyAreaByStateId(stateObject.id) : undefined;
-        const railwayLevel = worldMap.getRailwayLevelByProvinceId(province.id);
-        const supplyNode = worldMap.getSupplyNodeByProvinceId(province.id);
-        const vp = stateObject?.victoryPoints[province.id];
-        const owner = worldMap.getCountryByState(stateObject, selectedConditions, 'owner');
-        const controller = worldMap.getCountryByState(stateObject, selectedConditions, 'controller');
-        const isDemilitarizedZone = stateObject ? solveWithCondition(stateObject.isDemilitarizedZone, selectedConditions) : false;
-
-        this.renderTooltip(`
-${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
-${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
-${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}${province.localisedName ? ` (${province.localisedName})` : ''}
-${vp ? `${feLocalize('worldmap.tooltip.victorypoint', 'Victory point')}=${vp}` : ''}
-${stateObject ? `
-${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}${stateObject?.localisedName ? ` (${stateObject.localisedName})` : ''}`: ''
-}
-${supplyArea ? `
-${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
-` : ''}
-${railwayLevel ? `
-${feLocalize('worldmap.tooltip.railwaylevel', 'Railway level')}=${railwayLevel}
-` : ''}
-${supplyNode ? `
-${feLocalize('worldmap.tooltip.supplynode', 'Supply node')}=true
-` : ''}
-${strategicRegion ? `
-${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}
-`: ''
-}
-${stateObject ? `
-${feLocalize('worldmap.tooltip.owner', 'Owner')}=${owner}
-${controller && owner !== controller ? `${feLocalize('worldmap.tooltip.controller', 'Controller')}=${controller}` : ''}
-${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${solveWithConditionAsSet(stateObject.cores, selectedConditions).join(',')}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(stateObject.manpower)}` : ''
-}
-${supplyArea ? `
-${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
-` : ''}
-${feLocalize('worldmap.tooltip.type', 'Type')}=${province.type}
-${feLocalize('worldmap.tooltip.terrain', 'Terrain')}=${province.terrain}
-${strategicRegion && strategicRegion.navalTerrain ? `
-${feLocalize('worldmap.tooltip.navalterrain', 'Naval terrain')}=${strategicRegion.navalTerrain}
-`: ''
-}
-${feLocalize('worldmap.tooltip.coastal', 'Coastal')}=${province.coastal}
-${feLocalize('worldmap.tooltip.continent', 'Continent')}=${province.continent !== 0 ? `${worldMap.continents[province.continent]}(${province.continent})` : '0'}
-${feLocalize('worldmap.tooltip.adjacencies', 'Adjecencies')}=${province.edges.filter(e => e.type !== 'impassable' && e.to !== -1).map(e => e.to).join(',')}
-${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyArea).map(v => '|r|' + v).join('\n')}`
-        );
     }
 
     private renderLoadingText(text: string) {
@@ -780,75 +604,7 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         backCanvasContext.fillText(text, 10, 10 + topBarHeight);
     }
 
-    private renderProvinceHoverSelection(worldMap: FEWorldMap) {
-        let province = worldMap.getProvinceById(this.topBar.selectedProvinceId$.value);
-        if (province) {
-            this.renderSelectedProvince(province, worldMap);
-        }
-        province = worldMap.getProvinceById(this.topBar.hoverProvinceId$.value);
-        if (province) {
-            if (this.topBar.selectedProvinceId$ !== this.topBar.hoverProvinceId$ && this.isMouseHighlightVisible()) {
-                this.renderHoverProvince(province, worldMap);
-            }
-            if (this.isTooltipVisible()) {
-                this.renderProvinceTooltip(province, worldMap, this.topBar.selectedConditions$.value);
-            }
-        }
-    }
-
-    private renderStateHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getStateById(this.topBar.hoverStateId$.value);
-        this.renderHoverSelection(worldMap, hover, worldMap.getStateById(this.topBar.selectedStateId$.value));
-        hover && this.isTooltipVisible() && this.renderStateTooltip(hover, worldMap, this.topBar.selectedConditions$.value);
-    }
-
-    private renderStrategicRegionHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getStrategicRegionById(this.topBar.hoverStrategicRegionId$.value);
-        this.renderHoverSelection(worldMap, hover, worldMap.getStrategicRegionById(this.topBar.selectedStrategicRegionId$.value));
-        hover && this.isTooltipVisible() && this.renderStrategicRegionTooltip(hover, worldMap);
-    }
-
-    private renderSupplyAreaHoverSelection(worldMap: FEWorldMap) {
-        const hover = worldMap.getSupplyAreaById(this.topBar.hoverSupplyAreaId$.value);
-        const selected = worldMap.getSupplyAreaById(this.topBar.selectedSupplyAreaId$.value);
-        const toProvinces = (supplyArea: SupplyArea | undefined) => {
-            return supplyArea ?
-                {
-                    provinces: chain(supplyArea.states)
-                        .map(stateId => worldMap.getStateById(stateId)?.provinces)
-                        .filter((v): v is number[] => !!v)
-                        .flatten()
-                        .value()
-                } :
-                undefined;
-        };
-
-        this.renderHoverSelection(worldMap, toProvinces(hover), toProvinces(selected));
-        hover && this.isTooltipVisible() && this.renderSupplyAreaTooltip(hover, worldMap);
-    }
-
-    private renderCountryHoverSelection(worldMap: FEWorldMap) {
-        const hover = this.topBar.hoverCountryTag$.value;
-        const getCountryProvinces = (tag: string | undefined) => {
-            if (!tag) {
-                return undefined;
-            }
-
-            const ownerCountryToState = worldMap.getOwnerCountryToStatesMap(this.topBar.selectedConditions$.value);
-            const provinces: number[] = [];
-            for (const stateId of ownerCountryToState[tag] ?? []) {
-                const state = worldMap.getStateById(stateId);
-                if (state) {
-                    provinces.push(...state.provinces);
-                }
-            }
-            return { provinces };
-        };
-        this.renderHoverSelection(worldMap, getCountryProvinces(hover), getCountryProvinces(this.topBar.selectedCountryTag$.value));
-        hover && this.isTooltipVisible() && this.renderCountryTooltip(hover, worldMap);
-    }
-
-    private renderHoverSelection(worldMap: FEWorldMap, hover: { provinces: number[] } | undefined, selected: { provinces: number[] } | undefined) {
+    public renderRegionHoverSelection(worldMap: FEWorldMap, hover: { provinces: number[] } | undefined, selected: { provinces: number[] } | undefined) {
         if (selected) {
             for (const provinceId of selected.provinces) {
                 const province = worldMap.getProvinceById(provinceId);
@@ -868,68 +624,11 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         }
     }
 
-    private renderStateTooltip(state: State, worldMap: FEWorldMap, selectedConditions: ConditionItem[]) {
-        const supplyArea = worldMap.getSupplyAreaByStateId(state.id);
-        const owner = worldMap.getCountryByState(state, selectedConditions, 'owner');
-        const controller = worldMap.getCountryByState(state, selectedConditions, 'controller');
-        const isDemilitarizedZone = solveWithCondition(state.isDemilitarizedZone, selectedConditions);
-        const claimBy = solveWithConditionAsSet(state.claimBy, selectedConditions);
-        this.renderTooltip(`
-${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
-${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
-${feLocalize('worldmap.tooltip.state', 'State')}=${state.id}${state.localisedName ? ` (${state.localisedName})` : ''}
-${supplyArea ? `
-${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
-` : ''}
-${feLocalize('worldmap.tooltip.owner', 'Owner')}=${owner}
-${controller && owner !== controller ? `${feLocalize('worldmap.tooltip.controller', 'Controller')}=${controller}` : ''}
-${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${solveWithConditionAsSet(state.cores, selectedConditions).join(',')}
-${claimBy.length > 0 ? feLocalize('worldmap.tooltip.claimby', 'Claim by') + '=' + claimBy.join(',') : ''}
-${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(state.manpower)}
-${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
-${supplyArea ? `
-${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
-` : ''}
-${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${state.provinces.join(',')}
-${worldMap.getStateWarnings(state, supplyArea).map(v => '|r|' + v).join('\n')}`,
-            (width, height) => {
-                const { width: w, height: h } = Renderer.getResourcesSize(state);
-                return { width: Math.max(width, w), height: height + h };
-            },
-            (x, y) => {
-                Renderer.renderResources(this.backCanvasContext, state, x, y);
-            });
-    }
-
-    private renderStrategicRegionTooltip(strategicRegion: StrategicRegion, worldMap: FEWorldMap) {
-        this.renderTooltip(`
-${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}
-${strategicRegion.navalTerrain ? `
-${feLocalize('worldmap.tooltip.navalterrain', 'Naval terrain')}=${strategicRegion.navalTerrain}
-`: ''
-}
-${feLocalize('worldmap.tooltip.provinces', 'Provinces')}=${strategicRegion.provinces.join(',')}
-${worldMap.getStrategicRegionWarnings(strategicRegion).map(v => '|r|' + v).join('\n')}`);
-    }
-
-    private renderSupplyAreaTooltip(supplyArea: SupplyArea, worldMap: FEWorldMap) {
-        this.renderTooltip(`
-${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
-${feLocalize('worldmap.tooltip.supplyvalue', 'Supply value')}=${supplyArea.value}
-${feLocalize('worldmap.tooltip.states', 'States')}=${supplyArea.states.join(',')}
-${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
-    }
-
-    private renderCountryTooltip(tag: string, worldMap: FEWorldMap) {
-        const ownerCountryToState = worldMap.getOwnerCountryToStatesMap(this.topBar.selectedConditions$.value);
-        const states = ownerCountryToState[tag] ?? [];
-        const country = worldMap.getCountryByTag(tag);
-        this.renderTooltip(`
-${feLocalize('worldmap.tooltip.country', 'Country')}=${tag}${country?.localisedName ? ` (${country.localisedName})` : ''}
-${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
-    }
-
-    private renderTooltip(tooltip: string, sizeCallback?: (width: number, height: number) => {width: number, height: number}, renderCallback?: (x: number, y: number) => void) {
+    public renderTooltip(
+        tooltip: string,
+        sizeCallback?: (width: number, height: number) => {width: number, height: number},
+        renderCallback?: (context: CanvasRenderingContext2D, x: number, y: number) => void,
+    ) {
         const backCanvasContext = this.backCanvasContext;
         const cursorX = this.cursorX;
         const cursorY = this.cursorY;
@@ -1007,7 +706,11 @@ ${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
 
         backCanvasContext.fillStyle = 'black';
         if (renderCallback) {
-            renderCallback(cursorX + toolTipOffsetX + marginX, cursorY + toolTipOffsetY + marginY + text.length * (fontSize + linePadding));
+            renderCallback(
+                backCanvasContext,
+                cursorX + toolTipOffsetX + marginX,
+                cursorY + toolTipOffsetY + marginY + text.length * (fontSize + linePadding),
+            );
         }
     }
 
@@ -1032,56 +735,10 @@ ${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
         Renderer.renderAllOffsets(this.viewPoint, boundingBox, step, callback, minimalRenderCount);
     }
 
-    private static getResourcesSize(state: State, scale: number = 1, labelWidth: number = 30): { width: number, height: number } {
-        let fullWidth = 0;
-        let maxHeight = 0;
-        for (const resource in state.resources) {
-            if (!state.resources[resource]) {
-                continue;
-            }
-            const image = Renderer.resourceImages[resource];
-            if (image) {
-                maxHeight = Math.max(maxHeight, image.naturalHeight * scale);
-                fullWidth += image.naturalWidth * scale;
-            } else {
-                maxHeight = Math.max(maxHeight, 24 * scale);
-                fullWidth += 24 * scale;
-            }
-            fullWidth += labelWidth;
-        }
-        return { width: fullWidth, height: maxHeight };
-    }
-
-    private static renderResources(context: CanvasRenderingContext2D, state: State, x: number, y: number, scale: number = 1, labelWidth: number = 30) {
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        for (const resource in state.resources) {
-            const resourceNumber = state.resources[resource];
-            if (!resourceNumber) {
-                continue;
-            }
-
-            const image = Renderer.resourceImages[resource];
-            if (image) {
-                context.drawImage(image, x, y, image.naturalWidth * scale, image.naturalHeight * scale);
-                context.fillText(resourceNumber.toString(), x + (image?.naturalWidth ?? 0) * scale + labelWidth / 2, y + Math.max(0, image?.naturalHeight ?? 0) * scale / 2);
-                x += (image?.naturalWidth ?? 0) * scale + labelWidth;
-            } else {
-                context.fillStyle = 'gray';
-                context.fillRect(x, y, 24 * scale, 24 * scale);
-                context.fillText(resourceNumber.toString(), x + 24 * scale + labelWidth / 2, y + 24 * scale / 2);
-                x += 24 * scale + labelWidth;
-            }
-        }
-    }
 }
 
 function solveWithCondition<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T | undefined {
     return value?.find(o => applyCondition(o.condition, selectedConditions))?.value;
-}
-
-function solveWithConditionAsSet<T>(value: WithCondition<T>[] | undefined, selectedConditions: ConditionItem[]): T[] {
-    return value?.filter(o => applyCondition(o.condition, selectedConditions)).map(o => o.value) ?? [];
 }
 
 function toColor(colorNum: number) {
@@ -1194,7 +851,7 @@ function getColorByColorSet(
         case 'warnings':
             {
                 const isLand = province.type === 'land';
-                const viewMode = topBar.viewMode$.value;
+                const applyWarningFilter = topBar.viewMode$.value === 'warnings';
                 const warningFilter = topBar.warningFilter.selectedValues$.value;
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
@@ -1202,10 +859,10 @@ function getColorByColorSet(
                 const supplyAreaId = stateId ? stateToSupplyArea[stateId] : undefined;
                 const supplyArea = worldMap.getSupplyAreaById(supplyAreaId);
                 return worldMap.getProvinceWarnings(
-                        viewMode !== "warnings" || warningFilter.includes('province') ? province : undefined,
-                        viewMode !== "warnings" || warningFilter.includes('state') ? state : undefined,
-                        viewMode !== "warnings" || warningFilter.includes('strategicregion') ? strategicRegion : undefined,
-                        viewMode !== "warnings" || warningFilter.includes('supplyarea') ? supplyArea : undefined
+                        !applyWarningFilter || warningFilter.includes('province') ? province : undefined,
+                        !applyWarningFilter || warningFilter.includes('state') ? state : undefined,
+                        !applyWarningFilter || warningFilter.includes('strategicregion') ? strategicRegion : undefined,
+                        !applyWarningFilter || warningFilter.includes('supplyarea') ? supplyArea : undefined
                     ).length > 0 ?
                     (isLand ? landWarning : waterWarning) :
                     (isLand ? landNoWarning : waterNoWarning);
@@ -1369,10 +1026,6 @@ function isCriticalPoint(path: Point[], index: number): boolean {
 
 function defaultColor(province: Province) {
     return province.type === 'land' ? 0 : 0x1010B0;
-}
-
-function toCommaDivideNumber(value: number): string {
-    return value.toString(10).replace(/(?<!^)(\d{3})(?=(?:\d{3})*$)/g, ',$1');
 }
 
 function createSlashPattern(): HTMLCanvasElement {

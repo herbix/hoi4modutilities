@@ -4,6 +4,7 @@ import { topBarHeight, TopBar } from './topbar';
 import { getState, setState } from '../util/common';
 import { Renderer } from './renderer';
 import { fromEvent } from 'rxjs';
+import { ViewModeControllers } from './viewmode';
 
 fromEvent(window, 'load').subscribe(function() {
     hideBySupplyAreaFlag((window as any)['__enableSupplyArea']);
@@ -12,18 +13,19 @@ fromEvent(window, 'load').subscribe(function() {
     const loader = new Loader();
     const mainCanvas = document.getElementById('main-canvas') as HTMLCanvasElement;
     const viewPoint = new ViewPoint(mainCanvas, loader, topBarHeight, state.viewPoint || { x: 0, y: -topBarHeight, scale: 1 });
-    const topBar = new TopBar(mainCanvas, viewPoint, loader, state);
-    const renderer = new Renderer(mainCanvas, viewPoint, loader, topBar);
+    const viewModeControllers = new ViewModeControllers(state, loader.worldMap$);
+    const topBar = new TopBar(mainCanvas, viewPoint, loader, state, viewModeControllers);
+    const renderer = new Renderer(mainCanvas, viewPoint, loader, topBar, viewModeControllers);
 
     fromEvent(mainCanvas, 'contextmenu').subscribe(event => event.preventDefault());
 
     viewPoint.observable$.subscribe(setStateForKey('viewPoint'));
     topBar.viewMode$.subscribe(setStateForKey('viewMode'));
     topBar.colorSet$.subscribe(setStateForKey('colorSet'));
-    topBar.selectedProvinceId$.subscribe(setStateForKey('selectedProvinceId'));
-    topBar.selectedStateId$.subscribe(setStateForKey('selectedStateId'));
-    topBar.selectedStrategicRegionId$.subscribe(setStateForKey('selectedStrategicRegionId'));
-    topBar.selectedSupplyAreaId$.subscribe(setStateForKey('selectedSupplyAreaId'));
+    viewModeControllers.province.selected$.subscribe(setStateForKey('selectedProvinceId'));
+    viewModeControllers.state.selected$.subscribe(setStateForKey('selectedStateId'));
+    viewModeControllers.strategicregion.selected$.subscribe(setStateForKey('selectedStrategicRegionId'));
+    viewModeControllers.supplyarea.selected$.subscribe(setStateForKey('selectedSupplyAreaId'));
     topBar.warningFilter.selectedValues$.subscribe(setStateForKey('warningFilter'));
     topBar.display.selectedValues$.subscribe(setStateForKey('display'));
     // Don't set selectedConditions here because it's not initialized yet. It will be set in topBar.setupConditions() after the world map is loaded.
