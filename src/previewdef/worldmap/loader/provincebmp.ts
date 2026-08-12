@@ -4,7 +4,8 @@ import { localize } from "../../../util/i18n";
 import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
 import { LoaderSession } from "../../../util/loader/loader";
 import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
-import { FileLoader, LoadResult, LoadResultOD, mergeRegions, pointEqual } from "./common";
+import { mergeRegions } from "../graphutils";
+import { FileLoader, LoadResult, LoadResultOD, pointEqual } from "./common";
 import { DefinesLoader } from "./defines";
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {

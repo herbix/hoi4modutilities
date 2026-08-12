@@ -1,7 +1,7 @@
 import { Subscriber } from "../util/event";
 import { FEWorldMap } from "./loader";
 import { Zone, Point } from "./definitions";
-import { bboxCenter } from "./graphutils";
+import { zoneCenter } from "../../src/previewdef/worldmap/graphutils";
 import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
 
 type ViewPointObj = { x: number; y: number; scale: number; };
@@ -77,7 +77,7 @@ export class ViewPoint extends Subscriber {
         } else {
             this.scale = Math.round(Math.min(12, expectedScale));
         }
-        this.centerPoint(bboxCenter(zone));
+        this.centerPoint(zoneCenter(zone));
     }
 
     public centerPoint(point: Point) {

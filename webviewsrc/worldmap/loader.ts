@@ -1,6 +1,6 @@
 import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, Country, Point } from "./definitions";
 import { copyArray } from "../util/common";
-import { inBBox } from "./graphutils";
+import { inZone } from "../../src/previewdef/worldmap/graphutils";
 import { Subscriber } from "../util/event";
 import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River, Bookmark, WithCondition } from "../../src/previewdef/worldmap/definitions";
 import { vscode } from "../util/vscode";
@@ -364,7 +364,7 @@ class FEWorldMapClass implements FEWorldMap {
         const point: Point = { x, y };
         let resultProvince: Province | undefined = undefined;
         this.forEachProvince(province => {
-            if (inBBox(point, province.boundingBox) && province.coverZones.some(z => inBBox(point, z))) {
+            if (inZone(point, province.boundingBox) && province.coverZones.some(z => inZone(point, z))) {
                 resultProvince = province;
                 return true;
             }

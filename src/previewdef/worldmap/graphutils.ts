@@ -1,4 +1,27 @@
-import { Region, Zone } from "../definitions";
+import { Point, Zone, Region } from "./definitions";
+
+export function inZone(point: Point, bbox: Zone): boolean {
+    return point.x >= bbox.x && point.x < bbox.x + bbox.w && point.y >= bbox.y && point.y < bbox.y + bbox.h;
+}
+
+export function zoneCenter(bbox: Zone): Point {
+    return {
+        x: bbox.x + bbox.w / 2,
+        y: bbox.y + bbox.h / 2,
+    };
+}
+
+export function distanceSqr(a: Point, b: Point): number {
+    return (a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y);
+}
+
+export function distanceHamming(a: Point, b: Point): number {
+    return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+}
+
+export function intersectZone(a: Zone, b: Zone): boolean {
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
 
 export function mergeRegions(regions: (Zone | Region)[], width: number): Region {
     const oneFourthWidth = 0.25 * width;

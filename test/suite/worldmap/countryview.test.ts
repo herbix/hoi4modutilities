@@ -19,7 +19,7 @@ suite('Country view', () => {
         const regions = getCountryRegions({
             width: 100,
             forEachProvince: callback => provinces.forEach(callback),
-        }, { 1: 1, 2: 2, 3: 3, 4: 4 }, owners);
+        }, provinces, { 1: 1, 2: 2, 3: 3, 4: 4 }, owners);
 
         assert.deepStrictEqual(regions.map(region => [region.owner, region.province.id, region.centerOfMass]), [
             ['AAA', 1, { x: 15, y: 5 }],

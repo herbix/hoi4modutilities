@@ -1,7 +1,7 @@
 import { Province, Point, State, Zone, Terrain, StrategicRegion, SupplyArea, WithCondition } from "./definitions";
 import { FEWorldMap, Loader } from "./loader";
 import { ViewPoint } from "./viewpoint";
-import { bboxCenter, distanceSqr, distanceHamming } from "./graphutils";
+import { zoneCenter, distanceSqr, distanceHamming } from "../../src/previewdef/worldmap/graphutils";
 import { CountryRegion, getCountryRegions } from "./countryview";
 import { TopBar, topBarHeight, ColorSet, ViewMode } from "./topbar";
 import { Subscriber } from "../util/event";
@@ -361,31 +361,31 @@ export class Renderer extends Subscriber {
         context.textBaseline = 'middle';
         if (viewMode === 'country') {
             if (!renderContext.countryRegions) {
-                renderContext.countryRegions = getCountryRegions(worldMap, provinceToState, stateToOwnerCountry);
+                renderContext.countryRegions = getCountryRegions(worldMap, renderedProvinces, provinceToState, stateToOwnerCountry);
             }
 
-            for (const { owner, province, boundingBox, centerOfMass } of renderContext.countryRegions) {
+            for (const { owner, province, boundingBox, labelPosition } of renderContext.countryRegions) {
                 if (!viewPoint.bboxInView(boundingBox, xOffset)) {
                     continue;
                 }
 
-                const provinceAtLabel = worldMap.getProvinceByPosition(centerOfMass.x, centerOfMass.y);
+                const provinceAtLabel = worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y);
                 const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
                 const country = worldMap.getCountryByTag(owner);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 if (country?.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
-                    context.fillText(country.localisedName, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y) - fontSize / 2);
-                    context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y) + fontSize / 2);
+                    context.fillText(country.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
+                    context.fillText(owner, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
                 } else {
-                    context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y));
+                    context.fillText(owner, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
                 }
             }
         } else if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
-                const provinceColor = showSupply && worldMap.getSupplyNodeByProvinceId(province.id) ? 0xFF0000 :
-                    getColorByColorSet(colorSet, province, worldMap, renderContext);
-                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
+                const provinceColor = showSupply && worldMap.getSupplyNodeByProvinceId(province.id) ? 0xFF0000 :
+                    getColorByColorSet(colorSet, worldMap.getProvinceByPosition(labelPosition.x, labelPosition.y) ?? province, worldMap, renderContext);
+                context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const stateObject = worldMap.getStateByProvinceId(province.id);
                 const vp = stateObject?.victoryPoints[province.id];
                 if (vp !== undefined && province.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
@@ -1090,7 +1090,7 @@ function toColor(colorNum: number) {
 
 function findNearestPoints(start: Point | undefined, end: Point | undefined, a: Province, b: Province | undefined): [Point, Point] {
     if (start && end) { return [start, end]; }
-    if (!b) { return [bboxCenter(a.boundingBox), bboxCenter(a.boundingBox)]; };
+    if (!b) { return [zoneCenter(a.boundingBox), zoneCenter(a.boundingBox)]; };
     if (!start) { const t = start, u = a; start = end; a = b; end = t; b = u; }
     if (!start) {
         let nearestPair: [Point, Point] | undefined = undefined;
@@ -1112,7 +1112,7 @@ function findNearestPoints(start: Point | undefined, end: Point | undefined, a: 
                 }
             }
         }
-        return nearestPair ?? [bboxCenter(a.boundingBox), bboxCenter(a.boundingBox)];
+        return nearestPair ?? [zoneCenter(a.boundingBox), zoneCenter(a.boundingBox)];
     } else {
         let nearestPair: [Point, Point] | undefined = undefined;
         let nearestPairDistance = 1e10;
@@ -1127,7 +1127,7 @@ function findNearestPoints(start: Point | undefined, end: Point | undefined, a: 
                 }
             }
         }
-        return nearestPair ?? [bboxCenter(a.boundingBox), bboxCenter(a.boundingBox)];
+        return nearestPair ?? [zoneCenter(a.boundingBox), zoneCenter(a.boundingBox)];
     }
 }
 
