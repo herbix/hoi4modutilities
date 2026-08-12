@@ -153,7 +153,6 @@ export class TopBar extends Subscriber {
                 dict[option] = display.includes(option);
                 return dict;
             }, {} as Record<DisplayOption, boolean>),
-            display: [...display],
             selectedConditions: this.conditionSetupDone ? [...selectedConditions] : ((window as any).__workspaceState ?? {}).selectedConditions,
         };
         vscode.postMessage<WorldMapMessage>({ command: 'savestate', value: workspaceState });
@@ -288,6 +287,15 @@ export class TopBar extends Subscriber {
                     vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'country', file: country.file, start: 0, end: 0 });
                 }
             }
+        } else if (this.viewMode$.value === 'province') {
+            const selected = useHoverValue ? this.hoverProvinceId$.value : this.selectedProvinceId$.value;
+            if (selected) {
+                const province = this.loader.worldMap.getProvinceById(selected);
+                const definitionsFile = this.loader.worldMap.provinceDefinitionsFile;
+                if (province && definitionsFile) {
+                    vscode.postMessage<WorldMapMessage>({ command: 'openfile', type: 'provincedefinition', file: definitionsFile, start: undefined, end: undefined, lineNumber: province.lineNumber });
+                }
+            }
         }
     }
 
@@ -298,9 +306,10 @@ export class TopBar extends Subscriber {
             this.openMapItem();
         }));
 
-        this.addSubscription(combineLatest([this.viewMode$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$, this.selectedCountryTag$]).subscribe(
-            ([viewMode, selectedStateId, selectedStrategicRegionId, selectedSupplyAreaId, selectedCountryTag]) => {
-                open.disabled = !((viewMode === 'state' && selectedStateId !== undefined) ||
+        this.addSubscription(combineLatest([this.viewMode$, this.selectedProvinceId$, this.selectedStateId$, this.selectedStrategicRegionId$, this.selectedSupplyAreaId$, this.selectedCountryTag$]).subscribe(
+            ([viewMode, selectedProvinceId, selectedStateId, selectedStrategicRegionId, selectedSupplyAreaId, selectedCountryTag]) => {
+                open.disabled = !((viewMode === 'province' && selectedProvinceId !== undefined && this.loader.worldMap.provinceDefinitionsFile && this.loader.worldMap.getProvinceById(selectedProvinceId)?.lineNumber !== undefined) ||
+                    (viewMode === 'state' && selectedStateId !== undefined) ||
                     (viewMode === 'strategicregion' && selectedStrategicRegionId !== undefined) ||
                     (viewMode === 'supplyarea' && selectedSupplyAreaId !== undefined) ||
                     (viewMode === 'country' && selectedCountryTag !== undefined));

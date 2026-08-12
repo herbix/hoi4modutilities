@@ -116,6 +116,7 @@ export class DefaultMapLoader extends FileLoader<ProvinceMap> {
                 continents: continents.result,
                 terrains: terrains.result,
                 rivers: rivers.result.rivers,
+                provinceDefinitionsFile: this.definitionsLoader.file,
             },
             dependencies: mergeInLoadResult(subLoaderResults, 'dependencies'),
             warnings,

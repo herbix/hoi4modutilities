@@ -380,7 +380,12 @@ export class Renderer extends Subscriber {
                     getColorByColorSet(colorSet, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
-                context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
+                if (province.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
+                    context.fillText(province.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
+                    context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
+                } else {
+                    context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
+                }
             }
         } else {
             const renderedRegions: Record<number, boolean> = {};
@@ -714,11 +719,11 @@ export class Renderer extends Subscriber {
 
         this.renderTooltip(`
 ${stateObject?.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
-${isDemilitarizedZone ? '|r|' + feLocalize('TODO', 'Demilitarized zone') : ''}
-${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}
+${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
+${feLocalize('worldmap.tooltip.province', 'Province')}=${province.id}${province.localisedName ? ` (${province.localisedName})` : ''}
 ${vp ? `${feLocalize('worldmap.tooltip.victorypoint', 'Victory point')}=${vp}` : ''}
 ${stateObject ? `
-${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject?.localisedName ? `${stateObject.localisedName} (${stateObject.id})` : stateObject.id}`: ''
+${feLocalize('worldmap.tooltip.state', 'State')}=${stateObject.id}${stateObject?.localisedName ? ` (${stateObject.localisedName})` : ''}`: ''
 }
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
@@ -862,8 +867,8 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         const isDemilitarizedZone = solveWithCondition(state.isDemilitarizedZone, selectedConditions);
         this.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
-${isDemilitarizedZone ? '|r|' + feLocalize('TODO', 'Demilitarized zone') : ''}
-${feLocalize('worldmap.tooltip.state', 'State')}=${state.localisedName ? `${state.localisedName} (${state.id})` : state.id}
+${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
+${feLocalize('worldmap.tooltip.state', 'State')}=${state.id}${state.localisedName ? ` (${state.localisedName})` : ''}
 ${supplyArea ? `
 ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ` : ''}

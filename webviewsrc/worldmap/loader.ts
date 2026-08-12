@@ -261,6 +261,7 @@ class FEWorldMapClass implements FEWorldMap {
     rivers!: River[];
     conditionExprs!: ConditionItem[];
     bookmarks!: Bookmark[];
+    provinceDefinitionsFile: string | undefined;
 
     private provinces!: (Province | null | undefined)[];
     private states!: (State | null | undefined)[];
@@ -281,7 +282,7 @@ class FEWorldMapClass implements FEWorldMap {
             provincesCount: 0, statesCount: 0, countriesCount: 0, strategicRegionsCount: 0, supplyAreasCount: 0,
             badProvincesCount: 0, badStatesCount: 0, badStrategicRegionsCount: 0, badSupplyAreasCount: 0,
             railwaysCount: 0, supplyNodesCount: 0,
-            conditionExprs: [], bookmarks: []
+            conditionExprs: [], bookmarks: [], provinceDefinitionsFile: undefined,
         } as WorldMapData & ExtraMapData));
     }
 

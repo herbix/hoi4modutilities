@@ -30,6 +30,7 @@ export interface WorldMapData {
     conditionExprs: ConditionItem[];
     bookmarks: Bookmark[];
     warnings: WorldMapWarning[];
+    provinceDefinitionsFile: string | undefined;
 }
 
 export interface ProvinceBmp {
@@ -49,6 +50,7 @@ export interface ProvinceMap {
     continents: string[];
     terrains: Terrain[];
     rivers: River[];
+    provinceDefinitionsFile: string;
 }
 
 export interface ProvinceGraph extends Region {
@@ -64,6 +66,8 @@ export interface ProvinceDefinition {
     coastal: boolean;
     terrain: string;
     continent: number;
+    localisedName?: string;
+    lineNumber?: number;
 }
 
 export type Province = Omit<ProvinceGraph & ProvinceDefinition, 'edges'> & {
@@ -278,10 +282,11 @@ export interface ProvinceMapSummaryMessage {
 
 export interface OpenFileMessage {
     command: 'openfile';
-    type: 'state' | 'strategicregion' | 'supplyarea' | 'country';
+    type: 'state' | 'strategicregion' | 'supplyarea' | 'country' | 'provincedefinition';
     file: string;
     start: number | undefined;
     end: number | undefined;
+    lineNumber?: number;
 }
 
 export interface ExportMapMessage {

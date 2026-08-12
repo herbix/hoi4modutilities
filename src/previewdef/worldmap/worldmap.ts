@@ -4,7 +4,7 @@ import worldmapviewstyles from './worldmapview.css';
 import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
 import { html } from '../../util/html';
 import { error, debug } from '../../util/debug';
-import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage } from './definitions';
+import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage, OpenFileMessage } from './definitions';
 import { matchPathEnd } from '../../util/nodecommon';
 import { writeFile, mkdirs, getDocumentByUri, dirUri, showQuickPickAnyString } from '../../util/vsccommon';
 import { slice, debounceByInput, forceError } from '../../util/common';
@@ -103,7 +103,7 @@ export class WorldMap {
                     await this.sendMapData('supplynodes', msg, (await this.worldMapLoader.getWorldMap()).supplyNodes);
                     break;
                 case 'openfile':
-                    await this.openFile(msg.file, msg.type, msg.start, msg.end);
+                    await this.openFile(msg);
                     break;
                 case 'telemetry':
                     await sendByMessage(msg);
@@ -176,15 +176,21 @@ export class WorldMap {
         }
     }
 
-    private async openFile(file: string, type: 'state' | 'strategicregion' | 'supplyarea' | 'country', start: number | undefined, end: number | undefined): Promise<void> {
-        // TODO duplicate with previewbase.ts
+    private async openFile(msg: OpenFileMessage): Promise<void> {
+        const { type, file, start, end, lineNumber } = msg;
+
+        function showTextDocument(document: vscode.TextDocument) {
+            return vscode.window.showTextDocument(document, {
+                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) :
+                    (lineNumber !== undefined ? document.lineAt(lineNumber).range : undefined),
+            });
+        }
+
         const filePathInMod = await getFilePathFromMod(file);
         if (filePathInMod !== undefined) {
             const filePathInModWithoutOpened = getHoiOpenedFileOriginalUri(filePathInMod);
             const document = getDocumentByUri(filePathInModWithoutOpened) ?? await vscode.workspace.openTextDocument(filePathInModWithoutOpened);
-            await vscode.window.showTextDocument(document, {
-                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
-            });
+            await showTextDocument(document);
             return;
         }
 
@@ -212,10 +218,7 @@ export class WorldMap {
             await writeFile(targetPath, buffer);
 
             const document = await vscode.workspace.openTextDocument(targetPath);
-            await vscode.window.showTextDocument(document, {
-                selection: start !== undefined && end !== undefined ? new vscode.Range(document.positionAt(start), document.positionAt(end)) : undefined,
-            });
-
+            await showTextDocument(document);
         } catch (e) {
             await vscode.window.showErrorMessage(localize('worldmap.failedtoopenstate', 'Failed to open {0} file: {1}.', typeName, forceError(e).toString()));
         }

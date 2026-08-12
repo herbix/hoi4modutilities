@@ -132,6 +132,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.tooltip.controller": "Controller",
     "worldmap.tooltip.coreof": "Core of",
     "worldmap.tooltip.country": "Country",
+    "worldmap.tooltip.demilitarizedzone": "Demilitarized zone",
     "worldmap.tooltip.impassable": "Impassable",
     "worldmap.tooltip.manpower": "Manpower",
     "worldmap.tooltip.navalterrain": "Naval terrain",
@@ -168,6 +169,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.topbar.display": "Display: ",
     "worldmap.topbar.display.adaptzooming": "Adapt zooming",
     "worldmap.topbar.display.border": "Show border",
+    "worldmap.topbar.display.demilitarizedzone": "Show demilitarized zone",
     "worldmap.topbar.display.fastrendering": "Fast rendering",
     "worldmap.topbar.display.label": "Show label",
     "worldmap.topbar.display.localisedlabel": "Show localised label",
@@ -260,6 +262,7 @@ const internalTable = /* SOT Do not remove this comment */{
 
 export const __table = Object.assign(internalTable, {
     "worldmap.openfiletype.country": "country",
+    "worldmap.openfiletype.provincedefinition": "province definition",
     "worldmap.openfiletype.state": "state",
     "worldmap.openfiletype.strategicregion": "strategic region",
     "worldmap.openfiletype.supplyarea": "supply area"
