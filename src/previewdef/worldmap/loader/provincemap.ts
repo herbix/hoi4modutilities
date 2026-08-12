@@ -248,7 +248,7 @@ function mergeProvinceDefinitions(
         colorToProvinceId[color] = useBadId;
         result.push({
             ...provinceInMap,
-            edges: [], id: useBadId, continent: 0, type: 'sea', coastal: false, terrain: ''
+            edges: [], id: useBadId, continent: 0, type: 'sea', coastal: false, terrain: '', localisedName: undefined
         });
     }
 

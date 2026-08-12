@@ -132,6 +132,7 @@ const table: Partial<typeof __table> = {
     "worldmap.selectafolder": "选择复制{0}的目标文件夹",
     "worldmap.tooltip.adjacencies": "相邻地块",
     "worldmap.tooltip.category": "分类",
+    "worldmap.tooltip.claimby": "拥有宣称",
     "worldmap.tooltip.coastal": "沿海",
     "worldmap.tooltip.continent": "大洲",
     "worldmap.tooltip.controller": "控制者",

@@ -132,6 +132,7 @@ const table: Partial<typeof __table> = {
     "worldmap.selectafolder": "{0} 파일을 복사할 폴더를 선택하세요",
     "worldmap.tooltip.adjacencies": "인접",
     "worldmap.tooltip.category": "범주",
+    "worldmap.tooltip.claimby": "Claim by",
     "worldmap.tooltip.coastal": "해안지역",
     "worldmap.tooltip.continent": "대륙",
     "worldmap.tooltip.controller": "Controller",

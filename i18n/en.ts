@@ -127,6 +127,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.selectafolder": "Select a folder to copy {0} file",
     "worldmap.tooltip.adjacencies": "Adjecencies",
     "worldmap.tooltip.category": "Category",
+    "worldmap.tooltip.claimby": "Claim by",
     "worldmap.tooltip.coastal": "Coastal",
     "worldmap.tooltip.continent": "Continent",
     "worldmap.tooltip.controller": "Controller",

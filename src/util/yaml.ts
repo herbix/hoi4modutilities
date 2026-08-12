@@ -3,6 +3,10 @@ import * as yaml from 'js-yaml';
 export function parseLocalisationYaml(content: string, file?: string): any {
     content = preprocessYamlContent(content, file);
 
+    if (content.trim() === '') {
+        return undefined;
+    }
+
     // set "json: true" to allow duplicate keys
     return yaml.load(content, { schema: yaml.JSON_SCHEMA, json: true });
 }

@@ -1,7 +1,7 @@
 {
 	"compilerOptions": {
 		"module": "es6",
-		"moduleResolution": "node",
+		"moduleResolution": "bundler",
 		"target": "es2018",
 		"outDir": "out",
 		"lib": [

@@ -37,6 +37,7 @@ interface StateHistory {
     controller: string;
     victory_points: Enum[];
     add_core_of: string[];
+    add_claim_by: string[];
     set_demilitarized_zone: boolean;
 }
 
@@ -67,6 +68,10 @@ const stateHistorySchema: SchemaDef<StateHistory> = {
         _type: "array",
     },
     add_core_of: {
+        _innerType: "string",
+        _type: "array",
+    },
+    add_claim_by: {
         _innerType: "string",
         _type: "array",
     },
@@ -267,7 +272,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             const impassable = state.impassable ?? false;
             const resources = arrayToMap(
                 Object.values(state.resources._map), '_key', v => v._value);
-            const { owner, controller, victoryPoints, cores, isDemilitarizedZone } = loadStateHistory(id, state.history, bookmarks, conditionExprs);
+            const { owner, controller, victoryPoints, cores, claimBy, isDemilitarizedZone } = loadStateHistory(id, state.history, bookmarks, conditionExprs);
 
             if (provinces.length === 0) {
                 globalWarnings.push({
@@ -290,7 +295,7 @@ async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], b
             })));
 
             result.push({
-                id, name, localisedName, manpower, category, owner, controller, provinces, cores, impassable, victoryPoints, resources, isDemilitarizedZone,
+                id, name, localisedName, manpower, category, owner, controller, provinces, cores, claimBy, impassable, victoryPoints, resources, isDemilitarizedZone,
                 categoryColor: 0, // will be filled later
                 file: stateFile,
                 token: state._token ?? null,
@@ -309,7 +314,7 @@ function loadStateHistory(
     rawHistory: Raw | undefined,
     bookmarks: Bookmark[],
     conditionExprs: ConditionItem[]
-): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores' | 'isDemilitarizedZone'> {
+): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores' | 'claimBy' | 'isDemilitarizedZone'> {
     const history = rawHistory?._raw ? convertNodeToJson<StateHistory>(rawHistory?._raw, stateHistorySchema) : undefined;
     const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
     const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
@@ -319,12 +324,14 @@ function loadStateHistory(
         const defaultController = history?.controller;
         const defaultIsDemilitarizedZone = history?.set_demilitarized_zone;
         const defaultCores = history?.add_core_of.filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)).map(v => ({ value: v, condition: true })) ?? [];
+        const defaultClaimBy = history?.add_claim_by.filter((v, i, a): v is string => v !== undefined && i === a.indexOf(v)).map(v => ({ value: v, condition: true })) ?? [];
         return {
             owner: defaultOwner ? [{ value: defaultOwner, condition: true }] : [],
             controller: defaultController ? [{ value: defaultController, condition: true }] : [],
             isDemilitarizedZone: defaultIsDemilitarizedZone !== undefined ? [{ value: defaultIsDemilitarizedZone, condition: true }] : [],
             victoryPoints,
             cores: defaultCores,
+            claimBy: defaultClaimBy,
         };
     }
 
@@ -354,6 +361,7 @@ function loadStateHistory(
     const controller: WithCondition<string>[] = [];
     const isDemilitarizedZone: WithCondition<boolean>[] = [];
     const cores: WithCondition<string>[] = [];
+    const claimBy: WithCondition<string>[] = [];
 
     if (dateHistoryEffects.some(e => e.effects.length > 0)) {
         const bookmarkConditions: ConditionItem[] = [];
@@ -371,7 +379,7 @@ function loadStateHistory(
                 continue;
             }
             for (const { effect, condition } of dateHistoryEffect.effects) {
-                extractFromEffect(stateId, scope, effect, condition, bookmarkCondition, owner, controller, cores, isDemilitarizedZone, conditionExprs);
+                extractFromEffect(stateId, scope, effect, condition, bookmarkCondition, owner, controller, cores, claimBy, isDemilitarizedZone, conditionExprs);
             }
             j++;
         }
@@ -380,7 +388,7 @@ function loadStateHistory(
         isDemilitarizedZone.reverse();
     }
 
-    return { owner, controller, victoryPoints, cores, isDemilitarizedZone };
+    return { owner, controller, victoryPoints, cores, claimBy, isDemilitarizedZone };
 }
 
 const historyItemTypes = [
@@ -388,6 +396,7 @@ const historyItemTypes = [
     'controller', 'set_state_controller', 'set_state_controller_to',
     'add_core_of', 'remove_core_of',
     'set_demilitarized_zone',
+    'add_claim_by', 'remove_claim_by', 'add_state_claim', 'remove_state_claim',
     // TODO 'add_victory_points', 'set_victory_points',
 ];
 function findHistoryItems(
@@ -421,6 +430,7 @@ function extractFromEffect(
     owner: WithCondition<string>[],
     controller: WithCondition<string>[],
     cores: WithCondition<string>[],
+    claimBy: WithCondition<string>[],
     isDemilitarizedZone: WithCondition<boolean>[],
     conditionExprs: ConditionItem[]) {
 
@@ -511,6 +521,72 @@ function extractFromEffect(
         const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
         extractConditionalExprs(combinedCondition, conditionExprs);
         isDemilitarizedZone.push({ value, condition: combinedCondition });
+    }
+    // add_claim_by = TAG
+    if (nodeName === 'add_claim_by' && effect.scopeName === scope.scopeName) {
+        const value = convertNodeToJson<string>(effect.node, 'string');
+        if (!value) {
+            return;
+        }
+        const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+        let item = claimBy.find(c => c.value === value);
+        if (!item) {
+            item = { value, condition: false };
+            claimBy.push(item);
+        }
+        item.condition = simplifyCondition({ type: 'or', items: [item.condition, combinedCondition] });
+        extractConditionalExprs(item.condition, conditionExprs);
+    }
+    // remove_claim_by = TAG
+    if (nodeName === 'remove_claim_by' && effect.scopeName === scope.scopeName) {
+        const value = convertNodeToJson<string>(effect.node, 'string');
+        if (!value) {
+            return;
+        }
+        const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+        const item = claimBy.find(c => c.value === value);
+        // No need to remove if doesn't exist.
+        if (item) {
+            item.condition = simplifyCondition({ type: 'and', items: [item.condition, { type: 'ornot', items: [combinedCondition] }] });
+            extractConditionalExprs(item.condition, conditionExprs);
+        }
+    }
+    // TAG = { add_state_claim = PREV }
+    if (nodeName === 'add_state_claim') {
+        const value = convertNodeToJson<string>(effect.node, 'string');
+        if (!value) {
+            return;
+        }
+        if (parseInt(value) === stateId ||
+            (value.toLowerCase() === 'prev' && effect.scopeStack.length > 1 && isEqual(effect.scopeStack[effect.scopeStack.length - 2], scope)) ||
+            value.toLowerCase() === 'root') {
+            const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+            let item = claimBy.find(c => c.value === effect.scopeName);
+            if (!item) {
+                item = { value: effect.scopeName, condition: false };
+                claimBy.push(item);
+            }
+            item.condition = simplifyCondition({ type: 'or', items: [item.condition, combinedCondition] });
+            extractConditionalExprs(item.condition, conditionExprs);
+        }
+    }
+    // TAG = { remove_state_claim = PREV }
+    if (nodeName === 'remove_state_claim') {
+        const value = convertNodeToJson<string>(effect.node, 'string');
+        if (!value) {
+            return;
+        }
+        if (parseInt(value) === stateId ||
+            (value.toLowerCase() === 'prev' && effect.scopeStack.length > 1 && isEqual(effect.scopeStack[effect.scopeStack.length - 2], scope)) ||
+            value.toLowerCase() === 'root') {
+            const combinedCondition = simplifyCondition({ type: 'and', items: [condition, bookmarkCondition] });
+            const item = claimBy.find(c => c.value === effect.scopeName);
+            // No need to remove if doesn't exist.
+            if (item) {
+                item.condition = simplifyCondition({ type: 'and', items: [item.condition, { type: 'ornot', items: [combinedCondition] }] });
+                extractConditionalExprs(item.condition, conditionExprs);
+            }
+        }
     }
 }
 

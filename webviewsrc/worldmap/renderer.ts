@@ -371,8 +371,14 @@ export class Renderer extends Subscriber {
 
                 const provinceAtLabel = worldMap.getProvinceByPosition(centerOfMass.x, centerOfMass.y);
                 const provinceColor = getColorByColorSet(colorSet, provinceAtLabel ?? province, worldMap, renderContext);
+                const country = worldMap.getCountryByTag(owner);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
-                context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y));
+                if (country?.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
+                    context.fillText(country.localisedName, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y) - fontSize / 2);
+                    context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y) + fontSize / 2);
+                } else {
+                    context.fillText(owner, viewPoint.convertX(centerOfMass.x + xOffset), viewPoint.convertY(centerOfMass.y));
+                }
             }
         } else if (viewMode === 'province' || viewMode === 'warnings') {
             for (const province of renderedProvinces) {
@@ -867,6 +873,7 @@ ${worldMap.getProvinceWarnings(province, stateObject, strategicRegion, supplyAre
         const owner = worldMap.getCountryByState(state, selectedConditions, 'owner');
         const controller = worldMap.getCountryByState(state, selectedConditions, 'controller');
         const isDemilitarizedZone = solveWithCondition(state.isDemilitarizedZone, selectedConditions);
+        const claimBy = solveWithConditionAsSet(state.claimBy, selectedConditions);
         this.renderTooltip(`
 ${state.impassable ? '|r|' + feLocalize('worldmap.tooltip.impassable', 'Impassable') : ''}
 ${isDemilitarizedZone ? '|r|' + feLocalize('worldmap.tooltip.demilitarizedzone', 'Demilitarized zone') : ''}
@@ -877,6 +884,7 @@ ${feLocalize('worldmap.tooltip.supplyarea', 'Supply area')}=${supplyArea.id}
 ${feLocalize('worldmap.tooltip.owner', 'Owner')}=${owner}
 ${controller && owner !== controller ? `${feLocalize('worldmap.tooltip.controller', 'Controller')}=${controller}` : ''}
 ${feLocalize('worldmap.tooltip.coreof', 'Core of')}=${solveWithConditionAsSet(state.cores, selectedConditions).join(',')}
+${claimBy.length > 0 ? feLocalize('worldmap.tooltip.claimby', 'Claim by') + '=' + claimBy.join(',') : ''}
 ${feLocalize('worldmap.tooltip.manpower', 'Manpower')}=${toCommaDivideNumber(state.manpower)}
 ${feLocalize('worldmap.tooltip.category', 'Category')}=${state.category}
 ${supplyArea ? `
@@ -915,8 +923,9 @@ ${worldMap.getSupplyAreaWarnings(supplyArea).map(v => '|r|' + v).join('\n')}`);
     private renderCountryTooltip(tag: string, worldMap: FEWorldMap) {
         const ownerCountryToState = worldMap.getOwnerCountryToStatesMap(this.topBar.selectedConditions$.value);
         const states = ownerCountryToState[tag] ?? [];
+        const country = worldMap.getCountryByTag(tag);
         this.renderTooltip(`
-${feLocalize('worldmap.tooltip.country', 'Country')}=${tag}
+${feLocalize('worldmap.tooltip.country', 'Country')}=${tag}${country?.localisedName ? ` (${country.localisedName})` : ''}
 ${feLocalize('worldmap.tooltip.states', 'States')}=${states.join(',')}`);
     }
 

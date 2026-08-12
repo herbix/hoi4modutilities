@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 * Add demilitarized zone display option in world map (#118) (#143).
 * Add localised name for provinces.
 * Double-clicking a province now opens the province definition file in editor.
+* Add `claim_by` information to state tooltip in world map (#142).
 
 ### Fixed
 * Fix a bug that effect resolving doesn't keep order. This may affect resolving owner/controller in world map.

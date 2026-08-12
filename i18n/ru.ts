@@ -132,6 +132,7 @@ const table: Partial<typeof __table> = {
     "worldmap.selectafolder": "Выберите папку для копирования {0} файла",
     "worldmap.tooltip.adjacencies": "Примыкания",
     "worldmap.tooltip.category": "Категории",
+    "worldmap.tooltip.claimby": "Claim by",
     "worldmap.tooltip.coastal": "Берег",
     "worldmap.tooltip.continent": "Континент",
     "worldmap.tooltip.controller": "Controller",

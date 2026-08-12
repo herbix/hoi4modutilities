@@ -139,7 +139,7 @@ async function scanReferencesForEvents(editor: vscode.TextEditor) {
             if (isSameUri(document.uri, realPathUri)) {
                 return undefined;
             }
-            return { file: filePath, result: parseLocalisationYaml(buffer.toString()) };
+            return { file: filePath, result: parseLocalisationYaml(buffer.toString()) ?? {} };
         } catch (e) {
             return undefined;
         }
