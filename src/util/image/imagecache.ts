@@ -3,11 +3,11 @@ import { forceError } from '../common';
 import { PNG } from 'pngjs';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { getSpriteTypes } from '../../hoiformat/spritetype';
-import { readFileFromModOrHOI4, hoiFileExpiryToken, expiryToken } from '../fileloader';
+import { expiryToken, hoiFileExpiryToken, readFileFromModOrHOI4 } from '../fileloader';
 import { PromiseCache } from '../cache';
 import { ddsToPng, tgaToPng } from './converter';
 import { AnySpriteType } from '../../hoiformat/spritetype';
-import { Sprite, Image, CorneredTileSprite, ProgressBarSprite } from './sprite';
+import { CorneredTileSprite, Image, ProgressBarSprite, Sprite } from './sprite';
 import { localize } from '../i18n';
 import { error } from '../debug';
 import { DDS } from './dds';
@@ -113,7 +113,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
         readFileResult = await readFileFromModOrHOI4(relativePath);
     } catch(e) {
         if (!(e instanceof UserError)) {
-            error("Failed to get image " + relativePath);
+            error('Failed to get image ' + relativePath);
         }
         error(e);
 
@@ -157,7 +157,7 @@ async function getImage(relativePath: string): Promise<Image | undefined> {
             err = new UserError(err.message);
         }
         if (!(err instanceof UserError)) {
-            error("Failed to get image " + relativePath);
+            error('Failed to get image ' + relativePath);
         }
         error(err);
         return undefined;

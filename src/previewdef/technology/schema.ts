@@ -1,10 +1,10 @@
-import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, Position, CustomMap, Enum, SchemaDef, positionSchema, convertNodeToJson, Raw } from "../../hoiformat/schema";
-import { arrayToMap } from "../../util/common";
-import { ConditionComplexExpr, ConditionItem, extractConditionValues, extractConditionalExprs } from "../../hoiformat/condition";
-import { countryScope } from "../../hoiformat/scope";
-import { GridBoxType } from "../../hoiformat/gui";
-import { ParentInfo } from "../../util/hoi4gui/common";
+import { Node, Token } from '../../hoiformat/hoiparser';
+import { convertNodeToJson, CustomMap, Enum, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
+import { arrayToMap } from '../../util/common';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValues } from '../../hoiformat/condition';
+import { countryScope } from '../../hoiformat/scope';
+import { GridBoxType } from '../../hoiformat/gui';
+import { ParentInfo } from '../../util/hoi4gui/common';
 
 export interface RenderedTechnologyFolder {
     template: string; // html
@@ -75,33 +75,33 @@ interface TechnologyFile {
 }
 
 const technologySchema: SchemaDef<TechnologyDef> = {
-    enable_equipments: "enum",
-    force_use_small_tech_layout: "boolean",
+    enable_equipments: 'enum',
+    force_use_small_tech_layout: 'boolean',
     allow_branch: {
-        _innerType: "raw",
-        _type: "array",
+        _innerType: 'raw',
+        _type: 'array',
     },
     path: {
         _innerType: {
-            leads_to_tech: "string",
+            leads_to_tech: 'string',
         },
-        _type: "array",
+        _type: 'array',
     },
     folder: {
         _innerType: {
-            name: "string",
+            name: 'string',
             position: positionSchema,
         },
-        _type: "array",
+        _type: 'array',
     },
-    start_year: "number",
-    xor: "enum",
-    sub_technologies: "enum",
+    start_year: 'number',
+    xor: 'enum',
+    sub_technologies: 'enum',
 };
 
 const technologiesSchema: SchemaDef<TechnologiesDef> = {
     _innerType: technologySchema,
-    _type: "map",
+    _type: 'map',
 };
 
 const technologyFileSchema: SchemaDef<TechnologyFile> = {

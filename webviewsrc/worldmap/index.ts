@@ -1,6 +1,6 @@
 import { Loader } from './loader';
 import { ViewPoint } from './viewpoint';
-import { topBarHeight, TopBar } from './topbar';
+import { TopBar, topBarHeight } from './topbar';
 import { getState, setState } from '../util/common';
 import { Renderer } from './renderer';
 import { fromEvent } from 'rxjs';

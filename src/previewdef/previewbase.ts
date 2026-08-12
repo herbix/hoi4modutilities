@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { localize } from '../util/i18n';
-import { error, debug, createStopwatch } from '../util/debug';
+import { createStopwatch, debug, error } from '../util/debug';
 import { dirUri, getDocumentByUri } from '../util/vsccommon';
 import { isEqual } from 'lodash';
 import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../util/fileloader';
@@ -110,7 +110,7 @@ export abstract class PreviewBase {
     protected updateDependencies(dependencies: string[]): void {
         if (this.cachedDependencies === undefined || !isEqual(this.cachedDependencies, dependencies)) {
             this.dependencyChangedEmitter.fire(dependencies);
-            debug("dependencies: ", this.uri.toString(), JSON.stringify(dependencies));
+            debug('dependencies: ', this.uri.toString(), JSON.stringify(dependencies));
         }
 
         this.cachedDependencies = dependencies;

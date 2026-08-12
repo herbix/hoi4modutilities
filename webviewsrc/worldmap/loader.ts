@@ -1,12 +1,12 @@
-import { WorldMapMessage, Province, WorldMapData, RequestMapItemMessage, State, Country, Point } from "./definitions";
-import { copyArray } from "../util/common";
-import { inZone } from "../../src/previewdef/worldmap/graphutils";
-import { Subscriber } from "../util/event";
-import { WorldMapWarning, Terrain, StrategicRegion, SupplyArea, Railway, SupplyNode, Resource, River, Bookmark, WithCondition } from "../../src/previewdef/worldmap/definitions";
-import { vscode } from "../util/vscode";
+import { Country, Point, Province, RequestMapItemMessage, State, WorldMapData, WorldMapMessage } from './definitions';
+import { copyArray } from '../util/common';
+import { inZone } from '../../src/previewdef/worldmap/graphutils';
+import { Subscriber } from '../util/event';
+import { Bookmark, Railway, Resource, River, StrategicRegion, SupplyArea, SupplyNode, Terrain, WithCondition, WorldMapWarning } from '../../src/previewdef/worldmap/definitions';
+import { vscode } from '../util/vscode';
 import { BehaviorSubject, fromEvent, Observable, ObservedValueOf, Subject } from 'rxjs';
-import { applyCondition, ConditionItem } from "../../src/hoiformat/condition";
-import { isEqual } from "lodash";
+import { applyCondition, ConditionItem } from '../../src/hoiformat/condition';
+import { isEqual } from 'lodash';
 
 interface ExtraMapData {
     provincesCount: number;

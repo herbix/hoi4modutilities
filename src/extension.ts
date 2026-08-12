@@ -4,17 +4,17 @@ import { registerContextContainer, setVscodeContext } from './context';
 import { DDSViewProvider, TGAViewProvider } from './ddsviewprovider';
 import { registerModFile } from './util/modfile';
 import { worldMap } from './previewdef/worldmap';
-import { ViewType, ContextName } from './constants';
+import { ContextName, ViewType } from './constants';
 import { registerTelemetryReporter, sendEvent } from './util/telemetry';
 import { registerScanReferencesCommand } from './util/dependency';
 import { registerHoiFs } from './util/hoifs';
 import { loadI18n } from './util/i18n';
-import { Logger } from "./util/logger";
+import { Logger } from './util/logger';
 import { indexManager } from './indexing/indexmanager';
 
 export function activate(context: vscode.ExtensionContext) {
     let locale = (context as any).extension?.packageJSON.locale;
-    if (locale === "%hoi4modutilities.locale%") {
+    if (locale === '%hoi4modutilities.locale%') {
         locale = 'en';
     }
 

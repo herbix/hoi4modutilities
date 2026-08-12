@@ -1,8 +1,8 @@
-import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox } from "./common";
-import { ButtonType } from "../../hoiformat/gui";
+import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
+import { calculateBBox, ParentInfo } from './common';
+import { ButtonType } from '../../hoiformat/gui';
 import { RenderNodeCommonOptions, renderSprite } from './nodecommon';
-import { renderInstantTextBox } from "./instanttextbox";
+import { renderInstantTextBox } from './instanttextbox';
 
 export interface RenderButtonOptions extends RenderNodeCommonOptions {
 }

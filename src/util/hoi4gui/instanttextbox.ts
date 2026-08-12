@@ -1,8 +1,8 @@
-import { HOIPartial } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, RenderCommonOptions, normalizeNumberLike } from "./common";
-import { htmlEscape } from "../html";
-import { InstantTextBoxType } from "../../hoiformat/gui";
-import { localisationIndex } from "../../indexing/localisationindex";
+import { HOIPartial } from '../../hoiformat/schema';
+import { calculateBBox, normalizeNumberLike, ParentInfo, RenderCommonOptions } from './common';
+import { htmlEscape } from '../html';
+import { InstantTextBoxType } from '../../hoiformat/gui';
+import { localisationIndex } from '../../indexing/localisationindex';
 
 export interface RenderInstantTextBoxOptions extends RenderCommonOptions {
     localise?: boolean;

@@ -1,15 +1,15 @@
-import * as vscode from "vscode";
-import { Commands, ContextName } from "../constants";
-import { sendEvent } from "./telemetry";
-import { localize } from "./i18n";
-import { contextContainer } from "../context";
-import { error } from "./debug";
-import { getHoiOpenedFileOriginalUri, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from "./fileloader";
-import { parseHoi4File } from "../hoiformat/hoiparser";
-import { getEvents, HOIEvents, HOIEvent } from "../previewdef/event/schema";
-import { getLanguageIdInYml, getRelativePathInWorkspace, isSameUri } from "./vsccommon";
-import { flatMap, flatten } from "lodash";
-import { parseLocalisationYaml } from "./yaml";
+import * as vscode from 'vscode';
+import { Commands, ContextName } from '../constants';
+import { sendEvent } from './telemetry';
+import { localize } from './i18n';
+import { contextContainer } from '../context';
+import { error } from './debug';
+import { getHoiOpenedFileOriginalUri, listFilesFromModOrHOI4, readFileFromModOrHOI4 } from './fileloader';
+import { parseHoi4File } from '../hoiformat/hoiparser';
+import { getEvents, HOIEvent, HOIEvents } from '../previewdef/event/schema';
+import { getLanguageIdInYml, getRelativePathInWorkspace, isSameUri } from './vsccommon';
+import { flatMap, flatten } from 'lodash';
+import { parseLocalisationYaml } from './yaml';
 
 export type Dependency = { type: string, path: string };
 

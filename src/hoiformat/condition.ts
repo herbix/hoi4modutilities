@@ -1,7 +1,7 @@
-import { Node, NodeValue } from "./hoiparser";
-import { nodeToString } from "./tostring";
-import { Scope, tryMoveScope } from "./scope";
-import { isEqual } from "lodash";
+import { Node, NodeValue } from './hoiparser';
+import { nodeToString } from './tostring';
+import { Scope, tryMoveScope } from './scope';
+import { isEqual } from 'lodash';
 
 export type ConditionFolderType = 'and' | 'or' | 'ornot' | 'andnot';
 export type ConditionComplexExpr = ConditionFolder | ConditionAmountFolder | ConditionItem | boolean;

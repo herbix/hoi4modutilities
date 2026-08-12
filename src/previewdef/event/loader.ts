@@ -1,10 +1,10 @@
-import { HOIEvents, getEvents } from "./schema";
-import { ContentLoader, Dependency, LoadResultOD, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
-import { parseHoi4File } from "../../hoiformat/hoiparser";
-import { localize } from "../../util/i18n";
-import { uniq, flatten, chain } from "lodash";
-import { gfxIndex } from "../../indexing/gfxindex";
-import { eventIndex } from "../../indexing/eventindex";
+import { getEvents, HOIEvents } from './schema';
+import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
+import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { localize } from '../../util/i18n';
+import { chain, flatten, uniq } from 'lodash';
+import { gfxIndex } from '../../indexing/gfxindex';
+import { eventIndex } from '../../indexing/eventindex';
 
 export interface EventsLoaderResult {
     events: HOIEvents;

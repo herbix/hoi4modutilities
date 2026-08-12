@@ -1,17 +1,17 @@
-import { Province, Point, Zone, Terrain, WithCondition, LabelFontSize } from "./definitions";
-import { FEWorldMap, Loader } from "./loader";
-import { ViewPoint } from "./viewpoint";
-import { zoneCenter, distanceSqr, distanceHamming } from "../../src/previewdef/worldmap/graphutils";
-import { TopBar, topBarHeight, ColorSet } from "./topbar";
-import { Subscriber } from "../util/event";
-import { arrayToMap } from "../util/common";
-import { feLocalize } from "../util/i18n";
-import { max, padStart } from "lodash";
+import { LabelFontSize, Point, Province, Terrain, WithCondition, Zone } from './definitions';
+import { FEWorldMap, Loader } from './loader';
+import { ViewPoint } from './viewpoint';
+import { distanceHamming, distanceSqr, zoneCenter } from '../../src/previewdef/worldmap/graphutils';
+import { ColorSet, TopBar, topBarHeight } from './topbar';
+import { Subscriber } from '../util/event';
+import { arrayToMap } from '../util/common';
+import { feLocalize } from '../util/i18n';
+import { max, padStart } from 'lodash';
 import { combineLatest, fromEvent } from 'rxjs';
 import { distinctUntilChanged } from 'rxjs/operators';
-import { applyCondition, ConditionItem } from "../../src/hoiformat/condition";
+import { ConditionItem } from '../../src/hoiformat/condition';
 import type { ViewModeControllers } from './viewmode';
-import { solveWithCondition } from "./common";
+import { solveWithCondition } from './common';
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;

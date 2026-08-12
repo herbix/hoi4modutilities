@@ -1,16 +1,16 @@
-import { Enum, SchemaDef } from "../../../hoiformat/schema";
-import { Token } from "../../../hoiformat/hoiparser";
-import { FileLoader, FolderLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion, LoadResultOD } from "./common";
-import { WorldMapWarning, SupplyArea, Region, ProgressReporter, State, WorldMapWarningSource, Province } from "../definitions";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { error } from "../../../util/debug";
-import { DefaultMapLoader } from "./provincemap";
-import { StatesLoader } from "./states";
-import { LoaderSession } from "../../../util/loader/loader";
-import { flatMap } from "lodash";
+import { Enum, SchemaDef } from '../../../hoiformat/schema';
+import { Token } from '../../../hoiformat/hoiparser';
+import { FileLoader, FolderLoader, LoadResult, LoadResultOD, mergeInLoadResult, mergeRegion, sortItems } from './common';
+import { ProgressReporter, Province, Region, State, SupplyArea, WorldMapWarning, WorldMapWarningSource } from '../definitions';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { error } from '../../../util/debug';
+import { DefaultMapLoader } from './provincemap';
+import { StatesLoader } from './states';
+import { LoaderSession } from '../../../util/loader/loader';
+import { flatMap } from 'lodash';
 import { UserError } from '../../../util/common';
-import { localisationIndex } from "../../../indexing/localisationindex";
+import { localisationIndex } from '../../../indexing/localisationindex';
 
 interface SupplyAreaFile {
     supply_area: SupplyAreaDefinition[];
@@ -27,12 +27,12 @@ interface SupplyAreaDefinition {
 const supplyAreaFileSchema: SchemaDef<SupplyAreaFile> = {
     supply_area: {
         _innerType: {
-            id: "number",
-            name: "string",
-            value: "number",
-            states: "enum",
+            id: 'number',
+            name: 'string',
+            value: 'number',
+            states: 'enum',
         },
-        _type: "array",
+        _type: 'array',
     },
 };
 

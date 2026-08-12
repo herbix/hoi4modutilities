@@ -1,4 +1,4 @@
-import { error } from "./debug";
+import { error } from './debug';
 import { __table } from '../../i18n/en';
 
 let table: Record<string, string> = {};

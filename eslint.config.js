@@ -15,10 +15,12 @@ module.exports = [
             "@typescript-eslint": tseslint
         },
         rules: {
-            "curly": "warn",
-            "eqeqeq": "warn",
-            "no-throw-literal": "warn",
-            "semi": "warn"
+            "curly": "error",
+            "eqeqeq": "error",
+            "no-throw-literal": "error",
+            "semi": "error",
+            "quotes": ["error", "single", { "avoidEscape": true, "allowTemplateLiterals": true }],
+            "sort-imports": ["error", { "ignoreCase": true, "ignoreDeclarationSort": true }],
         }
     }
 ];

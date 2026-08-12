@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ConfigurationKey, Commands } from '../constants';
+import { Commands, ConfigurationKey } from '../constants';
 import { PromiseCache } from './cache';
 import { localize } from './i18n';
 import { basename, fileOrUriStringToUri, getConfiguration, uriToFilePathWhenPossible } from './vsccommon';
@@ -31,14 +31,14 @@ export function updateSelectedModFileStatus(modFile: vscode.Uri | undefined, err
     if (modFileStatusContainer.current) {
         const modName = modFileStatusContainer.current;
         if (modFile) {
-            const modFileName = basename(modFile, ".mod");
+            const modFileName = basename(modFile, '.mod');
             modName.command = Commands.SelectModFile;
-            modName.text = (error ? "$(error) " : "$(file-code) ") + modFileName;
-            modName.tooltip = (error ? localize('modfile.errorreading', "Error reading this file: ") : '') + uriToFilePathWhenPossible(modFile);
+            modName.text = (error ? '$(error) ' : '$(file-code) ') + modFileName;
+            modName.tooltip = (error ? localize('modfile.errorreading', 'Error reading this file: ') : '') + uriToFilePathWhenPossible(modFile);
             modName.show();
         } else {
             modName.command = Commands.SelectModFile;
-            modName.text = "$(file-code) " + localize('modfile.nomodfile', '(No mod descriptor)');
+            modName.text = '$(file-code) ' + localize('modfile.nomodfile', '(No mod descriptor)');
             modName.tooltip = localize('modfile.clicktoselect', 'Click to select a mod file...');
             modName.show();
         }

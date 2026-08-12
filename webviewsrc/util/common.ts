@@ -29,7 +29,7 @@ export function copyArray<T>(src: T[], dst: T[], offsetSrc: number, offsetDst: n
 }
 
 export function subscribeNavigators(container: HTMLElement | Document = document): void {
-    const navigators = container.getElementsByClassName("navigator");
+    const navigators = container.getElementsByClassName('navigator');
     for (let i = 0; i < navigators.length; i++) {
         const navigator = navigators[i] as HTMLDivElement;
         navigator.addEventListener('click', function(e) {
@@ -190,7 +190,7 @@ window.addEventListener('load', function() {
     // Drag to scroll
     (function() {
         // Dragger should be like this: <div id="dragger" additionalDraggerHostId="optionalid" style="width:100vw;height:100vh;position:fixed;left:0;top:0;"></div>
-        const dragger = document.getElementById("dragger");
+        const dragger = document.getElementById('dragger');
         if (!dragger) {
             return;
         }
@@ -199,7 +199,7 @@ window.addEventListener('load', function() {
 
         const hosts = [ dragger ];
         if (rightButtonDrag) {
-            const hostId = dragger.getAttribute("additionalDraggerHostId");
+            const hostId = dragger.getAttribute('additionalDraggerHostId');
             if (hostId) {
                 const hostElement = document.getElementById(hostId);
                 if (hostElement) {

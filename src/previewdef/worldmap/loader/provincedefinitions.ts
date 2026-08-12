@@ -1,8 +1,8 @@
-import { localisationIndex } from "../../../indexing/localisationindex";
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { ProgressReporter, ProvinceDefinition, WorldMapWarning } from "../definitions";
-import { FileLoader, LoadResultOD } from "./common";
+import { localisationIndex } from '../../../indexing/localisationindex';
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { ProgressReporter, ProvinceDefinition, WorldMapWarning } from '../definitions';
+import { FileLoader, LoadResultOD } from './common';
 
 export class DefinitionsLoader extends FileLoader<ProvinceDefinition[]> {
     protected async loadFromFile(): Promise<LoadResultOD<ProvinceDefinition[]>> {

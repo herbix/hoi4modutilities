@@ -1,8 +1,8 @@
-import { SchemaDef } from "../../../hoiformat/schema";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { LoadResult, LoaderSession } from "../../../util/loader/loader";
-import { Bookmark, BookmarkDate, MapLoaderExtra, WorldMapWarning } from "../definitions";
-import { FileLoader, FolderLoader, LoadResultOD, mergeInLoadResult } from "./common";
+import { SchemaDef } from '../../../hoiformat/schema';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { LoaderSession, LoadResult } from '../../../util/loader/loader';
+import { Bookmark, BookmarkDate, MapLoaderExtra, WorldMapWarning } from '../definitions';
+import { FileLoader, FolderLoader, LoadResultOD, mergeInLoadResult } from './common';
 
 interface BookmarkFile {
     bookmarks: BookmarksDefinition;
@@ -21,10 +21,10 @@ const bookmarkFileSchema: SchemaDef<BookmarkFile> = {
     bookmarks: {
         bookmark: {
             _innerType: {
-                name: "string",
-                date: "string",
+                name: 'string',
+                date: 'string',
             },
-            _type: "array",
+            _type: 'array',
         },
     },
 };

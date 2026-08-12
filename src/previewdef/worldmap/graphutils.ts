@@ -1,4 +1,4 @@
-import { Point, Zone, Region } from "./definitions";
+import { Point, Region, Zone } from './definitions';
 
 export function inZone(point: Point, bbox: Zone): boolean {
     return point.x >= bbox.x && point.x < bbox.x + bbox.w && point.y >= bbox.y && point.y < bbox.y + bbox.h;

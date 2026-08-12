@@ -2,10 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { PromiseCache } from './cache';
 import { isSamePath } from './nodecommon';
-import { getLastModifiedAsync, readDirFiles, isFile, isDirectory, readFile, readDir, isSameUri, fileOrUriStringToUri, ensureFileScheme, readDirFilesRecursively } from './vsccommon';
+import { ensureFileScheme, fileOrUriStringToUri, getLastModifiedAsync, isDirectory, isFile, isSameUri, readDir, readDirFiles, readDirFilesRecursively, readFile } from './vsccommon';
 import { parseHoi4File } from '../hoiformat/hoiparser';
 import { localize } from './i18n';
-import { convertNodeToJson, SchemaDef, HOIPartial } from '../hoiformat/schema';
+import { convertNodeToJson, HOIPartial, SchemaDef } from '../hoiformat/schema';
 import { error } from './debug';
 import { updateSelectedModFileStatus, workspaceModFilesCache } from './modfile';
 import { getConfiguration, getDocumentByUri } from './vsccommon';
@@ -346,7 +346,7 @@ async function getDlcPathsByFolder(installPathUri: vscode.Uri, folder: string): 
     const dlcFolders = await readDir(dlcPath);
     const paths = await Promise.all(dlcFolders.map(async (dlcFolder) => {
         const dlcZipFolder = vscode.Uri.joinPath(dlcPath, dlcFolder);
-        if (await isDirectory(dlcZipFolder) && dlcFolder.startsWith("dlc")) {
+        if (await isDirectory(dlcZipFolder) && dlcFolder.startsWith('dlc')) {
             return dlcZipFolder;
         }
 
@@ -401,8 +401,8 @@ interface ModFile {
 
 const modFileSchema: SchemaDef<ModFile> = {
     replace_path: {
-        _innerType: "string",
-        _type: "array",
+        _innerType: 'string',
+        _type: 'array',
     },
 };
 
@@ -410,7 +410,7 @@ async function getReplacePaths(): Promise<string[] | undefined> {
     const conf = getConfiguration();
     let modFile = fileOrUriStringToUri(conf.modFile);
 
-    if (conf.modFile === "") {
+    if (conf.modFile === '') {
         if (vscode.workspace.workspaceFolders) {
             for (const workspaceFolder of vscode.workspace.workspaceFolders) {
                 const workspaceFolderPath = workspaceFolder.uri;

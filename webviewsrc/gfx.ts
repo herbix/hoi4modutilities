@@ -1,4 +1,4 @@
-import { setState, getState, tryRun } from "./util/common";
+import { getState, setState, tryRun } from './util/common';
 
 function filterChange(text: string) {
     text = text.toLowerCase();

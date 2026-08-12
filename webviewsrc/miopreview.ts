@@ -1,14 +1,14 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom } from "./util/common";
-import { DivDropdown } from "./util/dropdown";
-import { minBy } from "lodash";
-import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
-import { StyleTable } from "../src/util/styletable";
-import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../src/hoiformat/condition";
-import { NumberPosition } from "../src/util/common";
-import { GridBoxType } from "../src/hoiformat/gui";
-import { toNumberLike } from "../src/hoiformat/schema";
+import { arrayToMap, enableZoom, getState, scrollToState, setState, subscribeNavigators, tryRun } from './util/common';
+import { DivDropdown } from './util/dropdown';
+import { minBy } from 'lodash';
+import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from '../src/util/hoi4gui/gridboxcommon';
+import { StyleTable } from '../src/util/styletable';
+import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from '../src/hoiformat/condition';
+import { NumberPosition } from '../src/util/common';
+import { GridBoxType } from '../src/hoiformat/gui';
+import { toNumberLike } from '../src/hoiformat/schema';
 import { feLocalize } from './util/i18n';
-import { Mio, MioTrait } from "../src/previewdef/mio/schema";
+import { Mio, MioTrait } from '../src/previewdef/mio/schema';
 
 const mios: Mio[] = (window as any).mios;
 
@@ -199,7 +199,7 @@ function traitToGridItem(
         connections.push({
             target: e,
             targetType: 'related',
-            style: "1px solid red",
+            style: '1px solid red',
         });
     });
 

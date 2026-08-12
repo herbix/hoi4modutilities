@@ -1,6 +1,6 @@
-import { Disposable, Subscriber, toDisposable } from "./event";
-import { feLocalize } from "./i18n";
-import { Checkbox } from "./checkbox";
+import { Disposable, Subscriber, toDisposable } from './event';
+import { feLocalize } from './i18n';
+import { Checkbox } from './checkbox';
 import { BehaviorSubject, fromEvent, Observable, Subject, Subscription } from 'rxjs';
 
 const dropdowns: Dropdown[] = [];

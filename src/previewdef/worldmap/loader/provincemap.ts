@@ -1,16 +1,16 @@
-import { ProvinceMap, Province, ProvinceEdge, WorldMapWarning, ProvinceDefinition, ProvinceBmp, ProvinceEdgeAdjacency, ProgressReporter, Terrain } from "../definitions";
-import { FileLoader, mergeInLoadResult, LoadResult, sortItems } from "./common";
-import { SchemaDef } from "../../../hoiformat/schema";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { TerrainDefinitionLoader } from "./terrain";
-import { arrayToMap, UserError } from "../../../util/common";
-import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader/loader";
-import { DefinitionsLoader } from "./provincedefinitions";
-import { AdjacenciesLoader } from "./adjacencies";
-import { ContinentsLoader } from "./continents";
-import { ProvinceBmpLoader } from "./provincebmp";
-import { RiverLoader } from "./river";
+import { ProgressReporter, Province, ProvinceBmp, ProvinceDefinition, ProvinceEdge, ProvinceEdgeAdjacency, ProvinceMap, Terrain, WorldMapWarning } from '../definitions';
+import { FileLoader, LoadResult, mergeInLoadResult, sortItems } from './common';
+import { SchemaDef } from '../../../hoiformat/schema';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { TerrainDefinitionLoader } from './terrain';
+import { arrayToMap, UserError } from '../../../util/common';
+import { localize } from '../../../util/i18n';
+import { LoaderSession } from '../../../util/loader/loader';
+import { DefinitionsLoader } from './provincedefinitions';
+import { AdjacenciesLoader } from './adjacencies';
+import { ContinentsLoader } from './continents';
+import { ProvinceBmpLoader } from './provincebmp';
+import { RiverLoader } from './river';
 
 interface DefaultMap {
     definitions: string;

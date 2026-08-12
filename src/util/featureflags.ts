@@ -1,4 +1,4 @@
-import { getConfiguration } from "./vsccommon";
+import { getConfiguration } from './vsccommon';
 
 const byDefaultEnabledFlags = [
     'useConditionInFocus',

@@ -1,17 +1,17 @@
-import { WorldMapData, ProvinceMap } from "../definitions";
-import { CountriesLoader } from "./countries";
-import { Loader, LoadResult, mergeInLoadResult } from "./common";
-import { StatesLoader } from "./states";
-import { DefaultMapLoader } from "./provincemap";
-import { debug } from "../../../util/debug";
-import { StrategicRegionsLoader } from "./strategicregion";
-import { SupplyAreasLoader } from "./supplyarea";
-import { LoaderSession, mergeInLoadResultUnique } from "../../../util/loader/loader";
-import { getConfiguration } from "../../../util/vsccommon";
-import { RailwayLoader, SupplyNodeLoader } from "./railway";
-import { ResourceDefinitionLoader } from "./resource";
-import { BookmarksLoader } from "./bookmarks";
-import { isEqual } from "lodash";
+import { ProvinceMap, WorldMapData } from '../definitions';
+import { CountriesLoader } from './countries';
+import { Loader, LoadResult, mergeInLoadResult } from './common';
+import { StatesLoader } from './states';
+import { DefaultMapLoader } from './provincemap';
+import { debug } from '../../../util/debug';
+import { StrategicRegionsLoader } from './strategicregion';
+import { SupplyAreasLoader } from './supplyarea';
+import { LoaderSession, mergeInLoadResultUnique } from '../../../util/loader/loader';
+import { getConfiguration } from '../../../util/vsccommon';
+import { RailwayLoader, SupplyNodeLoader } from './railway';
+import { ResourceDefinitionLoader } from './resource';
+import { BookmarksLoader } from './bookmarks';
+import { isEqual } from 'lodash';
 
 export class WorldMapLoader extends Loader<WorldMapData> {
     private defaultMapLoader: DefaultMapLoader;

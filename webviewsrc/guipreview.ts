@@ -1,6 +1,6 @@
-import { normalizeForStyle } from "../src/util/styletable";
-import { Checkbox } from "./util/checkbox";
-import { setState, getState, scrollToState, tryRun, subscribeRefreshButton } from "./util/common";
+import { normalizeForStyle } from '../src/util/styletable';
+import { Checkbox } from './util/checkbox';
+import { getState, scrollToState, setState, subscribeRefreshButton, tryRun } from './util/common';
 
 const existingCheckboxes: Checkbox[] = [];
 let toggleVisibilityContentVisible = getState().toggleVisibilityContentVisible;

@@ -1,16 +1,16 @@
-import { getState, setState, arrayToMap, subscribeNavigators, scrollToState, tryRun, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
-import { DivDropdown } from "./util/dropdown";
-import { difference, minBy } from "lodash";
-import { renderGridBoxCommon, GridBoxItem, GridBoxConnection } from "../src/util/hoi4gui/gridboxcommon";
-import { StyleTable, normalizeForStyle } from "../src/util/styletable";
-import { FocusTree, Focus, UpdateFocusPositionsMessage } from "../src/previewdef/focustree/schema";
-import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../src/hoiformat/condition";
-import { NumberPosition } from "../src/util/common";
-import { GridBoxType } from "../src/hoiformat/gui";
-import { toNumberLike } from "../src/hoiformat/schema";
+import { arrayToMap, enableZoom, getState, refreshPreviewLabelMode, scrollToState, setState, subscribeNavigators, subscribePreviewLabelToggle, tryRun } from './util/common';
+import { DivDropdown } from './util/dropdown';
+import { difference, minBy } from 'lodash';
+import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from '../src/util/hoi4gui/gridboxcommon';
+import { normalizeForStyle, StyleTable } from '../src/util/styletable';
+import { Focus, FocusTree, UpdateFocusPositionsMessage } from '../src/previewdef/focustree/schema';
+import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from '../src/hoiformat/condition';
+import { NumberPosition } from '../src/util/common';
+import { GridBoxType } from '../src/hoiformat/gui';
+import { toNumberLike } from '../src/hoiformat/schema';
 import { feLocalize } from './util/i18n';
-import { Checkbox } from "./util/checkbox";
-import { vscode } from "./util/vscode";
+import { Checkbox } from './util/checkbox';
+import { vscode } from './util/vscode';
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -25,7 +25,7 @@ function showBranch(visibility: boolean, optionClass: string) {
 
     for (let i = 0; i < elements.length; i++) {
         const element = elements[i] as HTMLDivElement;
-        element.style.display = element.className.split(' ').some(b => hiddenBranches[b]) ? "none" : "block";
+        element.style.display = element.className.split(' ').some(b => hiddenBranches[b]) ? 'none' : 'block';
     }
 };
 
@@ -39,7 +39,7 @@ function search(searchContent: string, navigate: boolean = true) {
             focus.style.outline = '1px solid #E33';
             focus.style.background = 'rgba(255, 0, 0, 0.5)';
             if (navigate && !navigated) {
-                focus.scrollIntoView({ block: "center", inline: "center" });
+                focus.scrollIntoView({ block: 'center', inline: 'center' });
                 navigated = true;
             }
             searchedFocus.push(focus);
@@ -273,9 +273,9 @@ function focusToGridItem(
     for (const prerequisites of focus.prerequisite) {
         let style: string;
         if (prerequisites.length > 1) {
-            style = "1px dashed #88aaff";
+            style = '1px dashed #88aaff';
         } else {
-            style = "1px solid #88aaff";
+            style = '1px solid #88aaff';
         }
 
         prerequisites.forEach(p => {
@@ -296,7 +296,7 @@ function focusToGridItem(
         connections.push({
             target: e,
             targetType: 'related',
-            style: "1px solid red",
+            style: '1px solid red',
             classNames: classNames + ' ' + classNames2,
         });
     });
@@ -650,7 +650,7 @@ window.addEventListener('load', tryRun(async function() {
             const visibleSearchedFocus = searchedFocus.filter(f => f.style.display !== 'none');
             if (visibleSearchedFocus.length > 0) {
                 currentNavigatedIndex = (currentNavigatedIndex + (e.shiftKey ? visibleSearchedFocus.length - 1 : 1)) % visibleSearchedFocus.length;
-                visibleSearchedFocus[currentNavigatedIndex].scrollIntoView({ block: "center", inline: "center" });
+                visibleSearchedFocus[currentNavigatedIndex].scrollIntoView({ block: 'center', inline: 'center' });
             }
         } else {
             searchboxChangeFunc.apply(this);

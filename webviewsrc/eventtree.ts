@@ -1,6 +1,6 @@
-import { GridBoxVirtualizationData } from "../src/util/hoi4gui/gridboxcommon";
-import { tryRun, enableZoom, subscribeNavigators, getState, setState } from "./util/common";
-import { virtualizeGridBox } from "./util/virtualization";
+import { GridBoxVirtualizationData } from '../src/util/hoi4gui/gridboxcommon';
+import { enableZoom, getState, setState, subscribeNavigators, tryRun } from './util/common';
+import { virtualizeGridBox } from './util/virtualization';
 
 interface EventSearchMatch {
     itemId: string;

@@ -1,12 +1,12 @@
-import { CustomMap, DetailValue, Enum, SchemaDef, HOIPartial } from "../../../hoiformat/schema";
-import { Country } from "../definitions";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { error } from "../../../util/debug";
-import { FolderLoader, FileLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult, convertColor } from "./common";
-import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader/loader";
-import { flatMap } from "lodash";
-import { localisationIndex } from "../../../indexing/localisationindex";
+import { CustomMap, DetailValue, Enum, HOIPartial, SchemaDef } from '../../../hoiformat/schema';
+import { Country } from '../definitions';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { error } from '../../../util/debug';
+import { convertColor, FileLoader, FolderLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult } from './common';
+import { localize } from '../../../util/i18n';
+import { LoaderSession } from '../../../util/loader/loader';
+import { flatMap } from 'lodash';
+import { localisationIndex } from '../../../indexing/localisationindex';
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -23,25 +23,25 @@ interface ColorForCountry {
 }
 
 const countryTagsFileSchema: SchemaDef<CountryTagsFile> = {
-    _innerType: "string",
-    _type: "map",
+    _innerType: 'string',
+    _type: 'map',
 };
 
 const countryFileSchema: SchemaDef<CountryFile> = {
     color: {
-        _innerType: "enum",
-        _type: "detailvalue",
+        _innerType: 'enum',
+        _type: 'detailvalue',
     },
 };
 
 const colorsFileSchema: SchemaDef<ColorsFile> = {
     _innerType: {
         color: {
-            _innerType: "enum",
-            _type: "detailvalue",
+            _innerType: 'enum',
+            _type: 'detailvalue',
         },
     },
-    _type: "map",
+    _type: 'map',
 };
 
 type Tag = { tag: string, file: string };

@@ -1,7 +1,7 @@
-import { NumberLike, Position, HOIPartial } from "../../hoiformat/schema";
-import { NumberSize } from "../common";
+import { HOIPartial, NumberLike, Position } from '../../hoiformat/schema';
+import { NumberSize } from '../common';
 import { StyleTable } from '../styletable';
-import { Orientation, ComplexSize, Size, Margin } from "../../hoiformat/gui";
+import { ComplexSize, Margin, Orientation, Size } from '../../hoiformat/gui';
 
 export interface ParentInfo {
     size: NumberSize;

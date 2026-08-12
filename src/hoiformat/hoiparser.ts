@@ -55,7 +55,7 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
         do {
             groups = regex.exec(input);
             if (groups === null) {
-                throwError("Invalid token");
+                throwError('Invalid token');
             }
 
             const result = groups.groups!['result'];
@@ -90,7 +90,7 @@ function tokenizer<T extends string>(input: string, tokenRegexStrings: Record<T,
         const posString = line === -1 ?
             ` at (${lineLengthSums.length}, ${lineLengthSums.length > 1 ? lineLengthSums[lineLengthSums.length - 1] - lineLengthSums[lineLengthSums.length - 2] + 1 : lineLengthSums[lineLengthSums.length - 1] + 1})` :
             ` at (${line + 1}, ${column + 1})`;
-        throw new UserError(errorMessagePrefix + message + `${posString}: ` + (input + "(EOF)").substring(calculatePos, Math.min(calculatePos + 30, input.length + 5)));
+        throw new UserError(errorMessagePrefix + message + `${posString}: ` + (input + '(EOF)').substring(calculatePos, Math.min(calculatePos + 30, input.length + 5)));
     }
     
     return {
@@ -137,7 +137,7 @@ export function parseHoi4File(input: string, errorMessagePrefix: string = ''): N
 function parseNode(tokens: Tokenizer<HOITokenType>): Node {
     const name = tokens.peek();
     if (name.type !== 'string' && name.type !== 'symbol' && name.value !== '{') {
-        tokens.throw("Expect name to be symbol or string", true);
+        tokens.throw('Expect name to be symbol or string', true);
     }
 
     if (name.value === '{') {
@@ -253,7 +253,7 @@ function parseNodeValue(tokens: Tokenizer<HOITokenType>): [ NodeValue, Token<HOI
             break;
     }
     
-    tokens.throw("Expect string, number, symbol, or {", true);
+    tokens.throw('Expect string, number, symbol, or {', true);
 }
 
 function parseBlockContent(tokens: Tokenizer<HOITokenType>): Node[] {
@@ -261,7 +261,7 @@ function parseBlockContent(tokens: Tokenizer<HOITokenType>): Node[] {
 
     while (true) {
         const nextToken = tokens.peek();
-        if (nextToken.type === 'eof' || nextToken.value === "}") {
+        if (nextToken.type === 'eof' || nextToken.value === '}') {
             break;
         }
 

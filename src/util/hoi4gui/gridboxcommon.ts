@@ -1,9 +1,9 @@
-import { HOIPartial } from "../../hoiformat/schema";
-import { ParentInfo, calculateBBox, normalizeNumberLike, RenderCommonOptions, getWidth, getHeight } from "./common";
-import { NumberSize, NumberPosition } from "../common";
+import { HOIPartial } from '../../hoiformat/schema';
+import { calculateBBox, getHeight, getWidth, normalizeNumberLike, ParentInfo, RenderCommonOptions } from './common';
+import { NumberPosition, NumberSize } from '../common';
 import { StyleTable } from '../styletable';
-import { GridBoxType, Format, Background } from "../../hoiformat/gui";
-import { map, flatMap } from "lodash";
+import { Background, Format, GridBoxType } from '../../hoiformat/gui';
+import { flatMap, map } from 'lodash';
 
 export type GridBoxConnectionType = 'child' | 'parent' | 'related';
 

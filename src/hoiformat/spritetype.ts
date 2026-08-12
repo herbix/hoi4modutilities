@@ -1,6 +1,6 @@
-import { Node, Token } from "./hoiparser";
-import { SchemaDef, convertNodeToJson, DetailValue } from "./schema";
-import { NumberPosition } from "../util/common";
+import { Node, Token } from './hoiparser';
+import { convertNodeToJson, DetailValue, SchemaDef } from './schema';
+import { NumberPosition } from '../util/common';
 
 interface SpriteTypes {
     spritetype: SpriteTypeDef[];
@@ -70,72 +70,72 @@ interface SpriteFile {
 
 const corneredTileSpriteTypeSchema: SchemaDef<CorneredTileSpriteTypeDef> = {
     name: {
-        _innerType: "string",
-        _type: "detailvalue",
+        _innerType: 'string',
+        _type: 'detailvalue',
     },
-    texturefile: "string",
-    noofframes: "number",
+    texturefile: 'string',
+    noofframes: 'number',
     size: {
-        x: "number",
-        y: "number",
+        x: 'number',
+        y: 'number',
     },
     bordersize: {
-        x: "number",
-        y: "number",
+        x: 'number',
+        y: 'number',
     },
-    tilingCenter: "boolean",
+    tilingCenter: 'boolean',
 };
 
 const spriteTypeSchema: SchemaDef<SpriteTypeDef> = {
     name: {
-        _innerType: "string",
-        _type: "detailvalue",
+        _innerType: 'string',
+        _type: 'detailvalue',
     },
-    texturefile: "string",
-    noofframes: "number",
+    texturefile: 'string',
+    noofframes: 'number',
 };
 
 const progressBarTypeSchema: SchemaDef<ProgressBarTypeDef> = {
     name: {
-        _innerType: "string",
-        _type: "detailvalue",
+        _innerType: 'string',
+        _type: 'detailvalue',
     },
-    texturefile1: "string",
-    texturefile2: "string",
+    texturefile1: 'string',
+    texturefile2: 'string',
     size: {
-        x: "number",
-        y: "number",
+        x: 'number',
+        y: 'number',
     },
-    horizontal: "boolean",
+    horizontal: 'boolean',
 };
 
 const spriteTypesSchema: SchemaDef<SpriteTypes> = {
     spritetype: {
         _innerType: spriteTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     corneredtilespritetype: {
         _innerType: corneredTileSpriteTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     frameanimatedspritetype: {
         _innerType: spriteTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     textspritetype: {
         _innerType: spriteTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     progressbartype: {
         _innerType: progressBarTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 
 const spriteFileSchema: SchemaDef<SpriteFile> = {
     spritetypes: {
         _innerType: spriteTypesSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 

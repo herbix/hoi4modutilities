@@ -1,5 +1,5 @@
 import { fromEvent } from 'rxjs';
-import { Subscriber } from "./event";
+import { Subscriber } from './event';
 
 const checkboxes: Checkbox[] = [];
 

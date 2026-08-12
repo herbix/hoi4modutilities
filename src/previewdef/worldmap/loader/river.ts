@@ -1,8 +1,8 @@
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
-import { ProgressReporter, River, RiverBmp, WorldMapWarning, Zone } from "../definitions";
-import { FileLoader, LoadResult, LoadResultOD, addPointToZone } from "./common";
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { BMP, parseBmp } from '../../../util/image/bmp/bmpparser';
+import { ProgressReporter, River, RiverBmp, WorldMapWarning, Zone } from '../definitions';
+import { addPointToZone, FileLoader, LoadResult, LoadResultOD } from './common';
 
 export class RiverLoader extends FileLoader<RiverBmp> {
     protected async loadFromFile(): Promise<LoadResultOD<RiverBmp>> {

@@ -1,10 +1,10 @@
-import { CustomMap, SchemaDef } from "../../../hoiformat/schema";
-import { FileLoader, LoadResultOD, FolderLoader, mergeInLoadResult } from "./common";
-import { MapLoaderExtra, Resource } from "../definitions";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { LoadResult, LoaderSession } from '../../../util/loader/loader';
+import { CustomMap, SchemaDef } from '../../../hoiformat/schema';
+import { FileLoader, FolderLoader, LoadResultOD, mergeInLoadResult } from './common';
+import { MapLoaderExtra, Resource } from '../definitions';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { LoaderSession, LoadResult } from '../../../util/loader/loader';
 import { localize } from '../../../util/i18n';
-import { getSpriteByGfxName } from "../../../util/image/imagecache";
+import { getSpriteByGfxName } from '../../../util/image/imagecache';
 
 interface ResourceFile {
     resources: CustomMap<ResourceDef>
@@ -17,9 +17,9 @@ interface ResourceDef {
 const resourceFileSchema: SchemaDef<ResourceFile> = {
     resources: {
         _innerType: {
-            icon_frame: "number",
+            icon_frame: 'number',
         },
-        _type: "map",
+        _type: 'map',
     },
 };
 

@@ -1,6 +1,6 @@
-import TelemetryReporter from "@vscode/extension-telemetry";
-import { vscode } from "./vscode";
-import { TelemetryMessage } from "../../src/util/telemetry";
+import TelemetryReporter from '@vscode/extension-telemetry';
+import { vscode } from './vscode';
+import { TelemetryMessage } from '../../src/util/telemetry';
 
 export const sendEvent: TelemetryReporter['sendTelemetryEvent'] = (...args) => {
     const telemetryMessage: TelemetryMessage = {

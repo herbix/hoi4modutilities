@@ -1,5 +1,5 @@
-import { GridBoxVirtualizationData, GridBoxVirtualizedItem, GridBoxVirtualizedConnection } from "../../src/util/hoi4gui/gridboxcommon";
-import { getState } from "./common";
+import { GridBoxVirtualizationData, GridBoxVirtualizedConnection, GridBoxVirtualizedItem } from '../../src/util/hoi4gui/gridboxcommon';
+import { getState } from './common';
 
 type Item = GridBoxVirtualizedItem & { element?: HTMLDivElement; };
 type Connection = GridBoxVirtualizedConnection & { element?: HTMLDivElement; };

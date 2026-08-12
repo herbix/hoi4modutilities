@@ -1,6 +1,6 @@
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { LoaderSession } from "../../../util/loader/loader";
-import { FileLoader, FolderLoader, LoadResult, LoadResultOD } from "./common";
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { LoaderSession } from '../../../util/loader/loader';
+import { FileLoader, FolderLoader, LoadResult, LoadResultOD } from './common';
 
 export interface Defines {
     minimumProvinceSize?: {

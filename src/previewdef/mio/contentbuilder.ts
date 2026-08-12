@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { getSpriteByGfxName, Image, getImageByPath } from '../../util/image/imagecache';
-import { localize, i18nTableAsScript } from '../../util/i18n';
+import { getImageByPath, getSpriteByGfxName, Image } from '../../util/image/imagecache';
+import { i18nTableAsScript, localize } from '../../util/i18n';
 import { forceError, randomString } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
 import { html, htmlEscape } from '../../util/html';
@@ -8,9 +8,9 @@ import { GridBoxType } from '../../hoiformat/gui';
 import { MioLoader } from './loader';
 import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
-import { StyleTable, normalizeForStyle } from '../../util/styletable';
+import { normalizeForStyle, StyleTable } from '../../util/styletable';
 import { Mio, MioTrait, TraitEffect } from './schema';
-import { featureFlagsAsScript } from "../../util/featureflags";
+import { featureFlagsAsScript } from '../../util/featureflags';
 import { indexManager } from '../../indexing/indexmanager';
 import { localisationIndex } from '../../indexing/localisationindex';
 

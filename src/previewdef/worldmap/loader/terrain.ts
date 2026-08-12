@@ -1,8 +1,8 @@
-import { CustomMap, DetailValue, Enum, SchemaDef } from "../../../hoiformat/schema";
-import { FileLoader, convertColor, LoadResultOD, FolderLoader, mergeInLoadResult } from "./common";
-import { MapLoaderExtra, Terrain } from "../definitions";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { LoadResult, LoaderSession } from '../../../util/loader/loader';
+import { CustomMap, DetailValue, Enum, SchemaDef } from '../../../hoiformat/schema';
+import { convertColor, FileLoader, FolderLoader, LoadResultOD, mergeInLoadResult } from './common';
+import { MapLoaderExtra, Terrain } from '../definitions';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { LoaderSession, LoadResult } from '../../../util/loader/loader';
 import { localize } from '../../../util/i18n';
 
 interface TerrainFile {
@@ -18,12 +18,12 @@ const terrainFileSchema: SchemaDef<TerrainFile> = {
     categories: {
         _innerType: {
             color: {
-                _innerType: "enum",
-                _type: "detailvalue",
+                _innerType: 'enum',
+                _type: 'detailvalue',
             },
-            naval_terrain: "boolean",
+            naval_terrain: 'boolean',
         },
-        _type: "map",
+        _type: 'map',
     },
 };
 

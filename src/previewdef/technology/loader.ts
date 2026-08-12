@@ -1,11 +1,11 @@
-import { TechnologyTree, getTechnologyTrees } from "./schema";
-import { HOIPartial } from "../../hoiformat/schema";
-import { GuiFile } from "../../hoiformat/gui";
-import { ContentLoader, Dependency, LoadResultOD, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
-import { parseHoi4File } from "../../hoiformat/hoiparser";
-import { localize } from "../../util/i18n";
-import { flatMap, chain } from "lodash";
-import { GuiFileLoader } from "../gui/loader";
+import { getTechnologyTrees, TechnologyTree } from './schema';
+import { HOIPartial } from '../../hoiformat/schema';
+import { GuiFile } from '../../hoiformat/gui';
+import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
+import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { localize } from '../../util/i18n';
+import { chain, flatMap } from 'lodash';
+import { GuiFileLoader } from '../gui/loader';
 
 export interface TechnologyTreeLoaderResult {
     technologyTrees: TechnologyTree[];

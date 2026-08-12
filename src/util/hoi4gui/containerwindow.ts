@@ -1,11 +1,11 @@
-import { HOIPartial } from "../../hoiformat/schema";
-import { calculateBBox, normalizeMargin, ParentInfo, removeHtmlOptions } from "./common";
-import { renderIcon } from "./icon";
-import { renderInstantTextBox } from "./instanttextbox";
-import { renderGridBox } from "./gridbox";
-import { ButtonType, ContainerWindowType, GridBoxType, IconType, InstantTextBoxType } from "../../hoiformat/gui";
+import { HOIPartial } from '../../hoiformat/schema';
+import { calculateBBox, normalizeMargin, ParentInfo, removeHtmlOptions } from './common';
+import { renderIcon } from './icon';
+import { renderInstantTextBox } from './instanttextbox';
+import { renderGridBox } from './gridbox';
+import { ButtonType, ContainerWindowType, GridBoxType, IconType, InstantTextBoxType } from '../../hoiformat/gui';
 import { renderBackground, RenderNodeCommonOptions } from './nodecommon';
-import { renderButton } from "./button";
+import { renderButton } from './button';
 
 export interface RenderChildTypeMap {
     containerwindow: HOIPartial<ContainerWindowType>;

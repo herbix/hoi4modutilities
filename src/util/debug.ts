@@ -1,5 +1,5 @@
-import { sendException } from "./telemetry";
-import { forceError, UserError } from "./common";
+import { sendException } from './telemetry';
+import { forceError, UserError } from './common';
 import { YAMLException } from 'js-yaml';
 
 export function debug(message: any, ...args: any[]): void {

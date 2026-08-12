@@ -1,20 +1,20 @@
-import { State, Province, WorldMapWarning, WorldMapWarningSource, Region, StateCategory, Bookmark, BookmarkDate, WithCondition } from "../definitions";
-import { Enum, SchemaDef, CustomMap, DetailValue, Raw, convertNodeToJson } from "../../../hoiformat/schema";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { error } from "../../../util/debug";
-import { LoadResult, FolderLoader, FileLoader, mergeInLoadResult, sortItems, mergeRegion, convertColor, LoadResultOD } from "./common";
-import { Token } from "../../../hoiformat/hoiparser";
-import { arrayToMap, UserError } from "../../../util/common";
-import { DefaultMapLoader } from "./provincemap";
-import { localize } from "../../../util/i18n";
-import { LoaderSession, mergeInLoadResultUnique } from "../../../util/loader/loader";
-import { flatMap, isEqual } from "lodash";
-import { ResourceDefinitionLoader } from "./resource";
-import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkDate } from "./bookmarks";
-import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition } from "../../../hoiformat/condition";
-import { EffectComplexExpr, EffectItem, extractEffectValue } from "../../../hoiformat/effect";
-import { Scope } from "../../../hoiformat/scope";
-import { localisationIndex } from "../../../indexing/localisationindex";
+import { Bookmark, BookmarkDate, Province, Region, State, StateCategory, WithCondition, WorldMapWarning, WorldMapWarningSource } from '../definitions';
+import { convertNodeToJson, CustomMap, DetailValue, Enum, Raw, SchemaDef } from '../../../hoiformat/schema';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { error } from '../../../util/debug';
+import { convertColor, FileLoader, FolderLoader, LoadResult, LoadResultOD, mergeInLoadResult, mergeRegion, sortItems } from './common';
+import { Token } from '../../../hoiformat/hoiparser';
+import { arrayToMap, UserError } from '../../../util/common';
+import { DefaultMapLoader } from './provincemap';
+import { localize } from '../../../util/i18n';
+import { LoaderSession, mergeInLoadResultUnique } from '../../../util/loader/loader';
+import { flatMap, isEqual } from 'lodash';
+import { ResourceDefinitionLoader } from './resource';
+import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkDate } from './bookmarks';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition } from '../../../hoiformat/condition';
+import { EffectComplexExpr, EffectItem, extractEffectValue } from '../../../hoiformat/effect';
+import { Scope } from '../../../hoiformat/scope';
+import { localisationIndex } from '../../../indexing/localisationindex';
 
 interface StateFile {
     state: StateDefinition[];
@@ -44,38 +44,38 @@ interface StateHistory {
 const stateFileSchema: SchemaDef<StateFile> = {
     state: {
         _innerType: {
-            id: "number",
-            name: "string",
-            manpower: "number",
-            state_category: "string",
-            history: "raw",
-            provinces: "enum",
-            impassable: "boolean",
+            id: 'number',
+            name: 'string',
+            manpower: 'number',
+            state_category: 'string',
+            history: 'raw',
+            provinces: 'enum',
+            impassable: 'boolean',
             resources: {
-                _innerType: "number",
-                _type: "map",
+                _innerType: 'number',
+                _type: 'map',
             },
         },
-        _type: "array",
+        _type: 'array',
     },
 };
 
 const stateHistorySchema: SchemaDef<StateHistory> = {
-    owner: "string",
-    controller: "string",
+    owner: 'string',
+    controller: 'string',
     victory_points: {
-        _innerType: "enum",
-        _type: "array",
+        _innerType: 'enum',
+        _type: 'array',
     },
     add_core_of: {
-        _innerType: "string",
-        _type: "array",
+        _innerType: 'string',
+        _type: 'array',
     },
     add_claim_by: {
-        _innerType: "string",
-        _type: "array",
+        _innerType: 'string',
+        _type: 'array',
     },
-    set_demilitarized_zone: "boolean",
+    set_demilitarized_zone: 'boolean',
 };
 
 interface StateCategoryFile {
@@ -90,11 +90,11 @@ const stateCategoryFileSchema: SchemaDef<StateCategoryFile> = {
     state_categories: {
         _innerType: {
             color: {
-                _innerType: "enum",
-                _type: "detailvalue",
+                _innerType: 'enum',
+                _type: 'detailvalue',
             },
         },
-        _type: "map",
+        _type: 'map',
     },
 };
 
@@ -146,7 +146,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
                     warnings.push({
                         source: [{ type: 'state', id: i }],
                         relatedFiles: [ state.file ],
-                        text: localize('worldmap.warnings.statecategorynotexist', "State category of state {0} is not defined: {1}.", i, state.category),
+                        text: localize('worldmap.warnings.statecategorynotexist', 'State category of state {0} is not defined: {1}.', i, state.category),
                     });
                 } else {
                     state.categoryColor = stateCategories.result[state.category].color;
@@ -157,7 +157,7 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
                         warnings.push({
                             source: [{ type: 'state', id: i }],
                             relatedFiles: [ state.file ],
-                            text: localize('worldmap.warnings.resourcenotexist', "Resource {0} used in state {1} is not defined.", key, i),
+                            text: localize('worldmap.warnings.resourcenotexist', 'Resource {0} used in state {1} is not defined.', key, i),
                         });
                     }
                 }
@@ -317,7 +317,7 @@ function loadStateHistory(
 ): Pick<State, 'owner' | 'controller' | 'victoryPoints' | 'cores' | 'claimBy' | 'isDemilitarizedZone'> {
     const history = rawHistory?._raw ? convertNodeToJson<StateHistory>(rawHistory?._raw, stateHistorySchema) : undefined;
     const victoryPointsArray = history?.victory_points.filter(v => v._values.length >= 2).map(v => v._values.slice(0, 2).map(v => parseInt(v)) as [number, number]) ?? [];
-    const victoryPoints = arrayToMap(victoryPointsArray, "0", v => v[1]);
+    const victoryPoints = arrayToMap(victoryPointsArray, '0', v => v[1]);
     
     if (bookmarks.length === 0 || !rawHistory) {
         const defaultOwner = history?.owner;
@@ -337,7 +337,7 @@ function loadStateHistory(
 
     // to flatten the history items into a list of {date, effect, condition} and sort by date
     const scope: Scope = { scopeName: `State ${stateId}`, scopeType: 'state' };
-    const dateHistory = rawHistory?._raw ? convertNodeToJson<CustomMap<Raw>>(rawHistory?._raw, { _innerType: "raw", _type: "map" }) : undefined;
+    const dateHistory = rawHistory?._raw ? convertNodeToJson<CustomMap<Raw>>(rawHistory?._raw, { _innerType: 'raw', _type: 'map' }) : undefined;
     const dateHistoryEffects: { date: BookmarkDate, effects: { effect: EffectItem, condition: ConditionComplexExpr }[] }[] = [];
 
     const historyEffect = extractEffectValue(rawHistory?._raw.value, scope);

@@ -1,12 +1,12 @@
-import { Node, Token } from "../../hoiformat/hoiparser";
-import { HOIPartial, SchemaDef, Position, convertNodeToJson, positionSchema, Raw, CustomMap } from "../../hoiformat/schema";
-import { normalizeNumberLike } from "../../util/hoi4gui/common";
-import { flatten, chain } from 'lodash';
-import { ConditionItem, ConditionComplexExpr, extractConditionValues, extractConditionValue, extractConditionalExprs } from "../../hoiformat/condition";
-import { countryScope } from "../../hoiformat/scope";
-import { isFeatureEnabled } from "../../util/featureflags";
-import { randomString, Warning } from "../../util/common";
-import { localize } from "../../util/i18n";
+import { Node, Token } from '../../hoiformat/hoiparser';
+import { convertNodeToJson, CustomMap, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
+import { normalizeNumberLike } from '../../util/hoi4gui/common';
+import { chain, flatten } from 'lodash';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValue, extractConditionValues } from '../../hoiformat/condition';
+import { countryScope } from '../../hoiformat/scope';
+import { isFeatureEnabled } from '../../util/featureflags';
+import { randomString, Warning } from '../../util/common';
+import { localize } from '../../util/i18n';
 
 export interface FocusTree {
     id: string;
@@ -114,24 +114,24 @@ interface FocusFile {
 
 const focusOrORListSchema: SchemaDef<FocusOrORList> = {
     focus: {
-        _innerType: "string",
+        _innerType: 'string',
         _type: 'array',
     },
     OR: {
-        _innerType: "string",
+        _innerType: 'string',
         _type: 'array',
     },
 };
 
 const focusSchema: SchemaDef<FocusDef> = {
-    id: "string",
-    alternate_icon: "string",
+    id: 'string',
+    alternate_icon: 'string',
     icon: {
         _innerType: 'raw',
         _type: 'array',
     },
-    x: "raw",
-    y: "raw",
+    x: 'raw',
+    y: 'raw',
     prerequisite: {
         _innerType: focusOrORListSchema,
         _type: 'array',
@@ -140,15 +140,15 @@ const focusSchema: SchemaDef<FocusDef> = {
         _innerType: focusOrORListSchema,
         _type: 'array',
     },
-    relative_position_id: "string",
+    relative_position_id: 'string',
     allow_branch: {
         _innerType: 'raw',
         _type: 'array',
     },
     offset: {
         _innerType: {
-            x: "number",
-            y: "number",
+            x: 'number',
+            y: 'number',
             trigger: {
                 _innerType: 'raw',
                 _type: 'array',
@@ -156,15 +156,15 @@ const focusSchema: SchemaDef<FocusDef> = {
         },
         _type: 'array',
     },
-    text: "string",
-    overlay: "string",
+    text: 'string',
+    overlay: 'string',
 };
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
-    id: "string",
+    id: 'string',
     shared_focus: {
-        _innerType: "string",
-        _type: "array",
+        _innerType: 'string',
+        _type: 'array',
     },
     focus: {
         _innerType: focusSchema,
@@ -176,26 +176,26 @@ const focusTreeSchema: SchemaDef<FocusTreeDef> = {
 const focusFileSchema: SchemaDef<FocusFile> = {
     focus_tree: {
         _innerType: focusTreeSchema,
-        _type: "array",
+        _type: 'array',
     },
     shared_focus: {
         _innerType: focusSchema,
-        _type: "array",
+        _type: 'array',
     },
     joint_focus: {
         _innerType: focusSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 
 const focusIconSchema: SchemaDef<FocusIconDef> = {
-    trigger: "raw",
-    value: "string",
+    trigger: 'raw',
+    value: 'string',
 };
 
 const focusIconSchemaNew: SchemaDef<FocusIconDefNew> = {
-    _innerType: "raw",
-    _type: "map",
+    _innerType: 'raw',
+    _type: 'map',
 };
 
 export function convertFocusFileNodeToJson(node: Node, constants: {}): HOIPartial<FocusFile> {
@@ -323,8 +323,8 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         });
     }
 
-    const x = hoiFocus.x?._raw ? convertNodeToJson<number>(hoiFocus.x._raw, "number", constants) ?? 0 : 0;
-    const y = hoiFocus.y?._raw ? convertNodeToJson<number>(hoiFocus.y._raw, "number", constants) ?? 0 : 0;
+    const x = hoiFocus.x?._raw ? convertNodeToJson<number>(hoiFocus.x._raw, 'number', constants) ?? 0 : 0;
+    const y = hoiFocus.y?._raw ? convertNodeToJson<number>(hoiFocus.y._raw, 'number', constants) ?? 0 : 0;
     const relativePositionId = hoiFocus.relative_position_id;
 
     const exclusive = chain(hoiFocus.mutually_exclusive)

@@ -1,5 +1,5 @@
-import { Token } from "./hoiparser";
-import { NumberLike, SchemaDef, positionSchema, Position, StringIgnoreCase } from "./schema";
+import { Token } from './hoiparser';
+import { NumberLike, Position, positionSchema, SchemaDef, StringIgnoreCase } from './schema';
 
 export interface Size {
     width: NumberLike;
@@ -120,17 +120,17 @@ export interface GuiFile {
 }
 
 const sizeSchema: SchemaDef<Size> = {
-    width: "numberlike",
-    height: "numberlike",
-    x: "numberlike",
-    y: "numberlike",
+    width: 'numberlike',
+    height: 'numberlike',
+    x: 'numberlike',
+    y: 'numberlike',
 };
 
 const marginSchema: SchemaDef<Margin> = {
-    top: "numberlike",
-    left: "numberlike",
-    right: "numberlike",
-    bottom: "numberlike",
+    top: 'numberlike',
+    left: 'numberlike',
+    right: 'numberlike',
+    bottom: 'numberlike',
 };
 
 const complexSizeSchema: SchemaDef<ComplexSize> = {
@@ -139,104 +139,104 @@ const complexSizeSchema: SchemaDef<ComplexSize> = {
 };
 
 const backgroundSchema: SchemaDef<Background> = {
-    name: "string",
-    spritetype: "string",
-    quadtexturesprite: "string",
+    name: 'string',
+    spritetype: 'string',
+    quadtexturesprite: 'string',
     position: positionSchema,
 };
 
 const gridBoxTypeSchema: SchemaDef<GridBoxType> = {
-    name: "string",
-    orientation: "stringignorecase",
+    name: 'string',
+    orientation: 'stringignorecase',
     position: positionSchema,
     size: sizeSchema,
     slotsize: sizeSchema,
     background: backgroundSchema,
-    format: "stringignorecase",
+    format: 'stringignorecase',
 };
 
 const iconTypeSchema: SchemaDef<IconType> = {
-    name: "string",
-    orientation: "stringignorecase",
+    name: 'string',
+    orientation: 'stringignorecase',
     position: positionSchema,
     centerposition: 'boolean',
-    spritetype: "string",
-    quadtexturesprite: "string",
-    frame: "number",
-    scale: "number",
+    spritetype: 'string',
+    quadtexturesprite: 'string',
+    frame: 'number',
+    scale: 'number',
 };
 
 const instantTextBoxTypeSchema: SchemaDef<InstantTextBoxType> = {
-    name: "string",
-    orientation: "stringignorecase",
+    name: 'string',
+    orientation: 'stringignorecase',
     position: positionSchema,
     bordersize: positionSchema,
-    maxwidth: "numberlike",
-    maxheight: "numberlike",
-    format: "stringignorecase",
-    font: "string",
-    text: "string",
-    vertical_alignment: "string",
+    maxwidth: 'numberlike',
+    maxheight: 'numberlike',
+    format: 'stringignorecase',
+    font: 'string',
+    text: 'string',
+    vertical_alignment: 'string',
 };
 
 const buttonTypeSchema: SchemaDef<ButtonType> = {
-    name: "string",
-    spritetype: "string",
-    quadtexturesprite: "string",
+    name: 'string',
+    spritetype: 'string',
+    quadtexturesprite: 'string',
     position: positionSchema,
-    orientation: "stringignorecase",
-    frame: "number",
-    text: "string",
-    buttontext: "string",
-    buttonfont: "string",
-    scale: "number",
+    orientation: 'stringignorecase',
+    frame: 'number',
+    text: 'string',
+    buttontext: 'string',
+    buttonfont: 'string',
+    scale: 'number',
     centerposition: 'boolean',
 };
 
 const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {
-    name: "string",
-    fullscreen: "boolean",
-    orientation: "stringignorecase",
-    origo: "stringignorecase",
+    name: 'string',
+    fullscreen: 'boolean',
+    orientation: 'stringignorecase',
+    origo: 'stringignorecase',
     position: positionSchema,
     size: complexSizeSchema,
     margin: marginSchema,
     background: backgroundSchema,
     containerwindowtype: {
         _innerType: undefined as any,
-        _type: "array",
+        _type: 'array',
     },
     windowtype: {
         _innerType: undefined as any,
-        _type: "array",
+        _type: 'array',
     },
     gridboxtype: {
         _innerType: gridBoxTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     icontype: {
         _innerType: iconTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     instanttextboxtype: {
         _innerType: instantTextBoxTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     textboxtype: {
         _innerType: instantTextBoxTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     buttontype: {
         _innerType: buttonTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     checkboxtype: {
         _innerType: buttonTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     guibuttontype: {
         _innerType: buttonTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 
@@ -246,18 +246,18 @@ containerWindowTypeSchema.windowtype._innerType = containerWindowTypeSchema;
 const guiTypesSchema: SchemaDef<GuiTypes> = {
     containerwindowtype: {
         _innerType: containerWindowTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
     windowtype: {
         _innerType: containerWindowTypeSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 
 export const guiFileSchema: SchemaDef<GuiFile> = {
     guitypes: {
         _innerType: guiTypesSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 

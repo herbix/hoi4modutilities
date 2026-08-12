@@ -1,16 +1,16 @@
-import { Subscriber, toBehaviorSubject } from "../util/event";
-import { Loader, FEWorldMap } from "./loader";
-import { ViewPoint } from "./viewpoint";
-import { vscode } from "../util/vscode";
-import { WorldMapMessage, WorldMapWarning } from "../../src/previewdef/worldmap/definitions";
-import { feLocalize } from "../util/i18n";
-import { DivDropdown } from "../util/dropdown";
+import { Subscriber, toBehaviorSubject } from '../util/event';
+import { FEWorldMap, Loader } from './loader';
+import { ViewPoint } from './viewpoint';
+import { vscode } from '../util/vscode';
+import { WorldMapMessage, WorldMapWarning } from '../../src/previewdef/worldmap/definitions';
+import { feLocalize } from '../util/i18n';
+import { DivDropdown } from '../util/dropdown';
 import { BehaviorSubject, combineLatest, fromEvent } from 'rxjs';
 import { Renderer } from './renderer';
 import { sendEvent } from '../util/telemetry';
-import { getState, setState } from "../util/common";
-import { ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../../src/hoiformat/condition";
-import { distinctUntilChanged } from "rxjs/operators";
+import { getState, setState } from '../util/common';
+import { ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from '../../src/hoiformat/condition';
+import { distinctUntilChanged } from 'rxjs/operators';
 import { ViewMode } from './viewmode';
 import type { ViewModeControllers } from './viewmode';
 
@@ -109,7 +109,7 @@ export class TopBar extends Subscriber {
                 distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
             ).subscribe(this.updateWorkspaceState));
 
-        this.searchBox = document.getElementById("searchbox") as HTMLInputElement;
+        this.searchBox = document.getElementById('searchbox') as HTMLInputElement;
 
         this.loadControls();
         this.registerEventListeners(canvas);
@@ -217,7 +217,7 @@ export class TopBar extends Subscriber {
 
     private loadSearchBox() {
         const searchBox = this.searchBox;
-        const search = document.getElementById("search")!;
+        const search = document.getElementById('search')!;
         this.addSubscription(fromEvent<KeyboardEvent>(searchBox, 'keypress').subscribe((e) => {
             if (e.code === 'Enter') {
                 sendEvent('worldmap.search', { keypress: 'true' });
@@ -231,7 +231,7 @@ export class TopBar extends Subscriber {
     }
 
     private loadRefreshButton() {
-        const refresh = document.getElementById("refresh") as HTMLButtonElement;
+        const refresh = document.getElementById('refresh') as HTMLButtonElement;
         this.addSubscription(fromEvent(refresh, 'click').subscribe(() => {
             if (!refresh.disabled) {
                 sendEvent('worldmap.refresh');
@@ -249,7 +249,7 @@ export class TopBar extends Subscriber {
     }
 
     private loadOpenButton() {
-        const open = document.getElementById("open") as HTMLButtonElement;
+        const open = document.getElementById('open') as HTMLButtonElement;
         this.addSubscription(fromEvent(open, 'click').subscribe((e) => {
             e.stopPropagation();
             this.openMapItem();
@@ -264,7 +264,7 @@ export class TopBar extends Subscriber {
     }
 
     private loadExportButton() {
-        const exportButton = document.getElementById("export") as HTMLButtonElement;
+        const exportButton = document.getElementById('export') as HTMLButtonElement;
         exportButton.disabled = true;
         this.addSubscription(this.loader.worldMap$.subscribe(wm => {
             exportButton.disabled = !wm;
@@ -286,7 +286,7 @@ export class TopBar extends Subscriber {
 
             sendEvent('worldmap.export');
             const exportImageScale = message.scale ?? 1;
-            const canvas = document.createElement("canvas");
+            const canvas = document.createElement('canvas');
             canvas.width = Math.max(1, worldMap.width * exportImageScale);
             canvas.height = Math.max(1, worldMap.height * exportImageScale);
             const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: exportImageScale });

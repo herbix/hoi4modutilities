@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { matchPathEnd } from '../../util/nodecommon';
 import { PreviewProviderDef } from '../previewmanager';
-import { WorldMapContainer } from "./worldmapcontainer";
+import { WorldMapContainer } from './worldmapcontainer';
 
 export const worldMap = new WorldMapContainer();
 

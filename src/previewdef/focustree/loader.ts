@@ -1,10 +1,10 @@
-import { ContentLoader, LoadResultOD, Dependency, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
-import { convertFocusFileNodeToJson, FocusTree, getFocusTreeWithFocusFile } from "./schema";
-import { parseHoi4File } from "../../hoiformat/hoiparser";
-import { localize } from "../../util/i18n";
-import { uniq, flatten, chain } from "lodash";
-import { gfxIndex } from "../../indexing/gfxindex";
-import { sharedFocusIndex } from "../../indexing/sharedfocusindex";
+import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
+import { convertFocusFileNodeToJson, FocusTree, getFocusTreeWithFocusFile } from './schema';
+import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { localize } from '../../util/i18n';
+import { chain, flatten, uniq } from 'lodash';
+import { gfxIndex } from '../../indexing/gfxindex';
+import { sharedFocusIndex } from '../../indexing/sharedfocusindex';
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];

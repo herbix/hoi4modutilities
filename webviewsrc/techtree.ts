@@ -1,11 +1,11 @@
-import { chain, flatMap, flatten, min, sumBy } from "lodash";
-import { RenderedTechnologyFolder, RenderedTechnologyFolderGridBox, Technology, TechnologyTree } from "../src/previewdef/technology/schema";
-import { RenderCommonOptions } from "../src/util/hoi4gui/common";
-import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from "../src/util/hoi4gui/gridboxcommon";
-import { setState, getState, scrollToState, tryRun, subscribeRefreshButton, subscribeNavigators, arrayToMap, enableZoom, subscribePreviewLabelToggle, refreshPreviewLabelMode } from "./util/common";
-import { StyleTable } from "../src/util/styletable";
-import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from "../src/hoiformat/condition";
-import { DivDropdown } from "./util/dropdown";
+import { chain, flatMap, flatten, min, sumBy } from 'lodash';
+import { RenderedTechnologyFolder, RenderedTechnologyFolderGridBox, Technology, TechnologyTree } from '../src/previewdef/technology/schema';
+import { RenderCommonOptions } from '../src/util/hoi4gui/common';
+import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from '../src/util/hoi4gui/gridboxcommon';
+import { arrayToMap, enableZoom, getState, refreshPreviewLabelMode, scrollToState, setState, subscribeNavigators, subscribePreviewLabelToggle, subscribeRefreshButton, tryRun } from './util/common';
+import { StyleTable } from '../src/util/styletable';
+import { applyCondition, ConditionItem, conditionItemToStringValue, conditionToString, stringValueToConditionItem } from '../src/hoiformat/condition';
+import { DivDropdown } from './util/dropdown';
 const renderedTechFolders: Record<string, RenderedTechnologyFolder> = (window as any).renderedTechFolders;
 const technologyTrees: TechnologyTree[] = (window as any).technologyTrees;
 
@@ -49,7 +49,7 @@ async function renderTechnologyTreeGridBox(
     commonOptions: RenderCommonOptions,
     renderedFolder: RenderedTechnologyFolder,
 ): Promise<string> {
-    const xorJointKey = "#xorJoint#";
+    const xorJointKey = '#xorJoint#';
     const techMap = arrayToMap(tree.technologies, 'id');
     const technologiesInFolder = tree.technologies.filter(t => folder in t.folders);
     
@@ -78,16 +78,16 @@ async function renderTechnologyTreeGridBox(
         if (jointsItem) {
             const { nonXors, xorGroups } = jointsItem;
             leadsToTechs = nonXors;
-            connections.push(...xorGroups.map<GridBoxConnection>((_, i) => ({ target: xorJointKey + t.id + i, style: "1px solid #88aaff", targetType: "child" })));
+            connections.push(...xorGroups.map<GridBoxConnection>((_, i) => ({ target: xorJointKey + t.id + i, style: '1px solid #88aaff', targetType: 'child' })));
         } else {
             leadsToTechs = t.leadsToTechs.map(t => techMap[t]).filter(t => t !== undefined);
         }
 
         connections.push(...leadsToTechs.map<GridBoxConnection>(c => {
             if (c.leadsToTechs.includes(t.id)) {
-                return { target: c.id, style: "1px dashed #88aaff", targetType: "related" };
+                return { target: c.id, style: '1px dashed #88aaff', targetType: 'related' };
             }
-            return { target: c.id, style: "1px solid #88aaff", targetType: "child" };
+            return { target: c.id, style: '1px solid #88aaff', targetType: 'child' };
         }));
 
         return {
@@ -105,7 +105,7 @@ async function renderTechnologyTreeGridBox(
             gridY: (min(tl.map(t1 => t1.folders[folder].y)) ?? 0) - 1,
             isJoint: true,
             connections: tl.map<GridBoxConnection>(c => {
-                return { target: c.id, style: "1px solid red", targetType: "child" };
+                return { target: c.id, style: '1px solid red', targetType: 'child' };
             }),
         }))
     );

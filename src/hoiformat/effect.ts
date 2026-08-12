@@ -1,7 +1,7 @@
-import { ConditionComplexExpr, ConditionFolder, extractConditionFolder, simplifyCondition } from "./condition";
-import { Node, NodeValue } from "./hoiparser";
-import { Scope, tryMoveScope } from "./scope";
-import { nodeToString } from "./tostring";
+import { ConditionComplexExpr, ConditionFolder, extractConditionFolder, simplifyCondition } from './condition';
+import { Node, NodeValue } from './hoiparser';
+import { Scope, tryMoveScope } from './scope';
+import { nodeToString } from './tostring';
 
 export type EffectComplexExpr = EffectItem | EffectByCondition | RandomListEffect | null;
 

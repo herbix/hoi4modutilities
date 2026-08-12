@@ -1,8 +1,8 @@
-import { ConditionComplexExpr, ConditionItem, extractConditionValue, extractConditionValues } from "../../hoiformat/condition";
-import { Node, Token } from "../../hoiformat/hoiparser";
-import { CustomMap, Enum, HOIPartial, Raw, SchemaDef, convertNodeToJson } from "../../hoiformat/schema";
-import { Warning, randomString } from "../../util/common";
-import { localize } from "../../util/i18n";
+import { ConditionComplexExpr, ConditionItem, extractConditionValue, extractConditionValues } from '../../hoiformat/condition';
+import { Node, Token } from '../../hoiformat/hoiparser';
+import { convertNodeToJson, CustomMap, Enum, HOIPartial, Raw, SchemaDef } from '../../hoiformat/schema';
+import { randomString, Warning } from '../../util/common';
+import { localize } from '../../util/i18n';
 
 export interface Mio {
     id: string;
@@ -76,49 +76,49 @@ interface MioTraitDef {
 type MioFile = CustomMap<MioDef>;
 
 const mioTraitSchema: SchemaDef<MioTraitDef> = {
-    token: "string",
-    name: "string",
-    icon: "string",
-    any_parent: "enum",
-    all_parents: "enum",
+    token: 'string',
+    name: 'string',
+    icon: 'string',
+    any_parent: 'enum',
+    all_parents: 'enum',
     parent: {
-        traits: "enum",
-        num_parents_needed: "number",
+        traits: 'enum',
+        num_parents_needed: 'number',
     },
-    mutually_exclusive: "enum",
+    mutually_exclusive: 'enum',
     position: {
-        x: "number",
-        y: "number",
+        x: 'number',
+        y: 'number',
     },
-    relative_position_id: "string",
-    visible: "raw",
-    special_trait_background: "boolean",
-    equipment_bonus: "raw",
-    production_bonus: "raw",
-    organization_modifier: "raw",
+    relative_position_id: 'string',
+    visible: 'raw',
+    special_trait_background: 'boolean',
+    equipment_bonus: 'raw',
+    production_bonus: 'raw',
+    organization_modifier: 'raw',
 };
 
 const mioSchema: SchemaDef<MioDef> = {
-    name: "string",
-    include: "string",
+    name: 'string',
+    include: 'string',
     trait: {
         _innerType: mioTraitSchema,
-        _type: "array",
+        _type: 'array',
     },
     add_trait: {
         _innerType: mioTraitSchema,
-        _type: "array",
+        _type: 'array',
     },
     override_trait: {
         _innerType: mioTraitSchema,
-        _type: "array",
+        _type: 'array',
     },
-    remove_trait: "enum",
+    remove_trait: 'enum',
 };
 
 const mioFileSchema: SchemaDef<MioFile> = {
     _innerType: mioSchema,
-    _type: "map",
+    _type: 'map',
 };
 
 export function getMiosFromFile(node: Node, dependentMios: Mio[], filePath: string): Mio[] {

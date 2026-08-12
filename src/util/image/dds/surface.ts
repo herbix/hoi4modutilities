@@ -1,4 +1,4 @@
-import { PixelFormat, RawPixelFormat, CompressedPixelFormat, getBlockSize, CompressFormat, PixelValueType, ChannelFormat, pixelFormatToString } from "./pixelformat";
+import { ChannelFormat, CompressedPixelFormat, CompressFormat, getBlockSize, PixelFormat, pixelFormatToString, PixelValueType, RawPixelFormat } from './pixelformat';
 import { UserError } from '../../common';
 
 export class Surface {
@@ -27,14 +27,14 @@ export class Surface {
             throw new UserError("Can't get rgba from typeless pixel value");
         }
         if (valueType === PixelValueType.shardedexp) {
-            throw new UserError("Pixel value type shardedexp are not supported to get rgba");
+            throw new UserError('Pixel value type shardedexp are not supported to get rgba');
         }
         if (pixelFormat.channelLengthInPixel.some(l => l > 32)) {
-            throw new UserError("Some channel length larger than 32");
+            throw new UserError('Some channel length larger than 32');
         }
         if (valueType === PixelValueType.float) {
             if (pixelFormat.channelLengthInPixel.some(l => l !== 32) || pixelFormat.bitsPerPixel % 32 !== 0) {
-                throw new UserError("Pixel value type float supports only 32 bits channel and bitsPerPixel should be multiply of 32");
+                throw new UserError('Pixel value type float supports only 32 bits channel and bitsPerPixel should be multiply of 32');
             }
         }
         
@@ -118,7 +118,7 @@ export class Surface {
                     decompressDXT5(buffer, i, block);
                     break;
                 default:
-                    throw new UserError("Compress format not implemented yet: bc" + pixelFormat.compressFormat);
+                    throw new UserError('Compress format not implemented yet: bc' + pixelFormat.compressFormat);
             }
 
             const xBlock = k % blocksPerLine;

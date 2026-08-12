@@ -25,7 +25,7 @@ export function parseBmp(buffer: ArrayBufferLike, byteOffset: number): BMP {
     const bitsPerPixel = dibHeader.getUint16(7 << 1, true);
 
     if (height < 0) {
-        throw new UserError("Unsupported: Bmp height is negative");
+        throw new UserError('Unsupported: Bmp height is negative');
     }
 
     const bytesPerRow = ((width * bitsPerPixel + 7 >> 3) + 3) & 0xFFFFFFFC;

@@ -1,6 +1,6 @@
-import { DDSHeader, HEADER_LENGTH_INT, DDS_MAGIC, DDPF_FOURCC, DDSCAPS2_CUBEMAP, DDSCAPS2_VOLUME, DDSCAPS_MIPMAP, DDSCAPS2_CUBEMAP_POSITIVEX, DDSCAPS2_CUBEMAP_NEGATIVEX, DDSCAPS2_CUBEMAP_POSITIVEY, DDSCAPS2_CUBEMAP_NEGATIVEY, DDSCAPS2_CUBEMAP_POSITIVEZ, DDSCAPS2_CUBEMAP_NEGATIVEZ, DDSHeaderDXT10, FOURCC_DX10, HEADER_DXT10_LENGTH_INT, DDS_RESOURCE_MISC_TEXTURECUBE, ResourceDimension } from './typedef';
+import { DDPF_FOURCC, DDS_MAGIC, DDS_RESOURCE_MISC_TEXTURECUBE, DDSCAPS2_CUBEMAP, DDSCAPS2_CUBEMAP_NEGATIVEX, DDSCAPS2_CUBEMAP_NEGATIVEY, DDSCAPS2_CUBEMAP_NEGATIVEZ, DDSCAPS2_CUBEMAP_POSITIVEX, DDSCAPS2_CUBEMAP_POSITIVEY, DDSCAPS2_CUBEMAP_POSITIVEZ, DDSCAPS2_VOLUME, DDSCAPS_MIPMAP, DDSHeader, DDSHeaderDXT10, FOURCC_DX10, HEADER_DXT10_LENGTH_INT, HEADER_LENGTH_INT, ResourceDimension } from './typedef';
 import { Surface } from './surface';
-import { convertPixelFormat, PixelFormat, getImageSizeInBytes } from './pixelformat';
+import { convertPixelFormat, getImageSizeInBytes, PixelFormat } from './pixelformat';
 import { UserError } from '../../common';
 
 export class DDS {
@@ -46,12 +46,12 @@ export class DDS {
         let images: Surface[];
         if (cubeMap) {
             const cubeMaps: string[] = [];
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEX) { cubeMaps.push("X+"); }
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEX) { cubeMaps.push("X-"); }
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEY) { cubeMaps.push("Y+"); }
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEY) { cubeMaps.push("Y-"); }
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEZ) { cubeMaps.push("Z+"); }
-            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEZ) { cubeMaps.push("Z-"); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEX) { cubeMaps.push('X+'); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEX) { cubeMaps.push('X-'); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEY) { cubeMaps.push('Y+'); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEY) { cubeMaps.push('Y-'); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_POSITIVEZ) { cubeMaps.push('Z+'); }
+            if (header.dwCaps2 & DDSCAPS2_CUBEMAP_NEGATIVEZ) { cubeMaps.push('Z-'); }
 
             [images] = parseCubeMap(buffer, offset, pixelFormat, header.dwWidth, header.dwHeight, cubeMaps, mipmapCount);
         } else if (volume) {
@@ -77,7 +77,7 @@ export class DDS {
         let offset = byteOffset + (HEADER_LENGTH_INT + HEADER_DXT10_LENGTH_INT) * 4;
 
         const allImages: Surface[] = [];
-        const cubeMaps: string[] = ["X+", "X-", "Y+", "Y-", "Z+", "Z-"];
+        const cubeMaps: string[] = ['X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-'];
         const arraySize = dxt10Header.arraySize;
         const height = dxt10Header.resourceDimension === ResourceDimension.DDS_DIMENSION_TEXTURE1D ? 1 : header.dwHeight;
 
@@ -133,7 +133,7 @@ function extractDxt10Header(dxt10HeaderArray: Int32Array): DDSHeaderDXT10 {
 function parseTexture(buffer: ArrayBufferLike, offset: number, pixelFormat: PixelFormat, width: number, height: number, mipmapCount: number): [Surface[], number] {
     const result: Surface[] = [];
 
-    offset = pushSurface(result, buffer, offset, width, height, pixelFormat, "Main image");
+    offset = pushSurface(result, buffer, offset, width, height, pixelFormat, 'Main image');
     for (let i = 0; i < mipmapCount; i++) {
         width = Math.max(1, Math.floor(width / 2));
         height = Math.max(1, Math.floor(height / 2));

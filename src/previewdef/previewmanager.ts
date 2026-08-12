@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { focusTreePreviewDef } from './focustree';
 import { localize } from '../util/i18n';
 import { gfxPreviewDef } from './gfx';
-import { Commands, WebviewType, ContextName } from '../constants';
+import { Commands, ContextName, WebviewType } from '../constants';
 import { technologyPreviewDef } from './technology';
 import { matchPathEnd } from '../util/nodecommon';
 import { arrayToMap, debounceByInput } from '../util/common';
@@ -145,7 +145,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
 
         if (document === undefined) {
             if (requestUri === undefined) {
-                vscode.window.showErrorMessage(localize('preview.noactivedoc', "No active document."));
+                vscode.window.showErrorMessage(localize('preview.noactivedoc', 'No active document.'));
             } else {
                 vscode.window.showErrorMessage(localize('preview.cantfinddoc', "Can't find opened document {0}.", requestUri?.toString()));
             }
@@ -184,7 +184,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         const filename = basename(uri);
         panel = panel ?? vscode.window.createWebviewPanel(
             WebviewType.Preview,
-            localize('preview.viewtitle', "HOI4: {0}", filename),
+            localize('preview.viewtitle', 'HOI4: {0}', filename),
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true

@@ -1,9 +1,9 @@
-import { ContentLoader, LoadResultOD, Dependency, LoaderSession, mergeInLoadResult } from "../../util/loader/loader";
-import { parseHoi4File } from "../../hoiformat/hoiparser";
-import { localize } from "../../util/i18n";
-import { uniq, flatten, chain, flatMap } from "lodash";
-import { Mio, getMiosFromFile } from "./schema";
-import { gfxIndex } from "../../indexing/gfxindex";
+import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
+import { parseHoi4File } from '../../hoiformat/hoiparser';
+import { localize } from '../../util/i18n';
+import { chain, flatMap, flatten, uniq } from 'lodash';
+import { getMiosFromFile, Mio } from './schema';
+import { gfxIndex } from '../../indexing/gfxindex';
 
 export interface MioLoaderResult {
     mios: Mio[];

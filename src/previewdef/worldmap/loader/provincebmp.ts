@@ -1,12 +1,12 @@
-import { UserError } from "../../../util/common";
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { BMP, parseBmp } from "../../../util/image/bmp/bmpparser";
-import { LoaderSession } from "../../../util/loader/loader";
-import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from "../definitions";
-import { mergeRegions } from "../graphutils";
-import { FileLoader, LoadResult, LoadResultOD, pointEqual } from "./common";
-import { DefinesLoader } from "./defines";
+import { UserError } from '../../../util/common';
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { BMP, parseBmp } from '../../../util/image/bmp/bmpparser';
+import { LoaderSession } from '../../../util/loader/loader';
+import { Point, ProgressReporter, ProvinceBmp, ProvinceEdgeGraph, ProvinceGraph, Region, WorldMapWarning, Zone } from '../definitions';
+import { mergeRegions } from '../graphutils';
+import { FileLoader, LoadResult, LoadResultOD, pointEqual } from './common';
+import { DefinesLoader } from './defines';
 
 export class ProvinceBmpLoader extends FileLoader<ProvinceBmp> {
     private definesLoader = new DefinesLoader();

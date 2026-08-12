@@ -135,7 +135,7 @@ class Hoi4UtilsFsProvider implements vscode.FileSystemProvider, vscode.Disposabl
 
         const installPath = getConfiguration().installPath;
         if (installPath === '') {
-            throw new UserError("Install path of Heart of Iron IV is not set.");
+            throw new UserError('Install path of Heart of Iron IV is not set.');
         }
 
         return installPathContainer.current = vscode.Uri.file(installPath);

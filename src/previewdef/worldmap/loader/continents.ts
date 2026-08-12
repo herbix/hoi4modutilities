@@ -1,8 +1,8 @@
-import { Enum } from "../../../hoiformat/schema";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { ProgressReporter } from "../definitions";
-import { FileLoader, LoadResultOD } from "./common";
+import { Enum } from '../../../hoiformat/schema';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { ProgressReporter } from '../definitions';
+import { FileLoader, LoadResultOD } from './common';
 
 export class ContinentsLoader extends FileLoader<string[]> {
     protected async loadFromFile(): Promise<LoadResultOD<string[]>> {

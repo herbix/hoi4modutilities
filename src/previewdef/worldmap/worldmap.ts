@@ -1,18 +1,18 @@
 import * as vscode from 'vscode';
 import worldmapview from './worldmapview.html';
 import worldmapviewstyles from './worldmapview.css';
-import { localize, localizeText, i18nTableAsScript } from '../../util/i18n';
+import { i18nTableAsScript, localize, localizeText } from '../../util/i18n';
 import { html } from '../../util/html';
-import { error, debug } from '../../util/debug';
-import { WorldMapMessage, ProgressReporter, WorldMapData, MapItemMessage, RequestMapItemMessage, OpenFileMessage } from './definitions';
+import { debug, error } from '../../util/debug';
+import { MapItemMessage, OpenFileMessage, ProgressReporter, RequestMapItemMessage, WorldMapData, WorldMapMessage } from './definitions';
 import { matchPathEnd } from '../../util/nodecommon';
-import { writeFile, mkdirs, getDocumentByUri, dirUri, showQuickPickAnyString } from '../../util/vsccommon';
-import { slice, debounceByInput, forceError } from '../../util/common';
+import { dirUri, getDocumentByUri, mkdirs, showQuickPickAnyString, writeFile } from '../../util/vsccommon';
+import { debounceByInput, forceError, slice } from '../../util/common';
 import { getFilePathFromMod, getHoiOpenedFileOriginalUri, readFileFromModOrHOI4 } from '../../util/fileloader';
 import { WorldMapLoader } from './loader/worldmaploader';
 import { isEqual } from 'lodash';
 import { LoaderSession } from '../../util/loader/loader';
-import { TelemetryMessage, sendByMessage } from '../../util/telemetry';
+import { sendByMessage, TelemetryMessage } from '../../util/telemetry';
 import { getConfiguration } from '../../util/vsccommon';
 import { contextContainer } from '../../context';
 

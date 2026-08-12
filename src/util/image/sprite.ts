@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { PNG } from "pngjs";
-import { NumberPosition } from "../common";
+import { PNG } from 'pngjs';
+import { NumberPosition } from '../common';
 
 export class Image {
     private cachedUri: string | undefined = undefined;

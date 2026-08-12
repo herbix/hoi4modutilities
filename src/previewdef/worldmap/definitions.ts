@@ -1,6 +1,6 @@
-import { ConditionComplexExpr, ConditionItem } from "../../hoiformat/condition";
-import { Token } from "../../hoiformat/hoiparser";
-import { Warning } from "../../util/common";
+import { ConditionComplexExpr, ConditionItem } from '../../hoiformat/condition';
+import { Token } from '../../hoiformat/hoiparser';
+import { Warning } from '../../util/common';
 
 export interface WorldMapData {
     width: number;

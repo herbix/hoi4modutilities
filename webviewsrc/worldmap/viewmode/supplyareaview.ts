@@ -2,7 +2,7 @@ import { BehaviorSubject } from 'rxjs';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, SupplyArea, WorldMapMessage } from '../definitions';
 import type { FEWorldMap } from '../loader';
-import type { Renderer, RenderContext } from '../renderer';
+import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';

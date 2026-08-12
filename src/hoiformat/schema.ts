@@ -1,4 +1,4 @@
-import { Node, Token, NodeValue, SymbolNode } from "./hoiparser";
+import { Node, NodeValue, SymbolNode, Token } from './hoiparser';
 
 //#region Common
 export interface TokenObject {
@@ -77,8 +77,8 @@ export interface Position {
 }
 
 export const positionSchema: SchemaDef<Position> = {
-    x: "numberlike",
-    y: "numberlike",
+    x: 'numberlike',
+    y: 'numberlike',
 };
 //#endregion
 

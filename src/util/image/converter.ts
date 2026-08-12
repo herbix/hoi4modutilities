@@ -1,5 +1,5 @@
-import { DDS } from "./dds";
-import { PNG } from "pngjs";
+import { DDS } from './dds';
+import { PNG } from 'pngjs';
 import { UserError } from '../common';
 const TGA = require('tga') as typeof import('tga');
 

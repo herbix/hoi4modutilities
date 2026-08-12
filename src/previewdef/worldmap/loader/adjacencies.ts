@@ -1,7 +1,7 @@
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { Point, ProgressReporter, ProvinceEdgeAdjacency, WorldMapWarning } from "../definitions";
-import { FileLoader, LoadResultOD } from "./common";
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { Point, ProgressReporter, ProvinceEdgeAdjacency, WorldMapWarning } from '../definitions';
+import { FileLoader, LoadResultOD } from './common';
 
 export class AdjacenciesLoader extends FileLoader<ProvinceEdgeAdjacency[]> {
     protected async loadFromFile(): Promise<LoadResultOD<ProvinceEdgeAdjacency[]>> {

@@ -1,16 +1,16 @@
-import { Enum, SchemaDef } from "../../../hoiformat/schema";
-import { StrategicRegion, WorldMapWarning, Province, WorldMapWarningSource, State, Terrain, Region } from "../definitions";
-import { DefaultMapLoader } from "./provincemap";
-import { FolderLoader, FileLoader, LoadResult, mergeInLoadResult, sortItems, mergeRegion, LoadResultOD } from "./common";
-import { readFileFromModOrHOI4AsJson } from "../../../util/fileloader";
-import { error } from "../../../util/debug";
-import { localize } from "../../../util/i18n";
-import { StatesLoader } from "./states";
-import { arrayToMap, UserError } from "../../../util/common";
-import { Token } from "../../../hoiformat/hoiparser";
-import { LoaderSession } from "../../../util/loader/loader";
-import { flatMap } from "lodash";
-import { localisationIndex } from "../../../indexing/localisationindex";
+import { Enum, SchemaDef } from '../../../hoiformat/schema';
+import { Province, Region, State, StrategicRegion, Terrain, WorldMapWarning, WorldMapWarningSource } from '../definitions';
+import { DefaultMapLoader } from './provincemap';
+import { FileLoader, FolderLoader, LoadResult, LoadResultOD, mergeInLoadResult, mergeRegion, sortItems } from './common';
+import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { error } from '../../../util/debug';
+import { localize } from '../../../util/i18n';
+import { StatesLoader } from './states';
+import { arrayToMap, UserError } from '../../../util/common';
+import { Token } from '../../../hoiformat/hoiparser';
+import { LoaderSession } from '../../../util/loader/loader';
+import { flatMap } from 'lodash';
+import { localisationIndex } from '../../../indexing/localisationindex';
 
 interface StrategicRegionFile {
     strategic_region: StrategicRegionDefinition[];
@@ -27,12 +27,12 @@ interface StrategicRegionDefinition {
 const strategicRegionFileSchema: SchemaDef<StrategicRegionFile> = {
     strategic_region: {
         _innerType: {
-            id: "number",
-            name: "string",
-            provinces: "enum",
-            naval_terrain: "string",
+            id: 'number',
+            name: 'string',
+            provinces: 'enum',
+            naval_terrain: 'string',
         },
-        _type: "array",
+        _type: 'array',
     },
 };
 

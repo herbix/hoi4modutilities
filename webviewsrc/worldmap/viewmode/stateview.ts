@@ -3,7 +3,7 @@ import { LabelFontSize } from '../definitions';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, State, WorldMapMessage } from '../definitions';
 import type { FEWorldMap } from '../loader';
-import type { Renderer, RenderContext } from '../renderer';
+import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';

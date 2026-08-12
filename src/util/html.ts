@@ -16,7 +16,7 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
         if (typeof script === 'string') {
             const uri = contextContainer.current ?
                 webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/' + script)) :
-                "";
+                '';
             return [
                 `<script src="${uri}"></script>`,
                 '',
@@ -53,7 +53,7 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
             } else {
                 const uri = contextContainer.current ?
                     webview.asWebviewUri(vscode.Uri.joinPath(contextContainer.current.extensionUri, 'static/' + style)) :
-                    "";
+                    '';
                 return [
                     `<link rel="stylesheet" href="${uri}"/>`,
                     ''
@@ -84,11 +84,11 @@ export function html(webview: vscode.Webview, body: string, scripts: (string | D
 
 export function htmlEscape(unsafe: string): string {
     return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;")
-         .replace(/\n/g, "&#13;")
-         .replace(/ /g, "&nbsp;");
+         .replace(/&/g, '&amp;')
+         .replace(/</g, '&lt;')
+         .replace(/>/g, '&gt;')
+         .replace(/"/g, '&quot;')
+         .replace(/'/g, '&#039;')
+         .replace(/\n/g, '&#13;')
+         .replace(/ /g, '&nbsp;');
 }

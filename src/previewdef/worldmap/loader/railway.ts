@@ -1,14 +1,14 @@
-import { readFileFromModOrHOI4 } from "../../../util/fileloader";
-import { localize } from "../../../util/i18n";
-import { LoaderSession } from "../../../util/loader/loader";
-import { Province, Railway, SupplyNode, WorldMapWarning } from "../definitions";
-import { FileLoader, LoadResult, LoadResultOD } from "./common";
-import { DefaultMapLoader } from "./provincemap";
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
+import { localize } from '../../../util/i18n';
+import { LoaderSession } from '../../../util/loader/loader';
+import { Province, Railway, SupplyNode, WorldMapWarning } from '../definitions';
+import { FileLoader, LoadResult, LoadResultOD } from './common';
+import { DefaultMapLoader } from './provincemap';
 
 type RailwayLoaderResult = { railways: Railway[]; };
 export class RailwayLoader extends FileLoader<RailwayLoaderResult> {
     constructor(private defaultMapLoader: DefaultMapLoader) {
-        super("map/railways.txt");
+        super('map/railways.txt');
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
@@ -86,7 +86,7 @@ function validateRailways(provinces: (Province | null | undefined)[], file: stri
 type SupplyNodeLoaderResult = { supplyNodes: SupplyNode[]; };
 export class SupplyNodeLoader extends FileLoader<SupplyNodeLoaderResult> {
     constructor(private defaultMapLoader: DefaultMapLoader) {
-        super("map/supply_nodes.txt");
+        super('map/supply_nodes.txt');
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {

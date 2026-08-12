@@ -1,7 +1,7 @@
-import { Subscriber } from "../util/event";
-import { FEWorldMap } from "./loader";
-import { Zone, Point } from "./definitions";
-import { zoneCenter } from "../../src/previewdef/worldmap/graphutils";
+import { Subscriber } from '../util/event';
+import { FEWorldMap } from './loader';
+import { Point, Zone } from './definitions';
+import { zoneCenter } from '../../src/previewdef/worldmap/graphutils';
 import { BehaviorSubject, fromEvent, Observable } from 'rxjs';
 
 type ViewPointObj = { x: number; y: number; scale: number; };

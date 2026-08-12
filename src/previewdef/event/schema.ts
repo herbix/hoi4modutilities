@@ -1,8 +1,8 @@
-import { Node, Token } from "../../hoiformat/hoiparser";
-import { Raw, SchemaDef, convertNodeToJson, HOIPartial, isSymbolNode, NumberLike } from "../../hoiformat/schema";
-import { extractEffectValue, EffectItem, EffectComplexExpr } from "../../hoiformat/effect";
-import { Scope, ScopeType } from "../../hoiformat/scope";
-import { uniqBy } from "lodash";
+import { Node, Token } from '../../hoiformat/hoiparser';
+import { convertNodeToJson, HOIPartial, isSymbolNode, NumberLike, Raw, SchemaDef } from '../../hoiformat/schema';
+import { EffectComplexExpr, EffectItem, extractEffectValue } from '../../hoiformat/effect';
+import { Scope, ScopeType } from '../../hoiformat/scope';
+import { uniqBy } from 'lodash';
 
 export interface HOIEvents {
     eventItemsByNamespace: Record<string, HOIEvent[]>;
@@ -91,68 +91,68 @@ interface EventEffectDef {
 }
 
 const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
-    name: "string",
-    trigger: "raw",
-    ai_chance: "string",
-    original_recipient_only: "boolean",
+    name: 'string',
+    trigger: 'raw',
+    ai_chance: 'string',
+    original_recipient_only: 'boolean',
 };
 
 const eventDefSchema: SchemaDef<EventDef> = {
-    id: "string",
-    title: "string",
-    picture: "string",
-    is_triggered_only: "boolean",
-    major: "boolean",
-    hidden: "boolean",
-    fire_only_once: "boolean",
+    id: 'string',
+    title: 'string',
+    picture: 'string',
+    is_triggered_only: 'boolean',
+    major: 'boolean',
+    hidden: 'boolean',
+    fire_only_once: 'boolean',
     mean_time_to_happen: {
-        base: "number",
-        factor: "number",
-        days: "number",
-        months: "number",
-        years: "number",
+        base: 'number',
+        factor: 'number',
+        days: 'number',
+        months: 'number',
+        years: 'number',
     },
     option: {
-        _innerType: "raw",
-        _type: "array",
+        _innerType: 'raw',
+        _type: 'array',
     },
-    immediate: "raw",
+    immediate: 'raw',
 };
 
 const eventFileSchema: SchemaDef<EventFile> = {
     add_namespace: {
-        _innerType: "string",
-        _type: "array",
+        _innerType: 'string',
+        _type: 'array',
     },
     country_event: {
         _innerType: eventDefSchema,
-        _type: "array",
+        _type: 'array',
     },
     news_event: {
         _innerType: eventDefSchema,
-        _type: "array",
+        _type: 'array',
     },
     unit_leader_event: {
         _innerType: eventDefSchema,
-        _type: "array",
+        _type: 'array',
     },
     state_event: {
         _innerType: eventDefSchema,
-        _type: "array",
+        _type: 'array',
     },
     operative_leader_event: {
         _innerType: eventDefSchema,
-        _type: "array",
+        _type: 'array',
     },
 };
 
 const eventEffectDefSchema: SchemaDef<EventEffectDef> = {
-    id: "string",
-    days: "number",
-    hours: "number",
-    random: "number",
-    random_hours: "number",
-    random_days: "number",
+    id: 'string',
+    days: 'number',
+    hours: 'number',
+    random: 'number',
+    random_hours: 'number',
+    random_days: 'number',
 };
 
 export function getEvents(node: Node, filePath: string): HOIEvents {

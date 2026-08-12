@@ -5,14 +5,14 @@ import { HOIPartial, parseNumberLike, toNumberLike, toStringAsSymbolIgnoreCase }
 import { arrayToMap, forceError } from '../../util/common';
 import { debug } from '../../util/debug';
 import { getHeight, getWidth } from '../../util/hoi4gui/common';
-import { RenderContainerWindowOptions, renderContainerWindow } from '../../util/hoi4gui/containerwindow';
+import { renderContainerWindow, RenderContainerWindowOptions } from '../../util/hoi4gui/containerwindow';
 import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { getSpriteByGfxName } from '../../util/image/imagecache';
 import { LoaderSession } from '../../util/loader/loader';
-import { StyleTable, normalizeForStyle } from '../../util/styletable';
-import { GuiFileLoader, GuiFileLoaderResult } from "./loader";
+import { normalizeForStyle, StyleTable } from '../../util/styletable';
+import { GuiFileLoader, GuiFileLoaderResult } from './loader';
 import { featureFlagsAsScript } from '../../util/featureflags';
 
 export async function renderGuiFile(loader: GuiFileLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
