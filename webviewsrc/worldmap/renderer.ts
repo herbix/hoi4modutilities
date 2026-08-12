@@ -380,8 +380,10 @@ export class Renderer extends Subscriber {
                     getColorByColorSet(colorSet, province, worldMap, renderContext);
                 context.fillStyle = toColor(getHighConstrastColor(provinceColor));
                 const labelPosition = province.centerOfMass;
-                if (province.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
-                    context.fillText(province.localisedName, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
+                const stateObject = worldMap.getStateByProvinceId(province.id);
+                const vp = stateObject?.victoryPoints[province.id];
+                if (vp !== undefined && province.localisedName && topBar.display.selectedValues$.value.includes('localisedlabel')) {
+                    context.fillText(`${province.localisedName} (${vp})`, viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) - fontSize / 2);
                     context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y) + fontSize / 2);
                 } else {
                     context.fillText(province.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));

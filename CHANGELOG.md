@@ -4,6 +4,18 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Release candidate]
+
+### Added
+* Add country view mode to world map (#145) (Co-contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add scale selection when exporting world map (#146) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add demilitarized zone display option in world map (#118) (#143).
+* Add localised name for provinces.
+* Double-clicking a province now opens the province definition file in editor.
+
+### Fixed
+* Fix a bug that effect resolving doesn't keep order. This may affect resolving owner/controller in world map.
+
 ## [0.15.3] - 2026/08/05 - Latest
 
 ### Fixed
