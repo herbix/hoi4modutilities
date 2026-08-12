@@ -4,7 +4,7 @@ export function parseLocalisationYaml(content: string, file?: string): any {
     content = preprocessYamlContent(content, file);
 
     // set "json: true" to allow duplicate keys
-    return yaml.safeLoad(content, { schema: yaml.JSON_SCHEMA, json: true });
+    return yaml.load(content, { schema: yaml.JSON_SCHEMA, json: true });
 }
 
 function preprocessYamlContent(fileContent: string, file?: string): string {
