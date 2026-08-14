@@ -525,27 +525,26 @@ export class Renderer extends Subscriber {
         overwriteRenderPrecision?: number
     ): void {
         scale = scale ?? viewPoint.scale;
-        const renderPrecisionBase = 2;
+        const renderPrecisionBase = 1;
         const renderPrecision = 
             scale < 1 ? Math.pow(2, Math.floor(Math.log2((1 / scale))) + (overwriteRenderPrecision !== undefined ? 0 : renderPrecisionBase)) :
             overwriteRenderPrecision ?? (scale <= renderPrecisionBase ? Math.pow(2, renderPrecisionBase + 1 - Math.round(scale)) : 1);
         const renderPrecisionMask = renderPrecision - 1;
         const renderPrecisionOffset = (renderPrecision - 1) / 2;
         for (const zone of province.coverZones) {
-            if (zone.w < renderPrecision) {
-                if ((zone.x & renderPrecisionMask) === 0 && (zone.y & renderPrecisionMask) === 0) {
-                    context.fillRect(
-                        viewPoint.convertX(zone.x + xOffset - renderPrecisionOffset),
-                        viewPoint.convertY(zone.y - renderPrecisionOffset),
-                        renderPrecision * scale,
-                        renderPrecision * scale);
-                }
-            } else {
+            let { x, y, w, h } = zone;
+            let r = x + w, b = y + h;
+            x = ((x - 1) & ~renderPrecisionMask) + 1;
+            y = ((y - 1) & ~renderPrecisionMask) + 1;
+            r = ((r - 1) & ~renderPrecisionMask) + 1;
+            b = ((b - 1) & ~renderPrecisionMask) + 1;
+
+            if (x < r && y < b) {
                 context.fillRect(
-                    viewPoint.convertX(zone.x + xOffset - renderPrecisionOffset),
-                    viewPoint.convertY(zone.y - renderPrecisionOffset),
-                    zone.w * scale,
-                    zone.h * scale);
+                    viewPoint.convertX(x + xOffset + renderPrecisionOffset),
+                    viewPoint.convertY(y + renderPrecisionOffset),
+                    (r - x) * scale,
+                    (b - y) * scale);
             }
         }
     }

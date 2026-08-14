@@ -113,7 +113,8 @@ ul.select-dropdown li {
 
 ul.select-dropdown li:hover, ul.select-dropdown li:focus {
     outline: none;
-    background: var(--vscode-list-focusBackground);
+    background: var(--vscode-list-focusBackground, var(--vscode-list-activeSelectionBackground));
+    color: var(--vscode-list-focusForeground, var(--vscode-list-activeSelectionForeground));
 }
 
 input[type=checkbox].hidden {

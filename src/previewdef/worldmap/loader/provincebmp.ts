@@ -185,6 +185,7 @@ function fillProvinceZones<T extends ColorContainer>(
     }
 
     for (const provinceWithoutRegion of provinces) {
+        provinceWithoutRegion.coverZones = simplifyZones(provinceWithoutRegion.coverZones);
         const province = Object.assign(provinceWithoutRegion, mergeRegions(provinceWithoutRegion.coverZones, width));
         if (province.mass <= minimumProvinceSize) {
             const { x, y } = getProvinceWarningPosition(province.coverZones);
@@ -207,6 +208,56 @@ function fillProvinceZones<T extends ColorContainer>(
     }
 
     return provinces as (T & ProvinceZoneDef)[];
+}
+
+function simplifyZones(zones: Zone[]): Zone[] {
+    const result = new Set<Zone>();
+
+    const leftEdges = new Map<string, Zone>();
+    const rightEdges = new Map<string, Zone>();
+    const topEdges = new Map<string, Zone>();
+    const bottomEdges = new Map<string, Zone>();
+    const horizontalKey = (x: number, y: number, h: number) => `${x},${y},${h}`;
+    const verticalKey = (x: number, y: number, w: number) => `${x},${y},${w}`;
+
+    const addZone = (zone: Zone) => {
+        leftEdges.set(horizontalKey(zone.x, zone.y, zone.h), zone);
+        rightEdges.set(horizontalKey(zone.x + zone.w, zone.y, zone.h), zone);
+        topEdges.set(verticalKey(zone.x, zone.y, zone.w), zone);
+        bottomEdges.set(verticalKey(zone.x, zone.y + zone.h, zone.w), zone);
+        result.add(zone);
+    };
+
+    const removeZone = (zone: Zone) => {
+        leftEdges.delete(horizontalKey(zone.x, zone.y, zone.h));
+        rightEdges.delete(horizontalKey(zone.x + zone.w, zone.y, zone.h));
+        topEdges.delete(verticalKey(zone.x, zone.y, zone.w));
+        bottomEdges.delete(verticalKey(zone.x, zone.y + zone.h, zone.w));
+        result.delete(zone);
+    };
+
+    for (const source of zones) {
+        const zone = { ...source };
+        let adjacent: Zone | undefined;
+
+        while ((adjacent = rightEdges.get(horizontalKey(zone.x, zone.y, zone.h))) !== undefined ||
+            (adjacent = leftEdges.get(horizontalKey(zone.x + zone.w, zone.y, zone.h))) !== undefined ||
+            (adjacent = bottomEdges.get(verticalKey(zone.x, zone.y, zone.w))) !== undefined ||
+            (adjacent = topEdges.get(verticalKey(zone.x, zone.y + zone.h, zone.w))) !== undefined) {
+            removeZone(adjacent);
+
+            const right = Math.max(zone.x + zone.w, adjacent.x + adjacent.w);
+            const bottom = Math.max(zone.y + zone.h, adjacent.y + adjacent.h);
+            zone.x = Math.min(zone.x, adjacent.x);
+            zone.y = Math.min(zone.y, adjacent.y);
+            zone.w = right - zone.x;
+            zone.h = bottom - zone.y;
+        }
+
+        addZone(zone);
+    }
+
+    return Array.from(result);
 }
 
 function getProvinceWarningPosition(coverZones: Zone[]): Point {

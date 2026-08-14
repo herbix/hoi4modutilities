@@ -69,12 +69,22 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * GUI of focus tree and MIO can't be configured like technology tree.
 * Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.15.3]
+## Release Notes - [0.16.0]
+
+### Added
+* Add country view mode to world map (#145) (Co-contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add scale selection when exporting world map (#146) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add demilitarized zone display option in world map (#118) (#143).
+* Add localised name for provinces.
+* Double-clicking a province now opens the province definition file in editor (#148).
+* Add `claim_by` information to state tooltip in world map (#142).
 
 ### Fixed
-* Reading from file system sometimes triggers "EFILE: too many open files".
-* In tech tree preview sometimes an unexpected folder is selected.
-* `integrated_dlc` was not read when loading DLC content.
+* Fix a bug that effect resolving doesn't keep order. This may affect resolving owner/controller in world map.
+* Dropdown in preview ui doesn't show hover item.
+
+### Updated
+* Speed up province rendering in world map preview.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).
