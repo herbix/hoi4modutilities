@@ -1,7 +1,6 @@
 import type { BehaviorSubject } from 'rxjs';
-import { applyCondition } from '../../../src/hoiformat/condition';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
-import { LabelFontSize, Point, Province, ProvinceEdge, Region, State, StrategicRegion, SupplyArea, WithCondition } from '../definitions';
+import { LabelFontSize, Point, Province, ProvinceEdge, Region, State, StrategicRegion, SupplyArea } from '../definitions';
 import type { FEWorldMap } from '../loader';
 import { Renderer } from '../renderer';
 import type { RenderContext } from '../renderer';

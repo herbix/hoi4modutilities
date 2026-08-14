@@ -88,6 +88,9 @@ export class TopBar extends Subscriber {
         }
 
         if (state.display) {
+            if (!workspaceState.displayDict) {
+                state.display = [...state.display, 'demilitarizedzone'];
+            }
             this.display.selectedValues$.next(state.display);
         } else if (workspaceState.displayDict) {
             this.display.selectedValues$.next(displayOptions.filter(option => workspaceState.displayDict![option] ?? true));
