@@ -174,7 +174,6 @@ input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.chec
 
 .toolbar-outer {
     position: fixed;
-    padding-top: 10px;
     padding-left: 20px;
     width: 100%;
     top: 0;
@@ -186,6 +185,9 @@ input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.chec
 
 .toolbar {
     display: flex;
+    position: relative;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 .toolbar > * {

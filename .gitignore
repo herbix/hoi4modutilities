@@ -12,3 +12,5 @@ out/
 Plan.md
 .vscode-test-web
 /docs/superpowers/
+/docs/featureplan/
+.VSCodeCounter/
