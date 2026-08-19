@@ -29,27 +29,41 @@ function showBranch(visibility: boolean, optionClass: string) {
     }
 };
 
+let currentSearchContent = '';
+let selectedSearchFilters: string[] = getState().selectedSearchFilters ?? [];
+
 function search(searchContent: string, navigate: boolean = true) {
+    currentSearchContent = searchContent.toLocaleLowerCase();
     const focuses = document.getElementsByClassName('focus');
     const searchedFocus: HTMLDivElement[] = [];
     let navigated = false;
     for (let i = 0; i < focuses.length; i++) {
         const focus = focuses[i] as HTMLDivElement;
-        if (searchContent && focus.id.toLowerCase().replace(/^focus_/, '').includes(searchContent)) {
-            focus.style.outline = '1px solid #E33';
-            focus.style.background = 'rgba(255, 0, 0, 0.5)';
+        if (currentSearchContent && focus.id.toLocaleLowerCase().replace(/^focus_/, '').includes(currentSearchContent)) {
             if (navigate && !navigated) {
                 focus.scrollIntoView({ block: 'center', inline: 'center' });
                 navigated = true;
             }
             searchedFocus.push(focus);
-        } else {
-            focus.style.outlineWidth = '0';
-            focus.style.background = 'transparent';
         }
     }
 
+    refreshFocusHighlights();
+
     return searchedFocus;
+}
+
+function refreshFocusHighlights(): void {
+    const focusTree = focusTrees[selectedFocusTreeIndex];
+    for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
+        const focusId = focusElement.id.replace(/^focus_/, '');
+        const matchesSearch = !!currentSearchContent && focusId.toLocaleLowerCase().includes(currentSearchContent);
+        const matchesFilter = selectedSearchFilters.length > 0 &&
+            focusTree.focuses[focusId]?.searchFilters.some(filter => selectedSearchFilters.includes(filter));
+        focusElement.style.outline = matchesSearch ? '1px solid #E33' : matchesFilter ? '2px solid #FC3' : '';
+        focusElement.style.background = matchesSearch ? 'rgba(255, 0, 0, 0.5)' :
+            matchesFilter ? 'rgba(255, 192, 0, 0.35)' : 'transparent';
+    }
 }
 
 const useConditionInFocus: boolean = (window as any).__featureflags.useConditionInFocus;
@@ -114,6 +128,7 @@ async function buildContent() {
     setupCheckedFocuses(focuses, focusTree);
     setupFocusDragging(focuses);
     refreshFocusSelection();
+    refreshFocusHighlights();
 }
 
 function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Record<string, boolean>) {
@@ -200,6 +215,51 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     if (clearCondition) {
         selectedFocusIds = [];
         setState({ selectedFocusIds });
+    }
+
+    updateFocusFilterControls();
+}
+
+function updateFocusFilterControls(): void {
+    const focusTree = focusTrees[selectedFocusTreeIndex];
+    const availableFilters = new Set(Object.values(focusTree.focuses).flatMap(focus => focus.searchFilters));
+    selectedSearchFilters = selectedSearchFilters.filter(filter => availableFilters.has(filter));
+    setState({ selectedSearchFilters });
+
+    let visibleButtonCount = 0;
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('.focus-filter'))) {
+        const filter = button.dataset.focusFilter ?? '';
+        button.hidden = !availableFilters.has(filter);
+        if (!button.hidden) {
+            visibleButtonCount++;
+        }
+        const selected = selectedSearchFilters.includes(filter);
+        button.setAttribute('aria-pressed', selected.toString());
+    }
+
+    const container = document.getElementById('focus-filter-container') as HTMLDivElement | null;
+    if (container) {
+        container.style.display = visibleButtonCount > 0 ? 'flex' : 'none';
+    }
+    refreshFocusHighlights();
+}
+
+function setupFocusFilterControls(): void {
+    for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('.focus-filter'))) {
+        button.addEventListener('click', () => {
+            const filter = button.dataset.focusFilter;
+            if (!filter) {
+                return;
+            }
+
+            if (selectedSearchFilters.includes(filter)) {
+                selectedSearchFilters = selectedSearchFilters.filter(selected => selected !== filter);
+            } else {
+                selectedSearchFilters.push(filter);
+            }
+            setState({ selectedSearchFilters });
+            updateFocusFilterControls();
+        });
     }
 }
 
@@ -585,6 +645,7 @@ let retriggerSearch: () => void = () => {};
 window.addEventListener('load', tryRun(async function() {
     subscribePreviewLabelToggle();
     setupFocusBoxSelection();
+    setupFocusFilterControls();
 
     // Focuses
     const focusesElement = document.getElementById('focuses') as HTMLSelectElement | null;
@@ -696,5 +757,6 @@ window.addEventListener('load', tryRun(async function() {
     
     updateSelectedFocusTree(false);
     await buildContent();
+    retriggerSearch();
     scrollToState();
 }));
