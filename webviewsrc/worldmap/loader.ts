@@ -74,6 +74,9 @@ export class Loader extends Subscriber {
     private loadingProvinceMap: WorldMapData & { provincesCount: number; statesCount: number; countriesCount: number; } | undefined;
     private loadingQueue: WorldMapMessage[] = [];
     private loadingQueueStartLength = 0;
+    private countryLabelsWorldMap: FEWorldMapClass | undefined;
+    private countryLabelsPromise: Promise<void> | undefined;
+    private resolveCountryLabels: (() => void) | undefined;
 
     constructor() {
         super();
@@ -83,10 +86,25 @@ export class Loader extends Subscriber {
     }
 
     public refresh() {
+        this.resolveCountryLabels?.();
+        this.countryLabelsWorldMap = undefined;
+        this.countryLabelsPromise = undefined;
+        this.resolveCountryLabels = undefined;
         this.worldMap = new FEWorldMapClass();
         this.writableWorldMap$.next(this.worldMap);
         vscode.postMessage({ command: 'loaded', force: true } as WorldMapMessage);
         this.loading$.next(true);
+    }
+
+    public requestCountryLabels(): Promise<void> {
+        if (this.countryLabelsWorldMap === this.worldMap && this.countryLabelsPromise) {
+            return this.countryLabelsPromise;
+        }
+
+        this.countryLabelsWorldMap = this.worldMap;
+        this.countryLabelsPromise = new Promise(resolve => this.resolveCountryLabels = resolve);
+        vscode.postMessage({ command: 'requestcountrylabels' } as WorldMapMessage);
+        return this.countryLabelsPromise;
     }
 
     private load() {
@@ -112,6 +130,18 @@ export class Loader extends Subscriber {
                 case 'countries':
                     this.receiveData(this.loadingProvinceMap?.countries, message.start, message.end, message.data);
                     this.loadNext();
+                    break;
+                case 'countrylabels':
+                    if (this.countryLabelsWorldMap === this.worldMap) {
+                        const countryNames = message.data.countryNames;
+                        for (const country of this.worldMap.countries) {
+                            country.localisedName = countryNames[country.tag] ?? country.localisedName;
+                        }
+                        this.worldMap.mapFont = message.data.mapFont;
+                        this.writableWorldMap$.next(this.worldMap);
+                    }
+                    this.resolveCountryLabels?.();
+                    this.resolveCountryLabels = undefined;
                     break;
                 case 'strategicregions':
                     this.receiveData(this.loadingProvinceMap?.strategicRegions, message.start, message.end, message.data);

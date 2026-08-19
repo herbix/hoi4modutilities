@@ -174,7 +174,6 @@ export interface Country {
     tag: string;
     localisedName: string | undefined;
     color: number;
-    localisedName: string | undefined;
     file: string;
 }
 
@@ -192,6 +191,11 @@ export interface MapFontGlyph {
     xOffset: number;
     yOffset: number;
     xAdvance: number;
+}
+
+export interface CountryLabelsData {
+    countryNames: Record<string, string>;
+    mapFont: MapFont | undefined;
 }
 
 export interface Terrain {
@@ -265,7 +269,9 @@ export interface TokenInFile {
     token: Token | null;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage | SaveStateMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage |
+    ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage | SaveStateMessage | RequestCountryLabelsMessage |
+    CountryLabelsMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
@@ -276,6 +282,15 @@ export interface RequestMapItemMessage {
     command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions' | 'requestsupplyareas' | 'requestrailways' | 'requestsupplynodes';
     start: number;
     end: number;
+}
+
+export interface RequestCountryLabelsMessage {
+    command: 'requestcountrylabels';
+}
+
+export interface CountryLabelsMessage {
+    command: 'countrylabels';
+    data: CountryLabelsData;
 }
 
 export interface MapItemMessage {

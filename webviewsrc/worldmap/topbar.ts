@@ -18,12 +18,14 @@ export { ViewMode } from './viewmode';
 export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'owner' | 'controller' | 'stateid' | 'manpower' |
     'victorypoint' | 'continent' | 'warnings' | 'strategicregionid' | 'supplyareaid' | 'supplyvalue' | 'resources' | 'statecategory';
 type WarningFilter = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'river';
-type DisplayOption = 'edge' | 'localisedlabel' | 'label' | 'tooltip' | 'supply' | 'river' | 'demilitarizedzone' | 'mousehighlight' | 'fastrending' | 'adaptzooming';
+type DisplayOption = 'edge' | 'localisedlabel' | 'label' | 'countryname' | 'tooltip' | 'supply' | 'river' |
+    'demilitarizedzone' | 'mousehighlight' | 'fastrending' | 'adaptzooming';
 
 export const topBarHeight = 40;
 
 const displayOptions: DisplayOption[] = [
-    'edge', 'localisedlabel', 'label', 'tooltip', 'supply', 'river', 'demilitarizedzone', 'mousehighlight', 'fastrending', 'adaptzooming'
+    'edge', 'localisedlabel', 'label', 'countryname', 'tooltip', 'supply', 'river', 'demilitarizedzone', 'mousehighlight',
+    'fastrending', 'adaptzooming'
 ];
 
 interface WorkspaceState {
@@ -93,12 +95,13 @@ export class TopBar extends Subscriber {
             }
             this.display.selectedValues$.next(state.display);
         } else if (workspaceState.displayDict) {
-            this.display.selectedValues$.next(displayOptions.filter(option => workspaceState.displayDict![option] ?? true));
+            this.display.selectedValues$.next(displayOptions.filter(option =>
+                workspaceState.displayDict![option] ?? option !== 'countryname'));
         } else if (workspaceState.display) {
             // patch for old workspace state that used array instead of dict
             this.display.selectedValues$.next([...workspaceState.display, 'demilitarizedzone']);
         } else {
-            this.display.selectAll();
+            this.display.selectedValues$.next(displayOptions.filter(option => option !== 'countryname'));
         }
 
         this.addSubscription(
@@ -276,7 +279,7 @@ export class TopBar extends Subscriber {
             e.stopPropagation();
             vscode.postMessage<WorldMapMessage>({ command: 'requestexportmap' });
         }));
-        this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {
+        this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(async event => {
             const message = event.data as WorldMapMessage;
             if (message.command !== 'requestexportmap') {
                 return;
@@ -293,6 +296,10 @@ export class TopBar extends Subscriber {
             canvas.width = Math.max(1, worldMap.width * exportImageScale);
             canvas.height = Math.max(1, worldMap.height * exportImageScale);
             const viewPoint = new ViewPoint(canvas, this.loader, 0, { x: 0, y: 0, scale: exportImageScale });
+            if (this.colorSet$.value === 'owner' && this.display.selectedValues$.value.includes('countryname')) {
+                await this.loader.requestCountryLabels();
+                await Renderer.prepareCountryLabels(this.loader.worldMap.mapFont);
+            }
             Renderer.renderMapImpl(canvas, this, viewPoint, worldMap, { preciseEdge: true, overwriteRenderPrecision: 1 });
             vscode.postMessage<WorldMapMessage>({ command: 'exportmap', dataUrl: canvas.toDataURL() });
         }));

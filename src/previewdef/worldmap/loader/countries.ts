@@ -1,5 +1,5 @@
 import { CustomMap, DetailValue, Enum, HOIPartial, SchemaDef } from '../../../hoiformat/schema';
-import { Country } from '../definitions';
+import { Country, CountryLabelsData } from '../definitions';
 import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
 import { error } from '../../../util/debug';
 import { convertColor, FileLoader, FolderLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult } from './common';
@@ -9,6 +9,7 @@ import { flatMap } from 'lodash';
 import { localisationIndex } from '../../../indexing/localisationindex';
 import * as path from 'path';
 import { findCountryLocalisedName, getCountryLocalisationKeys } from './countrylocalisation';
+import { loadMapFont } from './mapfont';
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -90,21 +91,17 @@ export class CountriesLoader extends Loader<Country[]> {
     private countryTagsLoader: CountryTagsLoader;
     private countryLoaders: Record<string, CountryLoader> = {};
     private colorsLoader: ColorsLoader;
-    private countryHistoryLoader: CountryHistoryLoader;
 
     constructor() {
         super();
         this.countryTagsLoader = new CountryTagsLoader();
         this.colorsLoader = new ColorsLoader();
-        this.countryHistoryLoader = new CountryHistoryLoader();
         this.countryTagsLoader.onProgress(e => this.onProgressEmitter.fire(e));
         this.colorsLoader.onProgress(e => this.onProgressEmitter.fire(e));
-        this.countryHistoryLoader.onProgress(e => this.onProgressEmitter.fire(e));
     }
 
     public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
-        if (await this.countryTagsLoader.shouldReload(session) || await this.colorsLoader.shouldReload(session)
-            || await this.countryHistoryLoader.shouldReload(session)) {
+        if (await this.countryTagsLoader.shouldReload(session) || await this.colorsLoader.shouldReload(session)) {
             return true;
         }
 
@@ -135,14 +132,12 @@ export class CountriesLoader extends Loader<Country[]> {
 
         const countriesResult = await Promise.all(countryResultPromises);
         const colorsFileResult = await this.colorsLoader.load(session);
-        const countryHistoryResult = await this.countryHistoryLoader.load(session);
 
         const countries = countriesResult.map(r => r.result).filter((c): c is Country => c !== undefined);
 
         applyColorFromColorTxt(countries, colorsFileResult.result);
-        applyLocalisedNames(countries, countryHistoryResult.result);
 
-        const allResults = [tagsResult, colorsFileResult, countryHistoryResult, ...countriesResult];
+        const allResults = [tagsResult, colorsFileResult, ...countriesResult];
 
         return {
             result: countries,
@@ -157,6 +152,48 @@ export class CountriesLoader extends Loader<Country[]> {
 
     public toString() {
         return '[CountriesLoader]';
+    }
+}
+
+export class CountryLabelsLoader extends Loader<CountryLabelsData> {
+    private countryHistoryLoader = new CountryHistoryLoader();
+
+    constructor(private countriesLoader: CountriesLoader) {
+        super();
+        this.countryHistoryLoader.onProgress(e => this.onProgressEmitter.fire(e));
+    }
+
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await this.countriesLoader.shouldReload(session) || await this.countryHistoryLoader.shouldReload(session);
+    }
+
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<CountryLabelsData>> {
+        const countriesResult = await this.countriesLoader.load(session);
+        session.throwIfCancelled();
+        const countryHistoryResult = await this.countryHistoryLoader.load(session);
+        session.throwIfCancelled();
+
+        const countries = countriesResult.result.map(country => ({ ...country }));
+        applyLocalisedNames(countries, countryHistoryResult.result);
+        const mapFontResult = await loadMapFont(countries.map(country => country.localisedName)
+            .filter((name): name is string => !!name));
+        session.throwIfCancelled();
+
+        const results = [countriesResult, countryHistoryResult, mapFontResult];
+        return {
+            result: {
+                countryNames: Object.fromEntries(countries
+                    .filter((country): country is Country & { localisedName: string } => !!country.localisedName)
+                    .map(country => [country.tag, country.localisedName])),
+                mapFont: mapFontResult.result,
+            },
+            dependencies: mergeInLoadResult(results, 'dependencies'),
+            warnings: mergeInLoadResult(results, 'warnings'),
+        };
+    }
+
+    public toString() {
+        return '[CountryLabelsLoader]';
     }
 }
 
@@ -283,7 +320,6 @@ async function loadCountry(tag: string, countryFile: string): Promise<Country | 
 
         return {
             tag,
-            localisedName: undefined,
             color: convertColor(data.color),
             localisedName: localisationIndex.get(tag)?.value,
             file: countryFile,
@@ -329,7 +365,7 @@ function applyLocalisedNames(countries: Country[], countryHistories: CountryHist
     for (const country of countries) {
         const history = histories.get(country.tag);
         const keys = getCountryLocalisationKeys(country.tag, history?.rulingParty, history?.cosmeticTag, autonomies.get(country.tag));
-        country.localisedName = findCountryLocalisedName(keys, key => localisationIndex.getLocalisedText(key));
+        country.localisedName = findCountryLocalisedName(keys, key => localisationIndex.getLocalisedText(key)) ?? country.localisedName;
     }
 }
 

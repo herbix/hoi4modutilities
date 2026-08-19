@@ -12,12 +12,21 @@ import { distinctUntilChanged } from 'rxjs/operators';
 import { ConditionItem } from '../../src/hoiformat/condition';
 import type { ViewModeControllers } from './viewmode';
 import { solveWithCondition } from './common';
-import { calculateCountryLabels, CountryLabel, CountryLabelRegion } from './countrylabels';
+import type { CountryLabel, CountryLabelRegion } from './countrylabels';
 
 const landWarning = 0xE02020;
 const landNoWarning = 0x7FFF7F;
 const waterWarning = 0xC00000;
 const waterNoWarning = 0x20E020;
+
+interface WebpackRequire extends NodeRequire {
+    ensure(
+        dependencies: string[],
+        callback: (require: NodeRequire) => void,
+        errorCallback?: (error: Error) => void,
+        chunkName?: string,
+    ): void;
+}
 
 export interface RenderContext {
     topBar: TopBar;
@@ -49,10 +58,15 @@ export class Renderer extends Subscriber {
     
     private cursorX = 0;
     private cursorY = 0;
+    private countryLabelsWorldMap: FEWorldMap | undefined;
+    private countryLabelModulePreparation: Promise<void> | undefined;
+    private countryLabelDataPreparation: Promise<void> | undefined;
 
     private static mapFontImages = new Map<string, HTMLImageElement>();
-    private static loadingMapFonts = new Set<string>();
+    private static mapFontImagePromises = new Map<string, Promise<void>>();
     private static countryLabelsCache = new WeakMap<FEWorldMap, { conditions: string, labels: CountryLabel[] }>();
+    private static countryLabelCalculator: typeof import('./countrylabels')['calculateCountryLabels'] | undefined;
+    private static countryLabelModulePromise: Promise<void> | undefined;
 
     constructor(
         private mainCanvas: HTMLCanvasElement,
@@ -73,8 +87,7 @@ export class Renderer extends Subscriber {
         this.registerCanvasEventHandlers();
         this.resizeCanvas();
 
-        this.addSubscription(loader.worldMap$.subscribe(this.reloadImages));
-        this.addSubscription(loader.worldMap$.subscribe(() => this.renderCanvas()));
+        this.addSubscription(loader.worldMap$.subscribe(this.onWorldMapChanged));
         this.addSubscription(
             combineLatest([
                 loader.progress$,
@@ -97,20 +110,52 @@ export class Renderer extends Subscriber {
         }));
     }
 
-    private reloadImages = () => {
-        const mapFont = this.loader.worldMap.mapFont;
-        if (mapFont && !Renderer.mapFontImages.has(mapFont.imageUri) && !Renderer.loadingMapFonts.has(mapFont.imageUri)) {
-            Renderer.loadingMapFonts.add(mapFont.imageUri);
-            const image = new Image();
-            image.onload = () => {
-                Renderer.loadingMapFonts.delete(mapFont.imageUri);
-                Renderer.mapFontImages.set(mapFont.imageUri, image);
-                this.renderCanvas(true);
-            };
-            image.onerror = () => Renderer.loadingMapFonts.delete(mapFont.imageUri);
-            image.src = mapFont.imageUri;
+    private onWorldMapChanged = (worldMap: FEWorldMap) => {
+        Renderer.countryLabelsCache.delete(worldMap);
+        if (this.countryLabelsWorldMap !== worldMap) {
+            this.countryLabelsWorldMap = worldMap;
+            this.countryLabelDataPreparation = undefined;
         }
+        this.renderCanvas();
     };
+
+    public static async prepareCountryLabels(mapFont?: MapFont): Promise<void> {
+        if (!Renderer.countryLabelCalculator) {
+            Renderer.countryLabelModulePromise ??= new Promise((resolve, reject) => {
+                (require as WebpackRequire).ensure(['./countrylabels'], localRequire => {
+                    const module = localRequire('./countrylabels') as typeof import('./countrylabels');
+                    Renderer.countryLabelCalculator = module.calculateCountryLabels;
+                    resolve();
+                }, reject, 'countrylabels');
+            });
+            await Renderer.countryLabelModulePromise;
+        }
+
+        if (mapFont && !Renderer.mapFontImages.has(mapFont.imageUri)) {
+            let promise = Renderer.mapFontImagePromises.get(mapFont.imageUri);
+            if (!promise) {
+                promise = new Promise(resolve => {
+                    const image = new Image();
+                    image.onload = () => {
+                        Renderer.mapFontImages.set(mapFont.imageUri, image);
+                        resolve();
+                    };
+                    image.onerror = () => resolve();
+                    image.src = mapFont.imageUri;
+                });
+                Renderer.mapFontImagePromises.set(mapFont.imageUri, promise);
+            }
+            await promise;
+        }
+    }
+
+    private prepareCountryLabels(): void {
+        this.countryLabelModulePreparation ??= Renderer.prepareCountryLabels().then(() => this.renderCanvas(true));
+        this.countryLabelDataPreparation ??= this.loader.requestCountryLabels()
+            .then(() => Renderer.prepareCountryLabels(this.loader.worldMap.mapFont))
+            .then(() => this.renderCanvas(true));
+    }
+
     public renderCanvas(forceDrawMap: boolean = false): void {
         if (this.canvasWidth <= 0 && this.canvasHeight <= 0) {
             return;
@@ -166,6 +211,10 @@ export class Renderer extends Subscriber {
             demilitarizedZoneVisible: displayOptions.includes('demilitarizedzone'),
             ...this.viewPoint.toJson(),
         };
+
+        if (!this.loader.loading$.value && Renderer.isCountryNameVisible(this.topBar)) {
+            this.prepareCountryLabels();
+        }
 
         // State not changed
         if (!force && this.oldMapState !== undefined && Object.keys(newMapState).every(k => this.oldMapState[k] === (newMapState as any)[k])) {
@@ -369,6 +418,11 @@ export class Renderer extends Subscriber {
     }
 
     private static createCountryLabels(worldMap: FEWorldMap, renderContext: RenderContext): CountryLabel[] {
+        const calculateCountryLabels = Renderer.countryLabelCalculator;
+        if (!calculateCountryLabels) {
+            return [];
+        }
+
         const conditions = JSON.stringify(renderContext.topBar.selectedConditions$.value);
         const cached = Renderer.countryLabelsCache.get(worldMap);
         if (cached?.conditions === conditions) {
