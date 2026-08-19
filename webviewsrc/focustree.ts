@@ -30,7 +30,7 @@ function showBranch(visibility: boolean, optionClass: string) {
 };
 
 let currentSearchContent = '';
-let selectedSearchFilters: string[] = getState().selectedSearchFilters ?? [];
+let selectedSearchFilter: string | undefined = getState().selectedSearchFilter;
 
 function search(searchContent: string, navigate: boolean = true) {
     currentSearchContent = searchContent.toLocaleLowerCase();
@@ -58,8 +58,8 @@ function refreshFocusHighlights(): void {
     for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
         const focusId = focusElement.id.replace(/^focus_/, '');
         const matchesSearch = !!currentSearchContent && focusId.toLocaleLowerCase().includes(currentSearchContent);
-        const matchesFilter = selectedSearchFilters.length > 0 &&
-            focusTree.focuses[focusId]?.searchFilters.some(filter => selectedSearchFilters.includes(filter));
+        const matchesFilter = selectedSearchFilter !== undefined &&
+            focusTree.focuses[focusId]?.searchFilters.includes(selectedSearchFilter);
         focusElement.style.outline = matchesSearch ? '1px solid #E33' : matchesFilter ? '2px solid #FC3' : '';
         focusElement.style.background = matchesSearch ? 'rgba(255, 0, 0, 0.5)' :
             matchesFilter ? 'rgba(255, 192, 0, 0.35)' : 'transparent';
@@ -223,8 +223,10 @@ function updateSelectedFocusTree(clearCondition: boolean) {
 function updateFocusFilterControls(): void {
     const focusTree = focusTrees[selectedFocusTreeIndex];
     const availableFilters = new Set(Object.values(focusTree.focuses).flatMap(focus => focus.searchFilters));
-    selectedSearchFilters = selectedSearchFilters.filter(filter => availableFilters.has(filter));
-    setState({ selectedSearchFilters });
+    if (selectedSearchFilter && !availableFilters.has(selectedSearchFilter)) {
+        selectedSearchFilter = undefined;
+    }
+    setState({ selectedSearchFilter });
 
     let visibleButtonCount = 0;
     for (const button of Array.from(document.querySelectorAll<HTMLButtonElement>('.focus-filter'))) {
@@ -233,7 +235,7 @@ function updateFocusFilterControls(): void {
         if (!button.hidden) {
             visibleButtonCount++;
         }
-        const selected = selectedSearchFilters.includes(filter);
+        const selected = selectedSearchFilter === filter;
         button.setAttribute('aria-pressed', selected.toString());
     }
 
@@ -252,12 +254,7 @@ function setupFocusFilterControls(): void {
                 return;
             }
 
-            if (selectedSearchFilters.includes(filter)) {
-                selectedSearchFilters = selectedSearchFilters.filter(selected => selected !== filter);
-            } else {
-                selectedSearchFilters.push(filter);
-            }
-            setState({ selectedSearchFilters });
+            selectedSearchFilter = selectedSearchFilter === filter ? undefined : filter;
             updateFocusFilterControls();
         });
     }
