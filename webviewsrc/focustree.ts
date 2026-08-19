@@ -33,13 +33,13 @@ let currentSearchContent = '';
 let selectedSearchFilter: string | undefined = getState().selectedSearchFilter;
 
 function search(searchContent: string, navigate: boolean = true) {
-    currentSearchContent = searchContent.toLocaleLowerCase();
+    currentSearchContent = searchContent.toLowerCase();
     const focuses = document.getElementsByClassName('focus');
     const searchedFocus: HTMLDivElement[] = [];
     let navigated = false;
     for (let i = 0; i < focuses.length; i++) {
         const focus = focuses[i] as HTMLDivElement;
-        if (currentSearchContent && focus.id.toLocaleLowerCase().replace(/^focus_/, '').includes(currentSearchContent)) {
+        if (currentSearchContent && focus.id.toLowerCase().replace(/^focus_/, '').includes(currentSearchContent)) {
             if (navigate && !navigated) {
                 focus.scrollIntoView({ block: 'center', inline: 'center' });
                 navigated = true;
@@ -57,7 +57,7 @@ function refreshFocusHighlights(): void {
     const focusTree = focusTrees[selectedFocusTreeIndex];
     for (const focusElement of Array.from(document.querySelectorAll<HTMLDivElement>('.focus'))) {
         const focusId = focusElement.id.replace(/^focus_/, '');
-        const matchesSearch = !!currentSearchContent && focusId.toLocaleLowerCase().includes(currentSearchContent);
+        const matchesSearch = !!currentSearchContent && focusId.toLowerCase().includes(currentSearchContent);
         const matchesFilter = selectedSearchFilter !== undefined &&
             focusTree.focuses[focusId]?.searchFilters.includes(selectedSearchFilter);
         focusElement.style.outline = matchesSearch ? '1px solid #E33' : matchesFilter ? '2px solid #FC3' : '';

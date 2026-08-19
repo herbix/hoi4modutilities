@@ -174,7 +174,6 @@ async function renderFocusFilterControls(focusTrees: FocusTree[], styleTable: St
             max-width: calc(100vw - 20px);
             padding: 4px;
             background: rgba(32, 32, 32, 0.75);
-            z-index: 1;
         `)}">${buttons.join('')}</div>`;
 }
 
