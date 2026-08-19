@@ -194,6 +194,16 @@ input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.chec
     flex-shrink: 0;
 }
 
+.toolbar-row {
+    display: flex;
+    flex-direction: row;
+    margin: 5px 0;
+}
+
+.toolbar-row > * {
+    flex-shrink: 0;
+}
+
 button {
     background: transparent;
     border: none;

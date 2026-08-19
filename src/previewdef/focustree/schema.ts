@@ -1,5 +1,5 @@
 import { Node, Token } from '../../hoiformat/hoiparser';
-import { convertNodeToJson, CustomMap, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
+import { convertNodeToJson, CustomMap, Enum, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
 import { normalizeNumberLike } from '../../util/hoi4gui/common';
 import { chain, flatten } from 'lodash';
 import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValue, extractConditionValues } from '../../hoiformat/condition';
@@ -16,6 +16,7 @@ export interface FocusTree {
     isSharedFocues: boolean;
     continuousFocusPositionX?: number;
     continuousFocusPositionY?: number;
+    searchFilters: string[];
     warnings: FocusWarning[];
 }
 
@@ -38,6 +39,7 @@ export interface Focus {
     offset: Offset[];
     text: string | undefined;
     overlay: string | undefined;
+    searchFilters: string[];
     token: Token | undefined;
     xToken: Token | undefined;
     yToken: Token | undefined;
@@ -84,8 +86,9 @@ interface FocusDef {
     allow_branch: Raw[]; /* FIXME not symbol node */
     offset: OffsetDef[];
     _token: Token;
-    text?: string;
-    overlay?: string;
+    text: string;
+    overlay: string;
+    search_filters: Enum;
 }
 
 interface FocusIconDef {
@@ -158,6 +161,7 @@ const focusSchema: SchemaDef<FocusDef> = {
     },
     text: 'string',
     overlay: 'string',
+    search_filters: 'enum',
 };
 
 const focusTreeSchema: SchemaDef<FocusTreeDef> = {
@@ -215,6 +219,7 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
             allowBranchOptions: getAllowBranchOptions(focuses),
             conditionExprs,
             isSharedFocues: true,
+            searchFilters: chain(focuses).flatMap(f => f.searchFilters).uniq().value(),
             warnings,
         };
         focusTrees.push(sharedFocusTree);
@@ -245,6 +250,7 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
             continuousFocusPositionY: normalizeNumberLike(focusTree.continuous_focus_position?.y, 0) ?? 1000,
             conditionExprs,
             isSharedFocues: false,
+            searchFilters: chain(focuses).flatMap(f => f.searchFilters).uniq().value(),
             warnings,
         });
     }
@@ -257,6 +263,10 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
     const file = convertFocusFileNodeToJson(node, constants);
 
     return getFocusTreeWithFocusFile(file, sharedFocusTrees, filePath, constants);
+}
+
+export function getGfxNameForSearchFilter(filter: string): string {
+    return `GFX_${filter}`;
 }
 
 function getFocuses(hoiFocuses: HOIPartial<FocusDef>[], conditionExprs: ConditionItem[], filePath: string, warnings: FocusWarning[], constants: {}): Record<string, Focus> {
@@ -366,6 +376,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         file: filePath,
         text,
         overlay,
+        searchFilters: hoiFocus.search_filters?._values ?? [],
         xToken: hoiFocus.x?._valueStartToken === hoiFocus.x?._valueEndToken ? hoiFocus.x?._valueEndToken : undefined,
         yToken: hoiFocus.y?._valueStartToken === hoiFocus.y?._valueEndToken ? hoiFocus.y?._valueEndToken : undefined,
     };

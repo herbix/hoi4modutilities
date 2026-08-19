@@ -23,6 +23,7 @@ const table: Partial<typeof __table> = {
     "focustree.focustree": "国策树：",
     "focustree.nofocustree": "没有国策树。",
     "focustree.search": "搜索：",
+    "focustree.searchfilters": "筛选器：",
     "focustree.sharedfocuses": "<共享国策>",
     "focustree.warnings": "开启/收起警告列表",
     "focustree.warnings.focusidconflict": "在这个文件中有多个国策的id字段为{0}：{1}。",

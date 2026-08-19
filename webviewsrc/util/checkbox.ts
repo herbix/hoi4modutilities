@@ -15,7 +15,7 @@ export function enableCheckboxes() {
 }
 
 export class Checkbox extends Subscriber {
-    constructor(readonly input: HTMLInputElement, private text?: string) {
+    constructor(readonly input: HTMLInputElement, private text?: string, private html?: string) {
         super();
         this.init();
     }
@@ -49,7 +49,10 @@ export class Checkbox extends Subscriber {
         checkboxContainer.appendChild(checkbox);
 
         const label = document.createElement('div');
-        label.append(text);
+        label.textContent = text;
+        if (this.html) {
+            label.innerHTML = this.html;
+        }
         checkboxContainer.append(label);
 
         this.input.classList.add('hidden');

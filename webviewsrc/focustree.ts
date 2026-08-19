@@ -62,6 +62,9 @@ let allowBranches: DivDropdown | undefined = undefined;
 let conditions: DivDropdown | undefined = undefined;
 let checkedFocuses: Record<string, Checkbox> = {};
 let selectedFocusIds: string[] = getState().selectedFocusIds ?? [];
+let selectedSearchFilters: string[] = getState().selectedSearchFilters ?? [];
+
+let retriggerSearch: () => void = () => {};
 
 async function buildContent() {
     const focusCheckState = getState().checkedFocuses ?? {};
@@ -114,6 +117,7 @@ async function buildContent() {
     setupCheckedFocuses(focuses, focusTree);
     setupFocusDragging(focuses);
     refreshFocusSelection();
+    applySearchFilters();
 }
 
 function calculateFocusAllowed(focusTree: FocusTree, allowBranchOptionsValue: Record<string, boolean>) {
@@ -580,7 +584,22 @@ function isInteractiveTarget(target: EventTarget | null): boolean {
     return target instanceof HTMLElement && !!target.closest('input,button,select,textarea,label');
 }
 
-let retriggerSearch: () => void = () => {};
+function applySearchFilters(): void {
+    const focusTree = focusTrees[selectedFocusTreeIndex];
+    if (!focusTree) {
+        return;
+    }
+
+    for (const focus of Object.values(focusTree.focuses)) {
+        const focusElement = document.getElementById('focus_' + focus.id);
+        if (!focusElement) {
+            continue;
+        }
+
+        const matchesFilter = selectedSearchFilters.some(filter => focus.searchFilters.includes(filter));
+        focusElement.style.opacity = matchesFilter || selectedSearchFilters.length === 0 ? '1' : '0.2';
+    }
+}
 
 window.addEventListener('load', tryRun(async function() {
     subscribePreviewLabelToggle();
@@ -679,9 +698,22 @@ window.addEventListener('load', tryRun(async function() {
         }
     }
 
+    // Search filters
+    const searchFiltersElement = document.getElementById('search-filters') as HTMLDivElement | null;
+    if (searchFiltersElement) {
+        const searchFiltersDropdown = new DivDropdown(searchFiltersElement, true);
+        searchFiltersDropdown.selectedValues$.next(selectedSearchFilters);
+        searchFiltersDropdown.selectedValues$.subscribe((selection) => {
+            selectedSearchFilters = [...selection];
+            setState({ selectedSearchFilters });
+
+            applySearchFilters();
+        });
+    }
+
     // Zoom
     const contentElement = document.getElementById('focustreecontent') as HTMLDivElement;
-    enableZoom(contentElement, 0, 40);
+    enableZoom(contentElement, 0, 80);
 
     // Toggle warnings
     const showWarnings = document.getElementById('show-warnings') as HTMLButtonElement;
@@ -697,4 +729,12 @@ window.addEventListener('load', tryRun(async function() {
     updateSelectedFocusTree(false);
     await buildContent();
     scrollToState();
+
+    if (focusesElement === null && showWarnings === null &&
+        (document.getElementById('condition-container')?.style.display === 'none' || document.getElementById('allowbranch-container')?.style.display === 'none')) {
+        const row1 = document.getElementById('toolbar-row-1');
+        if (row1) {
+            row1.style.display = 'none';
+        }
+    }
 }));

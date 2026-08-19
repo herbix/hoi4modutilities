@@ -23,6 +23,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "focustree.focustree": "Focus tree: ",
     "focustree.nofocustree": "No focus tree.",
     "focustree.search": "Search: ",
+    "focustree.searchfilters": "Filters: ",
     "focustree.sharedfocuses": "<Shared focuses>",
     "focustree.warnings": "Toggle warnings",
     "focustree.warnings.focusidconflict": "There're more than one focuses with ID {0} in file: {1}.",

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
-import { Focus, FocusTree } from './schema';
-import { getImageByPath, getSpriteByGfxName, Image } from '../../util/image/imagecache';
+import { Focus, FocusTree, getGfxNameForSearchFilter } from './schema';
+import { getImageByPath, getSpriteByGfxName, Image, Sprite } from '../../util/image/imagecache';
 import { i18nTableAsScript, localize } from '../../util/i18n';
 import { forceError, randomString } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
@@ -11,7 +11,7 @@ import { LoaderSession } from '../../util/loader/loader';
 import { debug } from '../../util/debug';
 import { normalizeForStyle, StyleTable } from '../../util/styletable';
 import { featureFlagsAsScript, isFeatureEnabled } from '../../util/featureflags';
-import { flatMap } from 'lodash';
+import { chain, flatMap } from 'lodash';
 import { indexManager } from '../../indexing/indexmanager';
 import { localisationIndex } from '../../indexing/localisationindex';
 
@@ -110,12 +110,12 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
             left:0;
             top:0;
         `)}"></div>` +
-        `<div id="focustreecontent" class="${styleTable.oneTimeStyle('focustreecontent', () => `top:40px;left:-20px;position:relative`)}">
+        `<div id="focustreecontent" class="${styleTable.oneTimeStyle('focustreecontent', () => `top:80px;left:-20px;position:relative`)}">
             <div id="focustreeplaceholder"></div>
             ${continuousFocusContent}
         </div>` +
         renderWarningContainer(styleTable) +
-        renderToolBar(focusTrees, styleTable)
+        await renderToolBar(focusTrees, styleTable, gfxFiles)
     );
 }
 
@@ -148,7 +148,7 @@ function renderWarningContainer(styleTable: StyleTable) {
     </div>`;
 }
 
-function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string {
+async function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
     const focuses = focusTrees.length <= 1 ? '' : `
         <label for="focuses" class="${styleTable.style('focusesLabel', () => `margin-right:5px`)}">${localize('focustree.focustree', 'Focus tree: ')}</label>
         <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
@@ -189,14 +189,49 @@ function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable): string 
         <button id="show-warnings" title="${localize('focustree.warnings', 'Toggle warnings')}">
             <i class="codicon codicon-warning"></i>
         </button>`;
+    
+    const searchFilterNames = chain(focusTrees).flatMap(ft => ft.searchFilters).uniq().value();
+    const searchFilterSprites: Record<string, Sprite | undefined> = {};
+    await Promise.all(searchFilterNames.map(async searchFilter => {
+        searchFilterSprites[searchFilter] = await getSpriteByGfxName(getGfxNameForSearchFilter(searchFilter), gfxFiles);
+    }));
 
-    return `<div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
-        <div class="toolbar">
-            ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
-            ${focuses}
-            ${searchbox}
-            ${isFeatureEnabled('useConditionInFocus') ? conditions : allowbranch}
-            ${warningsButton}
+    const searchFilters = searchFilterNames.length === 0 ? '' : `
+        <div id="search-filters-container">
+            <label for="search-filters" class="${styleTable.style('searchFiltersLabel', () => `margin-right:5px`)}">${localize('focustree.searchfilters', 'Filters: ')}</label>
+            <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
+                <div id="search-filters" class="select multiple-select" tabindex="0" role="combobox">
+                    <span class="value"></span>
+                    ${
+                        searchFilterNames.map(filter =>
+                            `<div class="option" value="${htmlEscape(filter)}">
+                                <span class="${styleTable.oneTimeStyle('searchFilterIcon', () =>
+                                    `background-image: url(${searchFilterSprites[filter]?.image.uri});`
+                                )}
+                                ${styleTable.style('searchFilterIcon', () =>
+                                    `display: inline-block; width: 16px; height: 16px; background-size: 16px 16px;`
+                                )}"></span>
+                                ${htmlEscape(localisationIndex.getLocalisedText(filter) ?? '')}
+                            </div>`)
+                        .join('')
+                    }
+                </div>
+            </div>
+        </div>
+    `;
+
+    return `<div class="toolbar-outer ${styleTable.style('toolbar-padding', () => `padding-top:5px; padding-bottom:5px;`)}">
+        <div class="toolbar ${styleTable.style('toolbar', () => `flex-direction: column;top:0;transform:none;`)}">
+            <div id="toolbar-row-1" class="toolbar-row">
+                ${focuses}
+                ${isFeatureEnabled('useConditionInFocus') ? conditions : allowbranch}
+                ${warningsButton}
+            </div>
+            <div class="toolbar-row">
+                ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
+                ${searchbox}
+                ${searchFilters}
+            </div>
         </div>
     </div>`;
 }
