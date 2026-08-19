@@ -1,5 +1,5 @@
-import { ProvinceMap, WorldMapData } from '../definitions';
-import { CountriesLoader } from './countries';
+import { CountryLabelsData, ProvinceMap, WorldMapData } from '../definitions';
+import { CountriesLoader, CountryLabelsLoader } from './countries';
 import { Loader, LoadResult, mergeInLoadResult } from './common';
 import { StatesLoader } from './states';
 import { DefaultMapLoader } from './provincemap';
@@ -18,6 +18,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     private bookmarksLoader: BookmarksLoader;
     private statesLoader: StatesLoader;
     private countriesLoader: CountriesLoader;
+    private countryLabelsLoader: CountryLabelsLoader;
     private strategicRegionsLoader: StrategicRegionsLoader;
     private supplyAreasLoader: SupplyAreasLoader;
     private railwayLoader: RailwayLoader;
@@ -41,6 +42,8 @@ export class WorldMapLoader extends Loader<WorldMapData> {
 
         this.countriesLoader = new CountriesLoader();
         this.countriesLoader.onProgress(e => this.onProgressEmitter.fire(e));
+        this.countryLabelsLoader = new CountryLabelsLoader(this.countriesLoader);
+        this.countryLabelsLoader.onProgress(e => this.onProgressEmitter.fire(e));
 
         this.strategicRegionsLoader = new StrategicRegionsLoader(this.defaultMapLoader, this.statesLoader);
         this.strategicRegionsLoader.onProgress(e => this.onProgressEmitter.fire(e));
@@ -111,6 +114,7 @@ export class WorldMapLoader extends Loader<WorldMapData> {
             ...railways.result,
             ...supplyNodes.result,
             resources: resources.result,
+            mapFont: undefined,
             provincesCount: provinceMap.result.provinces.length,
             statesCount: stateMap.result.states.length,
             countriesCount: countries.result.length,
@@ -139,6 +143,10 @@ export class WorldMapLoader extends Loader<WorldMapData> {
     public getWorldMap(force?: boolean): Promise<WorldMapData> {
         const session = new LoaderSession(force ?? false);
         return this.load(session).then(r => r.result);
+    }
+
+    public loadCountryLabels(session: LoaderSession): Promise<LoadResult<CountryLabelsData>> {
+        return this.countryLabelsLoader.load(session);
     }
 
     public shallowForceReload(): void {

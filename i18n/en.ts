@@ -172,6 +172,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.topbar.display.adaptzooming": "Adapt zooming",
     "worldmap.topbar.display.border": "Show border",
     "worldmap.topbar.display.demilitarizedzone": "Show demilitarized zone",
+    "worldmap.topbar.display.countryname": "Show country names",
     "worldmap.topbar.display.fastrendering": "Fast rendering",
     "worldmap.topbar.display.label": "Show label",
     "worldmap.topbar.display.localisedlabel": "Show localised label",

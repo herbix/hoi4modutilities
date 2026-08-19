@@ -1,5 +1,5 @@
 import { CustomMap, DetailValue, Enum, HOIPartial, SchemaDef } from '../../../hoiformat/schema';
-import { Country } from '../definitions';
+import { Country, CountryLabelsData } from '../definitions';
 import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
 import { error } from '../../../util/debug';
 import { convertColor, FileLoader, FolderLoader, Loader, LoadResult, LoadResultOD, mergeInLoadResult } from './common';
@@ -7,6 +7,9 @@ import { localize } from '../../../util/i18n';
 import { LoaderSession } from '../../../util/loader/loader';
 import { flatMap } from 'lodash';
 import { localisationIndex } from '../../../indexing/localisationindex';
+import * as path from 'path';
+import { findCountryLocalisedName, getCountryLocalisationKeys } from './countrylocalisation';
+import { loadMapFont } from './mapfont';
 
 interface CountryTagsFile extends CustomMap<string> {
 }
@@ -20,6 +23,21 @@ interface ColorsFile extends CustomMap<ColorForCountry> {
 
 interface ColorForCountry {
     color: DetailValue<Enum>;
+}
+
+interface CountryHistoryFile {
+    set_politics: CountryPolitics[];
+    set_cosmetic_tag: string;
+    set_autonomy: CountryAutonomy[];
+}
+
+interface CountryPolitics {
+    ruling_party: string;
+}
+
+interface CountryAutonomy {
+    target?: string;
+    autonomous_state?: string;
 }
 
 const countryTagsFileSchema: SchemaDef<CountryTagsFile> = {
@@ -44,7 +62,30 @@ const colorsFileSchema: SchemaDef<ColorsFile> = {
     _type: 'map',
 };
 
+const countryHistoryFileSchema: SchemaDef<CountryHistoryFile> = {
+    set_politics: {
+        _innerType: {
+            ruling_party: "string",
+        },
+        _type: "array",
+    },
+    set_cosmetic_tag: "string",
+    set_autonomy: {
+        _innerType: {
+            target: "string",
+            autonomous_state: "string",
+        },
+        _type: "array",
+    },
+};
+
 type Tag = { tag: string, file: string };
+type CountryHistory = {
+    tag: string,
+    rulingParty?: string,
+    cosmeticTag?: string,
+    autonomies: CountryAutonomy[],
+};
 
 export class CountriesLoader extends Loader<Country[]> {
     private countryTagsLoader: CountryTagsLoader;
@@ -111,6 +152,48 @@ export class CountriesLoader extends Loader<Country[]> {
 
     public toString() {
         return '[CountriesLoader]';
+    }
+}
+
+export class CountryLabelsLoader extends Loader<CountryLabelsData> {
+    private countryHistoryLoader = new CountryHistoryLoader();
+
+    constructor(private countriesLoader: CountriesLoader) {
+        super();
+        this.countryHistoryLoader.onProgress(e => this.onProgressEmitter.fire(e));
+    }
+
+    public async shouldReloadImpl(session: LoaderSession): Promise<boolean> {
+        return await this.countriesLoader.shouldReload(session) || await this.countryHistoryLoader.shouldReload(session);
+    }
+
+    protected async loadImpl(session: LoaderSession): Promise<LoadResult<CountryLabelsData>> {
+        const countriesResult = await this.countriesLoader.load(session);
+        session.throwIfCancelled();
+        const countryHistoryResult = await this.countryHistoryLoader.load(session);
+        session.throwIfCancelled();
+
+        const countries = countriesResult.result.map(country => ({ ...country }));
+        applyLocalisedNames(countries, countryHistoryResult.result);
+        const mapFontResult = await loadMapFont(countries.map(country => country.localisedName)
+            .filter((name): name is string => !!name));
+        session.throwIfCancelled();
+
+        const results = [countriesResult, countryHistoryResult, mapFontResult];
+        return {
+            result: {
+                countryNames: Object.fromEntries(countries
+                    .filter((country): country is Country & { localisedName: string } => !!country.localisedName)
+                    .map(country => [country.tag, country.localisedName])),
+                mapFont: mapFontResult.result,
+            },
+            dependencies: mergeInLoadResult(results, 'dependencies'),
+            warnings: mergeInLoadResult(results, 'warnings'),
+        };
+    }
+
+    public toString() {
+        return '[CountryLabelsLoader]';
     }
 }
 
@@ -181,6 +264,34 @@ class ColorsLoader extends FileLoader<HOIPartial<ColorsFile>> {
     }
 }
 
+class CountryHistoryLoader extends FolderLoader<CountryHistory[], CountryHistory | undefined> {
+    constructor() {
+        super('history/countries', CountryHistoryFileLoader);
+    }
+
+    protected mergeFiles(fileResults: LoadResult<CountryHistory | undefined>[]): Promise<LoadResult<CountryHistory[]>> {
+        return Promise.resolve({
+            result: fileResults.map(result => result.result).filter((history): history is CountryHistory => history !== undefined),
+            dependencies: [this.folder + '/*'],
+            warnings: mergeInLoadResult(fileResults, 'warnings'),
+        });
+    }
+
+    public toString() {
+        return `[CountryHistoryLoader]`;
+    }
+}
+
+class CountryHistoryFileLoader extends FileLoader<CountryHistory | undefined> {
+    protected async loadFromFile(): Promise<LoadResultOD<CountryHistory | undefined>> {
+        return { result: await loadCountryHistory(this.file), warnings: [] };
+    }
+
+    public toString() {
+        return `[CountryHistoryFileLoader: ${this.file}]`;
+    }
+}
+
 async function loadCountryTags(countryTagsFile: string): Promise<Tag[]> {
     try {
         const data = await readFileFromModOrHOI4AsJson<CountryTagsFile>(countryTagsFile, countryTagsFileSchema);
@@ -216,6 +327,45 @@ async function loadCountry(tag: string, countryFile: string): Promise<Country | 
     } catch (e) {
         error(e);
         return undefined;
+    }
+}
+
+async function loadCountryHistory(file: string): Promise<CountryHistory | undefined> {
+    try {
+        const tag = path.basename(file, path.extname(file)).match(/^[A-Za-z0-9_]+/)?.[0];
+        if (!tag) {
+            return undefined;
+        }
+
+        const data = await readFileFromModOrHOI4AsJson<CountryHistoryFile>(file, countryHistoryFileSchema);
+        const politics = data.set_politics?.filter(value => !!value.ruling_party).pop();
+        return {
+            tag,
+            rulingParty: politics?.ruling_party,
+            cosmeticTag: data.set_cosmetic_tag || undefined,
+            autonomies: data.set_autonomy ?? [],
+        };
+    } catch (e) {
+        error(e);
+        return undefined;
+    }
+}
+
+function applyLocalisedNames(countries: Country[], countryHistories: CountryHistory[]): void {
+    const histories = new Map(countryHistories.map(history => [history.tag, history]));
+    const autonomies = new Map<string, { overlord: string, autonomousState: string }>();
+    for (const history of countryHistories) {
+        for (const autonomy of history.autonomies) {
+            if (autonomy.target && autonomy.autonomous_state) {
+                autonomies.set(autonomy.target, { overlord: history.tag, autonomousState: autonomy.autonomous_state });
+            }
+        }
+    }
+
+    for (const country of countries) {
+        const history = histories.get(country.tag);
+        const keys = getCountryLocalisationKeys(country.tag, history?.rulingParty, history?.cosmeticTag, autonomies.get(country.tag));
+        country.localisedName = findCountryLocalisedName(keys, key => localisationIndex.getLocalisedText(key)) ?? country.localisedName;
     }
 }
 

@@ -22,6 +22,7 @@ export class WorldMap {
     private worldMapLoader: WorldMapLoader;
     private worldMapDependencies: string[] | undefined;
     private cachedWorldMap: WorldMapData | undefined;
+    private countryLabelsLoaded = false;
 
     private lastRequestedExportUri: vscode.Uri | undefined;
 
@@ -90,6 +91,9 @@ export class WorldMap {
                 case 'requestcountries':
                     await this.sendMapData('countries', msg, (await this.worldMapLoader.getWorldMap()).countries);
                     break;
+                case 'requestcountrylabels':
+                    await this.sendCountryLabelsToWebview();
+                    break;
                 case 'requeststrategicregions':
                     await this.sendMapData('strategicregions', msg, (await this.worldMapLoader.getWorldMap()).strategicRegions);
                     break;
@@ -132,6 +136,14 @@ export class WorldMap {
         } as WorldMapMessage);
     }
 
+    private async sendCountryLabelsToWebview(): Promise<void> {
+        this.countryLabelsLoaded = true;
+        const loaderSession = new LoaderSession(false, () => this.panel === undefined);
+        const { result, dependencies } = await this.worldMapLoader.loadCountryLabels(loaderSession);
+        this.worldMapDependencies = [...new Set([...(this.worldMapDependencies ?? []), ...dependencies])];
+        await this.postMessageToWebview({ command: 'countrylabels', data: result });
+    }
+
     private progressReporter: ProgressReporter = async (progress: string) => {
         debug('Progress:', progress);
         await this.postMessageToWebview({
@@ -150,6 +162,9 @@ export class WorldMap {
             this.cachedWorldMap = worldMap;
 
             if (!force && oldCachedWorldMap && await this.sendDifferences(oldCachedWorldMap, worldMap)) {
+                if (this.countryLabelsLoaded) {
+                    await this.sendCountryLabelsToWebview();
+                }
                 return;
             }
 
@@ -166,6 +181,9 @@ export class WorldMap {
                 command: 'provincemapsummary',
                 data: summary,
             } as WorldMapMessage);
+            if (this.countryLabelsLoaded) {
+                await this.sendCountryLabelsToWebview();
+            }
         } catch (e) {
             error(e);
 
@@ -230,7 +248,7 @@ export class WorldMap {
 
         if ((['width', 'height', 'provincesCount', 'statesCount', 'countriesCount', 'strategicRegionsCount', 'supplyAreasCount',
             'railwaysCount', 'supplyNodesCount',
-            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount'] as (keyof WorldMapData)[])
+            'badProvincesCount', 'badStatesCount', 'badStrategicRegionsCount', 'badSupplyAreasCount', 'mapFont'] as (keyof WorldMapData)[])
             .some(k => !isEqual(cachedWorldMap[k], worldMap[k]))) {
             return false;
         }

@@ -26,6 +26,7 @@ export interface WorldMapData {
     continents: string[];
     terrains: Terrain[];
     resources: Resource[];
+    mapFont: MapFont | undefined;
     rivers: River[];
     conditionExprs: ConditionItem[];
     bookmarks: Bookmark[];
@@ -171,9 +172,30 @@ interface WarningRiver extends WarningSourceBase {
 
 export interface Country {
     tag: string;
-    color: number;
     localisedName: string | undefined;
+    color: number;
     file: string;
+}
+
+export interface MapFont {
+    lineHeight: number;
+    imageUri: string;
+    glyphs: Record<number, MapFontGlyph | undefined>;
+}
+
+export interface MapFontGlyph {
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    xOffset: number;
+    yOffset: number;
+    xAdvance: number;
+}
+
+export interface CountryLabelsData {
+    countryNames: Record<string, string>;
+    mapFont: MapFont | undefined;
 }
 
 export interface Terrain {
@@ -247,7 +269,9 @@ export interface TokenInFile {
     token: Token | null;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage | SaveStateMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage |
+    ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage | SaveStateMessage | RequestCountryLabelsMessage |
+    CountryLabelsMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
@@ -258,6 +282,15 @@ export interface RequestMapItemMessage {
     command: 'requestprovinces' | 'requeststates' | 'requestcountries' | 'requeststrategicregions' | 'requestsupplyareas' | 'requestrailways' | 'requestsupplynodes';
     start: number;
     end: number;
+}
+
+export interface RequestCountryLabelsMessage {
+    command: 'requestcountrylabels';
+}
+
+export interface CountryLabelsMessage {
+    command: 'countrylabels';
+    data: CountryLabelsData;
 }
 
 export interface MapItemMessage {
