@@ -407,3 +407,11 @@ export function stringValueToConditionItem(value: string): ConditionItem {
         };
     }
 }
+
+export function sortConditionExprs(exprs: ConditionItem[]): void {
+    exprs.sort((a, b) => {
+        const aStr = conditionItemToStringValue(a);
+        const bStr = conditionItemToStringValue(b);
+        return aStr.localeCompare(bStr);
+    });
+}

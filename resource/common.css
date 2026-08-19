@@ -17,6 +17,7 @@ div.select > div.option {
     display: block;
     height: 0;
     opacity: 0;
+    overflow: hidden;
 }
 
 div.select.multiple-select > div.option {
@@ -104,6 +105,7 @@ ul.select-dropdown {
     z-index: 100;
     max-height: 300px;
     overflow-y: auto;
+    overscroll-behavior: none;
 }
 
 ul.select-dropdown li {

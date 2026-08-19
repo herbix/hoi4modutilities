@@ -70,3 +70,7 @@ span.divider {
 #warnings:focus {
     outline: none;
 }
+
+#conditions {
+    max-width: 400px;
+}

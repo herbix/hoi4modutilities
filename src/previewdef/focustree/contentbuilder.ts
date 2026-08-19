@@ -179,7 +179,7 @@ async function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable, gf
         <div id="condition-container">
             <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('focustree.conditions', 'Conditions: ')}</label>
             <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
-                <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
+                <div id="conditions" class="select multiple-select ${styleTable.style('conditions', () => `max-width:400px`)}" tabindex="0" role="combobox">
                     <span class="value"></span>
                 </div>
             </div>
@@ -221,7 +221,7 @@ async function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable, gf
     `;
 
     return `<div class="toolbar-outer ${styleTable.style('toolbar-padding', () => `padding-top:5px; padding-bottom:5px;`)}">
-        <div class="toolbar ${styleTable.style('toolbar', () => `flex-direction: column;top:0;transform:none;`)}">
+        <div class="toolbar ${styleTable.style('toolbar', () => `flex-direction:column; top:0; transform:none;`)}">
             <div id="toolbar-row-1" class="toolbar-row">
                 ${focuses}
                 ${isFeatureEnabled('useConditionInFocus') ? conditions : allowbranch}

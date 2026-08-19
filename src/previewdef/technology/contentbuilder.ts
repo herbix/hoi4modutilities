@@ -147,7 +147,7 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
         <div id="condition-container">
             <label for="conditions" class="${styleTable.style('conditionsLabel', () => `margin-right:5px`)}">${localize('miopreview.conditions', 'Conditions: ')}</label>
             <div class="select-container ${styleTable.style('marginRight10', () => `margin-right:10px`)}">
-                <div id="conditions" class="select multiple-select" tabindex="0" role="combobox" class="${styleTable.style('conditionsLabel', () => `max-width:400px`)}">
+                <div id="conditions" class="select multiple-select ${styleTable.style('conditions', () => `max-width:400px`)}" tabindex="0" role="combobox">
                     <span class="value"></span>
                 </div>
             </div>

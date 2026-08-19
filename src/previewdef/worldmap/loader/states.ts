@@ -11,7 +11,7 @@ import { LoaderSession, mergeInLoadResultUnique } from '../../../util/loader/loa
 import { flatMap, isEqual } from 'lodash';
 import { ResourceDefinitionLoader } from './resource';
 import { bookmarkDateToString, BookmarksLoader, compareBookmarkDate, toBookmarkDate } from './bookmarks';
-import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition } from '../../../hoiformat/condition';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, simplifyCondition, sortConditionExprs } from '../../../hoiformat/condition';
 import { EffectComplexExpr, EffectItem, extractEffectValue } from '../../../hoiformat/effect';
 import { Scope } from '../../../hoiformat/scope';
 import { localisationIndex } from '../../../indexing/localisationindex';
@@ -130,6 +130,8 @@ export class StatesLoader extends FolderLoader<StateLoaderResult, StateNoBoundin
 
         const warnings = mergeInLoadResult([stateCategories, ...fileResults], 'warnings');
         const conditionExprs = mergeInLoadResultUnique(fileResults, 'conditionExprs', (a, b) => a.nodeContent === b.nodeContent && a.scopeName === b.scopeName);
+        sortConditionExprs(conditionExprs);
+
         const { provinces, width, height } = provinceMap.result;
 
         const states = flatMap(fileResults, c => c.result);

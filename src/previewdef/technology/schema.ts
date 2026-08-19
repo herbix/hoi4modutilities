@@ -1,7 +1,7 @@
 import { Node, Token } from '../../hoiformat/hoiparser';
 import { convertNodeToJson, CustomMap, Enum, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
 import { arrayToMap } from '../../util/common';
-import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValues } from '../../hoiformat/condition';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValues, sortConditionExprs } from '../../hoiformat/condition';
 import { countryScope } from '../../hoiformat/scope';
 import { GridBoxType } from '../../hoiformat/gui';
 import { ParentInfo } from '../../util/hoi4gui/common';
@@ -124,6 +124,7 @@ export function getTechnologyTrees(node: Node): TechnologyTree[] {
                 }
             }
 
+            sortConditionExprs(conditionExprs);
             result.push({
                 startTechnology: startTechnology,
                 conditionExprs,

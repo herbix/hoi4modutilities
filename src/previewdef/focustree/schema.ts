@@ -2,7 +2,7 @@ import { Node, Token } from '../../hoiformat/hoiparser';
 import { convertNodeToJson, CustomMap, Enum, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
 import { normalizeNumberLike } from '../../util/hoi4gui/common';
 import { chain, flatten } from 'lodash';
-import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValue, extractConditionValues } from '../../hoiformat/condition';
+import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValue, extractConditionValues, sortConditionExprs } from '../../hoiformat/condition';
 import { countryScope } from '../../hoiformat/scope';
 import { isFeatureEnabled } from '../../util/featureflags';
 import { randomString, Warning } from '../../util/common';
@@ -213,6 +213,8 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
         const conditionExprs: ConditionItem[] = [];
         const warnings: FocusWarning[] = [];
         const focuses = getFocuses([...file.shared_focus, ...file.joint_focus], conditionExprs, filePath, warnings, constants);
+        sortConditionExprs(conditionExprs);
+
         const sharedFocusTree = {
             id: localize('focustree.sharedfocuses', '<Shared focuses>'),
             focuses,
@@ -242,6 +244,7 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
 
         validateRelativePositionId(focuses, warnings);
 
+        sortConditionExprs(conditionExprs);
         focusTrees.push({
             id: focusTree.id ?? localize('focustree.ananymous', '<Anonymous focus tree>'),
             focuses,
@@ -255,6 +258,7 @@ export function getFocusTreeWithFocusFile(file: HOIPartial<FocusFile>, sharedFoc
         });
     }
 
+    focusTrees.sort((a, b) => a.id.localeCompare(b.id));
     return focusTrees;
 }
 
