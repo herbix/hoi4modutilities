@@ -14,7 +14,7 @@ suite('country map labels', () => {
         assert.ok(labels.some(label => label.center.x > 100), 'the disconnected territory should have a label');
     });
 
-    test('keeps straight fallback labels upright', () => {
+    test('keeps straight fallback labels readable', () => {
         const horizontal = calculateCountryLabels([
             region(1, 'AAA', 'AAA', 10, 10, 20, 20, 100, [2]),
             region(2, 'AAA', 'AAA', 28, 18, 20, 20, 100, [1]),
@@ -25,7 +25,17 @@ suite('country map labels', () => {
         ], 200)[0];
 
         assert.ok(Math.abs(horizontal.angle) < Math.PI / 6);
-        assert.ok(Math.abs(vertical.angle) <= Math.PI / 6);
+        assert.ok(Math.abs(vertical.angle) <= Math.PI / 2);
+    });
+
+    test('uses a near-vertical label for a narrow north-south country', () => {
+        const label = calculateCountryLabels([
+            region(1, 'NSC', 'CHILE', 20, 10, 24, 300, 7200, []),
+        ], 400)[0];
+
+        assert.ok(Math.abs(label.angle) > Math.PI / 3, 'the support line should follow the country instead of being clamped');
+        assert.ok(Math.abs(label.angle) <= Math.PI / 2, 'the text direction must remain readable');
+        assert.ok(label.fontSize > 10, 'following the long axis should provide a useful font size');
     });
 
     test('measures territories across the horizontal map seam locally', () => {
@@ -46,6 +56,16 @@ suite('country map labels', () => {
         assert.ok(label.maxWidth < 30, 'only the continuous owner-colored segment may contain the label');
     });
 
+    test('uses map adjacencies to place one label across an archipelago', () => {
+        const west = region(1, 'ISL', 'ISLANDS', 0, 0, 30, 40, 1200, [2]);
+        const east = region(2, 'ISL', 'ISLANDS', 70, 0, 30, 40, 1200, [1]);
+        west.connections = [{ from: { x: 30, y: 20 }, to: { x: 70, y: 20 } }];
+        const labels = calculateCountryLabels([west, east], 200);
+
+        assert.strictEqual(labels.length, 1);
+        assert.ok(labels[0].maxWidth > 30, 'the connection should let the country name span the island group');
+    });
+
     test('scales labels beyond the source map font size for large countries', () => {
         const label = calculateCountryLabels([
             region(1, 'AAA', 'AAA', 0, 0, 1000, 300, 300000, []),
@@ -61,6 +81,15 @@ suite('country map labels', () => {
 
         assert.ok(label.fontSize > 80, 'the largest fixed-aspect label should use the available length');
         assert.ok(label.fontSize < 100, 'fixed character spacing must not be replaced with the old horizontal compression');
+    });
+
+    test('exposes spare width as character spacing for wide countries', () => {
+        const label = calculateCountryLabels([
+            region(1, 'RUS', 'RUSSIA', 0, 0, 1000, 100, 100000, []),
+        ], 1200)[0];
+
+        assert.ok(label.maxWidth > label.fontSize * 5,
+            'large countries should spread their name instead of leaving most of the support line unused');
     });
 
     test('fits and limits a curved label to the paper maximum circular angle', () => {

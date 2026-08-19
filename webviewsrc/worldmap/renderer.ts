@@ -406,10 +406,19 @@ export class Renderer extends Subscriber {
                     boundaryPaths: province.edges
                         .filter(edge => edge.path.length > 0 && ownerByProvince.get(edge.to) !== owner)
                         .flatMap(edge => edge.path),
+                    connections: province.edges
+                        .filter(edge => edge.path.length === 0 && edge.type !== 'impassable' && edge.to > province.id &&
+                            ownerByProvince.get(edge.to) === owner)
+                        .flatMap(edge => {
+                            const toProvince = worldMap.getProvinceById(edge.to);
+                            return toProvince ? [{ from: edge.start ?? province.centerOfMass,
+                                to: edge.stop ?? toProvince.centerOfMass }] : [];
+                        }),
                     centerOfMass: province.centerOfMass,
                     mass: province.mass,
                     neighbours: province.edges
-                        .filter(edge => edge.path.length > 0 && ownerByProvince.get(edge.to) === owner)
+                        .filter(edge => (edge.path.length > 0 || edge.type !== 'impassable') &&
+                            ownerByProvince.get(edge.to) === owner)
                         .map(edge => edge.to),
                     textWidthRatio: mapFont && glyphs.length > 0 && glyphs.every(glyph => !!glyph) ?
                         glyphs.reduce((sum, glyph) => sum + glyph!.xAdvance, 0) / mapFont.lineHeight : undefined,
@@ -425,7 +434,7 @@ export class Renderer extends Subscriber {
     private static renderCountryLabels(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const { viewPoint } = renderContext;
         for (const label of renderContext.countryLabels) {
-            if (label.text === label.owner) {
+            if (label.text === label.owner || !viewPoint.bboxInView(label.boundingBox, xOffset)) {
                 continue;
             }
             const center = label.center;
@@ -467,7 +476,7 @@ export class Renderer extends Subscriber {
                 textWidth = widths.reduce((sum, width) => sum + width, 0);
             }
 
-            Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, widths, (index) => {
+            Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, widths, maxWidth, (index) => {
                 const character = Array.from(text)[index];
                 context.strokeText(character, 0, 0);
                 context.fillText(character, 0, 0);
@@ -492,7 +501,7 @@ export class Renderer extends Subscriber {
         }
 
         const advances = glyphs.map(glyph => glyph!.xAdvance * scale);
-        Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, advances, index => {
+        Renderer.renderCountryGlyphs(context, label, viewPoint, xOffset, advances, maxWidth, index => {
             const glyph = glyphs[index]!;
             if (glyph.w > 0 && glyph.h > 0) {
                 context.drawImage(image, glyph.x, glyph.y, glyph.w, glyph.h,
@@ -505,8 +514,10 @@ export class Renderer extends Subscriber {
     }
 
     private static renderCountryGlyphs(context: CanvasRenderingContext2D, label: CountryLabel, viewPoint: ViewPoint,
-        xOffset: number, advances: number[], renderGlyph: (index: number) => void) {
-        const totalAdvance = advances.reduce((sum, advance) => sum + advance, 0);
+        xOffset: number, advances: number[], maxWidth: number, renderGlyph: (index: number) => void) {
+        const naturalAdvance = advances.reduce((sum, advance) => sum + advance, 0);
+        const spacing = advances.length > 1 ? Math.max(0, maxWidth - naturalAdvance) / (advances.length - 1) : 0;
+        const totalAdvance = naturalAdvance + spacing * Math.max(0, advances.length - 1);
         let cursor = -totalAdvance / 2;
         if (!label.arc) {
             context.translate(viewPoint.convertX(label.center.x + xOffset), viewPoint.convertY(label.center.y));
@@ -516,7 +527,7 @@ export class Renderer extends Subscriber {
                 context.translate(cursor + advance / 2, 0);
                 renderGlyph(index);
                 context.restore();
-                cursor += advance;
+                cursor += advance + spacing;
             });
             return;
         }
@@ -533,7 +544,7 @@ export class Renderer extends Subscriber {
             context.rotate(angle + arc.direction * Math.PI / 2);
             renderGlyph(index);
             context.restore();
-            cursor += advance;
+            cursor += advance + spacing;
         });
     }
 

@@ -8,6 +8,7 @@ export interface CountryLabelRegion {
     boundingBox: Zone;
     coverZones: Zone[];
     boundaryPaths?: Point[][];
+    connections?: { from: Point; to: Point }[];
     centerOfMass: Point;
     mass: number;
     neighbours: number[];
@@ -23,6 +24,7 @@ export interface CountryLabel {
     angle: number;
     maxWidth: number;
     fontSize: number;
+    boundingBox: Zone;
     arc?: {
         centerOffset: Point;
         centerAngle: number;
@@ -40,10 +42,10 @@ interface Circle { center: Point; radius: number; }
 interface ZoneIndex { contains(point: Point): boolean; }
 
 const maxLabelSpan = Math.PI / 3;
-const maxStraightAngle = Math.PI / 6;
 const maxCurvedAngle = Math.PI / 3;
 const maxBoundarySamples = 96;
 const maxCandidatePaths = 4;
+const significantFontSizeDifference = 1.05;
 const tau = Math.PI * 2;
 
 export function calculateCountryLabels(regions: CountryLabelRegion[], mapWidth: number): CountryLabel[] {
@@ -87,23 +89,39 @@ function layoutComponent(regions: CountryLabelRegion[], mapWidth: number): Count
         x: regions.reduce((sum, item) => sum + unwrapX(item.centerOfMass.x, originX, mapWidth) * Math.max(1, item.mass), 0) / mass,
         y: regions.reduce((sum, item) => sum + item.centerOfMass.y * Math.max(1, item.mass), 0) / mass,
     };
-    const zones = regions.flatMap(item => item.coverZones.map(zone => ({
+    const coverZones = regions.flatMap(item => item.coverZones.map(zone => ({
         ...zone,
         x: unwrapX(zone.x + zone.w / 2, center.x, mapWidth) - zone.w / 2,
     })));
+    const connections = regions.flatMap(item => item.connections ?? []);
+    const zones = [...coverZones, ...createConnectionZones(connections, center.x, mapWidth)];
     const zoneIndex = createZoneIndex(zones);
     const textWidthRatio = Math.max(1, region.textWidthRatio ?? estimateTextWidth(region.text));
     // The extra three character heights are Imhof's 1.5-character margins at both ends.
     const aspect = 1 / (textWidthRatio + 3);
-    const boundary = sampleBoundary(collectBoundary(regions, center.x, mapWidth));
+    const candidates = [center, ...[...regions].sort((a, b) => b.mass - a.mass).slice(0, 12)
+        .map(item => ({ x: unwrapX(item.centerOfMass.x, center.x, mapWidth), y: item.centerOfMass.y }))];
+
+    let best = placeStraight(region, zones, zoneIndex, candidates, textWidthRatio, aspect, mapWidth, 0);
+    const bounds = getBounds(zones);
+    const width = bounds.right - bounds.left;
+    const height = bounds.bottom - bounds.top;
+    const maximumHeight = Math.min(Math.min(width, height), Math.max(width, height) * aspect);
+    if (best && best.fontSize >= maximumHeight * 0.95) {
+        return best;
+    }
+
+    const boundarySegments = collectBoundary(regions, center.x, mapWidth);
+    const boundarySampleCount = Math.min(maxBoundarySamples,
+        Math.max(40, Math.ceil(Math.sqrt(boundarySegments.length) * 8)));
+    const boundary = sampleBoundary(boundarySegments, boundarySampleCount);
     const skeleton = createSkeleton(boundary, zoneIndex);
     const paths = findCandidatePaths(skeleton, aspect);
 
-    let best = placeStraight(region, zones, zoneIndex, center, textWidthRatio, aspect, mapWidth, 0);
     for (const path of paths) {
         const points = path.map(index => skeleton[index].point);
         const angle = Math.atan2(points[points.length - 1].y - points[0].y, points[points.length - 1].x - points[0].x);
-        const straight = placeStraight(region, zones, zoneIndex, center, textWidthRatio, aspect, mapWidth, angle, points);
+        const straight = placeStraight(region, zones, zoneIndex, candidates, textWidthRatio, aspect, mapWidth, angle, points);
         if (straight && isBetter(straight, best)) {
             best = straight;
         }
@@ -114,6 +132,22 @@ function layoutComponent(regions: CountryLabelRegion[], mapWidth: number): Count
         }
     }
     return best;
+}
+
+function createConnectionZones(connections: { from: Point; to: Point }[], originX: number, mapWidth: number): Zone[] {
+    // The game adjacency is only used as a narrow, layout-only bridge between islands.
+    return connections.flatMap(connection => {
+        const from = { x: unwrapX(connection.from.x, originX, mapWidth), y: connection.from.y };
+        const to = { x: unwrapX(connection.to.x, from.x, mapWidth), y: connection.to.y };
+        const length = distance(from, to);
+        const halfWidth = Math.min(16, Math.max(6, length / 6));
+        const count = Math.max(1, Math.ceil(length / halfWidth));
+        return Array.from({ length: count + 1 }, (_, index) => {
+            const ratio = index / count;
+            return { x: from.x + (to.x - from.x) * ratio - halfWidth,
+                y: from.y + (to.y - from.y) * ratio - halfWidth, w: halfWidth * 2, h: halfWidth * 2 };
+        });
+    });
 }
 
 function collectBoundary(regions: CountryLabelRegion[], originX: number, mapWidth: number): Segment[] {
@@ -140,19 +174,19 @@ function collectBoundary(regions: CountryLabelRegion[], originX: number, mapWidt
     return result;
 }
 
-function sampleBoundary(segments: Segment[]): Point[] {
+function sampleBoundary(segments: Segment[], maximumSamples: number): Point[] {
     const total = segments.reduce((sum, segment) => sum + distance(segment.from, segment.to), 0);
     if (total === 0) {
         return [];
     }
-    const step = Math.max(1, total / maxBoundarySamples);
+    const step = Math.max(1, total / maximumSamples);
     const result: Point[] = [];
     const seen = new Set<string>();
     let traversed = 0;
     let next = 0;
     for (const segment of segments) {
         const length = distance(segment.from, segment.to);
-        while (next <= traversed + length && result.length < maxBoundarySamples) {
+        while (next <= traversed + length && result.length < maximumSamples) {
             const ratio = length === 0 ? 0 : (next - traversed) / length;
             const point = { x: segment.from.x + (segment.to.x - segment.from.x) * ratio,
                 y: segment.from.y + (segment.to.y - segment.from.y) * ratio };
@@ -390,12 +424,13 @@ function placeCurved(region: CountryLabelRegion, circle: Circle, path: Point[], 
     const labelCenter = pointOnCircle(circle, best.angle);
     const direction = readableDirection(best.angle);
     const center = { x: wrapX(labelCenter.x, mapWidth), y: labelCenter.y };
+    const maxWidth = Math.max(best.height * textWidthRatio, best.span * circle.radius - 3 * best.height);
+    const arc = { centerOffset: { x: circle.center.x - labelCenter.x, y: circle.center.y - labelCenter.y },
+        centerAngle: best.angle, radius: circle.radius, span: best.span, direction };
     return {
         owner: region.owner, text: region.text, color: region.color, center, fallbackCenter: center,
         angle: normalizeUprightAngle(best.angle + direction * Math.PI / 2),
-        maxWidth: best.height * textWidthRatio, fontSize: best.height,
-        arc: { centerOffset: { x: circle.center.x - labelCenter.x, y: circle.center.y - labelCenter.y },
-            centerAngle: best.angle, radius: circle.radius, span: best.span, direction },
+        maxWidth, fontSize: best.height, boundingBox: getCurvedBounds(center, arc, best.height), arc,
     };
 }
 
@@ -412,37 +447,95 @@ function curvedBoxInside(circle: Circle, centerAngle: number, span: number, heig
     return true;
 }
 
-function placeStraight(region: CountryLabelRegion, zones: Zone[], zoneIndex: ZoneIndex, componentCenter: Point,
+function placeStraight(region: CountryLabelRegion, zones: Zone[], zoneIndex: ZoneIndex, baseCandidates: Point[],
     textWidthRatio: number, aspect: number, mapWidth: number, sourceAngle: number, path: Point[] = []): CountryLabel | undefined {
-    const sourceUprightAngle = normalizeUprightAngle(sourceAngle);
-    const angle = Math.max(-maxStraightAngle, Math.min(maxStraightAngle, sourceUprightAngle));
+    const angle = normalizeUprightAngle(sourceAngle);
     const along = { x: Math.cos(angle), y: Math.sin(angle) };
     const across = { x: -along.y, y: along.x };
-    const bounds = zones.reduce((box, zone) => ({ left: Math.min(box.left, zone.x), right: Math.max(box.right, zone.x + zone.w),
-        top: Math.min(box.top, zone.y), bottom: Math.max(box.bottom, zone.y + zone.h) }),
-    { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity });
+    const bounds = getBounds(zones);
     const maximumDistance = Math.hypot(bounds.right - bounds.left, bounds.bottom - bounds.top);
-    const candidates = [...path.filter((_, index) => index % Math.max(1, Math.floor(path.length / 6)) === 0), componentCenter,
-        ...[...zones].sort((a, b) => b.w * b.h - a.w * a.h).slice(0, 12)
-            .map(zone => ({ x: zone.x + zone.w / 2, y: zone.y + zone.h / 2 }))];
-    let best: { center: Point; height: number } | undefined;
+    const candidates = [...path.filter((_, index) => index % Math.max(1, Math.floor(path.length / 6)) === 0), ...baseCandidates]
+        .filter((point, index, all) => all.findIndex(other => distanceSqr(point, other) < 0.01) === index);
+    let best: { center: Point; height: number; width: number } | undefined;
     for (const center of candidates) {
         if (!zoneIndex.contains(center)) {
             continue;
         }
         const width = symmetricDistance(center, along, zoneIndex, maximumDistance);
         const availableHeight = symmetricDistance(center, across, zoneIndex, maximumDistance);
-        const height = Math.min(availableHeight, width * aspect) * 0.8;
-        if (height > (best?.height ?? 0)) {
-            best = { center, height };
+        let lower = 0;
+        let upper = Math.min(availableHeight, width * aspect);
+        for (let iteration = 0; iteration < 7; iteration++) {
+            const height = (lower + upper) / 2;
+            if (straightBoxInside(center, along, across, height / aspect, height, zoneIndex)) {
+                lower = height;
+            } else {
+                upper = height;
+            }
+        }
+        if (lower > (best?.height ?? 0)) {
+            best = { center, height: lower, width };
         }
     }
     if (!best || best.height <= 0) {
         return undefined;
     }
+    let totalWidth = best.height / aspect;
+    let upperWidth = best.width;
+    for (let iteration = 0; iteration < 6 && upperWidth > totalWidth; iteration++) {
+        const width = (totalWidth + upperWidth) / 2;
+        if (straightBoxInside(best.center, along, across, width, best.height, zoneIndex)) {
+            totalWidth = width;
+        } else {
+            upperWidth = width;
+        }
+    }
     const center = { x: wrapX(best.center.x, mapWidth), y: best.center.y };
+    const maxWidth = Math.max(best.height * textWidthRatio, totalWidth - 3 * best.height);
     return { owner: region.owner, text: region.text, color: region.color, center, fallbackCenter: center,
-        angle, maxWidth: best.height * textWidthRatio, fontSize: best.height };
+        angle, maxWidth, fontSize: best.height, boundingBox: getStraightBounds(center, angle, maxWidth, best.height) };
+}
+
+function getStraightBounds(center: Point, angle: number, width: number, height: number): Zone {
+    const cosine = Math.abs(Math.cos(angle));
+    const sine = Math.abs(Math.sin(angle));
+    const halfWidth = (cosine * width + sine * height) / 2;
+    const halfHeight = (sine * width + cosine * height) / 2;
+    return { x: center.x - halfWidth, y: center.y - halfHeight, w: halfWidth * 2, h: halfHeight * 2 };
+}
+
+function getCurvedBounds(center: Point, arc: NonNullable<CountryLabel['arc']>, fontSize: number): Zone {
+    const circleCenter = { x: center.x + arc.centerOffset.x, y: center.y + arc.centerOffset.y };
+    const points = Array.from({ length: 9 }, (_, index) => {
+        const angle = arc.centerAngle - arc.span / 2 + arc.span * index / 8;
+        return { x: circleCenter.x + Math.cos(angle) * arc.radius,
+            y: circleCenter.y + Math.sin(angle) * arc.radius };
+    });
+    const padding = fontSize / 2;
+    const left = Math.min(...points.map(point => point.x)) - padding;
+    const right = Math.max(...points.map(point => point.x)) + padding;
+    const top = Math.min(...points.map(point => point.y)) - padding;
+    const bottom = Math.max(...points.map(point => point.y)) + padding;
+    return { x: left, y: top, w: right - left, h: bottom - top };
+}
+
+function straightBoxInside(center: Point, along: Point, across: Point, width: number, height: number,
+    zoneIndex: ZoneIndex): boolean {
+    for (const alongOffset of [-width / 2, 0, width / 2]) {
+        for (const acrossOffset of [-height / 2, 0, height / 2]) {
+            if (!zoneIndex.contains({ x: center.x + along.x * alongOffset + across.x * acrossOffset,
+                y: center.y + along.y * alongOffset + across.y * acrossOffset })) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+function getBounds(zones: Zone[]) {
+    return zones.reduce((box, zone) => ({ left: Math.min(box.left, zone.x), right: Math.max(box.right, zone.x + zone.w),
+        top: Math.min(box.top, zone.y), bottom: Math.max(box.bottom, zone.y + zone.h) }),
+    { left: Infinity, right: -Infinity, top: Infinity, bottom: -Infinity });
 }
 
 function symmetricDistance(center: Point, direction: Point, zoneIndex: ZoneIndex, maximum: number): number {
@@ -501,14 +594,16 @@ function lineInside(from: Point, to: Point, zoneIndex: ZoneIndex): boolean {
 }
 
 function isBetter(label: CountryLabel, current: CountryLabel | undefined): boolean {
-    if (!current || label.fontSize > current.fontSize * 1.001) {
+    if (!current || label.fontSize > current.fontSize * significantFontSizeDifference) {
         return true;
     }
-    if (Math.abs(label.fontSize - current.fontSize) <= current.fontSize * 0.001) {
-        return (label.arc?.radius ?? Infinity) > (current.arc?.radius ?? Infinity) ||
-            Math.abs(label.angle) < Math.abs(current.angle);
+    if (current.fontSize > label.fontSize * significantFontSizeDifference) {
+        return false;
     }
-    return false;
+    if (Math.abs(label.angle) !== Math.abs(current.angle)) {
+        return Math.abs(label.angle) < Math.abs(current.angle);
+    }
+    return (label.arc?.radius ?? Infinity) > (current.arc?.radius ?? Infinity);
 }
 
 function readableDirection(angle: number): 1 | -1 {
