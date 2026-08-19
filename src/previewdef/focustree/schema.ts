@@ -1,5 +1,5 @@
 import { Node, Token } from '../../hoiformat/hoiparser';
-import { convertNodeToJson, CustomMap, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
+import { convertNodeToJson, CustomMap, Enum, HOIPartial, Position, positionSchema, Raw, SchemaDef } from '../../hoiformat/schema';
 import { normalizeNumberLike } from '../../util/hoi4gui/common';
 import { chain, flatten } from 'lodash';
 import { ConditionComplexExpr, ConditionItem, extractConditionalExprs, extractConditionValue, extractConditionValues } from '../../hoiformat/condition';
@@ -31,6 +31,7 @@ export interface Focus {
     icon: FocusIconWithCondition[];
     prerequisite: string[][];
     exclusive: string[];
+    searchFilters: string[];
     hasAllowBranch: boolean;
     inAllowBranch: string[];
     allowBranch: ConditionComplexExpr | undefined;
@@ -80,6 +81,7 @@ interface FocusDef {
     y: Raw;
     prerequisite: FocusOrORList[];
     mutually_exclusive: FocusOrORList[];
+    search_filters: Enum;
     relative_position_id: string;
     allow_branch: Raw[]; /* FIXME not symbol node */
     offset: OffsetDef[];
@@ -140,6 +142,7 @@ const focusSchema: SchemaDef<FocusDef> = {
         _innerType: focusOrORListSchema,
         _type: 'array',
     },
+    search_filters: 'enum',
     relative_position_id: 'string',
     allow_branch: {
         _innerType: 'raw',
@@ -358,6 +361,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
         relativePositionId,
         prerequisite,
         exclusive,
+        searchFilters: hoiFocus.search_filters._values,
         hasAllowBranch,
         inAllowBranch: hasAllowBranch ? [id] : [],
         allowBranch: allowBranchCondition,

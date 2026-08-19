@@ -49,7 +49,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
 
         const focusGfxNames = chain(focusTrees)
             .flatMap(ft => Object.values(ft.focuses))
-            .flatMap(f => [...f.icon.map(i => i.icon), f.overlay])
+            .flatMap(f => [...f.icon.map(i => i.icon), f.overlay, ...f.searchFilters.map(filter => `GFX_${filter}`)])
             .value();
 
         const gfxDependencies = [

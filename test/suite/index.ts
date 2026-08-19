@@ -3,6 +3,8 @@ import * as Mocha from 'mocha';
 import * as glob from 'glob';
 
 export function run(): Promise<void> {
+    Object.assign(globalThis, { IS_WEB_EXT: false });
+
     // Create the mocha test
     const mocha = new Mocha({
         ui: 'tdd',

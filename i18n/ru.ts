@@ -23,6 +23,7 @@ const table: Partial<typeof __table> = {
     "focustree.focustree": "Ветка фокусов: ",
     "focustree.nofocustree": "Нет ветки фокусов.",
     "focustree.search": "Поиск: ",
+    "focustree.searchfilters": "Категории фокусов",
     "focustree.sharedfocuses": "<Общие фокусы>",
     "focustree.warnings": "Включить предупреждения",
     "focustree.warnings.focusidconflict": "Здесь более одного фокуса с ID {0} в файле: {1}.",

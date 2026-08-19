@@ -23,6 +23,7 @@ const table: Partial<typeof __table> = {
     "focustree.focustree": "중점 계통도: ",
     "focustree.nofocustree": "중점 계통도 없음.",
     "focustree.search": "검색: ",
+    "focustree.searchfilters": "국가중점 분류",
     "focustree.sharedfocuses": "<공유 중점>",
     "focustree.warnings": "경고 활성/비활성",
     "focustree.warnings.focusidconflict": "중점 ID {0} 가 {1} 파일 내에 2개 이상 존재합니다.",

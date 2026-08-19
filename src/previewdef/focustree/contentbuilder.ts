@@ -102,6 +102,8 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
             pointer-events: none;
         `)}">Continuous focuses</div>`;
 
+    const focusFilterControls = await renderFocusFilterControls(focusTrees, styleTable, gfxFiles);
+
     return (
         `<div id="dragger" additionalDraggerHostId="focustreecontent" class="${styleTable.oneTimeStyle('dragger', () => `
             width: 100vw;
@@ -114,9 +116,76 @@ async function renderFocusTrees(focusTrees: FocusTree[], styleTable: StyleTable,
             <div id="focustreeplaceholder"></div>
             ${continuousFocusContent}
         </div>` +
+        focusFilterControls +
         renderWarningContainer(styleTable) +
         renderToolBar(focusTrees, styleTable)
     );
+}
+
+async function renderFocusFilterControls(focusTrees: FocusTree[], styleTable: StyleTable, gfxFiles: string[]): Promise<string> {
+    const filters = new Set<string>();
+    focusTrees.forEach(focusTree => {
+        for (const focus of Object.values(focusTree.focuses)) {
+            for (const filter of focus.searchFilters) {
+                filters.add(filter);
+            }
+        }
+    });
+
+    if (filters.size === 0) {
+        return '';
+    }
+
+    const buttonClass = styleTable.style('focus-filter-button', () => `
+        width: 34px;
+        height: 34px;
+        padding: 2px;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: contain;
+        font-size: 9px;
+        overflow: hidden;
+    `);
+    styleTable.style('focus-filter-button', () => `
+        box-shadow: 0 0 0 2px var(--vscode-focusBorder);
+    `, '[aria-pressed="true"]');
+    const buttons = await Promise.all(Array.from(filters).map(async filter => {
+        const text = getFocusFilterText(filter);
+        const sprite = await getSpriteByGfxName(`GFX_${filter}`, gfxFiles);
+        const iconClass = sprite ? styleTable.style('focus-filter-' + normalizeForStyle(filter), () => `
+            background-image: url(${sprite.image.uri});
+        `) : '';
+        return `<button type="button"
+            class="focus-filter ${buttonClass} ${iconClass}"
+            data-focus-filter="${htmlEscape(filter)}"
+            aria-pressed="false"
+            title="${htmlEscape(text)}">${sprite ? '' : htmlEscape(text.substring(0, 3).toLocaleUpperCase())}</button>`;
+    }));
+
+    return `<div id="focus-filter-container"
+        aria-label="${localize('focustree.searchfilters', 'Focus filters')}"
+        class="${styleTable.style('focus-filter-container', () => `
+            position: fixed;
+            left: 10px;
+            bottom: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: calc(100vw - 20px);
+            padding: 4px;
+            background: rgba(32, 32, 32, 0.75);
+        `)}">${buttons.join('')}</div>`;
+}
+
+function getFocusFilterText(filter: string): string {
+    const localisedText = localisationIndex.getLocalisedText(filter);
+    if (localisedText && localisedText !== filter) {
+        return localisedText;
+    }
+
+    return filter.replace(/^FOCUS_FILTER_/, '').split('_')
+        .map(word => word.length > 0 ? word[0].toLocaleUpperCase() + word.substring(1).toLocaleLowerCase() : word)
+        .join(' ');
 }
 
 function renderWarningContainer(styleTable: StyleTable) {
