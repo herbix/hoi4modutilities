@@ -1,10 +1,11 @@
-import type { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject } from 'rxjs';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import { LabelFontSize, Point, Province, ProvinceEdge, Region, State, StrategicRegion, SupplyArea } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { FEWorldMap, Loader } from '../loader';
 import { Renderer } from '../renderer';
 import type { RenderContext } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
+import { sendEvent } from '../../util/telemetry';
 
 export type ViewMode = 'province' | 'state' | 'country' | 'strategicregion' | 'supplyarea' | 'warnings';
 
@@ -14,20 +15,26 @@ export abstract class ViewModeControllerBase<T> {
     public abstract readonly viewMode: ViewMode;
     public abstract readonly edgeRenderScale: number;
     public abstract readonly labelRenderScale: number;
-    public abstract readonly hover$: BehaviorSubject<T | undefined>;
-    public abstract readonly selected$: BehaviorSubject<T | undefined>;
+    public readonly hover$: BehaviorSubject<T | undefined> = new BehaviorSubject<T | undefined>(undefined);
+    public readonly selected$: BehaviorSubject<T | undefined>;
+
+    protected editMode: boolean = false;
+
+    public constructor(protected readonly loader: Loader, selected?: T) {
+        this.selected$ = new BehaviorSubject<T | undefined>(selected);
+    }
 
     public abstract renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void;
     public abstract shouldRenderProvinceEdge(renderContext: RenderContext, province: Province, edge: ProvinceEdge, worldMap: FEWorldMap): boolean;
     public abstract renderHoverSelection(renderer: Renderer, worldMap: FEWorldMap): void;
-    public abstract updateHover(worldMap: FEWorldMap, x: number, y: number, selectedConditions: ConditionItem[]): void;
-    public abstract openMapItem(worldMap: FEWorldMap, useHoverValue: boolean): void;
-    public abstract canOpenMapItem(worldMap: FEWorldMap): boolean;
+    public abstract updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void;
+    public abstract openMapItem(useHoverValue: boolean): void;
+    public abstract canOpenMapItem(): boolean;
 
-    public search(worldMap: FEWorldMap, viewPoint: ViewPoint, id: number): void {
+    public search(viewPoint: ViewPoint, id: number): void {
     }
 
-    public getSearchPlaceholder(worldMap: FEWorldMap): string {
+    public getSearchPlaceholder(): string {
         return '';
     }
 
@@ -35,8 +42,27 @@ export abstract class ViewModeControllerBase<T> {
         this.hover$.next(undefined);
     }
 
-    public toggleSelection(): void {
+    public onClick(): void {
         this.selected$.next(this.selected$.value === this.hover$.value ? undefined : this.hover$.value);
+    }
+
+    public onDblClick(): void {
+        if (!this.editMode) {
+            sendEvent('worldmap.open.' + this.viewMode + '.dblclick');
+            this.openMapItem(true);
+        }
+    }
+
+    public canEdit(): boolean {
+        return false;
+    }
+
+    public enterEditMode(): void {
+        this.editMode = true;
+    }
+
+    public exitEditMode(): void {
+        this.editMode = false;
     }
 
     protected searchById(viewPoint: ViewPoint, id: number, getRegionById: (id: number) => Region | undefined): void {
@@ -53,12 +79,12 @@ export abstract class ViewModeControllerBase<T> {
 
     protected renderRegionLabels<TRegion extends LabeledRegion>(
         renderContext: RenderContext,
-        worldMap: FEWorldMap,
         xOffset: number,
         getRegionId: (province: Province) => number | undefined,
         getRegionById: (id: number) => TRegion | undefined,
         renderAdditionalLabels?: (region: TRegion, labelPosition: Point) => void,
     ): void {
+        const worldMap = this.loader.worldMap;
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const renderedRegions = new Set<number>();

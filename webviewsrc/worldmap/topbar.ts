@@ -20,7 +20,9 @@ export type ColorSet = 'provinceid' | 'provincetype' | 'terrain' | 'owner' | 'co
 type WarningFilter = 'province' | 'state' | 'strategicregion' | 'supplyarea' | 'river';
 type DisplayOption = 'edge' | 'localisedlabel' | 'label' | 'tooltip' | 'supply' | 'river' | 'demilitarizedzone' | 'mousehighlight' | 'fastrending' | 'adaptzooming';
 
-export const topBarHeight = 40;
+export const topBarHeight = 68; // see worldmapview.css --top-bar-height
+
+const pencilUri: string | undefined = (window as any).__pencilUri;
 
 const displayOptions: DisplayOption[] = [
     'edge', 'localisedlabel', 'label', 'tooltip', 'supply', 'river', 'demilitarizedzone', 'mousehighlight', 'fastrending', 'adaptzooming'
@@ -49,7 +51,7 @@ export class TopBar extends Subscriber {
     private conditionSetupDone: boolean = false;
 
     constructor(
-        canvas: HTMLCanvasElement,
+        private readonly canvas: HTMLCanvasElement,
         private readonly viewPoint: ViewPoint,
         private readonly loader: Loader,
         state: any,
@@ -202,6 +204,7 @@ export class TopBar extends Subscriber {
         this.loadRefreshButton();
         this.loadOpenButton();
         this.loadExportButton();
+        this.loadEditButton();
     }
 
     private loadWarningButton() {
@@ -246,23 +249,19 @@ export class TopBar extends Subscriber {
         }));
     }
 
-    private openMapItem(useHoverValue = false) {
-        sendEvent('worldmap.open.' + this.viewMode$.value + (useHoverValue ? '.dblclick' : ''));
-        this.viewModeController.openMapItem(this.loader.worldMap, useHoverValue);
-    }
-
     private loadOpenButton() {
         const open = document.getElementById('open') as HTMLButtonElement;
         this.addSubscription(fromEvent(open, 'click').subscribe((e) => {
             e.stopPropagation();
-            this.openMapItem();
+            sendEvent('worldmap.open.' + this.viewMode$.value);
+            this.viewModeController.openMapItem(false);
         }));
 
         this.addSubscription(combineLatest([
             this.viewMode$,
             ...this.viewModeControllers.getSelectedObservables(),
         ]).subscribe(() => {
-            open.disabled = !this.viewModeController.canOpenMapItem(this.loader.worldMap);
+            open.disabled = !this.viewModeController.canOpenMapItem();
         }));
     }
 
@@ -297,6 +296,38 @@ export class TopBar extends Subscriber {
             vscode.postMessage<WorldMapMessage>({ command: 'exportmap', dataUrl: canvas.toDataURL() });
         }));
     }
+
+    private loadEditButton() {
+        const editButton = document.getElementById('edit') as HTMLButtonElement;
+        editButton.disabled = true;
+        let editButtonActive = false;
+
+        this.addSubscription(this.viewMode$.subscribe(() => {
+            editButtonActive = false;
+            this.canvas.style.cursor = 'crosshair';
+            editButton.classList.remove('active');
+            this.viewModeController.exitEditMode();
+        }));
+
+        this.addSubscription(combineLatest([
+            this.viewMode$,
+            ...this.viewModeControllers.getSelectedObservables(),
+        ]).subscribe(() => {
+            editButton.disabled = !this.viewModeController.canEdit();
+        }));
+
+        editButton.addEventListener('click', e => {
+            e.stopPropagation();
+            editButtonActive = !editButtonActive;
+            this.canvas.style.cursor = editButtonActive && pencilUri ? "url('" + pencilUri + "') 3.5 27.5, pointer" : 'crosshair';
+            editButton.classList.toggle('active');
+            if (editButtonActive) {
+                this.viewModeController.enterEditMode();
+            } else {
+                this.viewModeController.exitEditMode();
+            }
+        });
+    }
     
     private registerEventListeners(canvas: HTMLCanvasElement) {
         this.addSubscription(fromEvent<MouseEvent>(canvas, 'mousemove').subscribe((e) => {
@@ -315,20 +346,21 @@ export class TopBar extends Subscriber {
                 x -= worldMap.width;
             }
 
-            this.viewModeController.updateHover(worldMap, x, y, this.selectedConditions$.value);
+            this.viewModeController.updateHover(x, y, this.selectedConditions$.value);
         }));
     
         this.addSubscription(fromEvent(canvas, 'mouseleave').subscribe(() => {
             this.clearControllerHovers();
         }));
     
-        this.addSubscription(fromEvent(canvas, 'click').subscribe(() => {
-            this.viewModeController.toggleSelection();
+        this.addSubscription(fromEvent(canvas, 'click').subscribe(e => {
+            e.stopPropagation();
+            this.viewModeController.onClick();
         }));
 
         this.addSubscription(fromEvent(canvas, 'dblclick').subscribe(e => {
             e.stopPropagation();
-            this.openMapItem(true);
+            this.viewModeController.onDblClick();
         }));
 
         this.addSubscription(this.viewMode$.subscribe(() => this.onViewModeChange()));
@@ -341,7 +373,7 @@ export class TopBar extends Subscriber {
                 warnings.value = feLocalize('worldmap.warnings', 'World map warnings: \n\n{0}', wm.warnings.map(warningToString).join('\n'));
             }
 
-            this.setSearchBoxPlaceHolder(wm);
+            this.setSearchBoxPlaceHolder();
         }));
     }
 
@@ -357,15 +389,11 @@ export class TopBar extends Subscriber {
             return;
         }
 
-        this.viewModeController.search(this.loader.worldMap, this.viewPoint, number);
+        this.viewModeController.search(this.viewPoint, number);
     }
 
-    private setSearchBoxPlaceHolder(worldMap?: FEWorldMap) {
-        if (!worldMap) {
-            worldMap = this.loader.worldMap;
-        }
-
-        const placeholder = this.viewModeController.getSearchPlaceholder(worldMap);
+    private setSearchBoxPlaceHolder() {
+        const placeholder = this.viewModeController.getSearchPlaceholder();
 
         if (placeholder) {
             this.searchBox.placeholder = feLocalize('worldmap.topbar.search.placeholder', 'Range: {0}', placeholder);

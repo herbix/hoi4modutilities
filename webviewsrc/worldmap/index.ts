@@ -13,7 +13,7 @@ fromEvent(window, 'load').subscribe(function() {
     const loader = new Loader();
     const mainCanvas = document.getElementById('main-canvas') as HTMLCanvasElement;
     const viewPoint = new ViewPoint(mainCanvas, loader, topBarHeight, state.viewPoint || { x: 0, y: -topBarHeight, scale: 1 });
-    const viewModeControllers = new ViewModeControllers(state, loader.worldMap$);
+    const viewModeControllers = new ViewModeControllers(state, loader);
     const topBar = new TopBar(mainCanvas, viewPoint, loader, state, viewModeControllers);
     const renderer = new Renderer(mainCanvas, viewPoint, loader, topBar, viewModeControllers);
 

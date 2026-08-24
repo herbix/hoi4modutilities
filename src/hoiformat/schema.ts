@@ -66,7 +66,7 @@ export type SchemaDef<T> =
     T extends CustomMap<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'map'; } :
     T extends DetailValue<infer T1> ? { _innerType: SchemaDef<T1>; _type: 'detailvalue'; } :
     T extends (infer B)[] ? { _innerType: SchemaDef<B>; _type: 'array'; } :
-    { [K in Exclude<keyof T, '_token' | '_index'>]: SchemaDef<T[K]>; };
+    { [K in Exclude<keyof T, '_token' | '_index' | '_valueStartToken' | '_valueEndToken'>]: SchemaDef<T[K]>; };
 
 //#endregion
 

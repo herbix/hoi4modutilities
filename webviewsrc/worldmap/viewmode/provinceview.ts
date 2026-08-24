@@ -1,4 +1,3 @@
-import { BehaviorSubject } from 'rxjs';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, WorldMapMessage } from '../definitions';
 import type { FEWorldMap } from '../loader';
@@ -14,13 +13,6 @@ export class ProvinceViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'province';
     public readonly edgeRenderScale = 2;
     public readonly labelRenderScale = 3;
-    public readonly hover$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
-    public readonly selected$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
-
-    constructor(selected?: number) {
-        super();
-        this.selected$.next(selected);
-    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
@@ -69,12 +61,14 @@ export class ProvinceViewModeController extends ViewModeControllerBase<number> {
         }
     }
 
-    public updateHover(worldMap: FEWorldMap, x: number, y: number, selectedConditions: ConditionItem[]): void {
+    public updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
+        const worldMap = this.loader.worldMap;
         const province = worldMap.getProvinceByPosition(x, y);
         this.hover$.next(province?.id);
     }
 
-    public openMapItem(worldMap: FEWorldMap, useHoverValue: boolean): void {
+    public openMapItem(useHoverValue: boolean): void {
+        const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
             const province = worldMap.getProvinceById(selected);
@@ -92,17 +86,18 @@ export class ProvinceViewModeController extends ViewModeControllerBase<number> {
         }
     }
 
-    public canOpenMapItem(worldMap: FEWorldMap): boolean {
+    public canOpenMapItem(): boolean {
+        const worldMap = this.loader.worldMap;
         const selected = this.selected$.value;
         return selected !== undefined && !!worldMap.provinceDefinitionsFile && worldMap.getProvinceById(selected)?.lineNumber !== undefined;
     }
 
-    public override search(worldMap: FEWorldMap, viewPoint: ViewPoint, id: number): void {
-        this.searchById(viewPoint, id, worldMap.getProvinceById);
+    public override search(viewPoint: ViewPoint, id: number): void {
+        this.searchById(viewPoint, id, this.loader.worldMap.getProvinceById);
     }
 
-    public override getSearchPlaceholder(worldMap: FEWorldMap): string {
-        return this.getIdSearchPlaceholder(worldMap.provincesCount);
+    public override getSearchPlaceholder(): string {
+        return this.getIdSearchPlaceholder(this.loader.worldMap.provincesCount);
     }
 
     private renderProvinceTooltip(renderer: Renderer, province: Province, worldMap: FEWorldMap): void {

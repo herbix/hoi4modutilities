@@ -1,3 +1,7 @@
+:root {
+    --top-bar-height: 68px;
+}
+
 body {
     margin: 0;
     padding: 0;
@@ -12,9 +16,13 @@ body {
 }
 
 .toolbar-outer {
-    height: 40px;
+    height: var(--top-bar-height);
     z-index: 10;
     box-sizing: border-box;
+}
+
+.toolbar {
+    flex-direction:column;
 }
 
 label {
@@ -48,7 +56,7 @@ span.divider {
     position: fixed;
     top: 0;
     left: 0;
-    padding-top: 40px;
+    padding-top: var(--top-bar-height);
     background: var(--vscode-editor-background);
     box-sizing: border-box;
     display: none;

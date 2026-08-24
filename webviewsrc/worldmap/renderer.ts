@@ -1,4 +1,4 @@
-import { LabelFontSize, Point, Province, Terrain, WithCondition, Zone } from './definitions';
+import { LabelFontSize, Point, Province, Terrain, Zone } from './definitions';
 import { FEWorldMap, Loader } from './loader';
 import { ViewPoint } from './viewpoint';
 import { distanceHamming, distanceSqr, zoneCenter } from '../../src/previewdef/worldmap/graphutils';
@@ -304,6 +304,14 @@ export class Renderer extends Subscriber {
         return topBar.display.selectedValues$.value.includes('river');
     }
 
+    private registerCanvasEventHandlers() {
+        this.addSubscription(fromEvent<MouseEvent>(this.mainCanvas, 'mousemove').subscribe((e) => {
+            this.cursorX = e.pageX;
+            this.cursorY = e.pageY;
+            this.renderCanvas();
+        }));
+    }
+
     private static renderAllEdges(renderContext: RenderContext, worldMap: FEWorldMap, context: CanvasRenderingContext2D, xOffset: number) {
         const renderedProvinces = renderContext.renderedProvincesByOffset[xOffset] ?? [];
         const preciseEdge = renderContext.preciseEdge;
@@ -553,20 +561,15 @@ export class Renderer extends Subscriber {
         Renderer.renderProvince(this.viewPoint, context, province, scale, xOffset);
     }
 
-    private registerCanvasEventHandlers() {
-        this.addSubscription(fromEvent<MouseEvent>(this.mainCanvas, 'mousemove').subscribe((e) => {
-            this.cursorX = e.pageX;
-            this.cursorY = e.pageY;
-            this.renderCanvas();
-        }));
+    private renderStyledProvince(province: Province, worldMap: FEWorldMap, fillStyle: string): void {
+        const backCanvasContext = this.backCanvasContext;
+        backCanvasContext.fillStyle = fillStyle;
+        this.renderAllOffsets(province.boundingBox, worldMap.width, xOffset =>
+            this.renderProvince(backCanvasContext, province, this.viewPoint.scale, xOffset));
     }
 
     public renderHoverProvince(province: Province, worldMap: FEWorldMap, renderAdjacent: boolean = true) {
-        const backCanvasContext = this.backCanvasContext;
-        const viewPoint = this.viewPoint;
-        backCanvasContext.fillStyle = 'rgba(255, 255, 255, 0.7)';
-        this.renderAllOffsets(province.boundingBox, worldMap.width, xOffset =>
-            this.renderProvince(backCanvasContext, province, viewPoint.scale, xOffset));
+        this.renderStyledProvince(province, worldMap, 'rgba(255, 255, 255, 0.7)');
 
         if (!renderAdjacent) {
             return;
@@ -579,17 +582,13 @@ export class Renderer extends Subscriber {
             }
             const adjecentProvince = worldMap.getProvinceById(adjecentNumber);
             if (adjecentProvince) {
-                backCanvasContext.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                this.renderAllOffsets(adjecentProvince.boundingBox, worldMap.width, xOffset =>
-                    this.renderProvince(backCanvasContext, adjecentProvince, viewPoint.scale, xOffset));
+                this.renderStyledProvince(adjecentProvince, worldMap, 'rgba(255, 255, 255, 0.3)');
             }
         }
     }
 
     public renderSelectedProvince(province: Province, worldMap: FEWorldMap) {
-        this.backCanvasContext.fillStyle = 'rgba(128, 255, 128, 0.7)';
-        this.renderAllOffsets(province.boundingBox, worldMap.width, xOffset =>
-            this.renderProvince(this.backCanvasContext, province, this.viewPoint.scale, xOffset));
+        this.renderStyledProvince(province, worldMap, 'rgba(128, 255, 128, 0.7)');
     }
 
     private renderLoadingText(text: string) {
@@ -621,6 +620,27 @@ export class Renderer extends Subscriber {
                     this.renderHoverProvince(province, worldMap, false);
                 }
             }
+        }
+    }
+
+    public renderRegionHoverSelectionInEditMode(worldMap: FEWorldMap, hover: Province | undefined, selected: { provinces: number[] } | undefined) {
+        let hoverRendered = false;
+        if (selected) {
+            for (const provinceId of selected.provinces) {
+                const province = worldMap.getProvinceById(provinceId);
+                if (province) {
+                    if (province !== hover) {
+                        this.renderSelectedProvince(province, worldMap);
+                    } else {
+                        hoverRendered = true;
+                        this.renderStyledProvince(province, worldMap, 'rgba(255, 128, 128, 0.7)');
+                    }
+                }
+            }
+        }
+
+        if (hover && !hoverRendered) {
+            this.renderSelectedProvince(hover, worldMap);
         }
     }
 

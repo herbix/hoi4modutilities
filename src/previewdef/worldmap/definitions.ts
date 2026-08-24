@@ -247,7 +247,8 @@ export interface TokenInFile {
     token: Token | null;
 }
 
-export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage | OpenFileMessage | ExportMapMessage | SaveStateMessage;
+export type WorldMapMessage = LoadedMessage | RequestMapItemMessage | MapItemMessage | ErrorMessage | ProgressMessage | ProvinceMapSummaryMessage |
+    OpenFileMessage | ExportMapMessage | SaveStateMessage | MoveProvinceMessage;
 
 export interface LoadedMessage {
     command: 'loaded';
@@ -289,6 +290,16 @@ export interface OpenFileMessage {
     start: number | undefined;
     end: number | undefined;
     lineNumber?: number;
+}
+
+export interface MoveProvinceMessage {
+    command: 'moveprovince';
+    type: 'state' | 'strategicregion',
+    province: number,
+    to: number,
+    from: number | undefined,
+    toFile: string,
+    fromFile: string | undefined,
 }
 
 export interface ExportMapMessage {

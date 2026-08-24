@@ -1,34 +1,32 @@
-import { BehaviorSubject, Observable } from 'rxjs';
 import { LabelFontSize } from '../definitions';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, State, WorldMapMessage } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { FEWorldMap, Loader } from '../loader';
 import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
 import { solveWithCondition, solveWithConditionAsSet, toCommaDivideNumber } from '../common';
+import { BehaviorSubject } from 'rxjs';
 
 export class StateViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'state';
     public readonly edgeRenderScale = 1;
     public readonly labelRenderScale = 1;
-    public readonly hover$ = new BehaviorSubject<number | undefined>(undefined);
-    public readonly selected$: BehaviorSubject<number | undefined>;
+    public readonly editModeHover$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
     private readonly resourceImages: Record<string, HTMLImageElement | undefined> = {};
 
-    constructor(selected?: number, worldMap$?: Observable<FEWorldMap>) {
-        super();
-        this.selected$ = new BehaviorSubject<number | undefined>(selected);
-        worldMap$?.subscribe(worldMap => this.loadResourceImages(worldMap));
+    constructor(loader: Loader, selected?: number) {
+        super(loader, selected);
+        loader.worldMap$.subscribe(worldMap => this.loadResourceImages(worldMap));
+        this.loadResourceImages(loader.worldMap);
     }
 
-    public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
+    public override renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         const resourceYOffset = renderContext.topBar.display.selectedValues$.value.includes('localisedlabel') ? LabelFontSize / 2 : 0;
         this.renderRegionLabels(
             renderContext,
-            worldMap,
             xOffset,
             province => renderContext.provinceToState[province.id],
             id => worldMap.getStateById(id),
@@ -46,17 +44,7 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         );
     }
 
-    private loadResourceImages(worldMap: FEWorldMap): void {
-        for (const resource of worldMap.resources) {
-            const image = new Image();
-            image.onload = () => {
-                this.resourceImages[resource.name] = image;
-            };
-            image.src = resource.imageUri;
-        }
-    }
-
-    public shouldRenderProvinceEdge(renderContext: RenderContext, province: Province, edge: ProvinceEdge, worldMap: FEWorldMap): boolean {
+    public override shouldRenderProvinceEdge(renderContext: RenderContext, province: Province, edge: ProvinceEdge, worldMap: FEWorldMap): boolean {
         const stateFromId = renderContext.provinceToState[province.id];
         const stateToId = renderContext.provinceToState[edge.to];
         const strategicRegionFromId = renderContext.provinceToStrategicRegion[province.id];
@@ -64,22 +52,60 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         return !(stateFromId === stateToId && (stateFromId !== undefined || strategicRegionFromId === strategicRegionToId));
     }
 
-    public renderHoverSelection(renderer: Renderer, worldMap: FEWorldMap): void {
-        this.loadResourceImages(worldMap);
-        const hover = worldMap.getStateById(this.hover$.value);
-        renderer.renderRegionHoverSelection(worldMap, hover, worldMap.getStateById(this.selected$.value));
-        if (hover && renderer.isTooltipVisible()) {
-            this.renderStateTooltip(renderer, hover, worldMap);
+    public override onClick(): void {
+        if (!this.editMode) {
+            super.onClick();
+        } else {
+            const worldMap = this.loader.worldMap;
+            const selectedState = worldMap.getStateById(this.selected$.value);
+            const hoverProvince = worldMap.getProvinceById(this.editModeHover$.value);
+            if (!selectedState || !hoverProvince) {
+                return;
+            }
+
+            const hoverState = worldMap.getStateByProvinceId(hoverProvince.id);
+            
+            vscode.postMessage<WorldMapMessage>({
+                command: 'moveprovince',
+                type: 'state',
+                province: hoverProvince.id,
+                to: selectedState.id,
+                from: hoverState?.id,
+                toFile: selectedState.file,
+                fromFile: hoverState?.file,
+            });
         }
     }
 
-    public updateHover(worldMap: FEWorldMap, x: number, y: number, selectedConditions: ConditionItem[]): void {
+    public override renderHoverSelection(renderer: Renderer, worldMap: FEWorldMap): void {
+        const selectedState = worldMap.getStateById(this.selected$.value);
+        if (!this.editMode) {
+            const hoverState = worldMap.getStateById(this.hover$.value);
+            renderer.renderRegionHoverSelection(worldMap, hoverState, selectedState);
+            if (hoverState && renderer.isTooltipVisible()) {
+                this.renderStateTooltip(renderer, hoverState, worldMap);
+            }
+        } else {
+            const hoverProvince = worldMap.getProvinceById(this.editModeHover$.value);
+            renderer.renderRegionHoverSelectionInEditMode(worldMap, hoverProvince, selectedState);
+        }
+    }
+
+    public override updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
+        const worldMap = this.loader.worldMap;
         const province = worldMap.getProvinceByPosition(x, y);
         const state = province === undefined ? undefined : worldMap.getStateByProvinceId(province.id);
         this.hover$.next(state?.id);
+        this.editModeHover$.next(province?.id);
     }
 
-    public openMapItem(worldMap: FEWorldMap, useHoverValue: boolean): void {
+    public override clearHover(): void {
+        super.clearHover();
+        this.editModeHover$.next(undefined);
+    }
+
+    public openMapItem(useHoverValue: boolean): void {
+        const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
             const state = worldMap.getStateById(selected);
@@ -95,16 +121,30 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         }
     }
 
-    public canOpenMapItem(worldMap: FEWorldMap): boolean {
+    public canEdit(): boolean {
         return this.selected$.value !== undefined;
     }
 
-    public override search(worldMap: FEWorldMap, viewPoint: ViewPoint, id: number): void {
-        this.searchById(viewPoint, id, worldMap.getStateById);
+    public canOpenMapItem(): boolean {
+        return this.selected$.value !== undefined;
     }
 
-    public override getSearchPlaceholder(worldMap: FEWorldMap): string {
-        return this.getIdSearchPlaceholder(worldMap.statesCount);
+    public override search(viewPoint: ViewPoint, id: number): void {
+        this.searchById(viewPoint, id, this.loader.worldMap.getStateById);
+    }
+
+    public override getSearchPlaceholder(): string {
+        return this.getIdSearchPlaceholder(this.loader.worldMap.statesCount);
+    }
+
+    private loadResourceImages(worldMap: FEWorldMap): void {
+        for (const resource of worldMap.resources) {
+            const image = new Image();
+            image.onload = () => {
+                this.resourceImages[resource.name] = image;
+            };
+            image.src = resource.imageUri;
+        }
     }
 
     private renderStateTooltip(renderer: Renderer, state: State, worldMap: FEWorldMap): void {

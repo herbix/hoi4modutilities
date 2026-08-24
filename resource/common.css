@@ -199,7 +199,7 @@ input[type=checkbox]:checked ~ div.checkbox-container-out div.checkbox, div.chec
 .toolbar-row {
     display: flex;
     flex-direction: row;
-    margin: 5px 0;
+    margin: 4px 0;
 }
 
 .toolbar-row > * {
@@ -210,12 +210,13 @@ button {
     background: transparent;
     border: none;
     color: inherit;
-    padding: 0;
+    padding: 0px;
     cursor: pointer;
-    height: 20px;
-    width: 20px;
+    height: 22px;
+    width: 22px;
     display: inline-block;
     text-align: center;
+    border-radius: 5px;
     transition: transform 0.05s;
 }
 
@@ -223,8 +224,12 @@ button:focus {
     outline: none;
 }
 
-button:active {
-    transform: scale(1.2720);
+button:hover:not([disabled]) {
+    background: var(--vscode-toolbar-hoverBackground);
+}
+
+button:active, button.active:not([disabled]) {
+    background: var(--vscode-toolbar-activeBackground);
 }
 
 button > .codicon {
@@ -232,7 +237,7 @@ button > .codicon {
 }
 
 button[disabled] {
-    color: rgba(127, 127, 127, 0.7);
+    color: var(--vscode-disabledForeground);
     cursor: unset;
 }
 

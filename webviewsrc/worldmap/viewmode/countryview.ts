@@ -1,4 +1,3 @@
-import { BehaviorSubject } from 'rxjs';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import { distanceSqr, intersectZone, inZone, mergeRegions } from '../../../src/previewdef/worldmap/graphutils';
 import type { Point, Province, ProvinceEdge, Region, WorldMapMessage } from '../definitions';
@@ -19,13 +18,6 @@ export class CountryViewModeController extends ViewModeControllerBase<string> {
     public readonly viewMode: ViewMode = 'country';
     public readonly edgeRenderScale = 0.25;
     public readonly labelRenderScale = 0.25;
-    public readonly hover$ = new BehaviorSubject<string | undefined>(undefined);
-    public readonly selected$: BehaviorSubject<string | undefined>;
-
-    constructor(selected?: string) {
-        super();
-        this.selected$ = new BehaviorSubject<string | undefined>(selected);
-    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;
@@ -78,13 +70,15 @@ export class CountryViewModeController extends ViewModeControllerBase<string> {
         }
     }
 
-    public updateHover(worldMap: FEWorldMap, x: number, y: number, selectedConditions: ConditionItem[]): void {
+    public updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
+        const worldMap = this.loader.worldMap;
         const province = worldMap.getProvinceByPosition(x, y);
         const state = province === undefined ? undefined : worldMap.getStateByProvinceId(province.id);
         this.hover$.next(state === undefined ? undefined : worldMap.getCountryByState(state, selectedConditions, 'owner'));
     }
 
-    public openMapItem(worldMap: FEWorldMap, useHoverValue: boolean): void {
+    public openMapItem(useHoverValue: boolean): void {
+        const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
             const country = worldMap.getCountryByTag(selected);
@@ -94,7 +88,7 @@ export class CountryViewModeController extends ViewModeControllerBase<string> {
         }
     }
 
-    public canOpenMapItem(worldMap: FEWorldMap): boolean {
+    public canOpenMapItem(): boolean {
         return this.selected$.value !== undefined;
     }
 

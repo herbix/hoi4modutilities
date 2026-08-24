@@ -1,112 +1,119 @@
 <!--Inside <body>-->
     <div class="toolbar-outer">
         <div id="topbar" class="toolbar">
-            <div class="group">
-                <label for="viewmode">%worldmap.topbar.viewmode|View mode: %</label>
-                <div class="select-container">
-                    <select id="viewmode">
-                        <option value="province">%worldmap.topbar.viewmode.province|Province%</option>
-                        <option value="state">%worldmap.topbar.viewmode.state|State%</option>
-                        <option value="country">%worldmap.topbar.viewmode.country|Country%</option>
-                        <option value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</option>
-                        <option value="supplyarea" enablesupplyarea="true">%worldmap.topbar.viewmode.supplyarea|Supply Area%</option>
-                        <option value="warnings">%worldmap.topbar.viewmode.warnings|Warnings%</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="group">
-                <label for="colorset">%worldmap.topbar.colorset|Color set: %</label>
-                <div class="select-container">
-                    <select id="colorset">
-                        <option viewmode="province" value="provinceid">%worldmap.topbar.colorset.provinceid|Province ID%</option>
-                        <option viewmode="province state" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
-                        <option viewmode="province state supplyarea" value="supplyareaid" enablesupplyarea="true">%worldmap.topbar.colorset.supplyareaid|Supply Area ID%</option>
-                        <option viewmode="province state strategicregion" value="strategicregionid">%worldmap.topbar.colorset.strategicregionid|Strategic Region ID%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="owner">%worldmap.topbar.colorset.owner|Country (Owner)%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="controller">%worldmap.topbar.colorset.controller|Country (Controller)%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="provincetype">%worldmap.topbar.colorset.provincetype|Province Type%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="terrain">%worldmap.topbar.colorset.terrain|Terrain%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="statecategory">%worldmap.topbar.colorset.statecategory|State Category%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="continent">%worldmap.topbar.colorset.continent|Continent%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="victorypoint">%worldmap.topbar.colorset.victorypoint|Victory Points%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="resources">%worldmap.topbar.colorset.resources|Resources%</option>
-                        <option viewmode="province state country strategicregion supplyarea" value="supplyvalue" enablesupplyarea="true">%worldmap.topbar.colorset.supplyvalue|Supply Value%</option>
-                        <option value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="group">
-                <label for="display">%worldmap.topbar.display|Display: %</label>
-                <div class="select-container">
-                    <div id="display" class="select multiple-select" tabindex="0" role="combobox">
-                        <span class="value"></span>
-                        <div class="option" value="edge">%worldmap.topbar.display.border|Show border%</div>
-                        <div class="option" value="localisedlabel">%worldmap.topbar.display.localisedlabel|Show localised label%</div>
-                        <div class="option" value="label">%worldmap.topbar.display.label|Show label%</div>
-                        <div class="option" value="tooltip">%worldmap.topbar.display.tooltip|Show tooltip%</div>
-                        <div class="option" value="supply" enablesupplyarea="false">%worldmap.topbar.display.supply|Show supply%</div>
-                        <div class="option" value="river">%worldmap.topbar.display.river|Show river%</div>
-                        <div class="option" value="demilitarizedzone">%worldmap.topbar.display.demilitarizedzone|Show demilitarized zone%</div>
-                        <div class="option" value="mousehighlight">%worldmap.topbar.display.mousehighlight|Mouse highlight%</div>
-                        <div class="option" value="fastrending">%worldmap.topbar.display.fastrendering|Fast rendering%</div>
-                        <div class="option" value="adaptzooming">%worldmap.topbar.display.adaptzooming|Adapt zooming%</div>
+            <div class="toolbar-row">
+                <div class="group">
+                    <label for="viewmode">%worldmap.topbar.viewmode|View mode: %</label>
+                    <div class="select-container">
+                        <select id="viewmode">
+                            <option value="province">%worldmap.topbar.viewmode.province|Province%</option>
+                            <option value="state">%worldmap.topbar.viewmode.state|State%</option>
+                            <option value="country">%worldmap.topbar.viewmode.country|Country%</option>
+                            <option value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</option>
+                            <option value="supplyarea" enablesupplyarea="true">%worldmap.topbar.viewmode.supplyarea|Supply Area%</option>
+                            <option value="warnings">%worldmap.topbar.viewmode.warnings|Warnings%</option>
+                        </select>
                     </div>
                 </div>
-            </div>
 
-            <div class="group">
-                <label for="conditions">%worldmap.topbar.conditions|Conditions: %</label>
-                <div class="select-container">
-                    <div id="conditions" class="select multiple-select" tabindex="0" role="combobox">
-                        <span class="value"></span>
+                <div class="group">
+                    <label for="colorset">%worldmap.topbar.colorset|Color set: %</label>
+                    <div class="select-container">
+                        <select id="colorset">
+                            <option viewmode="province" value="provinceid">%worldmap.topbar.colorset.provinceid|Province ID%</option>
+                            <option viewmode="province state" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
+                            <option viewmode="province state supplyarea" value="supplyareaid" enablesupplyarea="true">%worldmap.topbar.colorset.supplyareaid|Supply Area ID%</option>
+                            <option viewmode="province state strategicregion" value="strategicregionid">%worldmap.topbar.colorset.strategicregionid|Strategic Region ID%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="owner">%worldmap.topbar.colorset.owner|Country (Owner)%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="controller">%worldmap.topbar.colorset.controller|Country (Controller)%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="provincetype">%worldmap.topbar.colorset.provincetype|Province Type%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="terrain">%worldmap.topbar.colorset.terrain|Terrain%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="statecategory">%worldmap.topbar.colorset.statecategory|State Category%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="continent">%worldmap.topbar.colorset.continent|Continent%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="manpower">%worldmap.topbar.colorset.manpower|Manpower%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="victorypoint">%worldmap.topbar.colorset.victorypoint|Victory Points%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="resources">%worldmap.topbar.colorset.resources|Resources%</option>
+                            <option viewmode="province state country strategicregion supplyarea" value="supplyvalue" enablesupplyarea="true">%worldmap.topbar.colorset.supplyvalue|Supply Value%</option>
+                            <option value="warnings">%worldmap.topbar.colorset.warnings|Warnings%</option>
+                        </select>
                     </div>
+                </div>
+
+                <div class="group">
+                    <label for="display">%worldmap.topbar.display|Display: %</label>
+                    <div class="select-container">
+                        <div id="display" class="select multiple-select" tabindex="0" role="combobox">
+                            <span class="value"></span>
+                            <div class="option" value="edge">%worldmap.topbar.display.border|Show border%</div>
+                            <div class="option" value="localisedlabel">%worldmap.topbar.display.localisedlabel|Show localised label%</div>
+                            <div class="option" value="label">%worldmap.topbar.display.label|Show label%</div>
+                            <div class="option" value="tooltip">%worldmap.topbar.display.tooltip|Show tooltip%</div>
+                            <div class="option" value="supply" enablesupplyarea="false">%worldmap.topbar.display.supply|Show supply%</div>
+                            <div class="option" value="river">%worldmap.topbar.display.river|Show river%</div>
+                            <div class="option" value="demilitarizedzone">%worldmap.topbar.display.demilitarizedzone|Show demilitarized zone%</div>
+                            <div class="option" value="mousehighlight">%worldmap.topbar.display.mousehighlight|Mouse highlight%</div>
+                            <div class="option" value="fastrending">%worldmap.topbar.display.fastrendering|Fast rendering%</div>
+                            <div class="option" value="adaptzooming">%worldmap.topbar.display.adaptzooming|Adapt zooming%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="group">
+                    <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%">
+                        <i class="codicon codicon-refresh"></i>
+                    </button>
+                    <button id="export" title="%worldmap.export.title|Export as image%">
+                        <i class="codicon codicon-export"></i>
+                    </button>
+                </div>
+
+                <div class="group">
+                    <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%">
+                        <i class="codicon codicon-warning"></i>
+                    </button>
+                </div>
+
+                <div class="group" viewmode="province state strategicregion supplyarea country">
+                    <button id="open" title="%worldmap.topbar.open.title|Open in workspace%">
+                        <i class="codicon codicon-link-external"></i>
+                    </button>
+                    <button id="edit" title="%worldmap.topbar.edit.title|Edit%">
+                        <i class="codicon codicon-edit"></i>
+                    </button>
                 </div>
             </div>
 
-            <div class="group" viewmode="province state strategicregion supplyarea supply">
-                <label for="searchbox">%worldmap.topbar.search|Search: %</label>
-                <input id="searchbox" type="text"/>
-                <button id="search" title="%worldmap.topbar.search.title|Search%">
-                    <i class="codicon codicon-search"></i>
-                </button>
-            </div>
-
-            <div class="group" viewmode="warnings">
-                <label for="warningfilter">%worldmap.topbar.warningfilter|Warning filter: %</label>
-                <div class="select-container">
-                    <div id="warningfilter" class="select multiple-select" tabindex="0" role="combobox">
-                        <span class="value"></span>
-                        <div class="option" value="province">%worldmap.topbar.viewmode.province|Province%</div>
-                        <div class="option" value="state">%worldmap.topbar.viewmode.state|State%</div>
-                        <div class="option" value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</div>
-                        <div class="option" value="supplyarea" enablesupplyarea="true">%worldmap.topbar.viewmode.supplyarea|Supply Area%</div>
-                        <div class="option" value="river">%worldmap.topbar.warningfilter.river|River%</div>
+            <div class="toolbar-row">
+                <div class="group">
+                    <label for="conditions">%worldmap.topbar.conditions|Conditions: %</label>
+                    <div class="select-container">
+                        <div id="conditions" class="select multiple-select" tabindex="0" role="combobox">
+                            <span class="value"></span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <div class="group">
-                <button id="refresh" title="%worldmap.topbar.refresh.title|Refresh%">
-                    <i class="codicon codicon-refresh"></i>
-                </button>
-                <button id="export" title="%worldmap.export.title|Export as image%">
-                    <i class="codicon codicon-export"></i>
-                </button>
-            </div>
+                <div class="group" viewmode="province state strategicregion supplyarea supply">
+                    <label for="searchbox">%worldmap.topbar.search|Search: %</label>
+                    <input id="searchbox" type="text"/>
+                    <button id="search" title="%worldmap.topbar.search.title|Search%">
+                        <i class="codicon codicon-search"></i>
+                    </button>
+                </div>
 
-            <div class="group">
-                <button id="show-warnings" title="%worldmap.topbar.warnings.title|Toggle warnings%">
-                    <i class="codicon codicon-warning"></i>
-                </button>
-            </div>
-
-            <div class="group" viewmode="province state strategicregion supplyarea country">
-                <button id="open" title="%worldmap.topbar.open.title|Open in workspace%">
-                    <i class="codicon codicon-link-external"></i>
-                </button>
+                <div class="group" viewmode="warnings">
+                    <label for="warningfilter">%worldmap.topbar.warningfilter|Warning filter: %</label>
+                    <div class="select-container">
+                        <div id="warningfilter" class="select multiple-select" tabindex="0" role="combobox">
+                            <span class="value"></span>
+                            <div class="option" value="province">%worldmap.topbar.viewmode.province|Province%</div>
+                            <div class="option" value="state">%worldmap.topbar.viewmode.state|State%</div>
+                            <div class="option" value="strategicregion">%worldmap.topbar.viewmode.strategicregion|Strategic Region%</div>
+                            <div class="option" value="supplyarea" enablesupplyarea="true">%worldmap.topbar.viewmode.supplyarea|Supply Area%</div>
+                            <div class="option" value="river">%worldmap.topbar.warningfilter.river|River%</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

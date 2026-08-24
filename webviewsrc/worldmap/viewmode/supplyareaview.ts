@@ -1,4 +1,3 @@
-import { BehaviorSubject } from 'rxjs';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, SupplyArea, WorldMapMessage } from '../definitions';
 import type { FEWorldMap } from '../loader';
@@ -12,18 +11,10 @@ export class SupplyAreaViewModeController extends ViewModeControllerBase<number>
     public readonly viewMode: ViewMode = 'supplyarea';
     public readonly edgeRenderScale = 0.5;
     public readonly labelRenderScale = 1;
-    public readonly hover$ = new BehaviorSubject<number | undefined>(undefined);
-    public readonly selected$: BehaviorSubject<number | undefined>;
-
-    constructor(selected?: number) {
-        super();
-        this.selected$ = new BehaviorSubject<number | undefined>(selected);
-    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         this.renderRegionLabels(
             renderContext,
-            worldMap,
             xOffset,
             province => {
                 const stateId = renderContext.provinceToState[province.id];
@@ -53,13 +44,15 @@ export class SupplyAreaViewModeController extends ViewModeControllerBase<number>
         }
     }
 
-    public updateHover(worldMap: FEWorldMap, x: number, y: number, selectedConditions: ConditionItem[]): void {
+    public updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
+        const worldMap = this.loader.worldMap;
         const province = worldMap.getProvinceByPosition(x, y);
         const state = province === undefined ? undefined : worldMap.getStateByProvinceId(province.id);
         this.hover$.next(state === undefined ? undefined : worldMap.getSupplyAreaByStateId(state.id)?.id);
     }
 
-    public openMapItem(worldMap: FEWorldMap, useHoverValue: boolean): void {
+    public openMapItem(useHoverValue: boolean): void {
+        const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
             const supplyArea = worldMap.getSupplyAreaById(selected);
@@ -75,16 +68,16 @@ export class SupplyAreaViewModeController extends ViewModeControllerBase<number>
         }
     }
 
-    public canOpenMapItem(worldMap: FEWorldMap): boolean {
+    public canOpenMapItem(): boolean {
         return this.selected$.value !== undefined;
     }
 
-    public override search(worldMap: FEWorldMap, viewPoint: ViewPoint, id: number): void {
-        this.searchById(viewPoint, id, worldMap.getSupplyAreaById);
+    public override search(viewPoint: ViewPoint, id: number): void {
+        this.searchById(viewPoint, id, this.loader.worldMap.getSupplyAreaById);
     }
 
-    public override getSearchPlaceholder(worldMap: FEWorldMap): string {
-        return this.getIdSearchPlaceholder(worldMap.supplyAreasCount);
+    public override getSearchPlaceholder(): string {
+        return this.getIdSearchPlaceholder(this.loader.worldMap.supplyAreasCount);
     }
 
     private toProvinceRegion(supplyArea: SupplyArea | undefined, worldMap: FEWorldMap): { provinces: number[] } | undefined {

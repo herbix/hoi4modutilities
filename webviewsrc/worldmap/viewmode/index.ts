@@ -1,5 +1,5 @@
 import { Observable } from 'rxjs';
-import type { FEWorldMap } from '../loader';
+import type { Loader } from '../loader';
 import { ViewModeControllerBase } from './viewbase';
 import { CountryViewModeController } from './countryview';
 import { ProvinceViewModeController } from './provinceview';
@@ -27,13 +27,13 @@ export class ViewModeControllers {
     public readonly supplyarea: SupplyAreaViewModeController;
     public readonly warnings: WarningsViewModeController;
 
-    constructor(state: ViewModeControllerState, worldMap$?: Observable<FEWorldMap>) {
-        this.province = new ProvinceViewModeController(state.selectedProvinceId);
-        this.state = new StateViewModeController(state.selectedStateId, worldMap$);
-        this.country = new CountryViewModeController(state.selectedCountryTag);
-        this.strategicregion = new StrategicRegionViewModeController(state.selectedStrategicRegionId);
-        this.supplyarea = new SupplyAreaViewModeController(state.selectedSupplyAreaId);
-        this.warnings = new WarningsViewModeController();
+    constructor(state: ViewModeControllerState, loader: Loader) {
+        this.province = new ProvinceViewModeController(loader, state.selectedProvinceId);
+        this.state = new StateViewModeController(loader, state.selectedStateId);
+        this.country = new CountryViewModeController(loader, state.selectedCountryTag);
+        this.strategicregion = new StrategicRegionViewModeController(loader, state.selectedStrategicRegionId);
+        this.supplyarea = new SupplyAreaViewModeController(loader, state.selectedSupplyAreaId);
+        this.warnings = new WarningsViewModeController(loader);
     }
 
     public getHoverObservables(): Observable<unknown>[] {
@@ -44,6 +44,7 @@ export class ViewModeControllers {
             this.strategicregion.hover$,
             this.supplyarea.hover$,
             this.warnings.hover$,
+            this.state.editModeHover$,
         ];
     }
 
