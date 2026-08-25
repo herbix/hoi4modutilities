@@ -21,4 +21,8 @@ export class WarningsViewModeController extends ProvinceViewModeController {
     public override canOpenMapItem(): boolean {
         return false;
     }
+
+    public override canViewSelected(): boolean {
+        return false;
+    }
 }

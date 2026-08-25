@@ -137,6 +137,17 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         return this.getIdSearchPlaceholder(this.loader.worldMap.statesCount);
     }
 
+    public override canViewSelected(): boolean {
+        return this.selected$.value !== undefined;
+    }
+
+    public override viewSelected(viewPoint: ViewPoint): void {
+        const state = this.loader.worldMap.getStateById(this.selected$.value);
+        if (state) {
+            this.viewSelectedRegion(viewPoint, state);
+        }
+    }
+
     private loadResourceImages(worldMap: FEWorldMap): void {
         for (const resource of worldMap.resources) {
             const image = new Image();

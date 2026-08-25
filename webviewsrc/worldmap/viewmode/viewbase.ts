@@ -53,6 +53,10 @@ export abstract class ViewModeControllerBase<T> {
         }
     }
 
+    public onMidButtonClick(): void {
+        this.selected$.next(this.hover$.value);
+    }
+
     public canEdit(): boolean {
         return false;
     }
@@ -65,11 +69,18 @@ export abstract class ViewModeControllerBase<T> {
         this.editMode = false;
     }
 
+    public canViewSelected(): boolean {
+        return false;
+    }
+
+    public viewSelected(viewPoint: ViewPoint): void {
+    }
+
     protected searchById(viewPoint: ViewPoint, id: number, getRegionById: (id: number) => Region | undefined): void {
         const region = getRegionById(id);
         if (region) {
             this.selected$.next(id as T);
-            viewPoint.centerZone(region.boundingBox);
+            this.viewSelectedRegion(viewPoint, region);
         }
     }
 
@@ -110,6 +121,12 @@ export abstract class ViewModeControllerBase<T> {
                 context.fillText(region.id.toString(), viewPoint.convertX(labelPosition.x + xOffset), viewPoint.convertY(labelPosition.y));
             }
             renderAdditionalLabels?.(region, labelPosition);
+        }
+    }
+
+    protected viewSelectedRegion(viewPoint: ViewPoint, region: Region): void {
+        if (region.boundingBox.h > 0 && region.boundingBox.w > 0) {
+            viewPoint.centerZone(region.boundingBox);
         }
     }
 }

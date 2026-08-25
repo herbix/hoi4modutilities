@@ -111,6 +111,17 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         return this.getIdSearchPlaceholder(this.loader.worldMap.strategicRegionsCount);
     }
 
+    public override canViewSelected(): boolean {
+        return this.selected$.value !== undefined;
+    }
+
+    public override viewSelected(viewPoint: ViewPoint): void {
+        const strategicRegion = this.loader.worldMap.getStrategicRegionById(this.selected$.value);
+        if (strategicRegion) {
+            this.viewSelectedRegion(viewPoint, strategicRegion);
+        }
+    }
+
     private renderStrategicRegionTooltip(renderer: Renderer, strategicRegion: StrategicRegion, worldMap: FEWorldMap): void {
         renderer.renderTooltip(`
 ${feLocalize('worldmap.tooltip.strategicregion', 'Strategic region')}=${strategicRegion.id}

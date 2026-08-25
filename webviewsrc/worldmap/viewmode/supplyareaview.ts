@@ -80,6 +80,17 @@ export class SupplyAreaViewModeController extends ViewModeControllerBase<number>
         return this.getIdSearchPlaceholder(this.loader.worldMap.supplyAreasCount);
     }
 
+    public override canViewSelected(): boolean {
+        return this.selected$.value !== undefined;
+    }
+
+    public override viewSelected(viewPoint: ViewPoint): void {
+        const supplyArea = this.loader.worldMap.getSupplyAreaById(this.selected$.value);
+        if (supplyArea) {
+            this.viewSelectedRegion(viewPoint, supplyArea);
+        }
+    }
+
     private toProvinceRegion(supplyArea: SupplyArea | undefined, worldMap: FEWorldMap): { provinces: number[] } | undefined {
         if (!supplyArea) {
             return undefined;

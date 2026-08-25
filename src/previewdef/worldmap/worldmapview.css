@@ -35,6 +35,18 @@ select, input {
 
 #searchbox {
     margin-right: 0px;
+    width: 150px;
+}
+
+#selectedregion-text {
+    display: inline-block;
+    width: 40px;
+    text-align: center;
+}
+
+#selectedregion {
+    width: unset;
+    padding: 0 5px;
 }
 
 span.divider {

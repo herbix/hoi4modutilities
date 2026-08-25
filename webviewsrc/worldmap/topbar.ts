@@ -205,6 +205,7 @@ export class TopBar extends Subscriber {
         this.loadOpenButton();
         this.loadExportButton();
         this.loadEditButton();
+        this.loadSelectedRegionButton();
     }
 
     private loadWarningButton() {
@@ -316,20 +317,46 @@ export class TopBar extends Subscriber {
             editButton.disabled = !this.viewModeController.canEdit();
         }));
 
-        editButton.addEventListener('click', e => {
+        this.addSubscription(fromEvent(editButton, 'click').subscribe(e => {
             e.stopPropagation();
             editButtonActive = !editButtonActive;
             this.canvas.style.cursor = editButtonActive && pencilUri ? "url('" + pencilUri + "') 3.5 27.5, pointer" : 'crosshair';
             editButton.classList.toggle('active');
             if (editButtonActive) {
+                sendEvent('worldmap.entereditmode.' + this.viewMode$.value);
                 this.viewModeController.enterEditMode();
             } else {
                 this.viewModeController.exitEditMode();
             }
-        });
+        }));
+    }
+
+    private loadSelectedRegionButton() {
+        const selectedRegionButton = document.getElementById('selectedregion') as HTMLButtonElement;
+        const selectedRegionText = document.getElementById('selectedregion-text') as HTMLSpanElement;
+
+        this.addSubscription(combineLatest([
+            this.viewMode$,
+            ...this.viewModeControllers.getSelectedObservables(),
+        ]).subscribe(() => {
+            selectedRegionButton.disabled = !this.viewModeController.canViewSelected();
+            const selected = this.viewModeController.selected$.value;
+            if (selected === undefined) {
+                selectedRegionText.textContent = feLocalize('worldmap.topbar.selectedregion.none', 'None');
+            } else {
+                selectedRegionText.textContent = selected.toString();
+            }
+        }));
+
+        this.addSubscription(fromEvent(selectedRegionButton, 'click').subscribe(e => {
+            e.stopPropagation();
+            this.viewModeController.viewSelected(this.viewPoint);
+        }));
     }
     
     private registerEventListeners(canvas: HTMLCanvasElement) {
+        let midButtonDown = false;
+
         this.addSubscription(fromEvent<MouseEvent>(canvas, 'mousemove').subscribe((e) => {
             if (!this.loader.worldMap) {
                 this.clearControllerHovers();
@@ -351,6 +378,7 @@ export class TopBar extends Subscriber {
     
         this.addSubscription(fromEvent(canvas, 'mouseleave').subscribe(() => {
             this.clearControllerHovers();
+            midButtonDown = false;
         }));
     
         this.addSubscription(fromEvent(canvas, 'click').subscribe(e => {
@@ -361,6 +389,22 @@ export class TopBar extends Subscriber {
         this.addSubscription(fromEvent(canvas, 'dblclick').subscribe(e => {
             e.stopPropagation();
             this.viewModeController.onDblClick();
+        }));
+
+        this.addSubscription(fromEvent<MouseEvent>(canvas, 'mousedown').subscribe(e => {
+            if (e.button === 1) {
+                midButtonDown = true;
+            }
+        }));
+
+        this.addSubscription(fromEvent<MouseEvent>(canvas, 'mouseup').subscribe(e => {
+            if (e.button === 1) {
+                if (midButtonDown) {
+                    e.preventDefault();
+                    this.viewModeController.onMidButtonClick();
+                }
+                midButtonDown = false;
+            }
         }));
 
         this.addSubscription(this.viewMode$.subscribe(() => this.onViewModeChange()));

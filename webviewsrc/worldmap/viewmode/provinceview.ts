@@ -100,6 +100,17 @@ export class ProvinceViewModeController extends ViewModeControllerBase<number> {
         return this.getIdSearchPlaceholder(this.loader.worldMap.provincesCount);
     }
 
+    public override canViewSelected(): boolean {
+        return this.selected$.value !== undefined;
+    }
+
+    public override viewSelected(viewPoint: ViewPoint): void {
+        const province = this.loader.worldMap.getProvinceById(this.selected$.value);
+        if (province) {
+            this.viewSelectedRegion(viewPoint, province);
+        }
+    }
+
     private renderProvinceTooltip(renderer: Renderer, province: Province, worldMap: FEWorldMap): void {
         const selectedConditions = renderer.selectedConditions;
         const stateObject = worldMap.getStateByProvinceId(province.id);

@@ -45,6 +45,7 @@ export class ViewModeControllers {
             this.supplyarea.hover$,
             this.warnings.hover$,
             this.state.editModeHover$,
+            this.strategicregion.editModeHover$,
         ];
     }
 
