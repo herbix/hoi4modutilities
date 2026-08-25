@@ -228,7 +228,7 @@ button:hover:not([disabled]) {
     background: var(--vscode-toolbar-hoverBackground);
 }
 
-button:active, button.active:not([disabled]) {
+button:active:not([disabled]), button.active:not([disabled]) {
     background: var(--vscode-toolbar-activeBackground);
 }
 
@@ -239,10 +239,6 @@ button > .codicon {
 button[disabled] {
     color: var(--vscode-disabledForeground);
     cursor: unset;
-}
-
-button[disabled]:active {
-    transform: none;
 }
 
 .navigator {

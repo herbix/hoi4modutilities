@@ -76,6 +76,17 @@ export abstract class ViewModeControllerBase<T> {
     public viewSelected(viewPoint: ViewPoint): void {
     }
 
+    public canAddMapItem(): boolean {
+        return false;
+    }
+
+    public addMapItem(): void {
+    }
+
+    public selectMapItem(id: T | undefined): void {
+        this.selected$.next(id);
+    }
+
     protected searchById(viewPoint: ViewPoint, id: number, getRegionById: (id: number) => Region | undefined): void {
         const region = getRegionById(id);
         if (region) {

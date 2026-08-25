@@ -103,22 +103,41 @@ export class Loader extends Subscriber {
                     break;
                 case 'provinces':
                     this.receiveData(this.loadingProvinceMap?.provinces, message.start, message.end, message.data);
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.provincesCount = message.count ?? this.loadingProvinceMap.provincesCount;
+                        this.loadingProvinceMap.badProvincesCount = message.badCount ?? this.loadingProvinceMap.badProvincesCount;
+                    }
                     this.loadNext();
                     break;
                 case 'states':
                     this.receiveData(this.loadingProvinceMap?.states, message.start, message.end, message.data);
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.statesCount = message.count ?? this.loadingProvinceMap.statesCount;
+                        this.loadingProvinceMap.badStatesCount = message.badCount ?? this.loadingProvinceMap.badStatesCount;
+                    }
                     this.loadNext();
                     break;
                 case 'countries':
                     this.receiveData(this.loadingProvinceMap?.countries, message.start, message.end, message.data);
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.countriesCount = message.count ?? this.loadingProvinceMap.countriesCount;
+                    }
                     this.loadNext();
                     break;
                 case 'strategicregions':
                     this.receiveData(this.loadingProvinceMap?.strategicRegions, message.start, message.end, message.data);
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.strategicRegionsCount = message.count ?? this.loadingProvinceMap.strategicRegionsCount;
+                        this.loadingProvinceMap.badStrategicRegionsCount = message.badCount ?? this.loadingProvinceMap.badStrategicRegionsCount;
+                    }
                     this.loadNext();
                     break;
                 case 'supplyareas':
                     this.receiveData(this.loadingProvinceMap?.supplyAreas, message.start, message.end, message.data);
+                    if (this.loadingProvinceMap) {
+                        this.loadingProvinceMap.supplyAreasCount = message.count ?? this.loadingProvinceMap.supplyAreasCount;
+                        this.loadingProvinceMap.badSupplyAreasCount = message.badCount ?? this.loadingProvinceMap.badSupplyAreasCount;
+                    }
                     this.loadNext();
                     break;
                 case 'railways':

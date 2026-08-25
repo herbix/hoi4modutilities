@@ -1,13 +1,14 @@
-import { Enum, SchemaDef } from '../../../hoiformat/schema';
+import * as vscode from 'vscode';
+import { convertNodeToJson, Enum, SchemaDef } from '../../../hoiformat/schema';
 import { Province, Region, State, StrategicRegion, Terrain, WorldMapWarning, WorldMapWarningSource } from '../definitions';
 import { DefaultMapLoader } from './provincemap';
 import { FileLoader, FolderLoader, LoadResult, LoadResultOD, mergeInLoadResult, mergeRegion, sortItems } from './common';
-import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { readFileFromModOrHOI4 } from '../../../util/fileloader';
 import { error } from '../../../util/debug';
 import { localize } from '../../../util/i18n';
 import { StatesLoader } from './states';
 import { arrayToMap, UserError } from '../../../util/common';
-import { Token } from '../../../hoiformat/hoiparser';
+import { parseHoi4File, Token } from '../../../hoiformat/hoiparser';
 import { LoaderSession } from '../../../util/loader/loader';
 import { flatMap } from 'lodash';
 import { localisationIndex } from '../../../indexing/localisationindex';
@@ -107,10 +108,17 @@ class StrategicRegionLoader extends FileLoader<StrategicRegionNoRegion[]> {
 }
 
 type StrategicRegionNoRegion = Omit<StrategicRegion, keyof Region>;
+
 async function loadStrategicRegion(file: string, globalWarnings: WorldMapWarning[]): Promise<StrategicRegionNoRegion[]> {
+    const [buffer, realPath] = await readFileFromModOrHOI4(file);
+    return await loadStrategicRegionFromContent(buffer.toString(), file, realPath, globalWarnings);
+}
+
+export function loadStrategicRegionFromContent(content: string, file: string, realPath: vscode.Uri | string, globalWarnings: WorldMapWarning[]): StrategicRegionNoRegion[] {
     const result: StrategicRegionNoRegion[] = [];
     try {
-        const data = await readFileFromModOrHOI4AsJson<StrategicRegionFile>(file, strategicRegionFileSchema);
+        const nodes = parseHoi4File(content, localize('infile', 'In file {0}:\n', realPath));
+        const data = convertNodeToJson<StrategicRegionFile>(nodes, strategicRegionFileSchema);
         for (const strategicRegion of data.strategic_region) {
             const warnings: string[] = [];
             const id = strategicRegion.id ? strategicRegion.id : (warnings.push(localize('worldmap.warnings.strategicregionnoid', "A strategic region in \"{0}\" doesn't have id field.", file)), -1);

@@ -300,14 +300,29 @@ export class TopBar extends Subscriber {
 
     private loadEditButton() {
         const editButton = document.getElementById('edit') as HTMLButtonElement;
+        const addButton = document.getElementById('add') as HTMLButtonElement;
         editButton.disabled = true;
+        addButton.disabled = true;
         let editButtonActive = false;
 
-        this.addSubscription(this.viewMode$.subscribe(() => {
+        const that = this;
+
+        function enterEditMode() {
+            editButtonActive = true;
+            editButton.classList.add('active');
+            that.viewModeController.enterEditMode();
+            that.canvas.style.cursor = "url('" + pencilUri + "') 3.5 27.5, pointer";
+        }
+
+        function exitEditMode() {
             editButtonActive = false;
-            this.canvas.style.cursor = 'crosshair';
             editButton.classList.remove('active');
-            this.viewModeController.exitEditMode();
+            that.viewModeController.exitEditMode();
+            that.canvas.style.cursor = 'crosshair';
+        }
+
+        this.addSubscription(this.viewMode$.subscribe(() => {
+            exitEditMode();
         }));
 
         this.addSubscription(combineLatest([
@@ -315,18 +330,36 @@ export class TopBar extends Subscriber {
             ...this.viewModeControllers.getSelectedObservables(),
         ]).subscribe(() => {
             editButton.disabled = !this.viewModeController.canEdit();
+            addButton.disabled = !this.viewModeController.canAddMapItem();
         }));
 
         this.addSubscription(fromEvent(editButton, 'click').subscribe(e => {
             e.stopPropagation();
-            editButtonActive = !editButtonActive;
-            this.canvas.style.cursor = editButtonActive && pencilUri ? "url('" + pencilUri + "') 3.5 27.5, pointer" : 'crosshair';
-            editButton.classList.toggle('active');
-            if (editButtonActive) {
+            if (!editButtonActive) {
                 sendEvent('worldmap.entereditmode.' + this.viewMode$.value);
-                this.viewModeController.enterEditMode();
+                enterEditMode();
             } else {
-                this.viewModeController.exitEditMode();
+                exitEditMode();
+            }
+        }));
+
+        this.addSubscription(fromEvent(addButton, 'click').subscribe(e => {
+            e.stopPropagation();
+            sendEvent('worldmap.add.' + this.viewMode$.value);
+            this.viewModeController.addMapItem();
+        }));
+
+        this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {
+            const message = event.data as WorldMapMessage;
+            switch (message.command) {
+                case 'selectmapitem':
+                    if (message.type === this.viewMode$.value) {
+                        this.viewModeController.selectMapItem(message.id as any);
+                        if (message.enterEditMode && this.viewModeController.canEdit()) {
+                            enterEditMode();
+                        }
+                    }
+                    break;
             }
         }));
     }

@@ -104,7 +104,7 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         this.editModeHover$.next(undefined);
     }
 
-    public openMapItem(useHoverValue: boolean): void {
+    public override openMapItem(useHoverValue: boolean): void {
         const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
@@ -121,11 +121,11 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         }
     }
 
-    public canEdit(): boolean {
+    public override canEdit(): boolean {
         return this.selected$.value !== undefined;
     }
 
-    public canOpenMapItem(): boolean {
+    public override canOpenMapItem(): boolean {
         return this.selected$.value !== undefined;
     }
 
@@ -146,6 +146,17 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
         if (state) {
             this.viewSelectedRegion(viewPoint, state);
         }
+    }
+
+    public override canAddMapItem(): boolean {
+        return true;
+    }
+
+    public override addMapItem(): void {
+        vscode.postMessage<WorldMapMessage>({
+            command: 'addmapitem',
+            type: 'state',
+        });
     }
 
     private loadResourceImages(worldMap: FEWorldMap): void {

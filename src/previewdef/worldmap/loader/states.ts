@@ -1,9 +1,10 @@
+import * as vscode from 'vscode';
 import { Bookmark, BookmarkDate, Province, Region, State, StateCategory, WithCondition, WorldMapWarning, WorldMapWarningSource } from '../definitions';
 import { convertNodeToJson, CustomMap, DetailValue, Enum, Raw, SchemaDef } from '../../../hoiformat/schema';
-import { readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
+import { readFileFromModOrHOI4, readFileFromModOrHOI4AsJson } from '../../../util/fileloader';
 import { error } from '../../../util/debug';
 import { convertColor, FileLoader, FolderLoader, LoadResult, LoadResultOD, mergeInLoadResult, mergeRegion, sortItems } from './common';
-import { Token } from '../../../hoiformat/hoiparser';
+import { parseHoi4File, Token } from '../../../hoiformat/hoiparser';
 import { arrayToMap, UserError } from '../../../util/common';
 import { DefaultMapLoader } from './provincemap';
 import { localize } from '../../../util/i18n';
@@ -259,8 +260,14 @@ class StateCategoryLoader extends FileLoader<StateCategory[]> {
 }
 
 async function loadState(stateFile: string, globalWarnings: WorldMapWarning[], bookmarks: Bookmark[], conditionExprs: ConditionItem[]): Promise<StateNoBoundingBox[]> {
+    const [buffer, realPath] = await readFileFromModOrHOI4(stateFile);
+    return await loadStateFromContent(buffer.toString(), stateFile, realPath, globalWarnings, bookmarks, conditionExprs);
+}
+
+export function loadStateFromContent(content: string, stateFile: string, realPath: string | vscode.Uri, globalWarnings: WorldMapWarning[], bookmarks: Bookmark[], conditionExprs: ConditionItem[]): StateNoBoundingBox[] {
     try {
-        const data = await readFileFromModOrHOI4AsJson<StateFile>(stateFile, stateFileSchema);
+        const nodes = parseHoi4File(content, localize('infile', 'In file {0}:\n', realPath));
+        const data = convertNodeToJson<StateFile>(nodes, stateFileSchema);
         const result: StateNoBoundingBox[] = [];
 
         for (const state of data.state) {

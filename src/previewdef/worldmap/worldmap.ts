@@ -4,7 +4,7 @@ import worldmapviewstyles from './worldmapview.css';
 import { i18nTableAsScript, localize, localizeText } from '../../util/i18n';
 import { html } from '../../util/html';
 import { debug, error } from '../../util/debug';
-import { MapItemMessage, MoveProvinceMessage, OpenFileMessage, ProgressReporter, RequestMapItemMessage, WorldMapData, WorldMapMessage } from './definitions';
+import { AddMapItemMessage, MapItemMessage, MoveProvinceMessage, OpenFileMessage, ProgressReporter, RequestMapItemMessage, WorldMapData, WorldMapMessage } from './definitions';
 import { matchPathEnd } from '../../util/nodecommon';
 import { dirUri, getDocumentByUri, mkdirs, showQuickPickAnyString, writeFile } from '../../util/vsccommon';
 import { debounceByInput, forceError, slice } from '../../util/common';
@@ -16,6 +16,7 @@ import { sendByMessage, TelemetryMessage } from '../../util/telemetry';
 import { getConfiguration } from '../../util/vsccommon';
 import { contextContainer } from '../../context';
 import { moveProvince } from './editor/moveprovince';
+import { addMapItem } from './editor/addmapitem';
 
 export class WorldMap {
     public panel: vscode.WebviewPanel | undefined;
@@ -123,6 +124,9 @@ export class WorldMap {
                     break;
                 case 'moveprovince':
                     await this.moveProvince(msg);
+                    break;
+                case 'addmapitem':
+                    await this.addMapItem(msg);
                     break;
             }
         } catch (e) {
@@ -413,6 +417,18 @@ export class WorldMap {
         }
 
         const messages = await moveProvince(msg, this.cachedWorldMap);
+        for (const message of messages) {
+            await this.postMessageToWebview(message);
+        }
+    }
+
+    private async addMapItem(msg: AddMapItemMessage) {
+        if (!this.cachedWorldMap) {
+            await vscode.window.showErrorMessage(localize('worldmap.add.failed.nocache', 'Adding failed. No cached world map data. Please reload the world map and try again.'));
+            return;
+        }
+
+        const messages = await addMapItem(msg, this.cachedWorldMap);
         for (const message of messages) {
             await this.postMessageToWebview(message);
         }

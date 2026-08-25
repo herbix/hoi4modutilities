@@ -1,0 +1,8 @@
+strategic_region = {
+	id = {id}
+	name = "STRATEGICREGION_{id}"
+	provinces={
+	}
+	weather={
+	}
+}

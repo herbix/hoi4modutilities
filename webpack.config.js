@@ -31,7 +31,7 @@ const mainConfig = {
   module: {
     rules: [
       {
-        test: /\.(css|html)$/,
+        test: /\.(css|html|txt)$/,
         use: 'raw-loader',
       },
       {

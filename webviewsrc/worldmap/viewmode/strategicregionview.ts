@@ -14,7 +14,7 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
     public readonly labelRenderScale = 0.25;
     public readonly editModeHover$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
 
-    public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
+    public override renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         this.renderRegionLabels(
             renderContext,
             xOffset,
@@ -23,7 +23,7 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         );
     }
 
-    public shouldRenderProvinceEdge(renderContext: RenderContext, province: Province, edge: ProvinceEdge, worldMap: FEWorldMap): boolean {
+    public override shouldRenderProvinceEdge(renderContext: RenderContext, province: Province, edge: ProvinceEdge, worldMap: FEWorldMap): boolean {
         return renderContext.provinceToStrategicRegion[province.id] !== renderContext.provinceToStrategicRegion[edge.to];
     }
 
@@ -52,7 +52,7 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         }
     }
 
-    public renderHoverSelection(renderer: Renderer, worldMap: FEWorldMap): void {
+    public override renderHoverSelection(renderer: Renderer, worldMap: FEWorldMap): void {
         const selectedStrategicRegion = worldMap.getStrategicRegionById(this.selected$.value);
         if (!this.editMode) {
             const hoverStrategicRegion = worldMap.getStrategicRegionById(this.hover$.value);
@@ -66,7 +66,7 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         }
     }
 
-    public updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
+    public override updateHover(x: number, y: number, selectedConditions: ConditionItem[]): void {
         const worldMap = this.loader.worldMap;
         const province = worldMap.getProvinceByPosition(x, y);
         this.hover$.next(province === undefined ? undefined : worldMap.getStrategicRegionByProvinceId(province.id)?.id);
@@ -78,7 +78,7 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         this.editModeHover$.next(undefined);
     }
 
-    public openMapItem(useHoverValue: boolean): void {
+    public override openMapItem(useHoverValue: boolean): void {
         const worldMap = this.loader.worldMap;
         const selected = useHoverValue ? this.hover$.value : this.selected$.value;
         if (selected) {
@@ -95,11 +95,11 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         }
     }
 
-    public canEdit(): boolean {
+    public override canEdit(): boolean {
         return this.selected$.value !== undefined;
     }
 
-    public canOpenMapItem(): boolean {
+    public override canOpenMapItem(): boolean {
         return this.selected$.value !== undefined;
     }
 
@@ -120,6 +120,17 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
         if (strategicRegion) {
             this.viewSelectedRegion(viewPoint, strategicRegion);
         }
+    }
+
+    public override canAddMapItem(): boolean {
+        return true;
+    }
+
+    public override addMapItem(): void {
+        vscode.postMessage<WorldMapMessage>({
+            command: 'addmapitem',
+            type: 'strategicregion',
+        });
     }
 
     private renderStrategicRegionTooltip(renderer: Renderer, strategicRegion: StrategicRegion, worldMap: FEWorldMap): void {
