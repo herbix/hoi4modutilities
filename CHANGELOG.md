@@ -4,7 +4,17 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.16.0] - 2026/08/14 - Latest
+## [0.17.0] - 2026/08/25 - Latest
+
+### Added
+* Add ability to edit provinces of state or strategic region in world map preview (#151).
+* Add focus category filter in focus tree preview (#150).
+
+### Updated
+* Condition dropdowns are now sorted.
+* Victory point color set from greyscale to green-yellow-red.
+
+## [0.16.0] - 2026/08/14
 
 ### Added
 * Add country view mode to world map (#145) (Co-contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).

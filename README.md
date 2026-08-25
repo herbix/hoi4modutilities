@@ -36,6 +36,8 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 
 ![World map preview demo](demo/5.gif)
 
+![World map edit demo](demo/8.gif)
+
 ### Focus tree preview
 
 ![Focus tree preview demo](demo/1.gif)
@@ -69,22 +71,15 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * GUI of focus tree and MIO can't be configured like technology tree.
 * Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.16.0]
+## Release Notes - [0.17.0]
 
 ### Added
-* Add country view mode to world map (#145) (Co-contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
-* Add scale selection when exporting world map (#146) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
-* Add demilitarized zone display option in world map (#118) (#143).
-* Add localised name for provinces.
-* Double-clicking a province now opens the province definition file in editor (#148).
-* Add `claim_by` information to state tooltip in world map (#142).
-
-### Fixed
-* Fix a bug that effect resolving doesn't keep order. This may affect resolving owner/controller in world map.
-* Dropdown in preview ui doesn't show hover item.
+* Add ability to edit provinces of state or strategic region in world map preview (#151).
+* Add focus category filter in focus tree preview (#150).
 
 ### Updated
-* Speed up province rendering in world map preview.
+* Condition dropdowns are now sorted.
+* Victory point color set from greyscale to green-yellow-red.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -910,8 +910,9 @@ function getColorByColorSet(
 
                 const stateId = provinceToState[province.id];
                 const state = worldMap.getStateById(stateId);
-                const value = victoryPointsHandler(state ? state.victoryPoints[province.id] ?? 0.1 : 0) / victoryPointsHandler(renderContext.colorSetState);
-                return valueToColorGreyScale(value);
+                const vp = state?.victoryPoints[province.id] ?? 0;
+                const value = victoryPointsHandler(vp) / victoryPointsHandler(renderContext.colorSetState);
+                return state === undefined ? 0x000080 : (vp === 0 ? 0x008000 : valueToColorGYR(value));
             }
         case 'resources':
             {
