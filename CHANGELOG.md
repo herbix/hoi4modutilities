@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [Release Cadidate]
+
+### Added
+* Add ability to create new states and strategic regions in world map preview.
+
 ## [0.17.0] - 2026/08/25 - Latest
 
 ### Added
