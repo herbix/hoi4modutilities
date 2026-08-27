@@ -4,12 +4,14 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [Release Cadidate]
+## [0.17.1] - 2026/08/27 - Latest
 
 ### Added
 * Add ability to create new states and strategic regions in world map preview.
+* Add refresh button in all preview windows.
+* GUI preview supports edit box, dropdown box, overlapping elements box, list box, scrollbar. (#153) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
 
-## [0.17.0] - 2026/08/25 - Latest
+## [0.17.0] - 2026/08/25
 
 ### Added
 * Add ability to edit provinces of state or strategic region in world map preview (#151).
