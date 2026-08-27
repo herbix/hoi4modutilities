@@ -174,6 +174,9 @@ async function renderToolBar(mios: Mio[], styleTable: StyleTable): Promise<strin
             ${mioSelect}
             ${conditions}
             ${warningsButton}
+            <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
+                <i class="codicon codicon-refresh"></i>
+            </button>
         </div>
     </div>`;
 }

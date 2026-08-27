@@ -231,6 +231,9 @@ async function renderToolBar(focusTrees: FocusTree[], styleTable: StyleTable, gf
                 ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
                 ${searchbox}
                 ${searchFilters}
+                <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
+                    <i class="codicon codicon-refresh"></i>
+                </button>
             </div>
         </div>
     </div>`;

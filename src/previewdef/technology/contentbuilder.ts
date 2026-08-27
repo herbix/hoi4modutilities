@@ -158,6 +158,9 @@ async function renderToolbar(folders: string[], styleTable: StyleTable): Promise
             ${indexManager.isIndexEnabled('localisation') ? renderPreviewLabelModeControl(styleTable) : ''}
             ${folderSelect}
             ${conditions}
+            <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
+                <i class="codicon codicon-refresh"></i>
+            </button>
         </div>
     </div>`;
 }

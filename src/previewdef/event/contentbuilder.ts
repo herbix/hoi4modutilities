@@ -126,6 +126,9 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         <div class="toolbar-outer ${styleTable.style('toolbar-height', () => `box-sizing: border-box; height: 40px;`)}">
             <div class="toolbar">
                 ${searchbox}
+                <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
+                    <i class="codicon codicon-refresh"></i>
+                </button>
             </div>
         </div>
     `;

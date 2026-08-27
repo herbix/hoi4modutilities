@@ -1,5 +1,5 @@
 import { GridBoxVirtualizationData } from '../src/util/hoi4gui/gridboxcommon';
-import { enableZoom, getState, setState, subscribeNavigators, tryRun } from './util/common';
+import { enableZoom, getState, setState, subscribeNavigators, subscribeRefreshButton, tryRun } from './util/common';
 import { virtualizeGridBox } from './util/virtualization';
 
 interface EventSearchMatch {
@@ -19,17 +19,6 @@ let searchMatchIndex = 0;
 let searchText = '';
 let refreshVirtualization = () => {};
 const virtualizationData = (window as any).virtualizationData as GridBoxVirtualizationData;
-
-window.addEventListener('load', tryRun(async function() {
-    // Zoom
-    const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
-    refreshVirtualization = virtualizeGridBox(virtualizationData, showEventElement).refresh;
-
-    setupSearchbox();
-    refreshSearchResults();
-
-    enableZoom(contentElement, 0, 40, refreshVirtualization);
-}));
 
 function showEventElement(element: HTMLDivElement): void {
     const hosts = element.getElementsByClassName('event-picture-host') as HTMLCollectionOf<HTMLDivElement>;
@@ -190,3 +179,14 @@ function updateRenderedSearchHighlights(): void {
     }
 }
 
+window.addEventListener('load', tryRun(async function() {
+    // Zoom
+    const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
+    refreshVirtualization = virtualizeGridBox(virtualizationData, showEventElement).refresh;
+
+    setupSearchbox();
+    refreshSearchResults();
+
+    enableZoom(contentElement, 0, 40, refreshVirtualization);
+    subscribeRefreshButton();
+}));

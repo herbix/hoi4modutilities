@@ -1,4 +1,4 @@
-import { arrayToMap, enableZoom, getState, refreshPreviewLabelMode, scrollToState, setState, subscribeNavigators, subscribePreviewLabelToggle, tryRun } from './util/common';
+import { arrayToMap, enableZoom, getState, refreshPreviewLabelMode, scrollToState, setState, subscribeNavigators, subscribePreviewLabelToggle, subscribeRefreshButton, tryRun } from './util/common';
 import { DivDropdown } from './util/dropdown';
 import { difference, minBy } from 'lodash';
 import { GridBoxConnection, GridBoxItem, renderGridBoxCommon } from '../src/util/hoi4gui/gridboxcommon';
@@ -725,6 +725,9 @@ window.addEventListener('load', tryRun(async function() {
             warnings.style.display = visible ? 'none' : 'block';
         });
     }
+
+    // Refresh
+    subscribeRefreshButton();
     
     updateSelectedFocusTree(false);
     await buildContent();

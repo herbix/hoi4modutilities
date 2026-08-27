@@ -25,6 +25,7 @@ export async function renderGfxFile(fileContent: string, uri: vscode.Uri, webvie
             ],
             [
                 'common.css',
+                'codicon.css',
                 styleTable,
             ],
         );
@@ -54,6 +55,9 @@ async function renderSpriteTypes(spriteTypes: AnySpriteType[], styleTable: Style
             id="filter"
             type="text"
         />
+        <button id="refresh" title="${localize('common.topbar.refresh.title', 'Refresh')}">
+            <i class="codicon codicon-refresh"></i>
+        </button>
     </div>`;
 
     return `${filter}
