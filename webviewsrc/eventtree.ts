@@ -180,13 +180,14 @@ function updateRenderedSearchHighlights(): void {
 }
 
 window.addEventListener('load', tryRun(async function() {
-    // Zoom
     const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
     refreshVirtualization = virtualizeGridBox(virtualizationData, showEventElement).refresh;
 
+    // Search
     setupSearchbox();
     refreshSearchResults();
 
+    // Zoom
     enableZoom(contentElement, 0, 40, refreshVirtualization);
     subscribeRefreshButton();
 }));
