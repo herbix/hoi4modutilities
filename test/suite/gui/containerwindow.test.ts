@@ -1,3 +1,4 @@
+import '../../../src/indexing/indexmanager';
 import * as assert from 'assert';
 import { ContainerWindowType, GuiFile, guiFileSchema } from '../../../src/hoiformat/gui';
 import { parseHoi4File } from '../../../src/hoiformat/hoiparser';
