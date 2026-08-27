@@ -165,9 +165,10 @@ async function renderSingleContainerWindow(
         }
     }
 
+    const visiblePosition = containerWindow.show_position ?? containerWindow.position;
     const position = containerWindow.fullscreen
         ? { x: toNumberLike(0), y: toNumberLike(0) }
-        : containerWindow.position ? { ...containerWindow.position } : { x: undefined, y: undefined };
+        : visiblePosition ? { ...visiblePosition } : { x: undefined, y: undefined };
     if (position.x?._value !== undefined && position.x?._value < 0) {
         position.x = { ...position.x, _value: 0 };
     }
@@ -182,6 +183,7 @@ async function renderSingleContainerWindow(
                 ...commonOptions,
                 classNames: 'childcontainerwindow_' + normalizeForStyle(childContainerWindow.name ?? ''),
                 enableNavigator: true,
+                useShowPosition: true,
                 onRenderChild,
             });
         }
