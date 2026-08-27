@@ -220,7 +220,7 @@ export async function onRenderChildOrDefault<T extends keyof RenderChildTypeMap>
     }
 
     return [
-        child._token?.start ?? child._index ?? 0,
+        child._token?.start ?? 0,
         result !== undefined ? result : await defaultRenderer(child),
     ];
 }
