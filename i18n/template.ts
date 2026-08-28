@@ -20,7 +20,6 @@ const table: Partial<typeof __table> = {
     "eventtree.istriggeredonly": "Is triggered only",
     "eventtree.major": "Major",
     "eventtree.mtthbase": "Mean time to happen (base): ",
-    "eventtree.news": "News event",
     "eventtree.originalrecipientonly": "Original recipient only",
     "eventtree.randomweight": "Random weight: ",
     "eventtree.scope": "Scope: ",

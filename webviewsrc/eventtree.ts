@@ -17,13 +17,13 @@ let searchMatchIndex = 0;
 let searchText = '';
 let refreshVirtualization = () => {};
 const virtualizationData = (window as any).virtualizationData as GridBoxVirtualizationData;
-const searchTextByItemId = (window as any).eventSearchText as Record<string, string>;
-const eventDetailsByItemId = (window as any).eventDetails as Record<string, string>;
+const idToSearchTextMap = (window as any).idToSearchTextMap as Record<string, string>;
+const idToDetailsMap = (window as any).idToDetailsMap as Record<string, string>;
 
 function showEventElement(
     element: HTMLDivElement,
     eventDetailsPanel: HTMLDivElement,
-    eventDetailsContent: HTMLPreElement,
+    eventDetailsContent: HTMLDivElement,
 ): void {
     const hosts = element.getElementsByClassName('event-picture-host') as HTMLCollectionOf<HTMLDivElement>;
     for (let i = 0; i < hosts.length; i++) {
@@ -38,7 +38,7 @@ function showEventElement(
         detailsButton.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
-            const details = eventDetailsByItemId[element.id];
+            const details = idToDetailsMap[element.id];
             eventDetailsContent.textContent = details;
             eventDetailsPanel.hidden = false;
         });
@@ -128,7 +128,7 @@ function refreshSearchResults(): void {
                 return undefined;
             }
 
-            if (!searchTextByItemId[item.id].includes(searchText)) {
+            if (!idToSearchTextMap[item.id].includes(searchText)) {
                 return undefined;
             }
 
@@ -192,7 +192,7 @@ function updateRenderedSearchHighlights(): void {
 window.addEventListener('load', tryRun(async function() {
     const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
     const eventDetailsPanel = document.getElementById('event-details') as HTMLDivElement;
-    const eventDetailsContent = document.getElementById('event-details-content') as HTMLPreElement;
+    const eventDetailsContent = document.getElementById('event-details-content') as HTMLDivElement;
     const eventDetailsClose = document.getElementById('event-details-close') as HTMLButtonElement;
     eventDetailsClose.addEventListener('click', () => eventDetailsPanel.hidden = true);
     refreshVirtualization = virtualizeGridBox(

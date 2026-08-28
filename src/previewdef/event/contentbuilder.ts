@@ -17,7 +17,7 @@ import { featureFlagsAsScript } from '../../util/featureflags';
 import { indexManager } from '../../indexing/indexmanager';
 import { localisationIndex } from '../../indexing/localisationindex';
 import { contextContainer } from '../../context';
-import { EffectComplexExpr } from '../../hoiformat/effect';
+import { effectToString } from '../../hoiformat/effect';
 import { ConditionComplexExpr, conditionToString } from '../../hoiformat/condition';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
@@ -96,8 +96,8 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         eventsLoaderResult.gfxFiles,
         styleTable,
     );
-    jsCodes.push(`window.eventSearchText = ${JSON.stringify(idToSearchTextMap)};`);
-    jsCodes.push(`window.eventDetails = ${JSON.stringify(idToDetailsMap)};`);
+    jsCodes.push(`window.idToSearchTextMap = ${JSON.stringify(idToSearchTextMap)};`);
+    jsCodes.push(`window.idToDetailsMap = ${JSON.stringify(idToDetailsMap)};`);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -166,12 +166,12 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
                     <i class="codicon codicon-close"></i>
                 </button>
             </div>
-            <pre id="event-details-content" class="${styleTable.style('event-details-content', () => `
+            <div id="event-details-content" class="${styleTable.style('event-details-content', () => `
                 margin: 10px 0 0;
                 white-space: pre-wrap;
                 overflow-wrap: anywhere;
                 user-select: text;
-            `)}"></pre>
+            `)}"></div>
         </div>
     `;
 }
@@ -194,7 +194,6 @@ interface EventNode {
 
 interface OptionNode {
     type: 'option';
-    optionName: string;
     option: HOIEventOption;
     children: EventNode[];
     file: string;
@@ -292,7 +291,6 @@ function eventToNode(
         const isImmediate = !option.name;
         const optionNode: OptionNode = {
             type: 'option',
-            optionName: option.name ?? ':immediate',
             option,
             children: [],
             file: event.file,
@@ -942,10 +940,11 @@ async function eventNodeToGridBoxTree(
         appendChildToTree(result, tree, 1, undefined, true);
     }
 
-    const id = (node.type === 'option' ?
-        'option:' + node.optionName :
+    const isOption = node.type === 'option';
+    const id = (isOption ?
+        'option:' + (node.option.name ?? ':immediate') :
         'event:' + (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
-    const renderedNode = node.type === 'option' ?
+    const renderedNode = isOption ?
         makeOptionNode(node, styleTable) :
         await makeEventNode(scopeContext.currentScopeName, node, gfxFiles, styleTable);
     idToContentMap[id] = renderedNode.content;
@@ -1070,15 +1069,13 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `${makeDetailsButton(styleTable)}
-            <p class="${styleTable.style('event-title', () => `
-                margin: 5px 0;
-                font-weight: 600;
-                text-overflow: ellipsis;
-                overflow: hidden;
-                white-space: nowrap;`)}">
+            <p class="
+                ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
+                ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
+                ${styleTable.style('font-weight', () => 'font-weight: 600;')}
+            ">
                 ${makeIcon(typeToIcon[event.type], styleTable)}
-                ${event.type === 'news' ? htmlEscapeText(localize('eventtree.news', 'News event')) + ': ' : ''}
-                ${htmlEscapeText(localizedTitle)}
+                ${htmlEscape(localizedTitle)}
             </p>
             <p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
@@ -1097,7 +1094,7 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
         const extraAttributes = [];
         const extraClasses = [
             event.type === 'news' ?
-                styleTable.style('news-event-item', () => 'background: rgba(210, 150, 40, 0.55); border: 1px solid rgba(255, 215, 120, 0.7);') :
+                styleTable.style('news-event-item', () => 'background: rgba(210, 150, 40, 0.55);') :
                 styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
             styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
         ];
@@ -1149,7 +1146,7 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
                 }
             }
         }
-        const contentText = localizedTitle ? htmlEscapeText(localizedTitle) : '';
+        const contentText = localizedTitle ? htmlEscape(localizedTitle) : '';
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
@@ -1181,10 +1178,6 @@ function makeDetailsButton(styleTable: StyleTable): string {
             top: 2px;
             right: 2px;
             padding: 2px;
-            border: none;
-            color: inherit;
-            background: transparent;
-            cursor: pointer;
         `)}"
         title="${htmlEscape(localize('eventtree.showdetails', 'Show details'))}"
     >
@@ -1193,15 +1186,16 @@ function makeDetailsButton(styleTable: StyleTable): string {
 }
 
 function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEventNode {
-    const optionName = getLocalisedEventText(option.optionName);
+    const optionId = option.option.name ?? ':immediate';
+    const optionName = getLocalisedEventText(optionId);
     const trigger = makeConditionString(option.option.trigger);
     const effects = effectToString(option.option.effect);
-    const optionId = optionName === option.optionName ? '' : `<br/>
-        <span class="${styleTable.style('event-option-id', () => 'opacity: 0.8;')}">${htmlEscapeText(option.optionName)}</span>`;
-    const content = `${makeDetailsButton(styleTable)}<strong>${htmlEscapeText(optionName)}</strong>${optionId}`;
+    const optionIdContent = optionName === optionId ? '' : `<br/>
+        <span class="${styleTable.style('event-option-id', () => 'opacity: 0.8;')}">${htmlEscape(optionId)}</span>`;
+    const content = `${makeDetailsButton(styleTable)}<strong>${htmlEscape(optionName)}</strong>${optionIdContent}`;
     const details = [
-        option.optionName,
-        optionName === option.optionName ? undefined : optionName,
+        optionId,
+        optionName === optionId ? undefined : optionName,
         trigger ? localize('eventtree.trigger', 'Trigger: ') + trigger : undefined,
         option.option.aiChanceScript ?
             localize('eventtree.aichancescript', 'AI chance script: ') + '\n' + option.option.aiChanceScript :
@@ -1209,7 +1203,7 @@ function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEve
         option.option.originalRecipientOnly ? localize('eventtree.originalrecipientonly', 'Original recipient only') : undefined,
         effects ? localize('eventtree.effects', 'Effects: ') + '\n' + effects : undefined,
     ].filter((value): value is string => value !== undefined).join('\n');
-    const title = optionName === option.optionName ? option.optionName : option.optionName + '\n' + optionName;
+    const title = optionName === optionId ? optionId : optionId + '\n' + optionName;
 
     const extraAttributes = option.token ? `
         start="${option.token.start}"
@@ -1225,7 +1219,7 @@ function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEve
             styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
                 + (option.token ? ' navigator' : ''),
             extraAttributes),
-        searchText: (option.optionName + '\n' + optionName).toLowerCase(),
+        searchText: (optionId + '\n' + optionName).toLowerCase(),
         details,
     };
 }
@@ -1234,45 +1228,8 @@ function getLocalisedEventText(key: string): string {
     return indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(key) ?? key : key;
 }
 
-function htmlEscapeText(text: string): string {
-    return htmlEscape(text).replace(/&nbsp;/g, ' ');
-}
-
 function makeConditionString(condition: ConditionComplexExpr): string | undefined {
     return condition === true ? undefined : conditionToString(condition);
-}
-
-function effectToString(effect: EffectComplexExpr, indentation: string = ''): string {
-    if (effect === null) {
-        return '';
-    }
-
-    if ('nodeContent' in effect) {
-        const scope = effect.scopeName ? `[${effect.scopeName}] ` : '';
-        return indentation + scope + effect.nodeContent;
-    }
-
-    if ('condition' in effect) {
-        const content = effect.items
-            .map(item => effectToString(item, effect.condition === true ? indentation : indentation + '  '))
-            .filter(item => item)
-            .join('\n');
-        if (!content || effect.condition === true) {
-            return content;
-        }
-        return indentation + localize('eventtree.when', 'When: ') + conditionToString(effect.condition) + '\n' + content;
-    }
-
-    return effect.items
-        .map(item => {
-            const content = effectToString(item.effect, indentation + '  ');
-            if (!content) {
-                return '';
-            }
-            return indentation + localize('eventtree.randomweight', 'Random weight: ') + item.possibility + '\n' + content;
-        })
-        .filter(item => item)
-        .join('\n');
 }
 
 function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, extraAttributes?: string) {

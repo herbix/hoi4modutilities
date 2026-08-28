@@ -20,7 +20,6 @@ const table: Partial<typeof __table> = {
     "eventtree.istriggeredonly": "仅能触发",
     "eventtree.major": "主要",
     "eventtree.mtthbase": "平均发生时间（基础值）：",
-    "eventtree.news": "新闻事件",
     "eventtree.originalrecipientonly": "仅原始接收者",
     "eventtree.randomweight": "随机权重：",
     "eventtree.scope": "目标：",
