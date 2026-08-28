@@ -17,7 +17,7 @@ export interface RandomListEffect {
 }
 
 interface RandomListEffectItem {
-    possibility: number;
+    possibility: number | string;
     effect: EffectComplexExpr;
 }
 
@@ -76,8 +76,10 @@ function extractEffectByCondition(
             if (Array.isArray(child.value)) {
                 pushItemsToResult();
                 const randomListItems = child.value.map(n => {
-                    const possibility = parseInt(n.name ?? '0');
-                    const effect = extractEffectByCondition(n.value, scopeStack, true, [], ['modifier']);
+                    const possibilityText = n.name ?? '0';
+                    const possibilityNumber = Number(possibilityText);
+                    const possibility = Number.isNaN(possibilityNumber) ? possibilityText : possibilityNumber;
+                    const effect = extractEffectByCondition(n.value, scopeStack, condition, [], ['modifier']);
                     return {
                         possibility,
                         effect,
@@ -218,7 +220,7 @@ function simplifyEffect(effect: EffectComplexExpr): EffectComplexExpr {
         };
 
     } else if (!('nodeContent' in effect)) {
-        let items = effect.items.filter(i => i.possibility > 0);
+        let items = effect.items.filter(i => typeof i.possibility !== 'number' || i.possibility > 0);
         if (items.length === 0) {
             return null;
         }

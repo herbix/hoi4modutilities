@@ -2,7 +2,7 @@ import { getEvents, HOIEvents } from './schema';
 import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { localize } from '../../util/i18n';
-import { chain, flatten, uniq } from 'lodash';
+import { chain, flatten, uniq, uniqBy } from 'lodash';
 import { gfxIndex } from '../../indexing/gfxindex';
 import { eventIndex } from '../../indexing/eventindex';
 
@@ -25,7 +25,7 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
 
         const childEventFiles = chain(Object.values(events.eventItemsByNamespace))
             .flatMap(e => e)
-            .flatMap(e => e.options)
+            .flatMap(e => [e.immediate, ...e.options])
             .flatMap(o => o.childEvents)
             .map(ce => eventIndex.get(ce.eventName))
             .uniq()
@@ -68,7 +68,17 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
 }
 
 function mergeEvents(...events: HOIEvents[]): HOIEvents {
+    const eventItemsByNamespace: HOIEvents['eventItemsByNamespace'] = {};
+    for (const event of events) {
+        for (const [namespace, eventItems] of Object.entries(event.eventItemsByNamespace)) {
+            eventItemsByNamespace[namespace] = uniqBy([
+                ...(eventItemsByNamespace[namespace] ?? []),
+                ...eventItems,
+            ], item => item.id);
+        }
+    }
+
     return {
-        eventItemsByNamespace: events.map(e => e.eventItemsByNamespace).reduce((p, c) => Object.assign(p, c), {}),
+        eventItemsByNamespace,
     };
 }

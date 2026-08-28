@@ -2,6 +2,8 @@ import { Node, Token } from '../../hoiformat/hoiparser';
 import { convertNodeToJson, HOIPartial, isSymbolNode, NumberLike, Raw, SchemaDef } from '../../hoiformat/schema';
 import { EffectComplexExpr, EffectItem, extractEffectValue } from '../../hoiformat/effect';
 import { Scope, ScopeType } from '../../hoiformat/scope';
+import { ConditionComplexExpr, extractConditionValue } from '../../hoiformat/condition';
+import { nodeToString } from '../../hoiformat/tostring';
 import { uniqBy } from 'lodash';
 
 export interface HOIEvents {
@@ -14,6 +16,8 @@ export interface HOIEvent {
     type: HOIEventType;
     id: string;
     title: string;
+    descriptions: HOIEventDescription[];
+    trigger: ConditionComplexExpr;
     namespace: string;
     picture?: string;
     immediate: HOIEventOption;
@@ -27,8 +31,17 @@ export interface HOIEvent {
     file: string;
 }
 
+interface HOIEventDescription {
+    text: string;
+    trigger: ConditionComplexExpr;
+}
+
 export interface HOIEventOption {
     name?: string;
+    effect: EffectComplexExpr;
+    trigger: ConditionComplexExpr;
+    aiChanceScript?: string;
+    originalRecipientOnly: boolean;
     childEvents: ChildEvent[];
     token: Token | undefined;
 }
@@ -54,6 +67,8 @@ interface EventFile {
 interface EventDef {
     id: string;
     title: string;
+    desc: Raw[];
+    trigger: Raw;
     picture: string;
     is_triggered_only: boolean;
     major: boolean;
@@ -76,9 +91,14 @@ interface MeanTimeToHappen {
 interface EventOptionDef {
     name: string;
     trigger: Raw;
-    ai_chance: string;
+    ai_chance: Raw;
     original_recipient_only: boolean;
     _token: Token;
+}
+
+interface EventDescriptionDef {
+    text: string;
+    trigger: Raw;
 }
 
 interface EventEffectDef {
@@ -93,13 +113,23 @@ interface EventEffectDef {
 const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
     name: 'string',
     trigger: 'raw',
-    ai_chance: 'string',
+    ai_chance: 'raw',
     original_recipient_only: 'boolean',
+};
+
+const eventDescriptionDefSchema: SchemaDef<EventDescriptionDef> = {
+    text: 'string',
+    trigger: 'raw',
 };
 
 const eventDefSchema: SchemaDef<EventDef> = {
     id: 'string',
     title: 'string',
+    desc: {
+        _innerType: 'raw',
+        _type: 'array',
+    },
+    trigger: 'raw',
     picture: 'string',
     is_triggered_only: 'boolean',
     major: 'boolean',
@@ -216,6 +246,11 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     const scopeType = eventTypeToScopeType(type);
     const scope: Scope = { scopeName: `{event_target}`, scopeType };
 
+    const descriptions = eventDef.desc
+        .filter((desc): desc is Raw => desc !== undefined)
+        .map(desc => convertDescription(desc, scope))
+        .filter((desc): desc is HOIEventDescription => desc !== undefined);
+    const trigger = convertTrigger(eventDef.trigger, scope);
     const immediate = convertOption(eventDef.immediate, scope);
     const options = eventDef.option.map(o => convertOption(o, scope));
 
@@ -232,6 +267,8 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
         type,
         id,
         title,
+        descriptions,
+        trigger,
         namespace,
         picture,
         file,
@@ -246,24 +283,65 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     };
 }
 
+function convertDescription(descriptionRaw: Raw, scope: Scope): HOIEventDescription | undefined {
+    const descriptionNode = descriptionRaw._raw;
+    if (isSymbolNode(descriptionNode.value)) {
+        return { text: descriptionNode.value.name, trigger: true };
+    }
+    if (typeof descriptionNode.value === 'string') {
+        return { text: descriptionNode.value, trigger: true };
+    }
+
+    const descriptionDef = convertNodeToJson<EventDescriptionDef>(descriptionNode, eventDescriptionDefSchema);
+    if (!descriptionDef.text) {
+        return undefined;
+    }
+
+    return {
+        text: descriptionDef.text,
+        trigger: convertTrigger(descriptionDef.trigger, scope),
+    };
+}
+
+function convertTrigger(triggerRaw: Raw | undefined, scope: Scope): ConditionComplexExpr {
+    return triggerRaw ? extractConditionValue(triggerRaw._raw.value, scope).condition : true;
+}
+
 function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption {
     if (optionRaw === undefined) {
-        return { childEvents: [], token: undefined };
+        return {
+            effect: null,
+            trigger: true,
+            originalRecipientOnly: false,
+            childEvents: [],
+            token: undefined,
+        };
     }
 
     const optionDef = convertNodeToJson<EventOptionDef>(optionRaw._raw, eventOptionDefSchema);
-    const name = optionDef.name;
-    
-    const effect = extractEffectValue(optionRaw._raw.value, scope);
-    const childEventItems = findChildEventItems(effect.effect);
-    const childEvents = childEventItems
+    const effect = extractEffectValue(
+        optionRaw._raw.value,
+        scope,
+        ['name', 'trigger', 'ai_chance', 'original_recipient_only'],
+    ).effect;
+    const childEvents = findChildEventItems(effect)
         .map(effectItemToChildEvent)
         .filter((e): e is ChildEvent => e !== undefined);
-    const uniqueChildEvents = uniqBy(childEvents, e => e.eventName + '@' + e.scopeName);
 
     return {
-        name,
-        childEvents: uniqueChildEvents,
+        name: optionDef.name,
+        effect,
+        trigger: convertTrigger(optionDef.trigger, scope),
+        aiChanceScript: optionDef.ai_chance ? nodeToString(optionDef.ai_chance._raw) : undefined,
+        originalRecipientOnly: !!optionDef.original_recipient_only,
+        childEvents: uniqBy(childEvents, event => [
+            event.eventName,
+            event.scopeName,
+            event.days,
+            event.hours,
+            event.randomDays,
+            event.randomHours,
+        ].join('@')),
         token: optionDef._token,
     };
 }
@@ -276,8 +354,16 @@ function findChildEventItems(effect: EffectComplexExpr, result: EffectItem[] = [
     }
 
     if ('nodeContent' in effect) {
-        if (effect.node.name && eventTypes.includes(effect.node.name?.toLowerCase())) {
+        const name = effect.node.name?.toLowerCase();
+        if (name && eventTypes.includes(name)) {
             result.push(effect);
+        } else if (name === 'random' && Array.isArray(effect.node.value)) {
+            const nestedEffect = extractEffectValue(
+                effect.node.value,
+                effect.scopeStack[effect.scopeStack.length - 1],
+                ['chance'],
+            ).effect;
+            findChildEventItems(nestedEffect, result);
         }
     } else if ('condition' in effect) {
         effect.items.forEach(item => findChildEventItems(item, result));
