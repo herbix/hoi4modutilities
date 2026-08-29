@@ -1,8 +1,7 @@
-import { ConditionComplexExpr, ConditionFolder, conditionToString, extractConditionFolder, simplifyCondition } from './condition';
+import { ConditionComplexExpr, ConditionFolder, extractConditionFolder, simplifyCondition } from './condition';
 import { Node, NodeValue } from './hoiparser';
 import { Scope, tryMoveScope } from './scope';
 import { nodeToString } from './tostring';
-import { localize } from '../util/i18n';
 
 export type EffectComplexExpr = EffectItem | EffectByCondition | RandomListEffect | null;
 
@@ -18,7 +17,7 @@ export interface RandomListEffect {
 }
 
 interface RandomListEffectItem {
-    possibility: number | string;
+    possibility: number;
     effect: EffectComplexExpr;
 }
 
@@ -77,10 +76,8 @@ function extractEffectByCondition(
             if (Array.isArray(child.value)) {
                 pushItemsToResult();
                 const randomListItems = child.value.map(n => {
-                    const possibilityText = n.name ?? '0';
-                    const possibilityNumber = Number(possibilityText);
-                    const possibility = Number.isNaN(possibilityNumber) ? possibilityText : possibilityNumber;
-                    const effect = extractEffectByCondition(n.value, scopeStack, condition, [], ['modifier']);
+                    const possibility = parseInt(n.name ?? '0');
+                    const effect = extractEffectByCondition(n.value, scopeStack, true, [], ['modifier']);
                     return {
                         possibility,
                         effect,
@@ -221,7 +218,7 @@ function simplifyEffect(effect: EffectComplexExpr): EffectComplexExpr {
         };
 
     } else if (!('nodeContent' in effect)) {
-        let items = effect.items.filter(i => typeof i.possibility !== 'number' || i.possibility > 0);
+        let items = effect.items.filter(i => i.possibility > 0);
         if (items.length === 0) {
             return null;
         }
@@ -239,37 +236,4 @@ function simplifyEffect(effect: EffectComplexExpr): EffectComplexExpr {
     } else {
         return effect;
     }
-}
-
-export function effectToString(effect: EffectComplexExpr, indentation: string = ''): string {
-    if (effect === null) {
-        return '';
-    }
-
-    if ('nodeContent' in effect) {
-        const scope = effect.scopeName ? `[${effect.scopeName}] ` : '';
-        return indentation + scope + effect.nodeContent;
-    }
-
-    if ('condition' in effect) {
-        const content = effect.items
-            .map(item => effectToString(item, effect.condition === true ? indentation : indentation + '  '))
-            .filter(item => item)
-            .join('\n');
-        if (!content || effect.condition === true) {
-            return content;
-        }
-        return indentation + localize('eventtree.when', 'When: ') + conditionToString(effect.condition) + '\n' + content;
-    }
-
-    return effect.items
-        .map(item => {
-            const content = effectToString(item.effect, indentation + '  ');
-            if (!content) {
-                return '';
-            }
-            return indentation + localize('eventtree.randomweight', 'Random weight: ') + item.possibility + '\n' + content;
-        })
-        .filter(item => item)
-        .join('\n');
 }

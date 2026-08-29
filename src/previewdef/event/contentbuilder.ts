@@ -17,8 +17,6 @@ import { featureFlagsAsScript } from '../../util/featureflags';
 import { indexManager } from '../../indexing/indexmanager';
 import { localisationIndex } from '../../indexing/localisationindex';
 import { contextContainer } from '../../context';
-import { effectToString } from '../../hoiformat/effect';
-import { ConditionComplexExpr, conditionToString } from '../../hoiformat/condition';
 
 export async function renderEventFile(loader: EventsLoader, uri: vscode.Uri, webview: vscode.Webview): Promise<string> {
     const setPreviewFileUriScript = { content: `window.previewedFileUri = "${uri.toString()}";` };
@@ -1036,14 +1034,8 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
         const eventId = event.id;
         const localizedTitle = getLocalisedEventText(event.title);
         const descriptions = event.descriptions
-            .map(description => {
-                const condition = makeConditionString(description.trigger);
-                const text = getLocalisedEventText(description.text);
-                return condition ? localize('eventtree.when', 'When: ') + condition + '\n' + text : text;
-            })
+            .map(description => getLocalisedEventText(description))
             .join('\n');
-        const trigger = makeConditionString(event.trigger);
-        const immediateEffects = effectToString(event.immediate.effect);
         const details = [
             event.type + '_event',
             localize('eventtree.eventid', 'Event ID: ') + eventId,
@@ -1057,8 +1049,6 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
             localize('eventtree.scope', 'Scope: ') + scope,
             localize('eventtree.title', 'Title: ') + localizedTitle,
             descriptions ? localize('eventtree.description', 'Description: ') + '\n' + descriptions : undefined,
-            trigger ? localize('eventtree.trigger', 'Trigger: ') + trigger : undefined,
-            immediateEffects ? localize('eventtree.immediateeffects', 'Immediate effects: ') + '\n' + immediateEffects : undefined,
         ].filter((value): value is string => value !== undefined).join('\n');
         const title = [
             event.type + '_event',
@@ -1188,20 +1178,16 @@ function makeDetailsButton(styleTable: StyleTable): string {
 function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEventNode {
     const optionId = option.option.name ?? ':immediate';
     const optionName = getLocalisedEventText(optionId);
-    const trigger = makeConditionString(option.option.trigger);
-    const effects = effectToString(option.option.effect);
     const optionIdContent = optionName === optionId ? '' : `<br/>
         <span class="${styleTable.style('event-option-id', () => 'opacity: 0.8;')}">${htmlEscape(optionId)}</span>`;
     const content = `${makeDetailsButton(styleTable)}<strong>${htmlEscape(optionName)}</strong>${optionIdContent}`;
     const details = [
         optionId,
         optionName === optionId ? undefined : optionName,
-        trigger ? localize('eventtree.trigger', 'Trigger: ') + trigger : undefined,
         option.option.aiChanceScript ?
             localize('eventtree.aichancescript', 'AI chance script: ') + '\n' + option.option.aiChanceScript :
             undefined,
         option.option.originalRecipientOnly ? localize('eventtree.originalrecipientonly', 'Original recipient only') : undefined,
-        effects ? localize('eventtree.effects', 'Effects: ') + '\n' + effects : undefined,
     ].filter((value): value is string => value !== undefined).join('\n');
     const title = optionName === optionId ? optionId : optionId + '\n' + optionName;
 
@@ -1226,10 +1212,6 @@ function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEve
 
 function getLocalisedEventText(key: string): string {
     return indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(key) ?? key : key;
-}
-
-function makeConditionString(condition: ConditionComplexExpr): string | undefined {
-    return condition === true ? undefined : conditionToString(condition);
 }
 
 function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, extraAttributes?: string) {
