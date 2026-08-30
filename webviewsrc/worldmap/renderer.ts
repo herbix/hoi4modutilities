@@ -623,13 +623,15 @@ export class Renderer extends Subscriber {
         }
     }
 
-    public renderRegionHoverSelectionInEditMode(worldMap: FEWorldMap, hover: Province | undefined, selected: { provinces: number[] } | undefined) {
+    public renderRegionHoverSelectionInEditMode(worldMap: FEWorldMap, hover: Province | Province[] | undefined, selected: { provinces: number[] } | undefined) {
+        const hoverProvinces = Array.isArray(hover) ? hover : (hover ? [hover] : []);
+
         let hoverRendered = false;
         if (selected) {
             for (const provinceId of selected.provinces) {
                 const province = worldMap.getProvinceById(provinceId);
                 if (province) {
-                    if (province !== hover) {
+                    if (!hoverProvinces.includes(province)) {
                         this.renderSelectedProvince(province, worldMap);
                     } else {
                         hoverRendered = true;
@@ -639,8 +641,10 @@ export class Renderer extends Subscriber {
             }
         }
 
-        if (hover && !hoverRendered) {
-            this.renderSelectedProvince(hover, worldMap);
+        if (!hoverRendered) {
+            for (const province of hoverProvinces) {
+                this.renderSelectedProvince(province, worldMap);
+            }
         }
     }
 
@@ -662,7 +666,7 @@ export class Renderer extends Subscriber {
         tooltip = `(${mapX}, ${mapY})\nX=${mapX}, Z=${this.loader.worldMap.height - 1 - mapY}\n` + tooltip;
 
         const colorPrefix = /^\|r\|/;
-        const regex = /(\n)|((?:\|r\|)?(?:.{40,59}[, ]|.{60}))/g;
+        const regex = /((?:\n)|(?:(?:\|r\|)?(?:.{40,59}[, ]|.{60})))/g;
         const text = tooltip.trim()
             .split(regex)
             .map((v, i, a) => {
@@ -670,7 +674,7 @@ export class Renderer extends Subscriber {
                     return v;
                 }
                 for (let j = i - 1; j >= 0; j--) {
-                    if (!a[j] || a[j] === '\n') {
+                    if (a[j] === '\n') {
                         return v;
                     }
                     const match = colorPrefix.exec(a[j]);

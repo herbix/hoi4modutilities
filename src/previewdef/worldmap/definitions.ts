@@ -296,8 +296,12 @@ export interface OpenFileMessage {
 
 export interface MoveProvinceMessage {
     command: 'moveprovince';
+    items: MoveProvinceItem[];
+}
+
+export interface MoveProvinceItem {
     type: 'state' | 'strategicregion',
-    province: number,
+    provinces: number[],
     to: number,
     from: number | undefined,
     toFile: string,

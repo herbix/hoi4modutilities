@@ -8,6 +8,7 @@ import { StrategicRegionViewModeController } from './strategicregionview';
 import { SupplyAreaViewModeController } from './supplyareaview';
 import { ViewMode } from './viewbase';
 import { WarningsViewModeController } from './warningsview';
+import { TopBar } from '../topbar';
 
 export type { ViewMode };
 
@@ -27,13 +28,22 @@ export class ViewModeControllers {
     public readonly supplyarea: SupplyAreaViewModeController;
     public readonly warnings: WarningsViewModeController;
 
+    public linkStateStrategicRegion: boolean = true;
+
     constructor(state: ViewModeControllerState, loader: Loader) {
-        this.province = new ProvinceViewModeController(loader, state.selectedProvinceId);
-        this.state = new StateViewModeController(loader, state.selectedStateId);
-        this.country = new CountryViewModeController(loader, state.selectedCountryTag);
-        this.strategicregion = new StrategicRegionViewModeController(loader, state.selectedStrategicRegionId);
-        this.supplyarea = new SupplyAreaViewModeController(loader, state.selectedSupplyAreaId);
-        this.warnings = new WarningsViewModeController(loader);
+        this.province = new ProvinceViewModeController(this, loader, state.selectedProvinceId);
+        this.state = new StateViewModeController(this, loader, state.selectedStateId);
+        this.country = new CountryViewModeController(this, loader, state.selectedCountryTag);
+        this.strategicregion = new StrategicRegionViewModeController(this, loader, state.selectedStrategicRegionId);
+        this.supplyarea = new SupplyAreaViewModeController(this, loader, state.selectedSupplyAreaId);
+        this.warnings = new WarningsViewModeController(this, loader);
+    }
+    
+    public initialize(topBar: TopBar): void {
+        this.linkStateStrategicRegion = topBar.linkStateStrategicRegion.value;
+        topBar.addSubscription(topBar.linkStateStrategicRegion.subscribe(linkStateStrategicRegion => {
+            this.linkStateStrategicRegion = linkStateStrategicRegion;
+        }));
     }
 
     public getHoverObservables(): Observable<unknown>[] {

@@ -28,6 +28,7 @@ fromEvent(window, 'load').subscribe(function() {
     viewModeControllers.supplyarea.selected$.subscribe(setStateForKey('selectedSupplyAreaId'));
     topBar.warningFilter.selectedValues$.subscribe(setStateForKey('warningFilter'));
     topBar.display.selectedValues$.subscribe(setStateForKey('display'));
+    topBar.linkStateStrategicRegion.subscribe(setStateForKey('linkStateStrategicRegion'));
     // Don't set selectedConditions here because it's not initialized yet. It will be set in topBar.setupConditions() after the world map is loaded.
     // topBar.conditions.selectedValues$.subscribe(setStateForKey('selectedConditions'));
 });

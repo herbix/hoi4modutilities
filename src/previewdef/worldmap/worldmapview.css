@@ -58,8 +58,12 @@ span.divider {
     margin-right: 10px;
 }
 
-.gourp.hidden {
+.group.hidden {
     display: none;
+}
+
+.group.margin-right-3px {
+    margin-right: 3px;
 }
 
 #warnings-container {

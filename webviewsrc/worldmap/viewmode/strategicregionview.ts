@@ -1,18 +1,23 @@
 import type { ConditionItem } from '../../../src/hoiformat/condition';
-import type { Province, ProvinceEdge, StrategicRegion, WorldMapMessage } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { MoveProvinceItem, Province, ProvinceEdge, StrategicRegion, WorldMapMessage } from '../definitions';
+import type { FEWorldMap, Loader } from '../loader';
 import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { BehaviorSubject } from 'rxjs';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import type { ViewModeControllers } from './index';
 
 export class StrategicRegionViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'strategicregion';
     public readonly edgeRenderScale = 0.25;
     public readonly labelRenderScale = 0.25;
     public readonly editModeHover$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
+
+    constructor(private readonly viewModeControllers: ViewModeControllers, loader: Loader, selected?: number) {
+        super(loader, selected);
+    }
 
     public override renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         this.renderRegionLabels(
@@ -39,16 +44,34 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
             }
 
             const hoverStrategicRegion = worldMap.getStrategicRegionByProvinceId(hoverProvince.id);
-            
-            vscode.postMessage<WorldMapMessage>({
-                command: 'moveprovince',
-                type: 'strategicregion',
-                province: hoverProvince.id,
-                to: selectedStrategicRegion.id,
-                from: hoverStrategicRegion?.id,
-                toFile: selectedStrategicRegion.file,
-                fromFile: hoverStrategicRegion?.file,
-            });
+            const hoverState = worldMap.getStateByProvinceId(hoverProvince.id);
+            const items: MoveProvinceItem[] = [];
+            if (!this.viewModeControllers.linkStateStrategicRegion || !hoverState) {
+                items.push({
+                    type: 'strategicregion',
+                    provinces: [hoverProvince.id],
+                    to: selectedStrategicRegion.id,
+                    from: hoverStrategicRegion?.id,
+                    toFile: selectedStrategicRegion.file,
+                    fromFile: hoverStrategicRegion?.file,
+                });
+            } else {
+                const provinces = hoverState.provinces.filter(provinceId => {
+                    const strategicRegion = worldMap.getStrategicRegionByProvinceId(provinceId);
+                    return strategicRegion === hoverStrategicRegion;
+                });
+
+                items.push({
+                    type: 'strategicregion',
+                    provinces,
+                    to: selectedStrategicRegion.id,
+                    from: hoverStrategicRegion?.id,
+                    toFile: selectedStrategicRegion.file,
+                    fromFile: hoverStrategicRegion?.file,
+                });
+            }
+
+            vscode.postMessage<WorldMapMessage>({ command: 'moveprovince', items });
         }
     }
 
@@ -62,7 +85,20 @@ export class StrategicRegionViewModeController extends ViewModeControllerBase<nu
             }
         } else {
             const hoverProvince = worldMap.getProvinceById(this.editModeHover$.value);
-            renderer.renderRegionHoverSelectionInEditMode(worldMap, hoverProvince, selectedStrategicRegion);
+            const hoverState = hoverProvince ? worldMap.getStateByProvinceId(hoverProvince.id) : undefined;
+            if (!this.viewModeControllers.linkStateStrategicRegion || !hoverProvince || !hoverState) {
+                renderer.renderRegionHoverSelectionInEditMode(worldMap, hoverProvince, selectedStrategicRegion);
+            } else {
+                const hoverStrategicRegion = worldMap.getStrategicRegionByProvinceId(hoverProvince.id);
+                const provinceIds = hoverState.provinces.filter(provinceId => {
+                    const strategicRegion = worldMap.getStrategicRegionByProvinceId(provinceId);
+                    return strategicRegion === hoverStrategicRegion;
+                });
+                const provinces = provinceIds
+                    .map(provinceId => worldMap.getProvinceById(provinceId))
+                    .filter((province): province is Province => province !== undefined);
+                renderer.renderRegionHoverSelectionInEditMode(worldMap, provinces, selectedStrategicRegion);
+            }
         }
     }
 

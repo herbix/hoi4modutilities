@@ -21,7 +21,7 @@
                     <div class="select-container">
                         <select id="colorset">
                             <option viewmode="province" value="provinceid">%worldmap.topbar.colorset.provinceid|Province ID%</option>
-                            <option viewmode="province state" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
+                            <option viewmode="province state supplyarea strategicregion" value="stateid">%worldmap.topbar.colorset.stateid|State ID%</option>
                             <option viewmode="province state supplyarea" value="supplyareaid" enablesupplyarea="true">%worldmap.topbar.colorset.supplyareaid|Supply Area ID%</option>
                             <option viewmode="province state strategicregion" value="strategicregionid">%worldmap.topbar.colorset.strategicregionid|Strategic Region ID%</option>
                             <option viewmode="province state country strategicregion supplyarea" value="owner">%worldmap.topbar.colorset.owner|Country (Owner)%</option>
@@ -92,7 +92,7 @@
                     </button>
                 </div>
 
-                <div class="group" viewmode="province state strategicregion supplyarea country">
+                <div class="group margin-right-3px" viewmode="province state strategicregion supplyarea country">
                     <button id="selectedregion" title="%worldmap.topbar.selectedregion.title|Navigate to selected%">
                         <span>%worldmap.topbar.selectedregion|Selected: %</span>
                         <span id="selectedregion-text">%worldmap.topbar.selectedregion.none|None%</span>
@@ -100,8 +100,14 @@
                     <button id="open" title="%worldmap.topbar.open.title|Open in workspace%">
                         <i class="codicon codicon-link-external"></i>
                     </button>
+                </div>
+
+                <div class="group" viewmode="state strategicregion">
                     <button id="edit" title="%worldmap.topbar.edit.title|Edit%">
                         <i class="codicon codicon-edit"></i>
+                    </button>
+                    <button id="link-state-strategicregion" title="%worldmap.topbar.linkstatestrategicregion.title|When editing, state borders follow strategic regions%">
+                        <i class="codicon codicon-debug-connected"></i>
                     </button>
                     <button id="add" title="%worldmap.topbar.add.title|Add%">
                         <i class="codicon codicon-add"></i>

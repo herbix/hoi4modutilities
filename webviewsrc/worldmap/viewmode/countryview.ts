@@ -1,12 +1,13 @@
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import { distanceSqr, intersectZone, inZone, mergeRegions } from '../../../src/previewdef/worldmap/graphutils';
 import type { Point, Province, ProvinceEdge, Region, WorldMapMessage } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { FEWorldMap, Loader } from '../loader';
 import { Renderer } from '../renderer';
 import type { RenderContext } from '../renderer';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import type { ViewModeControllers } from './index';
 
 interface CountryRegion extends Region {
     owner: string;
@@ -18,6 +19,10 @@ export class CountryViewModeController extends ViewModeControllerBase<string> {
     public readonly viewMode: ViewMode = 'country';
     public readonly edgeRenderScale = 0.25;
     public readonly labelRenderScale = 0.25;
+
+    constructor(private readonly viewModeControllers: ViewModeControllers, loader: Loader, selected?: string) {
+        super(loader, selected);
+    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;

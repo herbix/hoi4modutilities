@@ -71,12 +71,10 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * GUI of focus tree and MIO can't be configured like technology tree.
 * Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.17.1]
+## Release Notes - [0.17.2]
 
 ### Added
-* Add ability to create new states and strategic regions in world map preview.
-* Add refresh button in all preview windows.
-* GUI preview supports edit box, dropdown box, overlapping elements box, list box, scrollbar. (#153) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Add an option to link borders of state and strategic region while editing (#156).
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

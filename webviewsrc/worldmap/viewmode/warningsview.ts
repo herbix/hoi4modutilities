@@ -1,12 +1,13 @@
 import type { Loader } from '../loader';
 import { ProvinceViewModeController } from './provinceview';
 import { ViewMode } from './viewbase';
+import type { ViewModeControllers } from './index';
 
 export class WarningsViewModeController extends ProvinceViewModeController {
     public override readonly viewMode: ViewMode = 'warnings';
 
-    constructor(loader: Loader) {
-        super(loader);
+    constructor(viewModeControllers: ViewModeControllers, loader: Loader) {
+        super(viewModeControllers, loader);
     }
 
     public override onClick(): void {

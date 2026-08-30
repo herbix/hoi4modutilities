@@ -2,7 +2,7 @@
 	"name": "hoi4modutilities",
 	"displayName": "%hoi4modutilities.displayName%",
 	"description": "Utilities for Heart of Iron IV mods developers",
-	"version": "0.17.1",
+	"version": "0.17.2",
 	"author": "Chaofan Yang",
 	"publisher": "chaofan",
 	"icon": "icon.png",
@@ -281,7 +281,7 @@
 		"webpack-cli": "^4.7.0"
 	},
 	"dependencies": {
-		"@vscode/codicons": "^0.0.33",
+		"@vscode/codicons": "^0.0.46-24",
 		"@vscode/extension-telemetry": "^0.4.6",
 		"adm-zip": "^0.6.0",
 		"assert": "^2.0.0",

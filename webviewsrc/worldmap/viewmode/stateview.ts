@@ -1,14 +1,16 @@
 import { LabelFontSize } from '../definitions';
 import type { ConditionItem } from '../../../src/hoiformat/condition';
-import type { Province, ProvinceEdge, State, WorldMapMessage } from '../definitions';
+import type { MoveProvinceItem, Province, ProvinceEdge, State, StrategicRegion, WorldMapMessage } from '../definitions';
 import type { FEWorldMap, Loader } from '../loader';
 import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import type { ViewModeControllers } from './index';
 import { solveWithCondition, solveWithConditionAsSet, toCommaDivideNumber } from '../common';
 import { BehaviorSubject } from 'rxjs';
+import { chain } from 'lodash';
 
 export class StateViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'state';
@@ -17,7 +19,7 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
     public readonly editModeHover$: BehaviorSubject<number | undefined> = new BehaviorSubject<number | undefined>(undefined);
     private readonly resourceImages: Record<string, HTMLImageElement | undefined> = {};
 
-    constructor(loader: Loader, selected?: number) {
+    constructor(private readonly viewModeControllers: ViewModeControllers, loader: Loader, selected?: number) {
         super(loader, selected);
         loader.worldMap$.subscribe(worldMap => this.loadResourceImages(worldMap));
         this.loadResourceImages(loader.worldMap);
@@ -64,16 +66,39 @@ export class StateViewModeController extends ViewModeControllerBase<number> {
             }
 
             const hoverState = worldMap.getStateByProvinceId(hoverProvince.id);
-            
-            vscode.postMessage<WorldMapMessage>({
-                command: 'moveprovince',
+            const items: MoveProvinceItem[] = [];
+            items.push({
                 type: 'state',
-                province: hoverProvince.id,
+                provinces: [hoverProvince.id],
                 to: selectedState.id,
                 from: hoverState?.id,
                 toFile: selectedState.file,
                 fromFile: hoverState?.file,
             });
+
+            const isRemove = hoverState === selectedState;
+            if (this.viewModeControllers.linkStateStrategicRegion && !isRemove) {
+                const selectedStrategicRegion: StrategicRegion | undefined = chain(selectedState.provinces)
+                    .map(provinceId => worldMap.getStrategicRegionByProvinceId(provinceId))
+                    .filter(strategicRegion => strategicRegion !== undefined)
+                    .first()
+                    .value();
+                if (selectedStrategicRegion) {
+                    const hoverStrategicRegion = worldMap.getStrategicRegionByProvinceId(hoverProvince.id);
+                    if (hoverStrategicRegion !== selectedStrategicRegion) {
+                        items.push({
+                            type: 'strategicregion',
+                            provinces: [hoverProvince.id],
+                            to: selectedStrategicRegion.id,
+                            from: hoverStrategicRegion?.id,
+                            toFile: selectedStrategicRegion.file,
+                            fromFile: hoverStrategicRegion?.file,
+                        });
+                    }
+                }
+            }
+
+            vscode.postMessage<WorldMapMessage>({ command: 'moveprovince', items });
         }
     }
 

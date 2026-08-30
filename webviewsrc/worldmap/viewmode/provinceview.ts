@@ -1,18 +1,23 @@
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, WorldMapMessage } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { FEWorldMap, Loader } from '../loader';
 import { Renderer } from '../renderer';
 import type { RenderContext } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import type { ViewModeControllers } from './index';
 import { solveWithCondition, solveWithConditionAsSet, toCommaDivideNumber } from '../common';
 
 export class ProvinceViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'province';
     public readonly edgeRenderScale = 2;
     public readonly labelRenderScale = 3;
+
+    constructor(private readonly viewModeControllers: ViewModeControllers, loader: Loader, selected?: number) {
+        super(loader, selected);
+    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         const { mapCanvasContext: context, topBar, viewPoint } = renderContext;

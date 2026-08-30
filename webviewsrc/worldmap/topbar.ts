@@ -35,6 +35,7 @@ interface WorkspaceState {
     displayDict?: Record<DisplayOption, boolean>;
     selectedConditions?: string[];
     warningFilter?: WarningFilter[];
+    linkStateStrategicRegion?: boolean;
 }
 
 export class TopBar extends Subscriber {
@@ -44,6 +45,7 @@ export class TopBar extends Subscriber {
     public readonly warningFilter: DivDropdown<WarningFilter>;
     public readonly display: DivDropdown<DisplayOption>;
     public readonly conditions: DivDropdown;
+    public readonly linkStateStrategicRegion: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
 
     public warningsVisible: boolean = false;
 
@@ -103,6 +105,12 @@ export class TopBar extends Subscriber {
             this.display.selectAll();
         }
 
+        if (state.linkStateStrategicRegion !== undefined) {
+            this.linkStateStrategicRegion.next(state.linkStateStrategicRegion);
+        } else if (workspaceState.linkStateStrategicRegion !== undefined) {
+            this.linkStateStrategicRegion.next(workspaceState.linkStateStrategicRegion);
+        }
+
         this.addSubscription(
             combineLatest([
                 this.viewMode$,
@@ -110,6 +118,7 @@ export class TopBar extends Subscriber {
                 this.warningFilter.selectedValues$,
                 this.display.selectedValues$,
                 this.conditions.selectedValues$,
+                this.linkStateStrategicRegion,
             ]).pipe(
                 distinctUntilChanged((x, y) => x.every((v, i) => v === y[i]))
             ).subscribe(this.updateWorkspaceState));
@@ -118,6 +127,7 @@ export class TopBar extends Subscriber {
 
         this.loadControls();
         this.registerEventListeners(canvas);
+        this.viewModeControllers.initialize(this);
     }
 
     public get viewModeController() {
@@ -141,7 +151,9 @@ export class TopBar extends Subscriber {
         this.conditionSetupDone = true;
     };
 
-    private updateWorkspaceState = ([viewMode, colorSet, warningFilter, display, selectedConditions]: [ViewMode, ColorSet, readonly WarningFilter[], readonly DisplayOption[], readonly string[]]) => {
+    private updateWorkspaceState = (
+        [viewMode, colorSet, warningFilter, display, selectedConditions, linkStateStrategicRegion]:
+        [ViewMode, ColorSet, readonly WarningFilter[], readonly DisplayOption[], readonly string[], boolean]) => {
         const workspaceState: WorkspaceState = {
             viewMode,
             colorSet,
@@ -151,6 +163,7 @@ export class TopBar extends Subscriber {
                 return dict;
             }, {} as Record<DisplayOption, boolean>),
             selectedConditions: this.conditionSetupDone ? [...selectedConditions] : ((window as any).__workspaceState ?? {}).selectedConditions,
+            linkStateStrategicRegion,
         };
         vscode.postMessage<WorldMapMessage>({ command: 'savestate', value: workspaceState });
     };
@@ -204,7 +217,7 @@ export class TopBar extends Subscriber {
         this.loadRefreshButton();
         this.loadOpenButton();
         this.loadExportButton();
-        this.loadEditButton();
+        this.loadEditGroup();
         this.loadSelectedRegionButton();
     }
 
@@ -298,12 +311,17 @@ export class TopBar extends Subscriber {
         }));
     }
 
-    private loadEditButton() {
+    private loadEditGroup() {
         const editButton = document.getElementById('edit') as HTMLButtonElement;
+        const linkStateStrategicRegionButton = document.getElementById('link-state-strategicregion') as HTMLButtonElement;
         const addButton = document.getElementById('add') as HTMLButtonElement;
         editButton.disabled = true;
         addButton.disabled = true;
         let editButtonActive = false;
+
+        if (this.linkStateStrategicRegion.value) {
+            linkStateStrategicRegionButton.classList.add('active');
+        }
 
         const that = this;
 
@@ -341,6 +359,12 @@ export class TopBar extends Subscriber {
             } else {
                 exitEditMode();
             }
+        }));
+
+        this.addSubscription(fromEvent(linkStateStrategicRegionButton, 'click').subscribe(e => {
+            e.stopPropagation();
+            linkStateStrategicRegionButton.classList.toggle('active');
+            that.linkStateStrategicRegion.next(linkStateStrategicRegionButton.classList.contains('active'));
         }));
 
         this.addSubscription(fromEvent(addButton, 'click').subscribe(e => {

@@ -1,16 +1,21 @@
 import type { ConditionItem } from '../../../src/hoiformat/condition';
 import type { Province, ProvinceEdge, SupplyArea, WorldMapMessage } from '../definitions';
-import type { FEWorldMap } from '../loader';
+import type { FEWorldMap, Loader } from '../loader';
 import type { RenderContext, Renderer } from '../renderer';
 import type { ViewPoint } from '../viewpoint';
 import { vscode } from '../../util/vscode';
 import { feLocalize } from '../../util/i18n';
 import { ViewMode, ViewModeControllerBase } from './viewbase';
+import type { ViewModeControllers } from './index';
 
 export class SupplyAreaViewModeController extends ViewModeControllerBase<number> {
     public readonly viewMode: ViewMode = 'supplyarea';
     public readonly edgeRenderScale = 0.5;
     public readonly labelRenderScale = 1;
+
+    constructor(private readonly viewModeControllers: ViewModeControllers, loader: Loader, selected?: number) {
+        super(loader, selected);
+    }
 
     public renderMapLabels(renderContext: RenderContext, worldMap: FEWorldMap, xOffset: number): void {
         this.renderRegionLabels(

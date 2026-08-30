@@ -187,6 +187,7 @@ const internalTable = /* SOT Do not remove this comment */{
     "worldmap.topbar.display.supply": "Show supply",
     "worldmap.topbar.display.tooltip": "Show tooltip",
     "worldmap.topbar.edit.title": "Edit",
+    "worldmap.topbar.linkstatestrategicregion.title": "When editing, state borders follow strategic regions",
     "worldmap.topbar.open.title": "Open in workspace",
     "worldmap.topbar.refresh.title": "Refresh",
     "worldmap.topbar.search": "Search: ",
@@ -276,6 +277,7 @@ const internalTable = /* SOT Do not remove this comment */{
 export const __table = Object.assign(internalTable, {
     "worldmap.openfiletype.country": "country",
     "worldmap.openfiletype.provincedefinition": "province definition",
+    "worldmap.openfiletype.misc": "map-related",
     "worldmap.openfiletype.state": "state",
     "worldmap.openfiletype.strategicregion": "strategic region",
     "worldmap.openfiletype.supplyarea": "supply area"
