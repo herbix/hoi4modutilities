@@ -323,21 +323,47 @@ export class TopBar extends Subscriber {
             linkStateStrategicRegionButton.classList.add('active');
         }
 
-        const that = this;
-
-        function enterEditMode() {
+        const enterEditMode = () => {
             editButtonActive = true;
             editButton.classList.add('active');
-            that.viewModeController.enterEditMode();
-            that.canvas.style.cursor = "url('" + pencilUri + "') 3.5 27.5, pointer";
-        }
+            this.viewModeController.enterEditMode();
+            this.canvas.style.cursor = "url('" + pencilUri + "') 3.5 27.5, pointer";
+        };
 
-        function exitEditMode() {
+        const exitEditMode = () => {
             editButtonActive = false;
             editButton.classList.remove('active');
-            that.viewModeController.exitEditMode();
-            that.canvas.style.cursor = 'crosshair';
-        }
+            this.viewModeController.exitEditMode();
+            this.canvas.style.cursor = 'crosshair';
+        };
+
+        const clickEdit = () => {
+            if (editButton.disabled || !editButton.checkVisibility()) {
+                return;
+            }
+            if (!editButtonActive) {
+                sendEvent('worldmap.entereditmode.' + this.viewMode$.value);
+                enterEditMode();
+            } else {
+                exitEditMode();
+            }
+        };
+
+        const clickLinkStateStrategicRegion = () => {
+            if (linkStateStrategicRegionButton.disabled || !linkStateStrategicRegionButton.checkVisibility()) {
+                return;
+            }
+            linkStateStrategicRegionButton.classList.toggle('active');
+            this.linkStateStrategicRegion.next(linkStateStrategicRegionButton.classList.contains('active'));
+        };
+
+        const clickAdd = () => {
+            if (addButton.disabled || !addButton.checkVisibility()) {
+                return;
+            }
+            sendEvent('worldmap.add.' + this.viewMode$.value);
+            this.viewModeController.addMapItem();
+        };
 
         this.addSubscription(this.viewMode$.subscribe(() => {
             exitEditMode();
@@ -353,24 +379,30 @@ export class TopBar extends Subscriber {
 
         this.addSubscription(fromEvent(editButton, 'click').subscribe(e => {
             e.stopPropagation();
-            if (!editButtonActive) {
-                sendEvent('worldmap.entereditmode.' + this.viewMode$.value);
-                enterEditMode();
-            } else {
-                exitEditMode();
-            }
+            clickEdit();
         }));
 
         this.addSubscription(fromEvent(linkStateStrategicRegionButton, 'click').subscribe(e => {
             e.stopPropagation();
-            linkStateStrategicRegionButton.classList.toggle('active');
-            that.linkStateStrategicRegion.next(linkStateStrategicRegionButton.classList.contains('active'));
+            clickLinkStateStrategicRegion();
         }));
 
         this.addSubscription(fromEvent(addButton, 'click').subscribe(e => {
             e.stopPropagation();
-            sendEvent('worldmap.add.' + this.viewMode$.value);
-            this.viewModeController.addMapItem();
+            clickAdd();
+        }));
+
+        this.addSubscription(fromEvent<KeyboardEvent>(window, 'keydown').subscribe(e => {
+            if (e.code === 'KeyE') {
+                e.stopPropagation();
+                clickEdit();
+            } else if (e.code === 'KeyS') {
+                e.stopPropagation();
+                clickLinkStateStrategicRegion();
+            } else if (e.code === 'KeyA') {
+                e.stopPropagation();
+                clickAdd();
+            }
         }));
 
         this.addSubscription(fromEvent<MessageEvent>(window, 'message').subscribe(event => {

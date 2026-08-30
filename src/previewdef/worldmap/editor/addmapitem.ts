@@ -4,7 +4,7 @@ import strategicRegionTemplate from './strategicregiontemplate.txt';
 import { AddMapItemMessage, State, StrategicRegion, WorldMapData, WorldMapMessage } from '../definitions';
 import { loadStateFromContent } from '../loader/states';
 import { localize } from '../../../util/i18n';
-import { dirUri, getPreferedIndent, mkdirs, writeFile } from '../../../util/vsccommon';
+import { getPreferedIndent } from '../../../util/vsccommon';
 import { loadStrategicRegionFromContent } from '../loader/strategicregion';
 
 export async function addMapItem(msg: AddMapItemMessage, cachedWorldMap: WorldMapData): Promise<WorldMapMessage[]> {
@@ -44,9 +44,7 @@ async function addState(targetFolderUri: vscode.Uri, cachedWorldMap: WorldMapDat
     const content = stateTemplate.replace(/\{id\}/g, newStateId.toString()).replace(/\t/g, indent);
     const file = 'history/states/' + newStateId.toString() + '.txt';
     const targetUri = vscode.Uri.joinPath(targetFolderUri, file);
-    
-    await mkdirs(dirUri(targetUri));
-    await writeFile(targetUri, Buffer.from(content));
+    await createFile(targetUri, content);
 
     const newState: State = {
         ...loadStateFromContent(content, file, targetUri, [], [], [])[0],
@@ -70,10 +68,6 @@ async function addState(targetFolderUri: vscode.Uri, cachedWorldMap: WorldMapDat
         enterEditMode: true,
     });
 
-    // mark dirty
-    const workspaceEdit = new vscode.WorkspaceEdit();
-    workspaceEdit.replace(targetUri, new vscode.Range(0, 0, 0, 5), 'state');
-    await vscode.workspace.applyEdit(workspaceEdit);
     return result;
 }
 
@@ -86,9 +80,7 @@ async function addStrategicRegion(targetFolderUri: vscode.Uri, cachedWorldMap: W
     const content = strategicRegionTemplate.replace(/\{id\}/g, newStrategicRegionId.toString()).replace(/\t/g, indent);
     const file = 'map/strategicregions/' + newStrategicRegionId.toString() + '.txt';
     const targetUri = vscode.Uri.joinPath(targetFolderUri, file);
-    
-    await mkdirs(dirUri(targetUri));
-    await writeFile(targetUri, Buffer.from(content));
+    await createFile(targetUri, content);
 
     const newStrategicRegion: StrategicRegion = {
         ...loadStrategicRegionFromContent(content, file, targetUri, [])[0],
@@ -112,9 +104,12 @@ async function addStrategicRegion(targetFolderUri: vscode.Uri, cachedWorldMap: W
         enterEditMode: true,
     });
 
-    // mark dirty
-    const workspaceEdit = new vscode.WorkspaceEdit();
-    workspaceEdit.replace(targetUri, new vscode.Range(0, 0, 0, 16), 'strategic_region');
-    await vscode.workspace.applyEdit(workspaceEdit);
     return result;
+}
+
+async function createFile(targetUri: vscode.Uri, content: string): Promise<void> {
+    const workspaceEdit = new vscode.WorkspaceEdit();
+    workspaceEdit.createFile(targetUri, { overwrite: true });
+    workspaceEdit.insert(targetUri, new vscode.Position(0, 0), content);
+    await vscode.workspace.applyEdit(workspaceEdit);
 }
