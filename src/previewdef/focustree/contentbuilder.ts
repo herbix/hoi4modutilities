@@ -128,7 +128,7 @@ function renderWarningContainer(styleTable: StyleTable) {
         position: fixed;
         top: 0;
         left: 0;
-        padding-top: 40px;
+        padding-top: 70px;
         background: var(--vscode-editor-background);
         box-sizing: border-box;
         display: none;

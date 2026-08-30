@@ -720,6 +720,7 @@ window.addEventListener('load', tryRun(async function() {
     if (showWarnings) {
         const warnings = document.getElementById('warnings-container') as HTMLDivElement;
         showWarnings.addEventListener('click', () => {
+            showWarnings.classList.toggle('active');
             const visible = warnings.style.display === 'block';
             document.body.style.overflow = visible ? '' : 'hidden';
             warnings.style.display = visible ? 'none' : 'block';

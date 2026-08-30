@@ -47,8 +47,6 @@ export class TopBar extends Subscriber {
     public readonly conditions: DivDropdown;
     public readonly linkStateStrategicRegion: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(true);
 
-    public warningsVisible: boolean = false;
-
     private searchBox: HTMLInputElement;
     private conditionSetupDone: boolean = false;
 
@@ -225,8 +223,8 @@ export class TopBar extends Subscriber {
         const warningsContainer = document.getElementById('warnings-container')!;
         const showWarnings = document.getElementById('show-warnings')!;
         this.addSubscription(fromEvent(showWarnings, 'click').subscribe(() => {
-            this.warningsVisible = !this.warningsVisible;
-            if (this.warningsVisible) {
+            showWarnings.classList.toggle('active');
+            if (showWarnings.classList.contains('active')) {
                 sendEvent('worldmap.openwarnings');
                 warningsContainer.style.display = 'block';
             } else {

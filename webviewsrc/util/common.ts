@@ -1,4 +1,4 @@
-import { enableDropdowns, numDropDownOpened$ } from './dropdown';
+import { enableDropdowns } from './dropdown';
 import { enableCheckboxes } from './checkbox';
 import { vscode } from './vscode';
 import { sendException } from './telemetry';
@@ -44,6 +44,15 @@ export function subscribeNavigators(container: HTMLElement | Document = document
     }
 }
 
+function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
+    vscode.postMessage({
+        command: 'navigate',
+        start,
+        end,
+        file,
+    });
+};
+
 export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Parameters<T>) => ReturnType<T> | undefined {
     return function(this: any, ...args) {
         try {
@@ -66,13 +75,16 @@ export function tryRun<T extends (...args: any[]) => any>(func: T): (...args: Pa
     };
 }
 
-let shouldDisableZoom = false;
 export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOffset: number, onZoomed?: (scale: number) => void): void {
     let scale = getState().scale || 1;
     contentElement.style.transform = `scale(${scale})`;
     contentElement.style.transformOrigin = '0 0';
     window.addEventListener('wheel', function(e) {
-        if (shouldDisableZoom) {
+        const hoveredScrollableElement = getHoveredScrollableElement();
+        if (hoveredScrollableElement &&
+            hoveredScrollableElement !== document.body &&
+            hoveredScrollableElement !== document.documentElement &&
+            !contentElement.contains(hoveredScrollableElement)) {
             return;
         }
 
@@ -103,14 +115,19 @@ export function enableZoom(contentElement: HTMLDivElement, xOffset: number, yOff
     });
 }
 
-function navigateText(start: number | undefined, end: number | undefined, file: string | undefined): void {
-    vscode.postMessage({
-        command: 'navigate',
-        start,
-        end,
-        file,
-    });
-};
+function getHoveredScrollableElement(): Element | undefined {
+    let hoveredAll = document.querySelectorAll(':hover');
+    let hovered: Element | null = hoveredAll[hoveredAll.length - 1];
+    while (hovered) {
+        var hasVerticalScrollbar = hovered.scrollHeight > hovered.clientHeight;
+        if (hasVerticalScrollbar) {
+            return hovered;
+        }
+        hovered = hovered.parentElement;
+    }
+
+    return undefined;
+}
 
 export function subscribeRefreshButton() {
     const button = document.getElementById('refresh') as HTMLButtonElement;
@@ -247,8 +264,4 @@ window.addEventListener('load', function() {
 
     enableDropdowns();
     enableCheckboxes();
-
-    numDropDownOpened$.subscribe(num => {
-        shouldDisableZoom = num > 0;
-    });
 });
