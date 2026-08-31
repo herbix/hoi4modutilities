@@ -1050,12 +1050,14 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
             localize('eventtree.title', 'Title: ') + localizedTitle,
             descriptions ? localize('eventtree.description', 'Description: ') + '\n' + descriptions : undefined,
         ].filter((value): value is string => value !== undefined).join('\n');
-        const title = [
-            event.type + '_event',
-            localize('eventtree.eventid', 'Event ID: ') + eventId,
-            localize('eventtree.title', 'Title: ') + localizedTitle,
-            localize('eventtree.scope', 'Scope: ') + scope,
-        ].join('\n');
+        const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
+            (event.major ? localize('eventtree.major', 'Major') + '\n' : '') +
+            (event.hidden ? localize('eventtree.hidden', 'Hidden') + '\n' : '') +
+            (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
+            (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
+                `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
+            (delayText ? localize('eventtree.delay', 'Delay: ') + delayText + '\n' : '') +
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizedTitle}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `${makeDetailsButton(styleTable)}
