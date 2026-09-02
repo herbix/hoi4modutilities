@@ -25,7 +25,7 @@ export class EventsLoader extends ContentLoader<EventsLoaderResult> {
 
         const childEventFiles = chain(Object.values(events.eventItemsByNamespace))
             .flatMap(e => e)
-            .flatMap(e => e.options)
+            .flatMap(e => [e.immediate, ...e.options])
             .flatMap(o => o.childEvents)
             .map(ce => eventIndex.get(ce.eventName))
             .uniq()

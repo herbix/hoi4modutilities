@@ -153,6 +153,7 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
             padding: 10px;
             box-sizing: border-box;
             overflow: auto;
+            overscroll-behavior: none;
             color: var(--vscode-editor-foreground);
             background: var(--vscode-editor-background);
             border-left: 1px solid var(--vscode-panel-border);
@@ -214,11 +215,11 @@ function eventsToNodes(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces:
         const cacheValues = result;
         result = [];
         for (const node of cacheValues) {
-            // Remove duplicate: a node mustn't be root if it there's a same event has parents.
+            // Remove duplicate: a node mustn't be root if there's a same event has parents.
             // Remove unrelated: a node mustn't be root if it doesn't have any related namespace in mainNamespaces.
             if ((node.isRootNode &&
                 (node.relatedNamespace.every(n => !mainNamespaces.includes(n)) ||
-                    cacheValues.some(n => n.event === node.event && n.parents.length > 0))) ||
+                    result.some(n => n.event === node.event && n.parents.length > 0))) ||
                 (!node.isRootNode && node.parents.length === 0)) {
                 for (const child of node.children) {
                     if (child.type === 'event') {
@@ -243,7 +244,7 @@ function eventsToNodes(eventIdToEvent: Record<string, HOIEvent>, mainNamespaces:
             // unclear scope, but all parents are same scope, then use that scope instead of unclear scope
             if (node.toScope === '{event_target}') {
                 const uniqueScopes = chain(node.parents).map(p => p.toScope).uniq().value();
-                if (uniqueScopes.length === 1) {
+                if (uniqueScopes.length === 1 && uniqueScopes[0] !== '{event_target}') {
                     node.toScope = uniqueScopes[0];
                     updated = true;
                 }
