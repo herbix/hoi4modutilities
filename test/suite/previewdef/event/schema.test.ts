@@ -13,9 +13,11 @@ suite('event preview schema', () => {
                 desc = test.1.desc
                 desc = {
                     text = test.1.alternate.desc
+                    trigger = { has_country_flag = test_flag }
                 }
                 option = {
                     name = test.1.a
+                    trigger = { has_war = yes }
                     ai_chance = { factor = 5 }
                     original_recipient_only = yes
                 }
@@ -25,12 +27,16 @@ suite('event preview schema', () => {
 
         assert.ok(event);
         assert.deepStrictEqual(event.descriptions, [
-            'test.1.desc',
-            'test.1.alternate.desc',
+            { text: 'test.1.desc' },
+            {
+                text: 'test.1.alternate.desc',
+                trigger: 'trigger = { has_country_flag = test_flag }',
+            },
         ]);
 
         const option = event.options[0];
         assert.strictEqual(option.name, 'test.1.a');
+        assert.strictEqual(option.trigger, 'trigger = { has_war = yes }');
         assert.strictEqual(option.aiChanceScript, 'ai_chance = { factor = 5 }');
         assert.strictEqual(option.originalRecipientOnly, true);
     });
