@@ -107,6 +107,7 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
         cornerPosition: 0.5,
         virtualization: true,
         onOutputVirtualizationData: (data) => {
+            data.items = data.items.filter(item => !item.id.startsWith('intermediate:'));
             jsCodes.push(`window.virtualizationData = ${JSON.stringify(data)};`);
         },
     });
@@ -941,7 +942,7 @@ async function eventNodeToGridBoxTree(
 
     const isOption = node.type === 'option';
     const id = (isOption ?
-        'option:' + (node.option.name ?? ':immediate') :
+        'option:' + (node.option.name ?? '') :
         'event:' + (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
     const renderedNode = isOption ?
         makeOptionNode(node, styleTable) :
@@ -1011,7 +1012,7 @@ const typeToIcon: Record<HOIEventType, string> = {
     state: 'location',
     country: 'globe',
     unit_leader: 'account',
-    news: 'note',
+    news: 'preview',
     operative_leader: 'device-camera',
 };
 
@@ -1035,10 +1036,16 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
         const eventId = event.id;
         const localizedTitle = getLocalisedEventText(event.title);
         const descriptions = event.descriptions
-            .map(description => getLocalisedEventText(description))
+            .map(description => {
+                if (description.trigger) {
+                    return localize('eventtree.description.trigger', 'Description ({0}): ', description.trigger) + '\n' + getLocalisedEventText(description.text);
+                }
+                return localize('eventtree.description', 'Description: ') + '\n' + getLocalisedEventText(description.text);
+            })
             .join('\n');
         const details = [
             event.type + '_event',
+            localize('eventtree.title', 'Title: ') + localizedTitle,
             localize('eventtree.eventid', 'Event ID: ') + eventId,
             event.major ? localize('eventtree.major', 'Major') : undefined,
             event.hidden ? localize('eventtree.hidden', 'Hidden') : undefined,
@@ -1047,28 +1054,30 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
                 localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`,
             delayText ? localize('eventtree.delay', 'Delay: ') + delayText : undefined,
-            localize('eventtree.scope', 'Scope: ') + scope,
-            localize('eventtree.title', 'Title: ') + localizedTitle,
-            descriptions ? localize('eventtree.description', 'Description: ') + '\n' + descriptions : undefined,
+            !event.major ? localize('eventtree.scope', 'Scope: ') + scope : undefined,
+            descriptions,
         ].filter((value): value is string => value !== undefined).join('\n');
-        const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
-            (event.major ? localize('eventtree.major', 'Major') + '\n' : '') +
-            (event.hidden ? localize('eventtree.hidden', 'Hidden') + '\n' : '') +
-            (event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') + '\n' : '') +
-            (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
-                `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
-            (delayText ? localize('eventtree.delay', 'Delay: ') + delayText + '\n' : '') +
-            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizedTitle}`;
+        const title = [
+            `${event.type}_event`,
+            localize('eventtree.title', 'Title: ') + localizedTitle,
+            `${localize('eventtree.eventid', 'Event ID: ')}${eventId}`,
+            event.major ? localize('eventtree.major', 'Major') : undefined,
+            event.hidden ? localize('eventtree.hidden', 'Hidden') : undefined,
+            event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') : undefined,
+            event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
+                `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`,
+            delayText ? localize('eventtree.delay', 'Delay: ') + delayText : undefined,
+            !event.major ? localize('eventtree.scope', 'Scope: ') + scope : undefined,
+        ].filter((value): value is string => value !== undefined).join('\n');
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
         const content = `${makeDetailsButton(styleTable)}
             <p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
-                ${styleTable.style('font-weight', () => 'font-weight: 600;')}
             ">
                 ${makeIcon(typeToIcon[event.type], styleTable)}
-                ${htmlEscape(localizedTitle)}
+                <strong>${htmlEscape(localizedTitle)}</strong>
             </p>
             <p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
@@ -1079,8 +1088,7 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
                 ${!event.isTriggeredOnly ?
                     `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}` :
                     ''}
-                <br/>
-                ${makeIcon('symbol-namespace', styleTable)} ${htmlEscape(scope)}
+                ${!event.major ? `<br/>${makeIcon('symbol-namespace', styleTable)} ${htmlEscape(scope)}` : ''}
                 ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${htmlEscape(delayText)}` : ''}
             </p>`;
         
@@ -1116,12 +1124,7 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
         }
 
         return {
-            content: makeNode(
-                content,
-                title,
-                styleTable,
-                extraClasses.join(' '),
-                extraAttributes.join(' ')),
+            content: makeNode(content, title, styleTable, extraClasses.join(' '), extraAttributes.join(' ')),
             searchText: (eventId + '\n' + localizedTitle).toLowerCase(),
             details,
         };
@@ -1170,34 +1173,38 @@ function makeDetailsButton(styleTable: StyleTable): string {
             z-index: 1;
             top: 2px;
             right: 2px;
-            padding: 2px;
         `)}"
-        title="${htmlEscape(localize('eventtree.showdetails', 'Show details'))}"
+        title="${localize('eventtree.showdetails', 'Show details')}"
     >
         ${makeIcon('info', styleTable)}
     </button>`;
 }
 
-function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEventNode {
-    const optionId = option.option.name ?? ':immediate';
+function makeOptionNode(optionNode: OptionNode, styleTable: StyleTable): RenderedEventNode {
+    const optionId = optionNode.option.name ?? '';
     const optionName = getLocalisedEventText(optionId);
-    const optionIdContent = optionName === optionId ? '' : `<br/>
-        <span class="${styleTable.style('event-option-id', () => 'opacity: 0.8;')}">${htmlEscape(optionId)}</span>`;
-    const content = `${makeDetailsButton(styleTable)}<strong>${htmlEscape(optionName)}</strong>${optionIdContent}`;
+    const content = `${makeDetailsButton(styleTable)}
+        <p class="
+            ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
+            ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
+        ">
+            <strong>${htmlEscape(optionName)}</strong>
+        </p>`;
     const details = [
-        optionId,
         optionName === optionId ? undefined : optionName,
-        option.option.aiChanceScript ?
-            localize('eventtree.aichancescript', 'AI chance script: ') + '\n' + option.option.aiChanceScript :
+        optionId,
+        optionNode.option.aiChanceScript ?
+            localize('eventtree.aichancescript', 'AI chance script: ') + '\n' + optionNode.option.aiChanceScript :
             undefined,
-        option.option.originalRecipientOnly ? localize('eventtree.originalrecipientonly', 'Original recipient only') : undefined,
+        optionNode.option.originalRecipientOnly ? localize('eventtree.originalrecipientonly', 'Original recipient only') : undefined,
+        optionNode.option.trigger ? localize('eventtree.trigger', 'Trigger: ') + '\n' + optionNode.option.trigger : undefined,
     ].filter((value): value is string => value !== undefined).join('\n');
-    const title = optionName === optionId ? optionId : optionId + '\n' + optionName;
+    const title = optionName === optionId ? optionId : optionName + '\n' + optionId;
 
-    const extraAttributes = option.token ? `
-        start="${option.token.start}"
-        end="${option.token.end}"
-        ${option.file ? `file="${option.file}"` : ''}
+    const extraAttributes = optionNode.token ? `
+        start="${optionNode.token.start}"
+        end="${optionNode.token.end}"
+        ${optionNode.file ? `file="${optionNode.file}"` : ''}
         ` : '';
 
     return {
@@ -1206,7 +1213,7 @@ function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEve
             title,
             styleTable,
             styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
-                + (option.token ? ' navigator' : ''),
+                + (optionNode.token ? ' navigator' : ''),
             extraAttributes),
         searchText: (optionId + '\n' + optionName).toLowerCase(),
         details,

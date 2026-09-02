@@ -38,9 +38,10 @@ function showEventElement(
         detailsButton.addEventListener('click', event => {
             event.preventDefault();
             event.stopPropagation();
-            const details = idToDetailsMap[element.id];
-            eventDetailsContent.textContent = details;
+            const elementId = element.id;
+            eventDetailsContent.textContent = idToDetailsMap[elementId];
             eventDetailsPanel.hidden = false;
+            setState({ eventDetailsOpen: true, eventDetailsElementId: elementId });
         });
     }
 
@@ -194,7 +195,18 @@ window.addEventListener('load', tryRun(async function() {
     const eventDetailsPanel = document.getElementById('event-details') as HTMLDivElement;
     const eventDetailsContent = document.getElementById('event-details-content') as HTMLDivElement;
     const eventDetailsClose = document.getElementById('event-details-close') as HTMLButtonElement;
-    eventDetailsClose.addEventListener('click', () => eventDetailsPanel.hidden = true);
+    eventDetailsClose.addEventListener('click', () => {
+        eventDetailsPanel.hidden = true;
+        setState({ eventDetailsOpen: false });
+    });
+
+    const state = getState();
+    const eventDetailsElementId = state.eventDetailsElementId as string | undefined;
+    if (state.eventDetailsOpen && eventDetailsElementId && eventDetailsElementId in idToDetailsMap) {
+        eventDetailsContent.textContent = idToDetailsMap[eventDetailsElementId];
+        eventDetailsPanel.hidden = false;
+    }
+
     refreshVirtualization = virtualizeGridBox(
         virtualizationData,
         element => showEventElement(element, eventDetailsPanel, eventDetailsContent),

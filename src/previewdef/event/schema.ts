@@ -11,11 +11,16 @@ export interface HOIEvents {
 
 export type HOIEventType = 'country' | 'state' | 'unit_leader' | 'news' | 'operative_leader';
 
+export interface HOIEventDescription {
+    text: string;
+    trigger?: string;
+}
+
 export interface HOIEvent {
     type: HOIEventType;
     id: string;
     title: string;
-    descriptions: string[];
+    descriptions: HOIEventDescription[];
     namespace: string;
     picture?: string;
     immediate: HOIEventOption;
@@ -34,6 +39,7 @@ export interface HOIEventOption {
     aiChanceScript?: string;
     originalRecipientOnly: boolean;
     childEvents: ChildEvent[];
+    trigger?: string;
     token: Token | undefined;
 }
 
@@ -88,6 +94,7 @@ interface EventOptionDef {
 
 interface EventDescriptionDef {
     text: string;
+    trigger: Raw;
 }
 
 interface EventEffectDef {
@@ -108,6 +115,7 @@ const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
 
 const eventDescriptionDefSchema: SchemaDef<EventDescriptionDef> = {
     text: 'string',
+    trigger: 'raw',
 };
 
 const eventDefSchema: SchemaDef<EventDef> = {
@@ -236,7 +244,7 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     const descriptions = eventDef.desc
         .filter((desc): desc is Raw => desc !== undefined)
         .map(convertDescription)
-        .filter((desc): desc is string => desc !== undefined);
+        .filter((desc): desc is HOIEventDescription => desc !== undefined);
     const immediate = convertOption(eventDef.immediate, scope);
     const options = eventDef.option.map(o => convertOption(o, scope));
 
@@ -268,17 +276,23 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     };
 }
 
-function convertDescription(descriptionRaw: Raw): string | undefined {
+function convertDescription(descriptionRaw: Raw): HOIEventDescription | undefined {
     const descriptionNode = descriptionRaw._raw;
     if (isSymbolNode(descriptionNode.value)) {
-        return descriptionNode.value.name;
+        return { text: descriptionNode.value.name };
     }
     if (typeof descriptionNode.value === 'string') {
-        return descriptionNode.value;
+        return { text: descriptionNode.value };
     }
 
     const descriptionDef = convertNodeToJson<EventDescriptionDef>(descriptionNode, eventDescriptionDefSchema);
-    return descriptionDef.text;
+    const text = descriptionDef.text;
+    if (text !== undefined) {
+        const trigger = descriptionDef.trigger ? nodeToString(descriptionDef.trigger?._raw) : undefined;
+        return { text, trigger };
+    }
+
+    return undefined;
 }
 
 function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption {
@@ -302,6 +316,7 @@ function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption
         aiChanceScript: optionDef.ai_chance ? nodeToString(optionDef.ai_chance._raw) : undefined,
         originalRecipientOnly: !!optionDef.original_recipient_only,
         childEvents: uniqueChildEvents,
+        trigger: optionDef.trigger ? nodeToString(optionDef.trigger._raw) : undefined,
         token: optionDef._token,
     };
 }
