@@ -5,7 +5,7 @@ import { debug } from '../../util/debug';
 import { html, htmlEscape } from '../../util/html';
 import { localize } from '../../util/i18n';
 import { normalizeForStyle, StyleTable } from '../../util/styletable';
-import { ChildEvent, HOIEvent, HOIEventType } from './schema';
+import { ChildEvent, HOIEvent, HOIEventOption, HOIEventType } from './schema';
 import { chain, flatten, max, maxBy, min, minBy, repeat, uniqBy } from 'lodash';
 import { arrayToMap, forceError } from '../../util/common';
 import { HOIPartial, toNumberLike, toStringAsSymbolIgnoreCase } from '../../hoiformat/schema';
@@ -84,7 +84,18 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
     const eventIdToEvent = arrayToMap(flatten(Object.values(eventsLoaderResult.events.eventItemsByNamespace)), 'id');
     const eventNodes = eventsToNodes(eventIdToEvent, eventsLoaderResult.mainNamespaces);
     const idToContentMap: Record<string, string> = {};
-    const gridBoxItems = await eventNodesToGridBoxItems(eventNodes, idToContentMap, eventsLoaderResult.gfxFiles, styleTable);
+    const idToSearchTextMap: Record<string, string> = {};
+    const idToDetailsMap: Record<string, string> = {};
+    const gridBoxItems = await eventNodesToGridBoxItems(
+        eventNodes,
+        idToContentMap,
+        idToSearchTextMap,
+        idToDetailsMap,
+        eventsLoaderResult.gfxFiles,
+        styleTable,
+    );
+    jsCodes.push(`window.idToSearchTextMap = ${JSON.stringify(idToSearchTextMap)};`);
+    jsCodes.push(`window.idToDetailsMap = ${JSON.stringify(idToDetailsMap)};`);
 
     const renderedGridBox = await renderGridBox(gridBox, {
         size: { width: 0, height: 0 },
@@ -131,6 +142,35 @@ async function renderEvents(eventsLoaderResult: EventsLoaderResult, styleTable: 
                 </button>
             </div>
         </div>
+        <div id="event-details" hidden class="${styleTable.style('event-details', () => `
+            position: fixed;
+            z-index: 10;
+            top: 40px;
+            right: 0;
+            width: min(480px, 45vw);
+            min-width: 300px;
+            max-height: calc(100vh - 40px);
+            padding: 10px;
+            box-sizing: border-box;
+            overflow: auto;
+            color: var(--vscode-editor-foreground);
+            background: var(--vscode-editor-background);
+            border-left: 1px solid var(--vscode-panel-border);
+            border-bottom: 1px solid var(--vscode-panel-border);
+        `)}">
+            <div class="${styleTable.style('event-details-header', () => 'display: flex; align-items: center; justify-content: space-between;')}">
+                <strong>${localize('eventtree.details', 'Details')}</strong>
+                <button id="event-details-close" title="${localize('eventtree.closedetails', 'Close details')}">
+                    <i class="codicon codicon-close"></i>
+                </button>
+            </div>
+            <div id="event-details-content" class="${styleTable.style('event-details-content', () => `
+                margin: 10px 0 0;
+                white-space: pre-wrap;
+                overflow-wrap: anywhere;
+                user-select: text;
+            `)}"></div>
+        </div>
     `;
 }
 
@@ -152,7 +192,7 @@ interface EventNode {
 
 interface OptionNode {
     type: 'option';
-    optionName: string;
+    option: HOIEventOption;
     children: EventNode[];
     file: string;
     token: Token | undefined;
@@ -249,7 +289,7 @@ function eventToNode(
         const isImmediate = !option.name;
         const optionNode: OptionNode = {
             type: 'option',
-            optionName: option.name ?? ':immediate',
+            option,
             children: [],
             file: event.file,
             token: option.token,
@@ -331,6 +371,8 @@ interface GridBoxTreeOutputNode {
 async function eventNodesToGridBoxItems(
     nodes: EventNode[],
     idToContentMap: Record<string, string>,
+    idToSearchTextMap: Record<string, string>,
+    idToDetailsMap: Record<string, string>,
     gfxFiles: string[],
     styleTable: StyleTable
 ): Promise<GridBoxItem[]> {
@@ -345,7 +387,17 @@ async function eventNodesToGridBoxItems(
             fromStack: [],
             currentScopeName: entryNode.toScope ?? 'EVENT_TARGET',
         };
-        const tree = await eventNodeToGridBoxTree(entryNode, entryNodes, idToContentMap, scopeContext, gfxFiles, styleTable, idContainer);
+        const tree = await eventNodeToGridBoxTree(
+            entryNode,
+            entryNodes,
+            idToContentMap,
+            idToSearchTextMap,
+            idToDetailsMap,
+            scopeContext,
+            gfxFiles,
+            styleTable,
+            idContainer,
+        );
         treeMap.set(entryNode, tree);
     }
 
@@ -834,6 +886,8 @@ async function eventNodeToGridBoxTree(
     node: EventNode | OptionNode,
     entryNodes: Set<EventNode>,
     idToContentMap: Record<string, string>,
+    idToSearchTextMap: Record<string, string>,
+    idToDetailsMap: Record<string, string>,
     scopeContext: ScopeContext,
     gfxFiles: string[],
     styleTable: StyleTable,
@@ -856,21 +910,45 @@ async function eventNodeToGridBoxTree(
                 continue;
             }
             const nextScopeContext = nextScope(scopeContext, child.toScope);
-            tree = await eventNodeToGridBoxTree(child, entryNodes, idToContentMap, nextScopeContext, gfxFiles, styleTable, idContainer);
+            tree = await eventNodeToGridBoxTree(
+                child,
+                entryNodes,
+                idToContentMap,
+                idToSearchTextMap,
+                idToDetailsMap,
+                nextScopeContext,
+                gfxFiles,
+                styleTable,
+                idContainer,
+            );
         } else {
-            tree = await eventNodeToGridBoxTree(child, entryNodes, idToContentMap, scopeContext, gfxFiles, styleTable, idContainer);
+            tree = await eventNodeToGridBoxTree(
+                child,
+                entryNodes,
+                idToContentMap,
+                idToSearchTextMap,
+                idToDetailsMap,
+                scopeContext,
+                gfxFiles,
+                styleTable,
+                idContainer,
+            );
         }
         childIds.push(tree.id);
         appendChildToTree(result, tree, 1, undefined, true);
     }
 
     const isOption = node.type === 'option';
-    const id = (isOption ? 'option:' + node.optionName : 'event:' + (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
-    if (isOption) {
-        idToContentMap[id] = await makeOptionNode(node as OptionNode, styleTable);
-    } else {
-        idToContentMap[id] = await makeEventNode(scopeContext.currentScopeName,
-            typeof node === 'object' ? node as EventNode : node, gfxFiles, styleTable);
+    const id = (isOption ?
+        'option:' + (node.option.name ?? ':immediate') :
+        'event:' + (typeof node.event === 'object' ? node.event.id : node.event)) + ':' + (idContainer.id++);
+    const renderedNode = isOption ?
+        makeOptionNode(node, styleTable) :
+        await makeEventNode(scopeContext.currentScopeName, node, gfxFiles, styleTable);
+    idToContentMap[id] = renderedNode.content;
+    idToSearchTextMap[id] = renderedNode.searchText;
+    if (renderedNode.details) {
+        idToDetailsMap[id] = renderedNode.details;
     }
 
     // DEBUG
@@ -943,11 +1021,35 @@ const flagIcons: string[] = [
     'refresh',
 ];
 
-async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: string[], styleTable: StyleTable): Promise<string> {
+interface RenderedEventNode {
+    content: string;
+    searchText: string;
+    details?: string;
+}
+
+async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: string[], styleTable: StyleTable): Promise<RenderedEventNode> {
     const delayText = makeDelayString(eventNode.days, eventNode.hours, eventNode.randomDays, eventNode.randomHours);
     if (typeof eventNode.event === 'object') {
         const event = eventNode.event;
         const eventId = event.id;
+        const localizedTitle = getLocalisedEventText(event.title);
+        const descriptions = event.descriptions
+            .map(description => getLocalisedEventText(description))
+            .join('\n');
+        const details = [
+            event.type + '_event',
+            localize('eventtree.eventid', 'Event ID: ') + eventId,
+            event.major ? localize('eventtree.major', 'Major') : undefined,
+            event.hidden ? localize('eventtree.hidden', 'Hidden') : undefined,
+            event.fire_only_once ? localize('eventtree.fireonlyonce', 'Fire only once') : undefined,
+            event.isTriggeredOnly ?
+                localize('eventtree.istriggeredonly', 'Is triggered only') :
+                `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`,
+            delayText ? localize('eventtree.delay', 'Delay: ') + delayText : undefined,
+            localize('eventtree.scope', 'Scope: ') + scope,
+            localize('eventtree.title', 'Title: ') + localizedTitle,
+            descriptions ? localize('eventtree.description', 'Description: ') + '\n' + descriptions : undefined,
+        ].filter((value): value is string => value !== undefined).join('\n');
         const title = `${event.type}_event\n${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n` +
             (event.major ? localize('eventtree.major', 'Major') + '\n' : '') +
             (event.hidden ? localize('eventtree.hidden', 'Hidden') + '\n' : '') +
@@ -955,31 +1057,37 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
             (event.isTriggeredOnly ? localize('eventtree.istriggeredonly', 'Is triggered only') :
                 `${localize('eventtree.mtthbase', 'Mean time to happen (base): ')}${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}`) + '\n' +
             (delayText ? localize('eventtree.delay', 'Delay: ') + delayText + '\n' : '') +
-            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}` +
-            `${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}`;
+            `${localize('eventtree.scope', 'Scope: ')}${scope}\n${localize('eventtree.title', 'Title: ')}${localizedTitle}`;
 
         const flags = [event.hidden, event.fire_only_once, event.major, eventNode.loop];
-        const content = `<p class="
+        const content = `${makeDetailsButton(styleTable)}
+            <p class="
+                ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
+                ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
+                ${styleTable.style('font-weight', () => 'font-weight: 600;')}
+            ">
+                ${makeIcon(typeToIcon[event.type], styleTable)}
+                ${htmlEscape(localizedTitle)}
+            </p>
+            <p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
             ">
-                ${makeIcon(typeToIcon[event.type], styleTable)}
-                ${eventId}
+                ${htmlEscape(eventId)}
                 ${flags.includes(true) ? '<br/>' + flags.map((v, i) => v ? makeIcon(flagIcons[i], styleTable) : '').join(' ') : ''}
                 ${!event.isTriggeredOnly ?
                     `<br/>${makeIcon('history', styleTable)} ${event.meanTimeToHappenBase} ${localize('days', 'day(s)')}` :
                     ''}
                 <br/>
-                ${makeIcon('symbol-namespace', styleTable)} ${scope}
-                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${delayText}` : ''}
-            </p>
-            <p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">
-                ${indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(event.title) : event.title}
+                ${makeIcon('symbol-namespace', styleTable)} ${htmlEscape(scope)}
+                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${htmlEscape(delayText)}` : ''}
             </p>`;
         
         const extraAttributes = [];
         const extraClasses = [
-            styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
+            event.type === 'news' ?
+                styleTable.style('news-event-item', () => 'background: rgba(210, 150, 40, 0.55);') :
+                styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'),
             styleTable.style('cursor-pointer', () => 'cursor: pointer;'),
         ];
         if (event.token) { 
@@ -1006,41 +1114,47 @@ async function makeEventNode(scope: string, eventNode: EventNode, gfxFiles: stri
             extraClasses.push('event-picture-host');
         }
 
-        return makeNode(
-            content,
-            title,
-            styleTable,
-            extraClasses.join(' '),
-            extraAttributes.join(' '));
+        return {
+            content: makeNode(
+                content,
+                title,
+                styleTable,
+                extraClasses.join(' '),
+                extraAttributes.join(' ')),
+            searchText: (eventId + '\n' + localizedTitle).toLowerCase(),
+            details,
+        };
 
     } else {
         const eventId = eventNode.event;
         const title = `${localize('eventtree.eventid', 'Event ID: ')}${eventId}\n${localize('eventtree.scope', 'Scope: ')}${scope}`;
-        let contentText = '';
+        let localizedTitle: string | undefined;
         if (indexManager.isIndexEnabled('localisation')) {
-            let localizedTitle = localisationIndex.getLocalisedText(eventId);
-            if (localizedTitle !== eventId && localizedTitle) {
-                contentText = localizedTitle;
-            } else {
+            localizedTitle = localisationIndex.getLocalisedText(eventId);
+            if (!localizedTitle || localizedTitle === eventId) {
                 localizedTitle = localisationIndex.getLocalisedText(`${eventId}.t`);
-                if (localizedTitle !== `${eventId}.t` && localizedTitle) {
-                    contentText = localizedTitle;
+                if (localizedTitle === `${eventId}.t`) {
+                    localizedTitle = undefined;
                 }
             }
         }
+        const contentText = localizedTitle ? htmlEscape(localizedTitle) : '';
         const content = `<p class="
                 ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}
                 ${styleTable.style('white-space-nowrap', () => 'white-space: nowrap;')}
             ">
                 ${makeIcon('question', styleTable)}
-                ${eventId}
+                ${htmlEscape(eventId)}
                 <br/>
-                ${makeIcon('symbol-namespace', styleTable)} ${scope}
-                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${delayText}` : ''}
+                ${makeIcon('symbol-namespace', styleTable)} ${htmlEscape(scope)}
+                ${delayText ? `<br/>${makeIcon('watch', styleTable)} ${htmlEscape(delayText)}` : ''}
             </p>
             ${contentText ? `<p class="${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}">${contentText}</p>` : ''}`;
     
-        return makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);'));
+        return {
+            content: makeNode(content, title, styleTable, styleTable.style('event-item', () => 'background: rgba(255, 80, 80, 0.5);')),
+            searchText: (localizedTitle ? eventId + '\n' + localizedTitle : eventId).toLowerCase(),
+        };
     }
 }
 
@@ -1048,14 +1162,36 @@ function makeIcon(type: string, styleTable: StyleTable): string {
     return `<i class="codicon codicon-${type} ${styleTable.style('bottom', () => 'vertical-align: bottom;')}"></i>`;
 }
 
-async function makeOptionNode(option: OptionNode, styleTable: StyleTable): Promise<string> {
-    let content = option.optionName;
-    let title = option.optionName;
-    if (indexManager.isIndexEnabled('localisation')){
-        const optionName = localisationIndex.getLocalisedText(option.optionName);
-        content = `${option.optionName}<br/>${optionName}`;
-        title = `${option.optionName}\n${optionName}`;
-    }
+function makeDetailsButton(styleTable: StyleTable): string {
+    return `<button
+        class="event-details-button ${styleTable.style('event-details-button', () => `
+            position: absolute;
+            z-index: 1;
+            top: 2px;
+            right: 2px;
+            padding: 2px;
+        `)}"
+        title="${htmlEscape(localize('eventtree.showdetails', 'Show details'))}"
+    >
+        ${makeIcon('info', styleTable)}
+    </button>`;
+}
+
+function makeOptionNode(option: OptionNode, styleTable: StyleTable): RenderedEventNode {
+    const optionId = option.option.name ?? ':immediate';
+    const optionName = getLocalisedEventText(optionId);
+    const optionIdContent = optionName === optionId ? '' : `<br/>
+        <span class="${styleTable.style('event-option-id', () => 'opacity: 0.8;')}">${htmlEscape(optionId)}</span>`;
+    const content = `${makeDetailsButton(styleTable)}<strong>${htmlEscape(optionName)}</strong>${optionIdContent}`;
+    const details = [
+        optionId,
+        optionName === optionId ? undefined : optionName,
+        option.option.aiChanceScript ?
+            localize('eventtree.aichancescript', 'AI chance script: ') + '\n' + option.option.aiChanceScript :
+            undefined,
+        option.option.originalRecipientOnly ? localize('eventtree.originalrecipientonly', 'Original recipient only') : undefined,
+    ].filter((value): value is string => value !== undefined).join('\n');
+    const title = optionName === optionId ? optionId : optionId + '\n' + optionName;
 
     const extraAttributes = option.token ? `
         start="${option.token.start}"
@@ -1063,13 +1199,21 @@ async function makeOptionNode(option: OptionNode, styleTable: StyleTable): Promi
         ${option.file ? `file="${option.file}"` : ''}
         ` : '';
 
-    return makeNode(
-        content,
-        title,
-        styleTable,
-        styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
-            + (option.token ? ' navigator' : ''),
-        extraAttributes);
+    return {
+        content: makeNode(
+            content,
+            title,
+            styleTable,
+            styleTable.style('event-option', () => 'background: rgba(80, 80, 255, 0.5); cursor: pointer;')
+                + (option.token ? ' navigator' : ''),
+            extraAttributes),
+        searchText: (optionId + '\n' + optionName).toLowerCase(),
+        details,
+    };
+}
+
+function getLocalisedEventText(key: string): string {
+    return indexManager.isIndexEnabled('localisation') ? localisationIndex.getLocalisedText(key) ?? key : key;
 }
 
 function makeNode(content: string, title: string, styleTable: StyleTable, extraClasses: string, extraAttributes?: string) {

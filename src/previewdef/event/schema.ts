@@ -2,6 +2,7 @@ import { Node, Token } from '../../hoiformat/hoiparser';
 import { convertNodeToJson, HOIPartial, isSymbolNode, NumberLike, Raw, SchemaDef } from '../../hoiformat/schema';
 import { EffectComplexExpr, EffectItem, extractEffectValue } from '../../hoiformat/effect';
 import { Scope, ScopeType } from '../../hoiformat/scope';
+import { nodeToString } from '../../hoiformat/tostring';
 import { uniqBy } from 'lodash';
 
 export interface HOIEvents {
@@ -14,6 +15,7 @@ export interface HOIEvent {
     type: HOIEventType;
     id: string;
     title: string;
+    descriptions: string[];
     namespace: string;
     picture?: string;
     immediate: HOIEventOption;
@@ -29,6 +31,8 @@ export interface HOIEvent {
 
 export interface HOIEventOption {
     name?: string;
+    aiChanceScript?: string;
+    originalRecipientOnly: boolean;
     childEvents: ChildEvent[];
     token: Token | undefined;
 }
@@ -54,6 +58,7 @@ interface EventFile {
 interface EventDef {
     id: string;
     title: string;
+    desc: Raw[];
     picture: string;
     is_triggered_only: boolean;
     major: boolean;
@@ -76,9 +81,13 @@ interface MeanTimeToHappen {
 interface EventOptionDef {
     name: string;
     trigger: Raw;
-    ai_chance: string;
+    ai_chance: Raw;
     original_recipient_only: boolean;
     _token: Token;
+}
+
+interface EventDescriptionDef {
+    text: string;
 }
 
 interface EventEffectDef {
@@ -93,13 +102,21 @@ interface EventEffectDef {
 const eventOptionDefSchema: SchemaDef<EventOptionDef> = {
     name: 'string',
     trigger: 'raw',
-    ai_chance: 'string',
+    ai_chance: 'raw',
     original_recipient_only: 'boolean',
+};
+
+const eventDescriptionDefSchema: SchemaDef<EventDescriptionDef> = {
+    text: 'string',
 };
 
 const eventDefSchema: SchemaDef<EventDef> = {
     id: 'string',
     title: 'string',
+    desc: {
+        _innerType: 'raw',
+        _type: 'array',
+    },
     picture: 'string',
     is_triggered_only: 'boolean',
     major: 'boolean',
@@ -216,6 +233,10 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     const scopeType = eventTypeToScopeType(type);
     const scope: Scope = { scopeName: `{event_target}`, scopeType };
 
+    const descriptions = eventDef.desc
+        .filter((desc): desc is Raw => desc !== undefined)
+        .map(convertDescription)
+        .filter((desc): desc is string => desc !== undefined);
     const immediate = convertOption(eventDef.immediate, scope);
     const options = eventDef.option.map(o => convertOption(o, scope));
 
@@ -232,6 +253,7 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
         type,
         id,
         title,
+        descriptions,
         namespace,
         picture,
         file,
@@ -246,23 +268,39 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
     };
 }
 
+function convertDescription(descriptionRaw: Raw): string | undefined {
+    const descriptionNode = descriptionRaw._raw;
+    if (isSymbolNode(descriptionNode.value)) {
+        return descriptionNode.value.name;
+    }
+    if (typeof descriptionNode.value === 'string') {
+        return descriptionNode.value;
+    }
+
+    const descriptionDef = convertNodeToJson<EventDescriptionDef>(descriptionNode, eventDescriptionDefSchema);
+    return descriptionDef.text;
+}
+
 function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption {
     if (optionRaw === undefined) {
-        return { childEvents: [], token: undefined };
+        return {
+            originalRecipientOnly: false,
+            childEvents: [],
+            token: undefined,
+        };
     }
 
     const optionDef = convertNodeToJson<EventOptionDef>(optionRaw._raw, eventOptionDefSchema);
-    const name = optionDef.name;
-    
     const effect = extractEffectValue(optionRaw._raw.value, scope);
-    const childEventItems = findChildEventItems(effect.effect);
-    const childEvents = childEventItems
+    const childEvents = findChildEventItems(effect.effect)
         .map(effectItemToChildEvent)
         .filter((e): e is ChildEvent => e !== undefined);
     const uniqueChildEvents = uniqBy(childEvents, e => e.eventName + '@' + e.scopeName);
 
     return {
-        name,
+        name: optionDef.name,
+        aiChanceScript: optionDef.ai_chance ? nodeToString(optionDef.ai_chance._raw) : undefined,
+        originalRecipientOnly: !!optionDef.original_recipient_only,
         childEvents: uniqueChildEvents,
         token: optionDef._token,
     };

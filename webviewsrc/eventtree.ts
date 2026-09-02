@@ -3,30 +3,45 @@ import { enableZoom, getState, setState, subscribeNavigators, subscribeRefreshBu
 import { virtualizeGridBox } from './util/virtualization';
 
 interface EventSearchMatch {
-    itemId: string;
     htmlId: string;
-    eventId: string;
     x: number;
     y: number;
     width: number;
     height: number;
 }
 
-const eventIdPattern = /^(?:event|option):([^:]+):\d+$/;
+const eventIdPattern = /^(?:event|option):[^:]+:\d+$/;
 
 let searchMatches: EventSearchMatch[] = [];
 let searchMatchIndex = 0;
 let searchText = '';
 let refreshVirtualization = () => {};
 const virtualizationData = (window as any).virtualizationData as GridBoxVirtualizationData;
+const idToSearchTextMap = (window as any).idToSearchTextMap as Record<string, string>;
+const idToDetailsMap = (window as any).idToDetailsMap as Record<string, string>;
 
-function showEventElement(element: HTMLDivElement): void {
+function showEventElement(
+    element: HTMLDivElement,
+    eventDetailsPanel: HTMLDivElement,
+    eventDetailsContent: HTMLDivElement,
+): void {
     const hosts = element.getElementsByClassName('event-picture-host') as HTMLCollectionOf<HTMLDivElement>;
     for (let i = 0; i < hosts.length; i++) {
         const host = hosts.item(i);
         if (host) {
             showPictureWhenHoverElement(host);
         }
+    }
+
+    const detailsButton = element.querySelector<HTMLButtonElement>('.event-details-button');
+    if (detailsButton) {
+        detailsButton.addEventListener('click', event => {
+            event.preventDefault();
+            event.stopPropagation();
+            const details = idToDetailsMap[element.id];
+            eventDetailsContent.textContent = details;
+            eventDetailsPanel.hidden = false;
+        });
     }
 
     subscribeNavigators(element);
@@ -109,21 +124,16 @@ function refreshSearchResults(): void {
 
     searchMatches = virtualizationData.items
         .map(item => {
-            const itemId = item.id;
-            const match = eventIdPattern.exec(itemId);
-            if (!match) {
+            if (!eventIdPattern.test(item.id)) {
                 return undefined;
             }
 
-            const eventId = match[1].toLowerCase();
-            if (!eventId.includes(searchText)) {
+            if (!idToSearchTextMap[item.id].includes(searchText)) {
                 return undefined;
             }
 
             return {
-                itemId: item.id,
                 htmlId: item.htmlId,
-                eventId,
                 x: Number(item.x),
                 y: Number(item.y),
                 width: Number(item.width),
@@ -181,7 +191,14 @@ function updateRenderedSearchHighlights(): void {
 
 window.addEventListener('load', tryRun(async function() {
     const contentElement = document.getElementById('eventtreecontent') as HTMLDivElement;
-    refreshVirtualization = virtualizeGridBox(virtualizationData, showEventElement).refresh;
+    const eventDetailsPanel = document.getElementById('event-details') as HTMLDivElement;
+    const eventDetailsContent = document.getElementById('event-details-content') as HTMLDivElement;
+    const eventDetailsClose = document.getElementById('event-details-close') as HTMLButtonElement;
+    eventDetailsClose.addEventListener('click', () => eventDetailsPanel.hidden = true);
+    refreshVirtualization = virtualizeGridBox(
+        virtualizationData,
+        element => showEventElement(element, eventDetailsPanel, eventDetailsContent),
+    ).refresh;
 
     // Search
     setupSearchbox();
