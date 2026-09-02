@@ -9,7 +9,7 @@ import { arrayToMap, debounceByInput } from '../util/common';
 import { debug, error } from '../util/debug';
 import { PreviewBase } from './previewbase';
 import { contextContainer, setVscodeContext } from '../context';
-import { basename, getDocumentByUri } from '../util/vsccommon';
+import { basename, getDocumentByUri, openedTabsContains } from '../util/vsccommon';
 import { worldMapPreviewDef } from './worldmap';
 import { eventPreviewDef } from './event';
 import { chain } from 'lodash';
@@ -51,11 +51,11 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
     public register(): vscode.Disposable {
         const disposables: vscode.Disposable[] = [];
         disposables.push(vscode.commands.registerCommand(Commands.Preview, this.showPreview, this));
-        disposables.push(vscode.workspace.onDidCloseTextDocument(this.onCloseTextDocument, this));
+        disposables.push(vscode.window.tabGroups.onDidChangeTabs(this.onDidChangeTabs, this));
         disposables.push(vscode.workspace.onDidChangeTextDocument(this.onChangeTextDocument, this));
         disposables.push(vscode.window.onDidChangeActiveTextEditor(this.updateHoi4PreviewContextValue, this));
         disposables.push(vscode.window.registerWebviewPanelSerializer(WebviewType.Preview, this));
-        disposables.push(indexManager.onUpdated(this.onGfxIndexInitialized, this));
+        disposables.push(indexManager.onUpdated(this.onIndexUpdated, this));
 
         // Trigger context value setting
         this.updateHoi4PreviewContextValue(vscode.window.activeTextEditor);
@@ -86,17 +86,27 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         return this.showPreviewImpl(uri);
     }
 
-    private onCloseTextDocument(document: vscode.TextDocument): void {
-        if (!vscode.window.visibleTextEditors.some(e => e.document.uri.toString() === document.uri.toString())) {
-            const key = document.uri.toString();
+    private onDidChangeTabs(event: vscode.TabChangeEvent): void {
+        for (const closedTab of event.closed) {
+            const input = closedTab.input;
+            if (!(input instanceof vscode.TabInputText)) {
+                continue;
+            }
+
+            const key = input.uri.toString();
+            if (openedTabsContains(input.uri)) {
+                debug(`prevent dispose panel ${key} because tab exists`);
+                continue;
+            }
+
             const preview = this._previews[key];
             if (preview) {
                 preview.panel.dispose();
-                debug(`dispose panel ${key} because text document closed`);
+                debug(`dispose panel ${key} because tab closed`);
             }
-        }
 
-        this.updatePreviewItemsInSubscription(document.uri, Date.now());
+            this.updatePreviewItemsInSubscription(input.uri, Date.now());
+        }
     }
     
     private onChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
@@ -126,7 +136,7 @@ class PreviewManager implements vscode.WebviewPanelSerializer {
         setVscodeContext(ContextName.Hoi4PreviewType, hoi4PreviewType);
     }
 
-    private onGfxIndexInitialized(): void {
+    private onIndexUpdated(): void {
         for (const preview of Object.values(this._previews)) {
             const document = getDocumentByUri(preview.uri);
             if (document) {

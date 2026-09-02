@@ -219,3 +219,17 @@ export function getPreferedIndent(): string {
         return '\t';
     }
 }
+
+export function openedTabsContains(uri: vscode.Uri): boolean {
+    // This API is newer, current target version of vsc doesn't contain this API.
+    for (const group of vscode.window.tabGroups.all) {
+        for (const tab of group.tabs) {
+            if (tab.input instanceof vscode.TabInputText) {
+                if (tab.input.uri.toString() === uri.toString()) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
