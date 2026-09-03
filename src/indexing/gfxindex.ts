@@ -22,7 +22,7 @@ class GfxIndex extends IndexBase<string> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith('interface/')) {
-                this.fillGfxItems(relative, this._workspaceIndex, { hoi4: false, dlc: false });
+                this.fillGfxItems(relative, this.workspaceIndex, { hoi4: false, dlc: false });
             }
         }
     }
@@ -32,18 +32,13 @@ class GfxIndex extends IndexBase<string> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith('interface/')) {
-                for (const [key, value] of this._workspaceIndex) {
+                for (const [key, value] of this.workspaceIndex) {
                     if (value === relative) {
-                        this._workspaceIndex.delete(key);
+                        this.workspaceIndex.delete(key);
                     }
                 }
             }
         }
-    }
-    
-    public async buildIndex(index: Map<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
-        const gfxFiles = (await listFilesFromModOrHOI4('interface', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.gfx'));
-        await Promise.all(gfxFiles.map(f => this.fillGfxItems('interface/' + f, index, options, estimatedSize)));
     }
 
     public getGfxContainerFile(gfxName: string | undefined): string | undefined {
@@ -55,6 +50,21 @@ class GfxIndex extends IndexBase<string> {
 
     public getGfxContainerFiles(gfxNames: (string | undefined)[]): string[] {
         return uniq(gfxNames.map(name => this.getGfxContainerFile(name)).filter((v): v is string => v !== undefined));
+    }
+
+    protected async buildIndex(index: Map<string, string>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
+        const gfxFiles = await this.getFiles(options);
+        await Promise.all(gfxFiles.map(f => this.fillGfxItems(f, index, options, estimatedSize)));
+    }
+
+    protected async getFiles(options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<string[]> {
+        return (await listFilesFromModOrHOI4('interface', { ...options, recursively: true }))
+            .filter(f => f.toLocaleLowerCase().endsWith('.gfx'))
+            .map(f => 'interface/' + f);
+    }
+
+    protected validateIndexValue(value: unknown): value is string {
+        return typeof value === 'string';
     }
 
     private async fillGfxItems(gfxFile: string, gfxIndex: Map<string, string>, options: { mod?: boolean, hoi4?: boolean, dlc?: boolean }, estimatedSize?: [number]): Promise<void> {

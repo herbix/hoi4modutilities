@@ -38,7 +38,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
                 if (relative && relative.startsWith('localisation/')) {
-                this.fillLocalisationItems(relative, this._workspaceIndex, { hoi4: false, dlc: false, resolveReplacements: true });
+                this.fillLocalisationItems(relative, this.workspaceIndex, { hoi4: false, dlc: false, resolveReplacements: true });
                 this.indexUpdatedEventEmitter?.fire();
             }
         }
@@ -49,19 +49,33 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         if (wsFolder) {
             const relative = path.relative(wsFolder.uri.path, file.path).replace(/\\+/g, '/');
             if (relative && relative.startsWith('localisation/')) {
-                for (const [key, value] of this._workspaceIndex) {
+                for (const [key, value] of this.workspaceIndex) {
                     if (value.file === relative) {
-                        this._workspaceIndex.delete(key);
+                        this.workspaceIndex.delete(key);
                     }
                 }
             }
         }
     }
 
-    public async buildIndex(index: Map<string, LocalisationEntry>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
-        const localisationFiles = (await listFilesFromModOrHOI4('localisation', { ...options, recursively: true })).filter(f => f.toLocaleLowerCase().endsWith('.yml'));
-        await Promise.all(localisationFiles.map(f => this.fillLocalisationItems('localisation/' + f, index, options, estimatedSize)));
+    protected async buildIndex(index: Map<string, LocalisationEntry>, estimatedSize: [number], options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<void> {
+        const localisationFiles = await this.getFiles(options);
+        await Promise.all(localisationFiles.map(f => this.fillLocalisationItems(f, index, options, estimatedSize)));
         this.resolveReplacements(index);
+    }
+
+    protected async getFiles(options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }): Promise<string[]> {
+        return (await listFilesFromModOrHOI4('localisation', { ...options, recursively: true }))
+            .filter(f => f.toLocaleLowerCase().endsWith('.yml'))
+            .map(f => 'localisation/' + f);
+    }
+
+    protected validateIndexValue(value: unknown): value is LocalisationEntry {
+        if (typeof value !== 'object' || value === null) {
+            return false;
+        }
+        const entry = value as Partial<LocalisationEntry>;
+        return typeof entry.file === 'string' && typeof entry.value === 'string';
     }
 
     public getLocalisationContainerFile(key: string | undefined): string | undefined {
