@@ -72,7 +72,8 @@
 							"gfx",
 							"sharedfocus",
 							"localisation",
-							"event"
+							"event",
+							"gui"
 						],
 						"uniqueItems": true,
 						"items": {
@@ -81,13 +82,15 @@
 								"gfx",
 								"sharedfocus",
 								"localisation",
-								"event"
+								"event",
+								"gui"
 							],
 							"enumDescriptions": [
 								"%hoi4modutilities.indexing.gfx%",
 								"%hoi4modutilities.indexing.sharedfocus%",
 								"%hoi4modutilities.indexing.localisation%",
-								"%hoi4modutilities.indexing.event%"
+								"%hoi4modutilities.indexing.event%",
+								"%hoi4modutilities.indexing.gui%"
 							]
 						},
 						"description": "%hoi4modutilities.indexing.desc%"

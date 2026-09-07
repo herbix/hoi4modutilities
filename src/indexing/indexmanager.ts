@@ -8,8 +8,9 @@ import { getConfiguration } from '../util/vsccommon';
 import { sharedFocusIndex } from './sharedfocusindex';
 import { localisationIndex } from './localisationindex';
 import { eventIndex } from './eventindex';
+import { guiIndex } from './guiindex';
 
-export type IndexType = 'gfx' | 'sharedfocus' | 'localisation' | 'event';
+export type IndexType = 'gfx' | 'sharedfocus' | 'localisation' | 'event' | 'gui';
 
 class IndexManager {
     private _indices: IndexBase<unknown>[] = [
@@ -17,6 +18,7 @@ class IndexManager {
         sharedFocusIndex,
         localisationIndex,
         eventIndex,
+        guiIndex,
     ];
     private _indexMap: Record<IndexType, IndexBase<unknown>> = arrayToMap(this._indices, 'type');
     private _indexUpdatedEventEmitter = new vscode.EventEmitter<void>();

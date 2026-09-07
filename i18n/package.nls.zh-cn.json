@@ -27,5 +27,6 @@
     "hoi4modutilities.indexing.gfx": "图像资源",
     "hoi4modutilities.indexing.sharedfocus": "共享国策和联合国策",
     "hoi4modutilities.indexing.localisation": "本地化文本",
-    "hoi4modutilities.indexing.event": "事件"
+    "hoi4modutilities.indexing.event": "事件",
+    "hoi4modutilities.indexing.gui": "界面元素"
 }

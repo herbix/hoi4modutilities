@@ -27,5 +27,6 @@
     "hoi4modutilities.indexing.gfx": "GFX Sprites",
     "hoi4modutilities.indexing.sharedfocus": "Shared Focuses and Joint Focuses",
     "hoi4modutilities.indexing.localisation": "Localisation Texts",
-    "hoi4modutilities.indexing.event": "Events"
+    "hoi4modutilities.indexing.event": "Events",
+    "hoi4modutilities.indexing.gui": "GUI Elements"
 }
