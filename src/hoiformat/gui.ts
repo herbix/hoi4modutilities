@@ -1,3 +1,4 @@
+import { NumberPosition } from '../util/common';
 import { Token } from './hoiparser';
 import { NumberLike, Position, positionSchema, SchemaDef, StringIgnoreCase } from './schema';
 
@@ -37,6 +38,7 @@ export interface GuiTypes {
     windowtype: ContainerWindowType[];
     scrollbartype: ScrollbarType[];
     extendedscrollbartype: ExtendedScrollbarType[];
+    positiontype: PositionType[];
 }
 
 export interface ContainerWindowType {
@@ -225,6 +227,11 @@ export interface ExtendedScrollbarType {
     increasebutton: ButtonType;
     _index: number;
     _token: Token;
+}
+
+export interface PositionType {
+    name: string;
+    position: NumberPosition;
 }
 
 export interface GuiFile {
@@ -490,6 +497,14 @@ const containerWindowTypeSchema: SchemaDef<ContainerWindowType> = {
     },
 };
 
+const positionTypeSchema: SchemaDef<PositionType> = {
+    name: 'string',
+    position: {
+        x: 'number',
+        y: 'number',
+    },
+};
+
 containerWindowTypeSchema.containerwindowtype._innerType = containerWindowTypeSchema;
 containerWindowTypeSchema.windowtype._innerType = containerWindowTypeSchema;
 dropdownBoxTypeSchema.containerwindowtype._innerType = containerWindowTypeSchema;
@@ -510,6 +525,10 @@ const guiTypesSchema: SchemaDef<GuiTypes> = {
     },
     extendedscrollbartype: {
         _innerType: extendedScrollbarTypeSchema,
+        _type: 'array',
+    },
+    positiontype: {
+        _innerType: positionTypeSchema,
         _type: 'array',
     },
 };

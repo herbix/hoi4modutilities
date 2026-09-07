@@ -30,6 +30,7 @@ export interface Focus {
     y: number;
     id: string;
     icon: FocusIconWithCondition[];
+    textIcon: string | undefined;
     prerequisite: string[][];
     exclusive: string[];
     hasAllowBranch: boolean;
@@ -78,6 +79,7 @@ interface FocusDef {
     id: string;
     alternate_icon: string;
     icon: Raw[];
+    text_icon: string;
     x: Raw;
     y: Raw;
     prerequisite: FocusOrORList[];
@@ -109,10 +111,20 @@ interface FocusOrORList {
     OR: string[];
 }
 
+export interface FocusStyle {
+    name: string;
+    default: boolean;
+    unavailable: string;
+    completed: string;
+    available: string;
+    current: string;
+}
+
 interface FocusFile {
     focus_tree: FocusTreeDef[];
     shared_focus: FocusDef[];
     joint_focus: FocusDef[];
+    style: FocusStyle[];
 }
 
 const focusOrORListSchema: SchemaDef<FocusOrORList> = {
@@ -133,6 +145,7 @@ const focusSchema: SchemaDef<FocusDef> = {
         _innerType: 'raw',
         _type: 'array',
     },
+    text_icon: 'string',
     x: 'raw',
     y: 'raw',
     prerequisite: {
@@ -177,6 +190,15 @@ const focusTreeSchema: SchemaDef<FocusTreeDef> = {
     continuous_focus_position: positionSchema,
 };
 
+const focusStyleSchema: SchemaDef<FocusStyle> = {
+    name: 'string',
+    default: 'boolean',
+    unavailable: 'string',
+    completed: 'string',
+    available: 'string',
+    current: 'string',
+};
+
 const focusFileSchema: SchemaDef<FocusFile> = {
     focus_tree: {
         _innerType: focusTreeSchema,
@@ -188,6 +210,10 @@ const focusFileSchema: SchemaDef<FocusFile> = {
     },
     joint_focus: {
         _innerType: focusSchema,
+        _type: 'array',
+    },
+    style: {
+        _innerType: focusStyleSchema,
         _type: 'array',
     },
 };
@@ -267,6 +293,23 @@ export function getFocusTree(node: Node, sharedFocusTrees: FocusTree[], filePath
     const file = convertFocusFileNodeToJson(node, constants);
 
     return getFocusTreeWithFocusFile(file, sharedFocusTrees, filePath, constants);
+}
+
+export function getFocusStyles(file: HOIPartial<FocusFile>): FocusStyle[] {
+    const result: FocusStyle[] = [];
+    for (const style of file.style ?? []) {
+        if (style.available && style.completed && style.current && style.unavailable && style.name) {
+            result.push({
+                name: style.name,
+                available: style.available,
+                completed: style.completed,
+                current: style.current,
+                unavailable: style.unavailable,
+                default: !!style.default,
+            });
+        }
+    };
+    return result;
 }
 
 export function getGfxNameForSearchFilter(filter: string): string {
@@ -367,6 +410,7 @@ function getFocus(hoiFocus: HOIPartial<FocusDef>, conditionExprs: ConditionItem[
     return {
         id,
         icon,
+        textIcon: hoiFocus.text_icon,
         x,
         y,
         relativePositionId,

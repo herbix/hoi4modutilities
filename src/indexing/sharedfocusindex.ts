@@ -60,8 +60,7 @@ class SharedFocusIndex extends IndexBase<string> {
         const fileContent = fileBuffer.toString();
 
         try {
-            const sharedFocusTrees: any[] = [];
-            const focusTrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', focusFile)), sharedFocusTrees, focusFile);
+            const focusTrees = getFocusTree(parseHoi4File(fileContent, localize('infile', 'In file {0}:\n', focusFile)), [], focusFile);
 
             // Only store focus trees where isSharedFocues is true
             focusTrees.forEach(tree => {

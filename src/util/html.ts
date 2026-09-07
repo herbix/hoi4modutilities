@@ -89,6 +89,5 @@ export function htmlEscape(unsafe: string): string {
          .replace(/>/g, '&gt;')
          .replace(/"/g, '&quot;')
          .replace(/'/g, '&#039;')
-         .replace(/\n/g, '&#13;')
-         .replace(/ /g, '&nbsp;');
+         .replace(/\n/g, '&#13;');
 }

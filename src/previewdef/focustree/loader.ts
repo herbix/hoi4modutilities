@@ -1,17 +1,33 @@
 import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResult } from '../../util/loader/loader';
-import { convertFocusFileNodeToJson, FocusTree, getFocusTreeWithFocusFile, getGfxNameForSearchFilter } from './schema';
+import { convertFocusFileNodeToJson, FocusStyle, FocusTree, getFocusStyles, getFocusTreeWithFocusFile, getGfxNameForSearchFilter } from './schema';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { localize } from '../../util/i18n';
-import { chain, flatten, uniq } from 'lodash';
+import { chain, flatten, uniq, uniqBy } from 'lodash';
 import { gfxIndex } from '../../indexing/gfxindex';
 import { sharedFocusIndex } from '../../indexing/sharedfocusindex';
+import { HOIPartial } from '../../hoiformat/schema';
+import { GuiFile } from '../../hoiformat/gui';
+import { GuiFileLoader } from '../gui/loader';
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
+    styles: FocusStyle[];
     gfxFiles: string[];
+    guiFiles: { file: string, data: HOIPartial<GuiFile> }[];
 }
 
-const focusesGFX = 'interface/goals.gfx';
+export const defaultFocusStyle: FocusStyle = {
+    default: true,
+    name: 'default_style',
+    unavailable: 'GFX_focus_unavailable',
+    completed: 'GFX_focus_completed',
+    available: 'GFX_focus_can_start',
+    current: 'GFX_focus_current',
+};
+
+const focusesGFX = ['interface/goals.gfx', 'interface/nationalfocusview.gfx'];
+const defaultStyleFile = 'common/national_focus/00_titlebar_styles.txt';
+const focusesGui = 'interface/nationalfocusview.gui';
 
 export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
     protected async postLoad(content: string | undefined, dependencies: Dependency[], error: any, session: LoaderSession): Promise<LoadResultOD<FocusTreeLoaderResult>> {
@@ -23,6 +39,8 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
 
         const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), constants);
         const focusTreeDependencies = dependencies.filter(d => d.type === 'focus').map(d => d.path);
+
+        focusTreeDependencies.push(defaultStyleFile);
 
         const sharedFocusFilesFromIndex = chain(file.focus_tree)
             .flatMap(focusTree => focusTree.shared_focus)
@@ -46,6 +64,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             .value();
 
         const focusTrees = getFocusTreeWithFocusFile(file, sharedFocusTrees, this.file, constants);
+        const focusStyles = getFocusStyles(file); 
 
         const focusGfxNames = chain(focusTrees)
             .flatMap(ft => Object.values(ft.focuses))
@@ -59,14 +78,19 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             ...await gfxIndex.getGfxContainerFiles(focusGfxNames),
         ];
 
+        const guiDependencies = [focusesGui, ...dependencies.filter(d => d.type === 'gui').map(d => d.path)];
+        const guiDepFiles = await this.loaderDependencies.loadMultiple(guiDependencies, session, GuiFileLoader);
+
         return {
             result: {
                 focusTrees,
-                gfxFiles: uniq([...gfxDependencies, focusesGFX]),
+                styles: uniqBy([...focusStyles, ...focusTreeDepFiles.flatMap(f => f.result.styles)], 'name'),
+                gfxFiles: uniq([...gfxDependencies, ...focusesGFX]),
+                guiFiles: chain(guiDepFiles).flatMap(r => r.result.guiFiles).uniq().value(),
             },
             dependencies: uniq([
                 this.file,
-                focusesGFX,
+                ...focusesGFX,
                 ...gfxDependencies,
                 ...focusTreeDependencies,
                 ...mergeInLoadResult(focusTreeDepFiles, 'dependencies')
