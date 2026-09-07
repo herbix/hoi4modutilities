@@ -162,8 +162,8 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     const continuousFocuses = document.getElementById('continuousFocuses') as HTMLDivElement;
 
     if (focusTree.continuousFocusPositionX !== undefined && focusTree.continuousFocusPositionY !== undefined) {
-        continuousFocuses.style.left = (focusTree.continuousFocusPositionX - 59) + 'px';
-        continuousFocuses.style.top = (focusTree.continuousFocusPositionY + 7) + 'px';
+        continuousFocuses.style.left = (focusTree.continuousFocusPositionX - 38) + 'px';
+        continuousFocuses.style.top = (focusTree.continuousFocusPositionY + 27) + 'px';
         continuousFocuses.style.display = 'block';
     } else {
         continuousFocuses.style.display = 'none';

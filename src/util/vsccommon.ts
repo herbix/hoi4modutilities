@@ -79,6 +79,10 @@ export async function mkdirs(path: vscode.Uri): Promise<void> {
     await getFs(path).createDirectory(path);
 }
 
+export async function deleteFile(path: vscode.Uri): Promise<void> {
+    await getFs(path).delete(path);
+}
+
 export async function isFile(path: vscode.Uri): Promise<boolean> {
     try {
         return (await getFs(path).stat(path)).type === vscode.FileType.File;

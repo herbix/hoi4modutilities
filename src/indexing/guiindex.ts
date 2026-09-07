@@ -9,7 +9,8 @@ import { Logger } from '../util/logger';
 import { IndexBase } from './indexbase';
 import type { IndexType } from './indexmanager';
 
-export type GuiIndexItemType = 'containerwindow' | 'window' | 'scrollbar' | 'extendedscrollbar';
+export type GuiIndexItemType = 'containerwindow' | 'window' | 'scrollbar' | 'extendedscrollbar' | 'position';
+const guiIndexItemTypes: GuiIndexItemType[] = ['containerwindow', 'window', 'scrollbar', 'extendedscrollbar', 'position'];
 
 export interface GuiIndexItem {
     type: GuiIndexItemType;
@@ -63,9 +64,7 @@ class GuiIndex extends IndexBase<GuiIndexItem> {
             return false;
         }
         const item = value as Partial<GuiIndexItem>;
-        return typeof item.file === 'string' &&
-            (item.type === 'containerwindow' || item.type === 'window' ||
-                item.type === 'scrollbar' || item.type === 'extendedscrollbar');
+        return typeof item.file === 'string' && item.type !== undefined && guiIndexItemTypes.includes(item.type);
     }
 
     private async fillGuiItems(guiFile: string, index: Map<string, GuiIndexItem>, options: { mod?: boolean; hoi4?: boolean; dlc?: boolean }, estimatedSize?: [number]): Promise<void> {
@@ -81,6 +80,7 @@ class GuiIndex extends IndexBase<GuiIndexItem> {
                     ['window', guiTypes.windowtype],
                     ['scrollbar', guiTypes.scrollbartype],
                     ['extendedscrollbar', guiTypes.extendedscrollbartype],
+                    ['position', guiTypes.positiontype]
                 ] as const;
                 for (const [type, items] of itemsByType) {
                     for (const item of items) {

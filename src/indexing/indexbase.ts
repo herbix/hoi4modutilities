@@ -3,7 +3,7 @@ import { IndexType } from './indexmanager';
 import { sendEvent } from '../util/telemetry';
 import { contextContainer } from '../context';
 import { getFilePathFromModOrHOI4 } from '../util/fileloader';
-import { dirUri, getLastModifiedAsync, mkdirs, readFile, writeFile } from '../util/vsccommon';
+import { deleteFile, dirUri, getLastModifiedAsync, mkdirs, readFile, writeFile } from '../util/vsccommon';
 import { createStopwatch, debug } from '../util/debug';
 
 export abstract class IndexBase<T> {
@@ -70,6 +70,18 @@ export abstract class IndexBase<T> {
 
     public get(key: string): T | undefined {
         return this.workspaceIndex.get(key) ?? this.globalIndex.get(key);
+    }
+
+    protected async deleteCachedGlobalIndex(): Promise<void> {
+        const cachedIndexUri = this.getCachedGlobalIndexUri();
+        if (!cachedIndexUri) {
+            return;
+        }
+
+        try {
+            await deleteFile(cachedIndexUri);
+        } catch (_) {
+        }
     }
 
     private async mostRecentlyChangedFileInGlobalIndex(): Promise<number> {

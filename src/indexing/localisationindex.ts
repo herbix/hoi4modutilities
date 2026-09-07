@@ -105,6 +105,7 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
 
     private onChangeConfiguration(e: vscode.ConfigurationChangeEvent): void {
         if (e.affectsConfiguration(`${ConfigurationKey}.previewLocalisation`)) {
+            this.deleteCachedGlobalIndex();
             indexManager.rebuildIndex(this);
         }
     }
