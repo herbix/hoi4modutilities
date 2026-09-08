@@ -19,7 +19,6 @@ import { renderInstantTextBox } from '../../util/hoi4gui/instanttextbox';
 import { RenderNodeCommonOptions } from '../../util/hoi4gui/nodecommon';
 import { renderIcon } from '../../util/hoi4gui/icon';
 import { calculateBBox, ParentInfo } from '../../util/hoi4gui/common';
-import { Token } from '../../hoiformat/hoiparser';
 import { FocusInlayWindow } from './inlaywindow/schema';
 
 const defaultFocusIcon = 'gfx/interface/goals/goal_unknown.dds';
@@ -199,7 +198,7 @@ async function renderInlayWindows(
                 styleTable,
                 id: 'inlayWindow-' + normalizeForStyle(ft.id) + '-' + normalizeForStyle(inlayWindow.id),
                 classNames: [
-                    styleTable.oneTimeStyle('inlayWindow', () => `cursor: pointer;`),
+                    styleTable.oneTimeStyle('inlayWindow', () => `cursor: pointer; z-index: 20;`),
                     styleTable.style('displayNone', () => `display: none;`),
                     'inlayWindow',
                     iw.token ? 'navigator' : '',
