@@ -29,9 +29,10 @@ export abstract class IndexBase<T> {
             const mostRecent = await this.mostRecentlyChangedFileInGlobalIndex();
             if (cachedLastModified >= mostRecent) {
                 try {
-                    await this.loadCachedGlobalIndex();
-                    sendEvent(`index.${this.type}.global`, { cached: 'true', elapsedTime: stopwatch.getElapsed().toString() });
-                    return;
+                    if (await this.loadCachedGlobalIndex()) {
+                        sendEvent(`index.${this.type}.global`, { cached: 'true', elapsedTime: stopwatch.getElapsed().toString() });
+                        return;
+                    }
                 } catch (e) {
                     debug(`Failed to load cached global index for ${this.type}: ${e}`);
                     this.globalIndex.clear();
@@ -110,10 +111,10 @@ export abstract class IndexBase<T> {
         }
     }
 
-    private async loadCachedGlobalIndex(): Promise<void> {
+    protected async loadCachedGlobalIndex(): Promise<boolean> {
         const cachedIndexUri = this.getCachedGlobalIndexUri();
         if (!cachedIndexUri) {
-            return;
+            return false;
         }
 
         const entries: unknown = JSON.parse((await readFile(cachedIndexUri)).toString());
@@ -126,9 +127,10 @@ export abstract class IndexBase<T> {
         for (const [key, value] of entries as [string, T][]) {
             this.globalIndex.set(key, value);
         }
+        return true;
     }
 
-    private async saveCachedGlobalIndex(): Promise<void> {
+    protected async saveCachedGlobalIndex(): Promise<void> {
         const cachedIndexUri = this.getCachedGlobalIndexUri();
         if (!cachedIndexUri) {
             return;
@@ -138,7 +140,7 @@ export abstract class IndexBase<T> {
         await writeFile(cachedIndexUri, Buffer.from(JSON.stringify([...this.globalIndex])));
     }
 
-    private getCachedGlobalIndexUri(): vscode.Uri | undefined {
+    protected getCachedGlobalIndexUri(): vscode.Uri | undefined {
         const globalStorageUri = contextContainer.current?.globalStorageUri;
         return globalStorageUri && vscode.Uri.joinPath(globalStorageUri, 'index', `${this.type}.json`);
     }

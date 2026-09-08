@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { chain } from 'lodash';
-import { getLanguageIdInYml } from '../util/vsccommon';
+import { dirUri, getLanguageIdInYml, readFile, writeFile } from '../util/vsccommon';
 import { IndexBase } from './indexbase';
 import { indexManager, IndexType } from './indexmanager';
 import { listFilesFromModOrHOI4, readFileFromModOrHOI4 } from '../util/fileloader';
@@ -14,6 +14,10 @@ import { error } from '../util/debug';
 interface LocalisationEntry {
     file: string;
     value: string;
+}
+
+interface LocalisationMetadata {
+    languageId: string;
 }
 
 // localisation key -> {yml file path, value}
@@ -76,6 +80,35 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         }
         const entry = value as Partial<LocalisationEntry>;
         return typeof entry.file === 'string' && typeof entry.value === 'string';
+    }
+
+    protected override async loadCachedGlobalIndex(): Promise<boolean> {
+        const cachedMetadataUri = this.getCachedMetadataUri();
+        if (!cachedMetadataUri) {
+            return false;
+        }
+
+        try {
+            const metadata: unknown = JSON.parse((await readFile(cachedMetadataUri)).toString());
+            if (typeof metadata !== 'object' || metadata === null ||
+                (metadata as Partial<LocalisationMetadata>).languageId !== getLanguageIdInYml()) {
+                return false;
+            }
+        } catch (_) {
+            return false;
+        }
+
+        return super.loadCachedGlobalIndex();
+    }
+
+    protected override async saveCachedGlobalIndex(): Promise<void> {
+        await super.saveCachedGlobalIndex();
+
+        const cachedMetadataUri = this.getCachedMetadataUri();
+        if (cachedMetadataUri) {
+            const metadata: LocalisationMetadata = { languageId: getLanguageIdInYml() };
+            await writeFile(cachedMetadataUri, Buffer.from(JSON.stringify(metadata)));
+        }
     }
 
     public getLocalisationContainerFile(key: string | undefined): string | undefined {
@@ -194,6 +227,11 @@ class LocalisationIndex extends IndexBase<LocalisationEntry> {
         } catch (e) {
             error(e);
         }
+    }
+
+    private getCachedMetadataUri(): vscode.Uri | undefined {
+        const cachedIndexUri = this.getCachedGlobalIndexUri();
+        return cachedIndexUri && vscode.Uri.joinPath(dirUri(cachedIndexUri), this.type + '-metadata.json');
     }
 }
 
