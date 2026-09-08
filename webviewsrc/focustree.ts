@@ -11,6 +11,11 @@ import { toNumberLike } from '../src/hoiformat/schema';
 import { feLocalize } from './util/i18n';
 import { Checkbox } from './util/checkbox';
 import { vscode } from './util/vscode';
+import { FocusInlayWindow } from '../src/previewdef/focustree/inlaywindow/schema';
+
+// This is mesured from game. I don't know why.
+const uiOffsetX = -38;
+const uiOffsetY = 27;
 
 function showBranch(visibility: boolean, optionClass: string) {
     const elements = document.getElementsByClassName(optionClass);
@@ -55,6 +60,7 @@ function search(searchContent: string, navigate: boolean = true) {
 const useConditionInFocus: boolean = (window as any).__featureflags.useConditionInFocus;
 const rightButtonDrag: boolean = (window as any).__featureflags.rightButtonDrag;
 const focusTrees: FocusTree[] = (window as any).focusTrees;
+const inlayWindows: Record<string, FocusInlayWindow> = (window as any).inlayWindows;
 
 let selectedExprs: ConditionItem[] = getState().selectedExprs ?? [];
 let selectedFocusTreeIndex: number = Math.min(focusTrees.length - 1, getState().selectedFocusTreeIndex ?? 0);
@@ -112,6 +118,7 @@ async function buildContent() {
 
     focustreeplaceholder.innerHTML = focusTreeContent + styleTable.toStyleElement((window as any).styleNonce);
 
+    showInlayWindows(focusTree, exprs);
     refreshPreviewLabelMode();
     subscribeNavigators();
     setupCheckedFocuses(focuses, focusTree);
@@ -162,9 +169,11 @@ function updateSelectedFocusTree(clearCondition: boolean) {
     const continuousFocuses = document.getElementById('continuousFocuses') as HTMLDivElement;
 
     if (focusTree.continuousFocusPositionX !== undefined && focusTree.continuousFocusPositionY !== undefined) {
-        continuousFocuses.style.left = (focusTree.continuousFocusPositionX - 38) + 'px';
-        continuousFocuses.style.top = (focusTree.continuousFocusPositionY + 27) + 'px';
+        continuousFocuses.style.left = (focusTree.continuousFocusPositionX + uiOffsetX) + 'px';
+        continuousFocuses.style.top = (focusTree.continuousFocusPositionY + uiOffsetY) + 'px';
         continuousFocuses.style.display = 'block';
+        continuousFocuses.setAttribute('start', focusTree.continuousFocusPositionToken?.start.toString() ?? '');
+        continuousFocuses.setAttribute('end', focusTree.continuousFocusPositionToken?.end.toString() ?? '');
     } else {
         continuousFocuses.style.display = 'none';
     }
@@ -315,6 +324,37 @@ function focusToGridItem(
         gridY: position.y,
         connections,
     };
+}
+
+function showInlayWindows(focusTree: FocusTree, exprs: ConditionItem[]) {
+    const inlayWindowElements = document.getElementsByClassName('inlayWindow');
+    for (let i = 0; i < inlayWindowElements.length; i++) {
+        const inlayWindowElement = inlayWindowElements[i] as HTMLDivElement;
+        inlayWindowElement.style.display = 'none';
+    }
+
+    for (const inlayWindow of focusTree.inlayWindows) {
+        const inlayWindowData = inlayWindows[inlayWindow.id];
+        if (!inlayWindowData) {
+            continue;
+        }
+        const inlayWindowElement = document.getElementById('inlayWindow-' + normalizeForStyle(focusTree.id) + '-' + normalizeForStyle(inlayWindow.id)) as HTMLDivElement | null;
+        if (!inlayWindowElement) {
+            continue;
+        }
+
+        const visible = applyCondition(inlayWindowData.visible, exprs);
+        if (visible) {
+            inlayWindowElement.style.display = 'block';
+            for (const position of inlayWindow.position) {
+                if (applyCondition(position.condition, exprs)) {
+                    inlayWindowElement.style.left = (position.x + uiOffsetX) + 'px';
+                    inlayWindowElement.style.top = (position.y + uiOffsetY) + 'px';
+                    break;
+                }
+            }
+        }
+    }
 }
 
 function clearCheckedFocuses() {

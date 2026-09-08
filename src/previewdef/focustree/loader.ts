@@ -2,18 +2,24 @@ import { ContentLoader, Dependency, LoaderSession, LoadResultOD, mergeInLoadResu
 import { convertFocusFileNodeToJson, FocusStyle, FocusTree, getFocusStyles, getFocusTreeWithFocusFile, getGfxNameForSearchFilter } from './schema';
 import { parseHoi4File } from '../../hoiformat/hoiparser';
 import { localize } from '../../util/i18n';
-import { chain, flatten, uniq, uniqBy } from 'lodash';
+import { chain, flatten, isEqual, uniq, uniqBy, uniqWith } from 'lodash';
 import { gfxIndex } from '../../indexing/gfxindex';
 import { sharedFocusIndex } from '../../indexing/sharedfocusindex';
 import { HOIPartial } from '../../hoiformat/schema';
 import { GuiFile } from '../../hoiformat/gui';
 import { GuiFileLoader } from '../gui/loader';
+import { FocusInlayWindow } from './inlaywindow/schema';
+import { FocusInlayWindowLoader } from './inlaywindow/loader';
+import { arrayToMap } from '../../util/common';
+import { sortConditionExprs } from '../../hoiformat/condition';
+import { guiIndex } from '../../indexing/guiindex';
 
 export interface FocusTreeLoaderResult {
     focusTrees: FocusTree[];
     styles: FocusStyle[];
     gfxFiles: string[];
     guiFiles: { file: string, data: HOIPartial<GuiFile> }[];
+    inlayWindows: FocusInlayWindow[];
 }
 
 export const defaultFocusStyle: FocusStyle = {
@@ -38,8 +44,9 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
         const constants = {};
 
         const file = convertFocusFileNodeToJson(parseHoi4File(content, localize('infile', 'In file {0}:\n', this.file)), constants);
+        
+        // focus dependencies: focus style, shared/joint focuses
         const focusTreeDependencies = dependencies.filter(d => d.type === 'focus').map(d => d.path);
-
         focusTreeDependencies.push(defaultStyleFile);
 
         const sharedFocusFilesFromIndex = chain(file.focus_tree)
@@ -66,6 +73,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
         const focusTrees = getFocusTreeWithFocusFile(file, sharedFocusTrees, this.file, constants);
         const focusStyles = getFocusStyles(file); 
 
+        // gfx dependencies
         const focusGfxNames = chain(focusTrees)
             .flatMap(ft => Object.values(ft.focuses))
             .flatMap(f => [...f.icon.map(i => i.icon), f.overlay, ...f.searchFilters.map(getGfxNameForSearchFilter)])
@@ -77,8 +85,37 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
             ...flatten(focusTreeDepFiles.map(f => f.result.gfxFiles)),
             ...await gfxIndex.getGfxContainerFiles(focusGfxNames),
         ];
+        
+        // inlay window dependencies
+        const focusInlayWindowDependencies = uniq([
+            ...chain(focusTrees).flatMap(ft => ft.inlayWindows).map(iw => `common/focus_inlay_windows/${iw.id}.txt`).value(),
+            ...dependencies.filter(d => d.type === 'focus_inlay_window').map(d => d.path),
+        ]);
 
+        const focusInlayWindowDepFiles = await this.loaderDependencies.loadMultiple(focusInlayWindowDependencies, session, FocusInlayWindowLoader);
+        const allInlayWindows = arrayToMap(chain(focusInlayWindowDepFiles).flatMap(f => f.result.inlayWindows).value(), 'id');
+        const inlayWindows: FocusInlayWindow[] = [];
+        for (const focusTree of focusTrees) {
+            for (const inlayWindow of focusTree.inlayWindows) {
+                const inlayWindowData = allInlayWindows[inlayWindow.id];
+                if (inlayWindowData) {
+                    inlayWindows.push(inlayWindowData);
+                    if (inlayWindowData.conditionExprs.length > 0) {
+                        focusTree.conditionExprs = uniqWith([...focusTree.conditionExprs, ...inlayWindowData.conditionExprs], isEqual);
+                    }
+                }
+            }
+            sortConditionExprs(focusTree.conditionExprs);
+        }
+
+        // gui dependencies
         const guiDependencies = [focusesGui, ...dependencies.filter(d => d.type === 'gui').map(d => d.path)];
+        for (const inlayWindow of inlayWindows) {
+            const guiFile = guiIndex.get(inlayWindow.windowName)?.file;
+            if (guiFile && !guiDependencies.includes(guiFile)) {
+                guiDependencies.push(guiFile);
+            }
+        }
         const guiDepFiles = await this.loaderDependencies.loadMultiple(guiDependencies, session, GuiFileLoader);
 
         return {
@@ -87,6 +124,7 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
                 styles: uniqBy([...focusStyles, ...focusTreeDepFiles.flatMap(f => f.result.styles)], 'name'),
                 gfxFiles: uniq([...gfxDependencies, ...focusesGFX]),
                 guiFiles: chain(guiDepFiles).flatMap(r => r.result.guiFiles).uniq().value(),
+                inlayWindows,
             },
             dependencies: uniq([
                 this.file,

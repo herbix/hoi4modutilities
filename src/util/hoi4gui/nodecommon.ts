@@ -169,5 +169,5 @@ export async function renderBackground(background: HOIPartial<Background> | unde
         size: { width: parseNumberLike('100%%'), height: parseNumberLike('100%%') }
     }, parentInfo);
     
-    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0, 1, commonOptions);
+    return renderSprite({ x, y }, { width, height }, backgroundSprite, 0, 1, { ...commonOptions, id: undefined, classNames: undefined });
 }

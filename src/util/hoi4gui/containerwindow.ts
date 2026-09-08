@@ -72,10 +72,10 @@ export async function renderContainerWindow(containerWindow: HOIPartial<Containe
 
     return `<div
     ${options.id ? `id="${options.id}"` : ''}
-    start="${containerWindow._token?.start}"
-    end="${containerWindow._token?.end}"
+    start="${options.navigatorToken?.start ?? containerWindow._token?.start ?? ''}"
+    end="${options.navigatorToken?.end ?? containerWindow._token?.end ?? ''}"
     class="
-        ${options?.classNames ? options.classNames : ''}
+        ${options.classNames ?? ''}
         ${options.styleTable.style('positionAbsolute', () => `position: absolute;`)}
         ${options.styleTable.style('borderBox', () => `box-sizing: border-box;`)}
         ${options.styleTable.oneTimeStyle('containerwindow', () => `
