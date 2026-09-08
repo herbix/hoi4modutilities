@@ -133,7 +133,9 @@ export class FocusTreeLoader extends ContentLoader<FocusTreeLoaderResult> {
                 ...focusTreeDependencies,
                 ...guiDependencies,
                 ...focusInlayWindowDependencies,
-                ...mergeInLoadResult(focusTreeDepFiles, 'dependencies')
+                ...mergeInLoadResult(focusTreeDepFiles, 'dependencies'),
+                ...mergeInLoadResult(guiDepFiles, 'dependencies'),
+                ...mergeInLoadResult(focusInlayWindowDepFiles, 'dependencies'),
             ]),
         };
     }
