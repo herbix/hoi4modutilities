@@ -71,10 +71,22 @@ For feature details and user manual, please refer to [HOI4 Mod Utilities Wiki](h
 * GUI of focus tree and MIO can't be configured like technology tree.
 * Edge lines on world map not always fit edge of colors.
 
-## Release Notes - [0.17.2]
+## Release Notes - [0.18.0]
 
 ### Added
-* Add an option to link borders of state and strategic region while editing (#156).
+* Shortcuts for editing in world map preview.
+* Details button in event tree preview (#155) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Cache base game and DLC index in disk for faster starting up.
+* Support `text_icon` and `inlay_window` in focus tree preview.
+
+### Updated
+* Updated minimal supported VS Code version to 1.67.0.
+* Use tab API for closing preview tabs.
+* Focus tree preview spacing is now read from GUI files.
+
+### Fixed
+* Refine how mouse wheel works for zooming or scrolling.
+* Fix issue that some events may be missing in preview.
 
 ## Contribute
 * If you have any suggestion, feel free to create issue on this [Github repo](https://github.com/herbix/hoi4modutilities).

@@ -4,7 +4,24 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.17.2] - 2026/08/30 - Latest
+## [0.18.0] - 2026/09/11 - Latest
+
+### Added
+* Shortcuts for editing in world map preview.
+* Details button in event tree preview (#155) (Contributor: [1985312383(柯慕灵)](https://github.com/1985312383)).
+* Cache base game and DLC index in disk for faster starting up.
+* Support `text_icon` and `inlay_window` in focus tree preview.
+
+### Updated
+* Updated minimal supported VS Code version to 1.67.0.
+* Use tab API for closing preview tabs.
+* Focus tree preview spacing is now read from GUI files.
+
+### Fixed
+* Refine how mouse wheel works for zooming or scrolling.
+* Fix issue that some events may be missing in preview.
+
+## [0.17.2] - 2026/08/30
 
 ### Added
 * Add an option to link borders of state and strategic region while editing (#156).
