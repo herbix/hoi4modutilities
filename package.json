@@ -286,7 +286,7 @@
 	"dependencies": {
 		"@vscode/codicons": "^0.0.46-24",
 		"@vscode/extension-telemetry": "^0.4.6",
-		"adm-zip": "^0.6.0",
+		"adm-zip": "^0.6.1",
 		"assert": "^2.0.0",
 		"browserify-zlib": "^0.2.0",
 		"buffer": "^6.0.3",
