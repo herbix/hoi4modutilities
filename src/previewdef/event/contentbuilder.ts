@@ -287,8 +287,7 @@ function eventToNode(
     };
     eventNodeCache[cacheKey] = eventNode;
 
-    for (const option of [event.immediate, ...event.options]) {
-        const isImmediate = !option.name;
+    for (const option of [event.immediate, ...event.options, event.after]) {
         const optionNode: OptionNode = {
             type: 'option',
             option,
@@ -297,9 +296,6 @@ function eventToNode(
             token: option.token,
             parent: eventNode,
         };
-        if (!isImmediate) {
-            eventNode.children.push(optionNode);
-        }
 
         for (const childEvent of option.childEvents) {
             const childEventItem = eventIdToEvent[childEvent.eventName];
@@ -342,11 +338,11 @@ function eventToNode(
                 toNode.parents.push(eventNode);
             }
             
-            if (isImmediate) {
-                eventNode.children.push(toNode);
-            } else {
-                optionNode.children.push(toNode);
-            }
+            optionNode.children.push(toNode);
+        }
+
+        if (option.type === 'option' || optionNode.children.length > 0) {
+            eventNode.children.push(optionNode);
         }
     }
 
@@ -1182,7 +1178,11 @@ function makeDetailsButton(styleTable: StyleTable): string {
 
 function makeOptionNode(optionNode: OptionNode, styleTable: StyleTable): RenderedEventNode {
     const optionId = optionNode.option.name ?? '';
-    const optionName = getLocalisedEventText(optionId);
+    const optionType = optionNode.option.type;
+    const optionName = optionType === 'option' ? getLocalisedEventText(optionId) :
+        optionType === 'after' ? localize('eventtree.after', '(After)') :
+        optionType === 'immediate' ? localize('eventtree.immediate', '(Immediate)') :
+        '';
     const content = `${makeDetailsButton(styleTable)}
         <p class="
             ${styleTable.style('paragraph', () => 'margin: 5px 0; text-overflow: ellipsis; overflow: hidden;')}

@@ -24,6 +24,7 @@ export interface HOIEvent {
     namespace: string;
     picture?: string;
     immediate: HOIEventOption;
+    after: HOIEventOption;
     options: HOIEventOption[];
     token: Token | undefined;
     major: boolean;
@@ -36,6 +37,7 @@ export interface HOIEvent {
 
 export interface HOIEventOption {
     name?: string;
+    type: 'immediate' | 'after' | 'option';
     aiChanceScript?: string;
     originalRecipientOnly: boolean;
     childEvents: ChildEvent[];
@@ -73,6 +75,7 @@ interface EventDef {
     fire_only_once: boolean;
     option: Raw[];
     immediate: Raw;
+    after: Raw;
     _token: Token;
 }
 
@@ -142,6 +145,7 @@ const eventDefSchema: SchemaDef<EventDef> = {
         _type: 'array',
     },
     immediate: 'raw',
+    after: 'raw',
 };
 
 const eventFileSchema: SchemaDef<EventFile> = {
@@ -245,8 +249,9 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
         .filter((desc): desc is Raw => desc !== undefined)
         .map(convertDescription)
         .filter((desc): desc is HOIEventDescription => desc !== undefined);
-    const immediate = convertOption(eventDef.immediate, scope);
-    const options = eventDef.option.map(o => convertOption(o, scope));
+    const immediate = convertOption(eventDef.immediate, scope, 'immediate');
+    const after = convertOption(eventDef.after, scope, 'after');
+    const options = eventDef.option.map(o => convertOption(o, scope, 'option'));
 
     const meanTimeToHappenBase = eventDef.mean_time_to_happen ?
         Math.floor(eventDef.mean_time_to_happen.factor ??
@@ -266,6 +271,7 @@ function convertEvent<T extends HOIEventType>(eventDef: HOIPartial<EventDef>, fi
         picture,
         file,
         immediate,
+        after,
         options,
         token: eventDef._token,
         major: !!eventDef.major,
@@ -295,9 +301,10 @@ function convertDescription(descriptionRaw: Raw): HOIEventDescription | undefine
     return undefined;
 }
 
-function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption {
+function convertOption(optionRaw: Raw | undefined, scope: Scope, type: 'immediate' | 'after' | 'option'): HOIEventOption {
     if (optionRaw === undefined) {
         return {
+            type,
             originalRecipientOnly: false,
             childEvents: [],
             token: undefined,
@@ -312,6 +319,7 @@ function convertOption(optionRaw: Raw | undefined, scope: Scope): HOIEventOption
     const uniqueChildEvents = uniqBy(childEvents, e => e.eventName + '@' + e.scopeName);
 
     return {
+        type,
         name: optionDef.name,
         aiChanceScript: optionDef.ai_chance ? nodeToString(optionDef.ai_chance._raw) : undefined,
         originalRecipientOnly: !!optionDef.original_recipient_only,

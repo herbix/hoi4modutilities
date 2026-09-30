@@ -4,6 +4,11 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## Release candidate
+
+### Added
+* Support `after` in event tree preview (#163).
+
 ## [0.18.0] - 2026/09/11 - Latest
 
 ### Added

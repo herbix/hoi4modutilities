@@ -639,7 +639,7 @@ function parseInlayWindow(focusId: string, inlayWindowDef: HOIPartial<FocusInlay
     const id = inlayWindowDef.id;
     if (!id) {
         warnings.push({
-            text: localize('TODO', "An inlay window defined in this file don't have ID."),
+            text: localize('focustree.warnings.inlaywindownoid', "An inlay window defined in this file don't have ID."),
             source: focusId,
         });
         return undefined;
@@ -648,7 +648,7 @@ function parseInlayWindow(focusId: string, inlayWindowDef: HOIPartial<FocusInlay
     const positionInDef = inlayWindowDef.position;
     if (!positionInDef) {
         warnings.push({
-            text: localize('TODO', "Inlay window {0} defined in this file don't have position.", id),
+            text: localize('focustree.warnings.inlaywindownoposition', "Inlay window {0} defined in this file don't have position.", id),
             source: focusId,
         });
         return undefined;
@@ -662,7 +662,7 @@ function parseInlayWindow(focusId: string, inlayWindowDef: HOIPartial<FocusInlay
         const condition = overridePosition.trigger ? extractConditionValues(overridePosition.trigger.filter((v): v is Raw => v !== undefined).map(v => v._raw.value), countryScope, conditionExprs).condition : false;
         if (condition === false) {
             warnings.push({
-                text: localize('TODO', "Inlay window {0} defined in this file has an override position that don't have a condition.", id),
+                text: localize('focustree.warnings.inlaywindowoverridepositionnocondition', "Inlay window {0} defined in this file has an override position that don't have a condition.", id),
                 source: focusId,
             });
         } else {
