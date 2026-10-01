@@ -4,12 +4,16 @@ All notable changes to the "hoi4modutilities" extension will be documented in th
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## Release candidate
+## [0.18.1] - 2026/10/1 - Latest
 
 ### Added
 * Support `after` in event tree preview (#163).
+* Support more scope in effect parsing.
 
-## [0.18.0] - 2026/09/11 - Latest
+### Fixed
+* Localization of inlay window warnings.
+
+## [0.18.0] - 2026/09/11
 
 ### Added
 * Shortcuts for editing in world map preview.
